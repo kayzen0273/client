@@ -10,7 +10,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, query, orderBy, limit, where, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, query, orderBy, limit, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAKhe3ILdMTN7Dn9Ao3MqlzW3s5hHUDB_c",
@@ -24,1286 +24,445 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const APP_ID = 'default-app-id';
+        const AID = 'default-app-id';
+        const col = (p) => collection(db, 'artifacts', AID, 'public', 'data', p);
+        const docRef = (c, id) => doc(db, 'artifacts', AID, 'public', 'data', c, id);
 
-        const col = (path) => collection(db, 'artifacts', APP_ID, 'public', 'data', path);
+        window._db=db; window._col=col; window._docRef=docRef;
+        window._addDoc=addDoc; window._onSnapshot=onSnapshot;
+        window._serverTimestamp=serverTimestamp;
+        window._query=query; window._orderBy=orderBy; window._limit=limit;
+        window._deleteDoc=deleteDoc;
 
-        window._db = db;
-        window._col = col;
-        window._addDoc = addDoc;
-        window._onSnapshot = onSnapshot;
-        window._serverTimestamp = serverTimestamp;
-        window._query = query;
-        window._orderBy = orderBy;
-        window._limit = limit;
-        window._where = where;
-        window._getDocs = getDocs;
-        window._deleteDoc = deleteDoc;
-        window._doc = doc;
-        window._APP_ID = APP_ID;
-        window._auth = auth;
-        window._signInAnonymously = signInAnonymously;
-
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                window._uid = user.uid;
-                window.dispatchEvent(new CustomEvent('firebase-ready', { detail: { uid: user.uid } }));
-            }
-        });
-
-        try {
-            await signInAnonymously(auth);
-        } catch(e) {
-            console.error("Auth error:", e);
-        }
+        onAuthStateChanged(auth, u => { if(u) window.dispatchEvent(new CustomEvent('firebase-ready')); });
+        try { await signInAnonymously(auth); } catch(e) { console.error(e); }
     </script>
 
     <style>
         :root {
-            --bg: #0a0c10;
-            --surface: #111318;
-            --surface2: #181c24;
-            --border: rgba(255,255,255,0.07);
-            --border-bright: rgba(255,255,255,0.15);
-            --accent: #00e5a0;
-            --accent2: #3b82f6;
-            --accent3: #f59e0b;
-            --danger: #ef4444;
-            --text: #e8eaf0;
-            --muted: #6b7280;
-            --font-display: 'Bricolage Grotesque', sans-serif;
-            --font-body: 'Space Grotesk', sans-serif;
-            --font-mono: 'JetBrains Mono', monospace;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: var(--font-body);
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        /* Background grid */
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background-image: 
-                linear-gradient(rgba(0,229,160,0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0,229,160,0.03) 1px, transparent 1px);
-            background-size: 40px 40px;
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        .container {
-            max-width: 1280px;
-            margin: 0 auto;
-            padding: 0 24px;
-            position: relative;
-            z-index: 1;
-        }
-
-        /* HEADER */
-        header {
-            padding: 24px 0 20px;
-            border-bottom: 1px solid var(--border);
-            position: sticky;
-            top: 0;
-            background: rgba(10,12,16,0.92);
-            backdrop-filter: blur(20px);
-            z-index: 100;
-        }
-
-        .header-inner {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-        }
-
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .logo-badge {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, var(--accent), #00b578);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            box-shadow: 0 0 20px rgba(0,229,160,0.3);
-        }
-
-        .logo-text h1 {
-            font-family: var(--font-display);
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--text);
-            line-height: 1;
-        }
-
-        .logo-text p {
-            font-size: 11px;
-            color: var(--muted);
-            font-family: var(--font-mono);
-            margin-top: 3px;
-            letter-spacing: 0.05em;
-        }
-
-        .status-dot {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 12px;
-            color: var(--muted);
-            font-family: var(--font-mono);
-        }
-
-        .dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--muted);
-            position: relative;
-        }
-
-        .dot.live {
-            background: var(--accent);
-            box-shadow: 0 0 8px var(--accent);
-        }
-
-        .dot.live::after {
-            content: '';
-            position: absolute;
-            inset: -3px;
-            border-radius: 50%;
-            border: 1px solid var(--accent);
-            opacity: 0.5;
-            animation: ping 1.5s ease-in-out infinite;
-        }
-
-        @keyframes ping {
-            0%, 100% { transform: scale(1); opacity: 0.5; }
-            50% { transform: scale(1.5); opacity: 0; }
-        }
-
-        /* MAIN LAYOUT */
-        main { padding: 32px 0 60px; }
-
-        /* STATS ROW */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-            margin-bottom: 32px;
-        }
-
-        @media (max-width: 900px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 500px) { .stats-grid { grid-template-columns: 1fr 1fr; gap: 12px; } }
-
-        .stat-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 20px;
-            position: relative;
-            overflow: hidden;
-            transition: border-color 0.2s, transform 0.2s;
-        }
-
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--card-accent, var(--accent)), transparent);
-            opacity: 0.7;
-        }
-
-        .stat-card:hover {
-            border-color: var(--border-bright);
-            transform: translateY(-2px);
-        }
-
-        .stat-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--muted);
-            font-weight: 600;
-            margin-bottom: 10px;
-        }
-
-        .stat-value {
-            font-family: var(--font-display);
-            font-size: 28px;
-            font-weight: 800;
-            color: var(--text);
-            line-height: 1;
-        }
-
-        .stat-value.mono { font-family: var(--font-mono); font-size: 20px; }
-
-        .stat-sub {
-            font-size: 11px;
-            color: var(--muted);
-            margin-top: 6px;
-        }
-
-        .stat-icon {
-            position: absolute;
-            right: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 28px;
-            opacity: 0.08;
-        }
-
-        /* MAIN GRID */
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1fr 380px;
-            gap: 24px;
-        }
-
-        @media (max-width: 1000px) { .main-grid { grid-template-columns: 1fr; } }
-
-        /* PANEL */
-        .panel {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            overflow: hidden;
-        }
-
-        .panel-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 18px 24px;
-            border-bottom: 1px solid var(--border);
-            background: var(--surface2);
-        }
-
-        .panel-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text);
-        }
-
-        .panel-title i {
-            color: var(--accent);
-            font-size: 13px;
-        }
-
-        .panel-badge {
-            background: rgba(0,229,160,0.12);
-            color: var(--accent);
-            font-size: 11px;
-            font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 100px;
-            font-family: var(--font-mono);
-        }
-
-        .panel-body { padding: 20px 24px; }
-
-        /* ACTIVE KASIR LIST */
-        .kasir-list { display: flex; flex-direction: column; gap: 12px; }
-
-        .kasir-card {
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 16px;
-            display: flex;
-            gap: 14px;
-            align-items: flex-start;
-            transition: border-color 0.2s, background 0.2s;
-            animation: slideIn 0.4s cubic-bezier(0.16,1,0.3,1) forwards;
-        }
-
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(-12px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-
-        .kasir-card:hover { border-color: var(--border-bright); background: rgba(255,255,255,0.04); }
-
-        .kasir-avatar {
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
-            background: linear-gradient(135deg, #00e5a0, #3b82f6);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: var(--font-display);
-            font-weight: 800;
-            font-size: 18px;
-            color: #0a0c10;
-            flex-shrink: 0;
-        }
-
-        .kasir-info { flex: 1; min-width: 0; }
-
-        .kasir-name {
-            font-weight: 700;
-            font-size: 15px;
-            color: var(--text);
-            line-height: 1.2;
-        }
-
-        .kasir-store {
-            font-size: 11px;
-            color: var(--muted);
-            margin-top: 3px;
-        }
-
-        .kasir-cart {
-            margin-top: 10px;
-        }
-
-        .kasir-cart-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-
-        .kasir-cart-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: var(--muted);
-            font-weight: 600;
-        }
-
-        .kasir-total {
-            font-family: var(--font-mono);
-            font-size: 13px;
-            font-weight: 700;
-            color: var(--accent);
-        }
-
-        .cart-items-mini {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .cart-item-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            color: #9ca3af;
-            padding: 4px 8px;
-            background: rgba(255,255,255,0.03);
-            border-radius: 6px;
-        }
-
-        .cart-item-name {
-            flex: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            color: #d1d5db;
-        }
-
-        .cart-item-qty {
-            font-family: var(--font-mono);
-            color: var(--muted);
-            margin-left: 8px;
-            flex-shrink: 0;
-        }
-
-        .empty-kasir {
-            text-align: center;
-            padding: 48px 24px;
-            color: var(--muted);
-        }
-
-        .empty-kasir i { font-size: 40px; opacity: 0.3; margin-bottom: 12px; display: block; }
-        .empty-kasir p { font-size: 14px; }
-        .empty-kasir small { font-size: 12px; opacity: 0.6; }
-
-        .kasir-time {
-            font-family: var(--font-mono);
-            font-size: 10px;
-            color: var(--muted);
-            margin-top: 4px;
-        }
-
-        /* RIGHT PANEL */
-        .right-col { display: flex; flex-direction: column; gap: 24px; }
-
-        /* BROADCAST FORM */
-        .broadcast-form { display: flex; flex-direction: column; gap: 12px; }
-
-        .input-group { display: flex; flex-direction: column; gap: 6px; }
-
-        .input-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: var(--muted);
-            font-weight: 600;
-        }
-
-        .input-field {
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 10px 14px;
-            color: var(--text);
-            font-family: var(--font-body);
-            font-size: 13px;
-            outline: none;
-            transition: border-color 0.2s, box-shadow 0.2s;
-            width: 100%;
-        }
-
-        .input-field:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(0,229,160,0.08);
-        }
-
-        .input-field::placeholder { color: var(--muted); opacity: 0.7; }
-
-        textarea.input-field { resize: vertical; min-height: 90px; line-height: 1.6; }
-
-        .type-select {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-        }
-
-        .type-btn {
-            padding: 8px 10px;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            background: var(--surface2);
-            color: var(--muted);
-            font-size: 11px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.15s;
-            text-align: center;
-            font-family: var(--font-body);
-        }
-
-        .type-btn:hover { border-color: var(--border-bright); color: var(--text); }
-        .type-btn.active { background: rgba(0,229,160,0.1); border-color: var(--accent); color: var(--accent); }
-        .type-btn.active.warning { background: rgba(245,158,11,0.1); border-color: var(--accent3); color: var(--accent3); }
-        .type-btn.active.urgent { background: rgba(239,68,68,0.1); border-color: var(--danger); color: var(--danger); }
-
-        .send-btn {
-            background: linear-gradient(135deg, var(--accent), #00b578);
-            color: #0a0c10;
-            border: none;
-            border-radius: 10px;
-            padding: 12px 20px;
-            font-weight: 700;
-            font-size: 13px;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            font-family: var(--font-body);
-            box-shadow: 0 4px 16px rgba(0,229,160,0.25);
-        }
-
-        .send-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(0,229,160,0.35); }
-        .send-btn:active { transform: translateY(0); }
-        .send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-
-        /* MESSAGES LOG */
-        .msg-list { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; }
-
-        .msg-list::-webkit-scrollbar { width: 4px; }
-        .msg-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-
-        .msg-item {
-            background: var(--surface2);
-            border-radius: 10px;
-            padding: 12px 14px;
-            border-left: 3px solid var(--accent);
-            animation: slideIn 0.3s ease-out forwards;
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-        }
-
-        .msg-item.warning { border-color: var(--accent3); }
-        .msg-item.urgent { border-color: var(--danger); }
-
-        .msg-icon { font-size: 13px; margin-top: 1px; flex-shrink: 0; }
-        .msg-item .msg-icon { color: var(--accent); }
-        .msg-item.warning .msg-icon { color: var(--accent3); }
-        .msg-item.urgent .msg-icon { color: var(--danger); }
-
-        .msg-content { flex: 1; min-width: 0; }
-
-        .msg-sender {
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 3px;
-        }
-
-        .msg-text { font-size: 12px; color: var(--text); line-height: 1.5; word-break: break-word; }
-        .msg-time { font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: 4px; }
-
-        .delete-msg-btn {
-            background: none;
-            border: none;
-            color: var(--muted);
-            cursor: pointer;
-            padding: 2px 4px;
-            border-radius: 4px;
-            font-size: 11px;
-            transition: color 0.2s;
-            flex-shrink: 0;
-        }
-
-        .delete-msg-btn:hover { color: var(--danger); }
-
-        /* RECENT TX */
-        .tx-list { display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto; }
-        .tx-list::-webkit-scrollbar { width: 4px; }
-        .tx-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-
-        .tx-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 14px;
-            background: var(--surface2);
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            transition: border-color 0.2s;
-            animation: slideIn 0.3s ease-out forwards;
-        }
-
-        .tx-item:hover { border-color: var(--border-bright); }
-
-        .tx-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-            background: rgba(59,130,246,0.15);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--accent2);
-            font-size: 14px;
-            flex-shrink: 0;
-        }
-
-        .tx-icon.returned { background: rgba(239,68,68,0.1); color: var(--danger); }
-
-        .tx-info { flex: 1; min-width: 0; }
-
-        .tx-kasir {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text);
-        }
-
-        .tx-detail {
-            font-size: 11px;
-            color: var(--muted);
-            margin-top: 2px;
-        }
-
-        .tx-amount {
-            font-family: var(--font-mono);
-            font-size: 13px;
-            font-weight: 700;
-            color: var(--accent);
-            text-align: right;
-            flex-shrink: 0;
-        }
-
-        .tx-amount.returned { color: var(--danger); }
-
-        /* TOAST */
-        .toast {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            background: var(--surface2);
-            border: 1px solid var(--border-bright);
-            border-radius: 12px;
-            padding: 14px 18px;
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--text);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            z-index: 999;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-            transform: translateY(80px);
-            opacity: 0;
-            transition: all 0.35s cubic-bezier(0.16,1,0.3,1);
-        }
-
-        .toast.show { transform: translateY(0); opacity: 1; }
-        .toast.success i { color: var(--accent); }
-        .toast.error i { color: var(--danger); }
-
-        /* LOADING */
-        .loading { display: flex; gap: 5px; align-items: center; justify-content: center; padding: 24px; }
-        .loading-dot {
-            width: 6px; height: 6px; border-radius: 50%;
-            background: var(--accent); opacity: 0.3;
-            animation: loadPulse 1.2s ease-in-out infinite;
-        }
-        .loading-dot:nth-child(2) { animation-delay: 0.2s; }
-        .loading-dot:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes loadPulse { 0%,100% { opacity: 0.2; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }
-
-        /* CLOCK */
-        #clock { font-family: var(--font-mono); font-size: 13px; color: var(--muted); }
-
-        /* REFRESH BTN */
-        .refresh-btn {
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            color: var(--muted);
-            border-radius: 8px;
-            padding: 5px 10px;
-            font-size: 11px;
-            cursor: pointer;
-            transition: all 0.15s;
-            font-family: var(--font-body);
-        }
-
-        .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-        /* NO ITEMS */
-        .no-items {
-            text-align: center;
-            padding: 32px 16px;
-            color: var(--muted);
-            font-size: 13px;
-        }
-
-        .kasir-items-count {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            background: rgba(0,229,160,0.08);
-            color: var(--accent);
-            font-size: 11px;
-            font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 100px;
-            font-family: var(--font-mono);
-        }
-
-        .help-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 10px;
-            background: rgba(245,158,11,0.1);
-            color: var(--accent3);
-            border: 1px solid rgba(245,158,11,0.2);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: 600;
-            margin-left: 6px;
-        }
-
-        .section-divider {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin: 8px 0 4px;
-            color: var(--muted);
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-        }
-
-        .section-divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--border);
-        }
-
-        .more-items {
-            font-size: 11px;
-            color: var(--muted);
-            text-align: center;
-            padding: 4px;
-            font-style: italic;
-        }
+            --bg:#0a0c10; --surface:#111318; --s2:#181c24;
+            --b:rgba(255,255,255,.07); --bb:rgba(255,255,255,.15);
+            --a:#00e5a0; --a2:#3b82f6; --a3:#f59e0b; --d:#ef4444;
+            --t:#e8eaf0; --m:#6b7280;
+            --fd:'Bricolage Grotesque',sans-serif;
+            --fb:'Space Grotesk',sans-serif;
+            --fm:'JetBrains Mono',monospace;
+        }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:var(--fb);background:var(--bg);color:var(--t);min-height:100vh;overflow-x:hidden}
+        body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,160,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,160,.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+        .wrap{max-width:1280px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+        /* header */
+        header{padding:20px 0 16px;border-bottom:1px solid var(--b);position:sticky;top:0;background:rgba(10,12,16,.93);backdrop-filter:blur(20px);z-index:100}
+        .hi{display:flex;align-items:center;justify-content:space-between;gap:16px}
+        .logo{display:flex;align-items:center;gap:12px}
+        .lb{width:40px;height:40px;background:linear-gradient(135deg,var(--a),#00b578);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 20px rgba(0,229,160,.3)}
+        .lt h1{font-family:var(--fd);font-size:18px;font-weight:700;line-height:1}
+        .lt p{font-size:11px;color:var(--m);font-family:var(--fm);margin-top:3px;letter-spacing:.05em}
+        .chip{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--m);font-family:var(--fm);background:var(--s2);border:1px solid var(--b);padding:5px 12px;border-radius:100px}
+        .dot{width:8px;height:8px;border-radius:50%;background:var(--m);position:relative;flex-shrink:0}
+        .dot.live{background:var(--a);box-shadow:0 0 8px var(--a)}
+        .dot.live::after{content:'';position:absolute;inset:-3px;border-radius:50%;border:1px solid var(--a);opacity:.5;animation:ping 1.5s ease-in-out infinite}
+        @keyframes ping{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.5);opacity:0}}
+
+        /* layout */
+        main{padding:28px 0 60px}
+        .sg{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+        @media(max-width:900px){.sg{grid-template-columns:repeat(2,1fr)}}
+        @media(max-width:500px){.sg{grid-template-columns:1fr 1fr;gap:12px}}
+        .sc{background:var(--surface);border:1px solid var(--b);border-radius:16px;padding:18px;position:relative;overflow:hidden;transition:border-color .2s,transform .2s}
+        .sc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--ca,var(--a)),transparent);opacity:.7}
+        .sc:hover{border-color:var(--bb);transform:translateY(-2px)}
+        .sl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--m);font-weight:600;margin-bottom:8px}
+        .sv{font-family:var(--fd);font-size:28px;font-weight:800;line-height:1}
+        .sv.mono{font-family:var(--fm);font-size:18px}
+        .ss{font-size:11px;color:var(--m);margin-top:6px}
+        .si{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:26px;opacity:.07}
+        .mg{display:grid;grid-template-columns:1fr 380px;gap:24px}
+        @media(max-width:1000px){.mg{grid-template-columns:1fr}}
+        .panel{background:var(--surface);border:1px solid var(--b);border-radius:20px;overflow:hidden}
+        .ph{display:flex;align-items:center;justify-content:space-between;padding:16px 22px;border-bottom:1px solid var(--b);background:var(--s2)}
+        .pt{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600}
+        .pt i{color:var(--a);font-size:13px}
+        .pbadge{background:rgba(0,229,160,.12);color:var(--a);font-size:11px;font-weight:700;padding:2px 8px;border-radius:100px;font-family:var(--fm)}
+        .pb{padding:18px 22px}
+        .rc{display:flex;flex-direction:column;gap:24px}
+
+        /* presence */
+        @keyframes si{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
+        .pl{display:flex;flex-direction:column;gap:10px}
+        .pc{background:var(--s2);border:1px solid var(--b);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:14px;transition:border-color .2s;animation:si .4s cubic-bezier(.16,1,.3,1)}
+        .pc:hover{border-color:var(--bb)}
+        .pc.aw{opacity:.5}
+        .pa{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:800;font-size:17px;color:#0a0c10;flex-shrink:0}
+        .pname{font-weight:700;font-size:14px;line-height:1.2}
+        .pstore{font-size:11px;color:var(--m);margin-top:3px}
+        .ptime{font-family:var(--fm);font-size:10px;color:var(--m);margin-top:4px}
+        .pst{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600}
+        .pst.on{color:var(--a)} .pst.aw{color:var(--a3)}
+        .empty{text-align:center;padding:44px 20px;color:var(--m)}
+        .empty i{font-size:38px;opacity:.2;margin-bottom:12px;display:block}
+        .empty p{font-size:14px} .empty small{font-size:11px;opacity:.6}
+
+        /* form */
+        .bf{display:flex;flex-direction:column;gap:12px}
+        .ig{display:flex;flex-direction:column;gap:6px}
+        .il{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--m);font-weight:600}
+        .if{background:var(--s2);border:1px solid var(--b);border-radius:10px;padding:10px 14px;color:var(--t);font-family:var(--fb);font-size:13px;outline:none;transition:border-color .2s,box-shadow .2s;width:100%}
+        .if:focus{border-color:var(--a);box-shadow:0 0 0 3px rgba(0,229,160,.08)}
+        .if::placeholder{color:var(--m);opacity:.7}
+        textarea.if{resize:vertical;min-height:88px;line-height:1.6}
+        .ts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+        .tb{padding:8px 6px;border-radius:8px;border:1px solid var(--b);background:var(--s2);color:var(--m);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;text-align:center;font-family:var(--fb)}
+        .tb:hover{border-color:var(--bb);color:var(--t)}
+        .tb.act{background:rgba(0,229,160,.1);border-color:var(--a);color:var(--a)}
+        .tb.act.w{background:rgba(245,158,11,.1);border-color:var(--a3);color:var(--a3)}
+        .tb.act.u{background:rgba(239,68,68,.1);border-color:var(--d);color:var(--d)}
+        .sbtn{background:linear-gradient(135deg,var(--a),#00b578);color:#0a0c10;border:none;border-radius:10px;padding:12px 20px;font-weight:700;font-size:13px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;font-family:var(--fb);box-shadow:0 4px 16px rgba(0,229,160,.25)}
+        .sbtn:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(0,229,160,.35)}
+        .sbtn:active{transform:translateY(0)}
+        .sbtn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+        /* messages */
+        .ml{display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto}
+        .ml::-webkit-scrollbar{width:4px} .ml::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:4px}
+        .mi{background:var(--s2);border-radius:10px;padding:12px 14px;border-left:3px solid var(--a);animation:si .3s ease-out;display:flex;align-items:flex-start;gap:10px}
+        .mi.w{border-color:var(--a3)} .mi.u{border-color:var(--d)}
+        .mico{font-size:12px;margin-top:2px;flex-shrink:0;color:var(--a)}
+        .mi.w .mico{color:var(--a3)} .mi.u .mico{color:var(--d)}
+        .mc{flex:1;min-width:0}
+        .msn{font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+        .mtx{font-size:12px;line-height:1.5;word-break:break-word}
+        .mtm{font-family:var(--fm);font-size:10px;color:var(--m);margin-top:4px}
+        .db{background:none;border:none;color:var(--m);cursor:pointer;padding:2px 4px;border-radius:4px;font-size:11px;transition:color .2s;flex-shrink:0}
+        .db:hover{color:var(--d)}
+
+        /* tx */
+        .tl{display:flex;flex-direction:column;gap:8px;max-height:380px;overflow-y:auto}
+        .tl::-webkit-scrollbar{width:4px} .tl::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:4px}
+        .ti{display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--s2);border-radius:10px;border:1px solid var(--b);transition:border-color .2s;animation:si .3s ease-out}
+        .ti:hover{border-color:var(--bb)}
+        .tico{width:34px;height:34px;border-radius:9px;background:rgba(59,130,246,.15);display:flex;align-items:center;justify-content:center;color:var(--a2);font-size:13px;flex-shrink:0}
+        .tico.r{background:rgba(239,68,68,.1);color:var(--d)}
+        .tinfo{flex:1;min-width:0}
+        .tk{font-size:13px;font-weight:600}
+        .td{font-size:11px;color:var(--m);margin-top:2px}
+        .tam{font-family:var(--fm);font-size:13px;font-weight:700;color:var(--a);text-align:right;flex-shrink:0}
+        .tam.r{color:var(--d)}
+
+        /* toast */
+        .toast{position:fixed;bottom:24px;right:24px;background:var(--s2);border:1px solid var(--bb);border-radius:12px;padding:14px 18px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:10px;z-index:999;box-shadow:0 8px 32px rgba(0,0,0,.4);transform:translateY(80px);opacity:0;transition:all .35s cubic-bezier(.16,1,.3,1)}
+        .toast.show{transform:translateY(0);opacity:1}
+        .toast.ok i{color:var(--a)} .toast.err i{color:var(--d)}
+        .ld-row{display:flex;gap:5px;align-items:center;justify-content:center;padding:28px}
+        .ld{width:6px;height:6px;border-radius:50%;background:var(--a);opacity:.3;animation:lp 1.2s ease-in-out infinite}
+        .ld:nth-child(2){animation-delay:.2s} .ld:nth-child(3){animation-delay:.4s}
+        @keyframes lp{0%,100%{opacity:.2;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
+        #clk{font-family:var(--fm);font-size:13px;color:var(--m)}
+        .rbtn{background:var(--s2);border:1px solid var(--b);color:var(--m);border-radius:8px;padding:5px 10px;font-size:11px;cursor:pointer;transition:all .15s;font-family:var(--fb)}
+        .rbtn:hover{border-color:var(--a);color:var(--a)}
+        .ni{text-align:center;padding:28px 16px;color:var(--m);font-size:13px}
     </style>
 </head>
 <body>
     <header>
-        <div class="container header-inner">
+        <div class="wrap hi">
             <div class="logo">
-                <div class="logo-badge">🏪</div>
-                <div class="logo-text">
-                    <h1>Admin Monitor</h1>
-                    <p>TOKO HUSNA · CONTROL CENTER</p>
-                </div>
+                <div class="lb">🏪</div>
+                <div class="lt"><h1>Admin Monitor</h1><p>TOKO HUSNA · CONTROL CENTER</p></div>
             </div>
-            <div style="display:flex; align-items:center; gap:20px;">
-                <span id="clock"></span>
-                <div class="status-dot">
-                    <div class="dot" id="conn-dot"></div>
-                    <span id="conn-label">Menghubungkan...</span>
-                </div>
+            <div style="display:flex;align-items:center;gap:14px">
+                <span id="clk"></span>
+                <div class="chip"><div class="dot" id="cdot"></div><span id="clbl">Menghubungkan...</span></div>
             </div>
         </div>
     </header>
 
-    <div class="container">
-        <main>
-            <!-- STATS -->
-            <div class="stats-grid">
-                <div class="stat-card" style="--card-accent: var(--accent)">
-                    <div class="stat-label">Kasir Aktif</div>
-                    <div class="stat-value" id="stat-active">—</div>
-                    <div class="stat-sub">sesi terbuka sekarang</div>
-                    <div class="stat-icon">👤</div>
+    <div class="wrap">
+      <main>
+        <!-- STATS -->
+        <div class="sg">
+            <div class="sc" style="--ca:var(--a)"><div class="sl">Sedang Online</div><div class="sv" id="s-on">—</div><div class="ss">buka website kasir</div><div class="si">🟢</div></div>
+            <div class="sc" style="--ca:var(--a2)"><div class="sl">Transaksi Hari Ini</div><div class="sv" id="s-tx">—</div><div class="ss" id="s-txs">memuat...</div><div class="si">🧾</div></div>
+            <div class="sc" style="--ca:var(--a3)"><div class="sl">Omzet Hari Ini</div><div class="sv mono" id="s-rev">—</div><div class="ss">total penjualan</div><div class="si">💰</div></div>
+            <div class="sc" style="--ca:#a855f7"><div class="sl">Pengumuman Aktif</div><div class="sv" id="s-ann">—</div><div class="ss">tampil di layar kasir</div><div class="si">📢</div></div>
+        </div>
+
+        <div class="mg">
+          <!-- LEFT -->
+          <div style="display:flex;flex-direction:column;gap:24px">
+
+            <!-- WHO'S ONLINE -->
+            <div class="panel">
+                <div class="ph">
+                    <div class="pt"><i class="fas fa-wifi"></i>Siapa yang Sedang Online</div>
+                    <span class="pbadge" id="onbadge">0 online</span>
                 </div>
-                <div class="stat-card" style="--card-accent: var(--accent2)">
-                    <div class="stat-label">Transaksi Hari Ini</div>
-                    <div class="stat-value" id="stat-tx-count">—</div>
-                    <div class="stat-sub" id="stat-tx-sub">memuat...</div>
-                    <div class="stat-icon">🧾</div>
-                </div>
-                <div class="stat-card" style="--card-accent: var(--accent3)">
-                    <div class="stat-label">Omzet Hari Ini</div>
-                    <div class="stat-value mono" id="stat-revenue">—</div>
-                    <div class="stat-sub">total penjualan</div>
-                    <div class="stat-icon">💰</div>
-                </div>
-                <div class="stat-card" style="--card-accent: #a855f7">
-                    <div class="stat-label">Pesan Broadcast</div>
-                    <div class="stat-value" id="stat-msg">—</div>
-                    <div class="stat-sub">pesan aktif di papan</div>
-                    <div class="stat-icon">📢</div>
+                <div class="pb">
+                    <div class="pl" id="plist"><div class="ld-row"><div class="ld"></div><div class="ld"></div><div class="ld"></div></div></div>
                 </div>
             </div>
 
-            <!-- MAIN GRID -->
-            <div class="main-grid">
-                <!-- LEFT: ACTIVE KASIR + RECENT TX -->
-                <div style="display: flex; flex-direction: column; gap: 24px;">
-
-                    <!-- ACTIVE KASIR -->
-                    <div class="panel">
-                        <div class="panel-header">
-                            <div class="panel-title">
-                                <i class="fas fa-satellite-dish"></i>
-                                Monitor Kasir Aktif
-                            </div>
-                            <span class="panel-badge" id="kasir-count-badge">0 aktif</span>
-                        </div>
-                        <div class="panel-body">
-                            <div class="kasir-list" id="kasir-list">
-                                <div class="loading">
-                                    <div class="loading-dot"></div>
-                                    <div class="loading-dot"></div>
-                                    <div class="loading-dot"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- RECENT TRANSACTIONS -->
-                    <div class="panel">
-                        <div class="panel-header">
-                            <div class="panel-title">
-                                <i class="fas fa-receipt"></i>
-                                Transaksi Terkini
-                            </div>
-                            <button class="refresh-btn" onclick="loadTransactions()">
-                                <i class="fas fa-rotate-right"></i> Refresh
-                            </button>
-                        </div>
-                        <div class="panel-body">
-                            <div class="tx-list" id="tx-list">
-                                <div class="loading">
-                                    <div class="loading-dot"></div>
-                                    <div class="loading-dot"></div>
-                                    <div class="loading-dot"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            <!-- RECENT TX -->
+            <div class="panel">
+                <div class="ph">
+                    <div class="pt"><i class="fas fa-receipt"></i>Transaksi Terkini</div>
+                    <button class="rbtn" onclick="loadTx()"><i class="fas fa-rotate-right"></i> Refresh</button>
                 </div>
+                <div class="pb">
+                    <div class="tl" id="txlist"><div class="ld-row"><div class="ld"></div><div class="ld"></div><div class="ld"></div></div></div>
+                </div>
+            </div>
+          </div>
 
-                <!-- RIGHT: BROADCAST + MSG LOG -->
-                <div class="right-col">
+          <!-- RIGHT -->
+          <div class="rc">
 
-                    <!-- BROADCAST FORM -->
-                    <div class="panel">
-                        <div class="panel-header">
-                            <div class="panel-title">
-                                <i class="fas fa-bullhorn"></i>
-                                Kirim Pesan ke Kasir
+            <!-- BROADCAST FORM -->
+            <div class="panel">
+                <div class="ph"><div class="pt"><i class="fas fa-bullhorn"></i>Kirim Pengumuman ke Kasir</div></div>
+                <div class="pb">
+                    <div class="bf">
+                        <div class="ig">
+                            <label class="il">Dari (nama pengirim)</label>
+                            <input type="text" class="if" id="sender" placeholder="Contoh: Admin / Owner" maxlength="30">
+                        </div>
+                        <div class="ig">
+                            <label class="il">Jenis Pesan</label>
+                            <div class="ts">
+                                <button class="tb act" onclick="selT(this,'info')">ℹ️ Info</button>
+                                <button class="tb" onclick="selT(this,'warning')">⚠️ Perhatian</button>
+                                <button class="tb" onclick="selT(this,'urgent')">🚨 Penting</button>
                             </div>
                         </div>
-                        <div class="panel-body">
-                            <div class="broadcast-form">
-                                <div class="input-group">
-                                    <label class="input-label">Dari (nama pengirim)</label>
-                                    <input type="text" class="input-field" id="sender-name" placeholder="Contoh: Admin / Owner" maxlength="30">
-                                </div>
-                                <div class="input-group">
-                                    <label class="input-label">Jenis Pesan</label>
-                                    <div class="type-select">
-                                        <button class="type-btn active" data-type="info" onclick="selectType(this, 'info')">
-                                            ℹ️ Info
-                                        </button>
-                                        <button class="type-btn" data-type="warning" onclick="selectType(this, 'warning')">
-                                            ⚠️ Perhatian
-                                        </button>
-                                        <button class="type-btn" data-type="urgent" onclick="selectType(this, 'urgent')">
-                                            🚨 Mendesak
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="input-group">
-                                    <label class="input-label">Pesan</label>
-                                    <textarea class="input-field" id="msg-text" placeholder="Tulis pesan untuk kasir...&#10;Contoh: Tolong cek stok mie instan di rak A3" maxlength="300"></textarea>
-                                    <div style="font-size:11px; color:var(--muted); text-align:right;" id="char-count">0 / 300</div>
-                                </div>
-                                <button class="send-btn" id="send-btn" onclick="sendBroadcast()">
-                                    <i class="fas fa-paper-plane"></i> Kirim ke Papan Kasir
-                                </button>
-                                <p style="font-size:11px; color:var(--muted); line-height:1.5;">
-                                    <i class="fas fa-info-circle" style="color:var(--accent2)"></i>
-                                    Pesan akan muncul di tab <strong style="color:var(--text)">Catatan → Global</strong> di sistem kasir.
-                                </p>
-                            </div>
+                        <div class="ig">
+                            <label class="il">Pesan</label>
+                            <textarea class="if" id="minput" placeholder="Tulis pesan yang akan muncul di layar atas kasir..." maxlength="300"></textarea>
+                            <div style="font-size:11px;color:var(--m);text-align:right" id="cc">0 / 300</div>
                         </div>
-                    </div>
-
-                    <!-- MESSAGES LOG -->
-                    <div class="panel">
-                        <div class="panel-header">
-                            <div class="panel-title">
-                                <i class="fas fa-comments"></i>
-                                Pesan Aktif di Kasir
-                            </div>
-                            <span class="panel-badge" id="msg-badge">0</span>
-                        </div>
-                        <div class="panel-body">
-                            <div class="msg-list" id="msg-list">
-                                <div class="loading">
-                                    <div class="loading-dot"></div>
-                                    <div class="loading-dot"></div>
-                                    <div class="loading-dot"></div>
-                                </div>
-                            </div>
-                        </div>
+                        <button class="sbtn" id="sbtn" onclick="sendAnn()">
+                            <i class="fas fa-paper-plane"></i> Kirim ke Layar Kasir
+                        </button>
+                        <p style="font-size:11px;color:var(--m);line-height:1.6;padding:8px 10px;background:rgba(59,130,246,.06);border-radius:8px;border:1px solid rgba(59,130,246,.12)">
+                            <i class="fas fa-info-circle" style="color:var(--a2);margin-right:4px"></i>
+                            Pesan muncul sebagai <strong style="color:var(--t)">banner di atas layar</strong> semua kasir yang online. Kasir bisa tutup dengan klik ✕.
+                        </p>
                     </div>
                 </div>
             </div>
-        </main>
+
+            <!-- ACTIVE ANNOUNCEMENTS -->
+            <div class="panel">
+                <div class="ph">
+                    <div class="pt"><i class="fas fa-bell"></i>Pengumuman Aktif</div>
+                    <span class="pbadge" id="annbadge">0</span>
+                </div>
+                <div class="pb">
+                    <div class="ml" id="annlist"><div class="ld-row"><div class="ld"></div><div class="ld"></div><div class="ld"></div></div></div>
+                </div>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
 
-    <!-- TOAST -->
-    <div class="toast" id="toast">
-        <i class="fas fa-check-circle"></i>
-        <span id="toast-msg">Berhasil</span>
-    </div>
+    <div class="toast" id="toast"><i class="fas fa-check-circle"></i><span id="tmsg">OK</span></div>
 
     <script>
-        // ────────────────────────────────────────────
-        // STATE
-        // ────────────────────────────────────────────
-        let selectedType = 'info';
-        let isReady = false;
-        let todayTxCount = 0;
-        let todayRevenue = 0;
-        let broadcastCount = 0;
+        let msgType = 'info', rdy = false;
 
-        // ────────────────────────────────────────────
-        // CLOCK
-        // ────────────────────────────────────────────
-        function updateClock() {
-            const now = new Date();
-            const h = String(now.getHours()).padStart(2,'0');
-            const m = String(now.getMinutes()).padStart(2,'0');
-            const s = String(now.getSeconds()).padStart(2,'0');
-            document.getElementById('clock').textContent = `${h}:${m}:${s}`;
-        }
-        setInterval(updateClock, 1000);
-        updateClock();
+        setInterval(() => {
+            const n = new Date();
+            document.getElementById('clk').textContent =
+                `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}:${String(n.getSeconds()).padStart(2,'0')}`;
+        }, 1000);
 
-        // ────────────────────────────────────────────
-        // TOAST
-        // ────────────────────────────────────────────
-        function showToast(msg, type = 'success') {
+        function toast(msg, t='ok') {
             const el = document.getElementById('toast');
-            const icon = el.querySelector('i');
-            document.getElementById('toast-msg').textContent = msg;
-            el.className = `toast show ${type}`;
-            icon.className = type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-triangle';
-            clearTimeout(el._timer);
-            el._timer = setTimeout(() => el.className = 'toast', 3000);
+            el.querySelector('i').className = t==='ok' ? 'fas fa-check-circle' : 'fas fa-triangle-exclamation';
+            document.getElementById('tmsg').textContent = msg;
+            el.className = `toast show ${t}`;
+            clearTimeout(el._t); el._t = setTimeout(()=> el.className='toast', 3200);
         }
 
-        // ────────────────────────────────────────────
-        // HELPERS
-        // ────────────────────────────────────────────
-        function formatRupiah(n) {
-            if (!n && n !== 0) return '—';
-            return 'Rp ' + Number(n).toLocaleString('id-ID');
-        }
+        function rp(n) { return n||n===0 ? 'Rp '+Number(n).toLocaleString('id-ID') : '—'; }
 
-        function timeAgo(ts) {
+        function ago(ts) {
             if (!ts) return '';
             const d = ts.toDate ? ts.toDate() : new Date(ts);
-            const diff = Math.floor((Date.now() - d.getTime()) / 1000);
-            if (diff < 60) return `${diff}d lalu`;
-            if (diff < 3600) return `${Math.floor(diff/60)}m lalu`;
-            if (diff < 86400) return `${Math.floor(diff/3600)}j lalu`;
-            return d.toLocaleDateString('id-ID', { day:'numeric', month:'short' });
+            const s = Math.floor((Date.now() - d.getTime()) / 1000);
+            if (s < 60) return `${s}d lalu`;
+            if (s < 3600) return `${Math.floor(s/60)}m lalu`;
+            return d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
         }
 
-        function getInitials(name) {
-            if (!name) return '?';
-            return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+        function ini(n) { return n ? n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2) : '?'; }
+
+        function grad(n) {
+            const p=[['#00e5a0','#3b82f6'],['#f59e0b','#ef4444'],['#8b5cf6','#ec4899'],
+                     ['#06b6d4','#6366f1'],['#10b981','#0ea5e9'],['#f97316','#eab308']];
+            let h=0; for(let c of (n||'')) h=c.charCodeAt(0)+h*31;
+            const [a,b]=p[Math.abs(h)%p.length];
+            return `linear-gradient(135deg,${a},${b})`;
         }
 
-        function avatarGradient(name) {
-            const colors = [
-                ['#00e5a0','#3b82f6'],['#f59e0b','#ef4444'],['#8b5cf6','#ec4899'],
-                ['#06b6d4','#6366f1'],['#10b981','#0ea5e9'],['#f97316','#eab308'],
-            ];
-            let hash = 0;
-            for (let c of (name || '')) hash = c.charCodeAt(0) + hash * 31;
-            const [a,b] = colors[Math.abs(hash) % colors.length];
-            return `linear-gradient(135deg, ${a}, ${b})`;
+        function todayR() {
+            const n=new Date(), s=new Date(n.getFullYear(),n.getMonth(),n.getDate());
+            return {start:s, end:new Date(s.getTime()+86400000)};
         }
 
-        function todayRange() {
-            const now = new Date();
-            const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            const end = new Date(start.getTime() + 86400000);
-            return { start, end };
+        function selT(btn, type) {
+            document.querySelectorAll('.tb').forEach(b => b.className='tb');
+            btn.classList.add('act');
+            if(type==='warning') btn.classList.add('w');
+            if(type==='urgent') btn.classList.add('u');
+            msgType = type;
         }
 
-        function typeIcon(type) {
-            if (type === 'warning') return 'fa-triangle-exclamation';
-            if (type === 'urgent') return 'fa-circle-exclamation';
-            return 'fa-circle-info';
-        }
-
-        // ────────────────────────────────────────────
-        // TYPE SELECT
-        // ────────────────────────────────────────────
-        function selectType(btn, type) {
-            document.querySelectorAll('.type-btn').forEach(b => {
-                b.classList.remove('active', 'warning', 'urgent');
-            });
-            btn.classList.add('active');
-            if (type === 'warning') btn.classList.add('warning');
-            if (type === 'urgent') btn.classList.add('urgent');
-            selectedType = type;
-        }
-
-        // Char counter
-        const msgText = document.getElementById('msg-text');
-        msgText.addEventListener('input', () => {
-            document.getElementById('char-count').textContent = `${msgText.value.length} / 300`;
+        document.getElementById('minput').addEventListener('input', function() {
+            document.getElementById('cc').textContent = `${this.value.length} / 300`;
         });
 
-        // ────────────────────────────────────────────
-        // SEND BROADCAST → writes to catatan (global)
-        // ────────────────────────────────────────────
-        async function sendBroadcast() {
-            if (!isReady) return showToast('Koneksi belum siap', 'error');
-
-            const sender = (document.getElementById('sender-name').value.trim() || 'Admin Monitor');
-            const text = document.getElementById('msg-text').value.trim();
-            if (!text) return showToast('Tulis pesan terlebih dahulu', 'error');
-
-            const btn = document.getElementById('send-btn');
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...';
-
+        async function sendAnn() {
+            if (!rdy) return toast('Koneksi belum siap','err');
+            const sender = document.getElementById('sender').value.trim() || 'Admin';
+            const text = document.getElementById('minput').value.trim();
+            if (!text) return toast('Tulis pesan dulu','err');
+            const btn = document.getElementById('sbtn');
+            btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Mengirim...';
             try {
-                const typeLabels = { info: 'ℹ️ Info', warning: '⚠️ Perhatian', urgent: '🚨 PENTING' };
-                const fullContent = `[${typeLabels[selectedType]}] dari ${sender}:\n${text}`;
-
-                await window._addDoc(window._col('catatan'), {
-                    content: fullContent,
-                    type: 'note',
-                    msgType: selectedType,
-                    senderName: sender,
-                    originalText: text,
-                    isAdminBroadcast: true,
-                    createdAt: window._serverTimestamp(),
-                    updatedAt: window._serverTimestamp(),
-                    color: selectedType === 'urgent' ? '#fee2e2' : selectedType === 'warning' ? '#fef3c7' : '#ecfdf5',
-                    isPinned: selectedType === 'urgent',
+                await window._addDoc(window._col('announcements'), {
+                    msgType, senderName: sender, originalText: text,
+                    createdAt: window._serverTimestamp()
                 });
-
-                document.getElementById('msg-text').value = '';
-                document.getElementById('char-count').textContent = '0 / 300';
-                showToast('✅ Pesan berhasil dikirim ke papan kasir!');
-            } catch(e) {
-                console.error(e);
-                showToast('Gagal mengirim: ' + e.message, 'error');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim ke Papan Kasir';
-            }
+                document.getElementById('minput').value='';
+                document.getElementById('cc').textContent='0 / 300';
+                toast('✅ Pengumuman terkirim ke semua layar kasir!');
+            } catch(e) { toast('Gagal: '+e.message,'err'); }
+            finally { btn.disabled=false; btn.innerHTML='<i class="fas fa-paper-plane"></i> Kirim ke Layar Kasir'; }
         }
 
-        // ────────────────────────────────────────────
-        // RENDER ACTIVE KASIR
-        // ────────────────────────────────────────────
-        function renderActiveCarts(carts) {
-            const el = document.getElementById('kasir-list');
-            const badge = document.getElementById('kasir-count-badge');
-            document.getElementById('stat-active').textContent = carts.length;
-            badge.textContent = `${carts.length} aktif`;
+        async function delAnn(id) {
+            if (!confirm('Hapus pengumuman ini dari layar kasir?')) return;
+            try { await window._deleteDoc(window._docRef('announcements', id)); toast('Dihapus'); }
+            catch(e) { toast('Gagal: '+e.message,'err'); }
+        }
 
-            if (carts.length === 0) {
-                el.innerHTML = `
-                    <div class="empty-kasir">
-                        <i class="fas fa-store-slash"></i>
-                        <p>Belum ada kasir aktif</p>
-                        <small>Kasir akan muncul di sini saat membuka sesi</small>
-                    </div>`;
+        function renderPresence(docs) {
+            const el = document.getElementById('plist');
+            const now = Date.now();
+            const online = docs.filter(d => {
+                if (!d.isOnline) return false;
+                if (!d.lastSeen) return true;
+                const ls = d.lastSeen.toDate ? d.lastSeen.toDate() : new Date(d.lastSeen);
+                return (now - ls.getTime()) < 90000;
+            });
+            const away = docs.filter(d => {
+                if (!d.lastSeen) return false;
+                const ls = d.lastSeen.toDate ? d.lastSeen.toDate() : new Date(d.lastSeen);
+                const age = now - ls.getTime();
+                return age >= 90000 && age < 300000;
+            });
+            const all = [...online, ...away];
+            document.getElementById('s-on').textContent = online.length;
+            document.getElementById('onbadge').textContent = `${online.length} online`;
+            if (all.length===0) {
+                el.innerHTML = `<div class="empty"><i class="fas fa-store-slash"></i><p>Tidak ada yang online</p><small>Muncul saat kasir membuka website</small></div>`;
                 return;
             }
-
-            el.innerHTML = carts.map(cart => {
-                const initials = getInitials(cart.cashierName);
-                const gradient = avatarGradient(cart.cashierName);
-                const itemsHtml = renderCartItems(cart.items || []);
-                const isHelping = cart.helpedBy;
-
+            el.innerHTML = all.map(p => {
+                const isOn = online.includes(p);
                 return `
-                <div class="kasir-card">
-                    <div class="kasir-avatar" style="background:${gradient}">${initials}</div>
-                    <div class="kasir-info">
-                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                            <span class="kasir-name">${cart.cashierName || 'Kasir'}</span>
-                            ${isHelping ? `<span class="help-badge"><i class="fas fa-handshake"></i> Dibantu</span>` : ''}
-                        </div>
-                        <div class="kasir-store">
-                            <i class="fas fa-shop" style="font-size:10px;margin-right:4px;"></i>${cart.storeName || 'Toko Husna'}
-                        </div>
-                        <div class="kasir-time">
-                            <i class="fas fa-clock" style="font-size:9px;margin-right:3px;"></i>${timeAgo(cart.updatedAt)}
-                        </div>
-                        <div class="kasir-cart">
-                            <div class="kasir-cart-header">
-                                <span class="kasir-items-count">
-                                    <i class="fas fa-basket-shopping" style="font-size:9px;"></i>
-                                    ${(cart.items||[]).length} item
-                                </span>
-                                <span class="kasir-total">${formatRupiah(cart.total || 0)}</span>
-                            </div>
-                            ${itemsHtml}
-                        </div>
+                <div class="pc ${isOn?'':'aw'}">
+                    <div class="pa" style="background:${grad(p.cashierName)}">${ini(p.cashierName)}</div>
+                    <div style="flex:1;min-width:0">
+                        <div class="pname">${p.cashierName||'Kasir'}</div>
+                        <div class="pstore"><i class="fas fa-shop" style="font-size:9px;margin-right:3px"></i>${p.storeId||'default'}</div>
+                        <div class="ptime"><i class="fas fa-clock" style="font-size:9px;margin-right:3px"></i>terakhir ${ago(p.lastSeen)}</div>
+                    </div>
+                    <div class="pst ${isOn?'on':'aw'}">
+                        <div class="dot ${isOn?'live':''}" style="${isOn?'':'background:var(--a3)'}"></div>
+                        ${isOn?'Online':'Away'}
                     </div>
                 </div>`;
             }).join('');
         }
 
-        function renderCartItems(items) {
-            if (!items || items.length === 0) {
-                return `<div style="font-size:11px;color:var(--muted);padding:4px 0;">Keranjang kosong</div>`;
-            }
-            const show = items.slice(0, 4);
-            const rest = items.length - show.length;
-            let html = `<div class="cart-items-mini">`;
-            for (const it of show) {
-                html += `
-                <div class="cart-item-row">
-                    <span class="cart-item-name">${it.name || '—'}</span>
-                    <span class="cart-item-qty">×${it.cartQty || 1}</span>
-                </div>`;
-            }
-            html += '</div>';
-            if (rest > 0) html += `<div class="more-items">+${rest} item lainnya</div>`;
-            return html;
-        }
-
-        // ────────────────────────────────────────────
-        // RENDER MESSAGES
-        // ────────────────────────────────────────────
-        function renderMessages(msgs) {
-            const el = document.getElementById('msg-list');
-            const badge = document.getElementById('msg-badge');
-            broadcastCount = msgs.length;
-            badge.textContent = msgs.length;
-            document.getElementById('stat-msg').textContent = msgs.length;
-
-            if (msgs.length === 0) {
-                el.innerHTML = `<div class="no-items"><i class="fas fa-inbox" style="opacity:.3;display:block;margin-bottom:8px;font-size:24px;"></i>Belum ada pesan broadcast</div>`;
+        function renderAnns(docs) {
+            const el = document.getElementById('annlist');
+            document.getElementById('s-ann').textContent = docs.length;
+            document.getElementById('annbadge').textContent = docs.length;
+            if (docs.length===0) {
+                el.innerHTML = `<div class="ni"><i class="fas fa-inbox" style="opacity:.3;display:block;margin-bottom:8px;font-size:22px"></i>Belum ada pengumuman aktif</div>`;
                 return;
             }
-
-            el.innerHTML = msgs.map(m => {
-                const type = m.msgType || 'info';
-                const ic = typeIcon(type);
-                const time = m.createdAt ? timeAgo(m.createdAt) : '';
+            const ic = {info:'fa-circle-info',warning:'fa-triangle-exclamation',urgent:'fa-circle-exclamation'};
+            el.innerHTML = docs.map(m => {
+                const t = m.msgType||'info', cls = t==='warning'?'w':t==='urgent'?'u':'';
                 return `
-                <div class="msg-item ${type}">
-                    <i class="fas ${ic} msg-icon"></i>
-                    <div class="msg-content">
-                        <div class="msg-sender">${m.senderName || 'Admin'}</div>
-                        <div class="msg-text">${m.originalText || m.content || ''}</div>
-                        <div class="msg-time">${time}</div>
+                <div class="mi ${cls}">
+                    <i class="fas ${ic[t]||'fa-circle-info'} mico"></i>
+                    <div class="mc">
+                        <div class="msn">${m.senderName||'Admin'}</div>
+                        <div class="mtx">${m.originalText||''}</div>
+                        <div class="mtm">${ago(m.createdAt)}</div>
                     </div>
-                    <button class="delete-msg-btn" onclick="deleteMsg('${m.id}')" title="Hapus pesan">
-                        <i class="fas fa-trash-can"></i>
-                    </button>
+                    <button class="db" onclick="delAnn('${m.id}')" title="Hapus"><i class="fas fa-trash-can"></i></button>
                 </div>`;
             }).join('');
         }
 
-        async function deleteMsg(id) {
-            if (!confirm('Hapus pesan ini dari papan kasir?')) return;
-            try {
-                await window._deleteDoc(window._doc(window._db, 'artifacts', window._APP_ID, 'public', 'data', 'catatan', id));
-                showToast('Pesan dihapus');
-            } catch(e) {
-                showToast('Gagal hapus: ' + e.message, 'error');
-            }
-        }
-
-        // ────────────────────────────────────────────
-        // RENDER TRANSACTIONS
-        // ────────────────────────────────────────────
-        function renderTransactions(txs) {
-            const el = document.getElementById('tx-list');
-
-            // Count today's
-            const { start, end } = todayRange();
-            todayTxCount = 0;
-            todayRevenue = 0;
-            for (const tx of txs) {
-                const d = tx.date?.toDate ? tx.date.toDate() : new Date(tx.date);
-                if (d >= start && d < end && tx.status !== 'returned') {
-                    todayTxCount++;
-                    todayRevenue += tx.total || 0;
-                }
-            }
-
-            document.getElementById('stat-tx-count').textContent = todayTxCount;
-            document.getElementById('stat-tx-sub').textContent = `${todayTxCount === 0 ? 'belum ada transaksi' : 'transaksi terkonfirmasi'}`;
-            document.getElementById('stat-revenue').textContent = todayRevenue > 0 ? formatRupiah(todayRevenue) : 'Rp 0';
-
-            if (txs.length === 0) {
-                el.innerHTML = `<div class="no-items">Belum ada transaksi</div>`;
-                return;
-            }
-
-            el.innerHTML = txs.slice(0, 15).map(tx => {
-                const isReturned = tx.status === 'returned';
-                const kasir = tx.cashierName || tx.operatorName || 'Kasir';
-                const d = tx.date?.toDate ? tx.date.toDate() : new Date(tx.date || Date.now());
-                const timeStr = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-                const dateStr = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-                const itemCount = (tx.items || []).length;
-
-                return `
-                <div class="tx-item">
-                    <div class="tx-icon ${isReturned ? 'returned' : ''}">
-                        <i class="fas ${isReturned ? 'fa-arrow-rotate-left' : 'fa-receipt'}"></i>
-                    </div>
-                    <div class="tx-info">
-                        <div class="tx-kasir">${kasir}</div>
-                        <div class="tx-detail">${dateStr} · ${timeStr} · ${itemCount} item${tx.storeName ? ' · ' + tx.storeName : ''}</div>
-                    </div>
-                    <div class="tx-amount ${isReturned ? 'returned' : ''}">${isReturned ? '-' : ''}${formatRupiah(tx.total)}</div>
-                </div>`;
-            }).join('');
-        }
-
-        // ────────────────────────────────────────────
-        // LOAD TRANSACTIONS
-        // ────────────────────────────────────────────
-        function loadTransactions() {
-            if (!isReady) return;
-            const q = window._query(window._col('transactions'), window._orderBy('date', 'desc'), window._limit(50));
+        function loadTx() {
+            if (!rdy) return;
+            const q = window._query(window._col('transactions'), window._orderBy('date','desc'), window._limit(50));
             window._onSnapshot(q, snap => {
-                const txs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                renderTransactions(txs);
+                const docs = snap.docs.map(d=>({id:d.id,...d.data()}));
+                const el = document.getElementById('txlist');
+                const {start,end} = todayR();
+                let cnt=0, rev=0;
+                docs.forEach(tx => {
+                    const d = tx.date?.toDate ? tx.date.toDate() : new Date(tx.date||0);
+                    if (d>=start && d<end && tx.status!=='returned') { cnt++; rev+=tx.total||0; }
+                });
+                document.getElementById('s-tx').textContent = cnt;
+                document.getElementById('s-txs').textContent = cnt===0 ? 'belum ada hari ini' : 'transaksi terkonfirmasi';
+                document.getElementById('s-rev').textContent = rp(rev);
+                if (!docs.length) { el.innerHTML='<div class="ni">Belum ada transaksi</div>'; return; }
+                el.innerHTML = docs.slice(0,20).map(tx => {
+                    const r = tx.status==='returned';
+                    const k = tx.cashierName||'Kasir';
+                    const d = tx.date?.toDate ? tx.date.toDate() : new Date(tx.date||0);
+                    return `
+                    <div class="ti">
+                        <div class="tico ${r?'r':''}"><i class="fas ${r?'fa-arrow-rotate-left':'fa-receipt'}"></i></div>
+                        <div class="tinfo">
+                            <div class="tk">${k}</div>
+                            <div class="td">${d.toLocaleDateString('id-ID',{day:'numeric',month:'short'})} · ${d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})} · ${(tx.items||[]).length} item</div>
+                        </div>
+                        <div class="tam ${r?'r':''}">${r?'-':''}${rp(tx.total)}</div>
+                    </div>`;
+                }).join('');
             });
         }
 
-        // ────────────────────────────────────────────
-        // MAIN INIT
-        // ────────────────────────────────────────────
         window.addEventListener('firebase-ready', () => {
-            isReady = true;
+            rdy = true;
+            document.getElementById('cdot').classList.add('live');
+            document.getElementById('clbl').textContent = 'Terhubung LIVE';
 
-            // Update connection indicator
-            document.getElementById('conn-dot').classList.add('live');
-            document.getElementById('conn-label').textContent = 'Terhubung LIVE';
+            // Presence
+            const pq = window._query(window._col('presence'), window._orderBy('lastSeen','desc'));
+            window._onSnapshot(pq, snap => renderPresence(snap.docs.map(d=>({id:d.id,...d.data()}))));
 
-            // 1. Listen active carts
-            const cartsQ = window._query(
-                window._col('active_carts'),
-                window._orderBy('updatedAt', 'desc')
-            );
-            window._onSnapshot(cartsQ, snap => {
-                const carts = snap.docs
-                    .map(d => ({ id: d.id, ...d.data() }))
-                    .filter(c => c.isActive);
-                renderActiveCarts(carts);
-            });
+            // Announcements
+            const aq = window._query(window._col('announcements'), window._orderBy('createdAt','desc'), window._limit(10));
+            window._onSnapshot(aq, snap => renderAnns(snap.docs.map(d=>({id:d.id,...d.data()}))));
 
-            // 2. Listen broadcast messages (admin broadcasts in catatan)
-            const msgsQ = window._query(
-                window._col('catatan'),
-                window._orderBy('createdAt', 'desc'),
-                window._limit(20)
-            );
-            window._onSnapshot(msgsQ, snap => {
-                const msgs = snap.docs
-                    .map(d => ({ id: d.id, ...d.data() }))
-                    .filter(d => d.isAdminBroadcast);
-                renderMessages(msgs);
-            });
-
-            // 3. Load recent transactions
-            loadTransactions();
+            loadTx();
         });
 
-        // If firebase-ready fires before listener attached (race condition), poll
-        setTimeout(() => {
-            if (!isReady && window._db) {
-                window.dispatchEvent(new CustomEvent('firebase-ready', { detail: {} }));
-            }
-        }, 3000);
+        setTimeout(() => { if (!rdy && window._db) window.dispatchEvent(new CustomEvent('firebase-ready')); }, 3000);
     </script>
 </body>
 </html>
