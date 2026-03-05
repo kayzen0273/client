@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sistem Kasir Toko Husna (V43 - Pengaturan Akses Lengkap)</title>
+    <title>Sistem Kasir Toko Husna (V44 - Faktur Pembelian Per Toko)</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -1691,18 +1691,25 @@
                 item.name.toLowerCase().includes(itemSearch.toLowerCase())
             ).slice(0, 10);
 
+            // Filter purchases by store
+            const storePurchases = purchases.filter(p => {
+                if (currentProfile.id === 'all_stores') return true;
+                if (!p.storeId) return currentProfile.id === 'default'; // backward compat: data lama tanpa storeId → default
+                return p.storeId === currentProfile.id;
+            });
+
             const stats = useMemo(() => {
                 const today = new Date(); today.setHours(0,0,0,0);
                 const next7Days = new Date(today); next7Days.setDate(today.getDate() + 7);
                 let totalPurchase = 0, dueSoon = 0, overdue = 0, unpaid = 0, countTotal = 0, countDue = 0, countOverdue = 0, countUnpaid = 0, consignmentTotal = 0, consignmentUnpaid = 0;
-                purchases.forEach(p => {
+                storePurchases.forEach(p => {
                     const amount = safeNumber(p.total); const dueDate = p.dueDate ? new Date(p.dueDate) : null; if(dueDate) dueDate.setHours(0,0,0,0);
                     if (p.isConsignment) { consignmentTotal += amount; if (!p.isPaid) { consignmentUnpaid += amount; } }
                     totalPurchase += amount; countTotal++;
                     if (!p.isPaid) { unpaid += amount; countUnpaid++; if (dueDate) { if (dueDate < today) { overdue += amount; countOverdue++; } else if (dueDate <= next7Days) { dueSoon += amount; countDue++; } } }
                 });
                 return { totalPurchase, dueSoon, overdue, unpaid, countTotal, countDue, countOverdue, countUnpaid, consignmentTotal, consignmentUnpaid };
-            }, [purchases]);
+            }, [storePurchases]);
 
             const handleSelectSupplier = (supplier) => { 
                 // Check if there's a draft for this supplier
@@ -2062,36 +2069,22 @@
                 setInvoiceModalOpen(true);
             };
             const filteredSuppliers = suppliers.filter(s => s.name.toLowerCase().includes(supplierSearch.toLowerCase()));
-            const filteredPurchases = purchases.filter(p => {
+            const filteredPurchases = storePurchases.filter(p => {
                 const q = purchaseSearch.toLowerCase();
                 const matchText = !q || (p.supplier || '').toLowerCase().includes(q) || (p.invoiceNumber || '').toLowerCase().includes(q) || (p.paymentMethod || '').toLowerCase().includes(q);
                 const matchStatus = purchaseFilterStatus === 'all' ? true : purchaseFilterStatus === 'paid' ? p.isPaid : purchaseFilterStatus === 'unpaid' ? !p.isPaid : purchaseFilterStatus === 'overdue' ? (!p.isPaid && p.dueDate && new Date(p.dueDate) < new Date()) : purchaseFilterStatus === 'consignment' ? p.isConsignment : true;
-                // Filter per toko — faktur lama tanpa storeId dianggap milik toko default
-                const matchStore = currentProfile.id === 'all_stores' ? true :
-                    p.storeId ? p.storeId === currentProfile.id :
-                    currentProfile.id === 'default';
-                return matchText && matchStatus && matchStore;
+                return matchText && matchStatus;
             });
 
-            // Guard untuk mode all_stores
-            if (currentProfile.id === 'all_stores') {
-                return (
-                    <div className="fade-in h-full flex flex-col items-center justify-center text-center p-6 relative z-10">
-                        <div className="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 text-3xl mb-4 shadow-sm"><Icon name="shop-lock" /></div>
-                        <h2 className="text-xl font-bold text-slate-800 mb-2">Mode Gabungan (View Only)</h2>
-                        <p className="text-slate-500 max-w-xs mx-auto mb-6 text-sm">Untuk input faktur pembelian, silakan pilih salah satu toko spesifik dari menu di kiri atas.</p>
-                        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-xl text-xs text-yellow-700 font-medium">
-                            <Icon name="triangle-exclamation" className="mr-1" /> Faktur harus diinput ke toko spesifik.
-                        </div>
-                    </div>
-                );
-            }
+            // Guard untuk mode all_stores — boleh lihat, tapi tidak bisa input
+            const isAllStores = currentProfile.id === 'all_stores';
 
             return (
                 <>
                 <div className="fade-in pb-20 md:pb-0 h-full flex flex-col relative z-10">
                      {readOnly && <ReadOnlyBanner />}
-                     <header className="mb-6 flex items-center justify-between"><div><h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Faktur Pembelian</h2><p className="text-slate-500 text-xs mt-1">Kelola tagihan supplier</p></div><div className="flex gap-2"><button className="hidden md:flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-600 font-bold text-xs hover:bg-slate-50 transition-all shadow-sm"><Icon name="download" /> Unduh Laporan</button>{!readOnly && <button onClick={() => setSupplierModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-xl font-bold text-xs hover:bg-teal-700 transition-all shadow-lg shadow-teal-200 active:scale-95"><Icon name="plus" /> Catat Faktur</button>}</div></header>
+                     <header className="mb-6 flex items-center justify-between"><div><h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Faktur Pembelian</h2><p className="text-slate-500 text-xs mt-1">{isAllStores ? 'Semua toko — lihat saja' : 'Kelola tagihan supplier'}</p></div><div className="flex gap-2"><button className="hidden md:flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-600 font-bold text-xs hover:bg-slate-50 transition-all shadow-sm"><Icon name="download" /> Unduh Laporan</button>{!readOnly && !isAllStores && <button onClick={() => setSupplierModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-xl font-bold text-xs hover:bg-teal-700 transition-all shadow-lg shadow-teal-200 active:scale-95"><Icon name="plus" /> Catat Faktur</button>}</div></header>
+                    {isAllStores && <div className="mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-700 font-medium flex items-center gap-2"><Icon name="circle-info" /> Mode Semua Toko — data dari semua toko ditampilkan. Untuk input faktur baru, pilih toko spesifik.</div>}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                          <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm relative overflow-hidden"><h4 className="font-bold text-slate-800 text-xs mb-1">Total Pembelian</h4><div className="text-xl font-black text-slate-800 mb-1">{formatRupiah(stats.totalPurchase)}</div><p className="text-[10px] text-slate-400">{stats.countTotal} faktur tercatat</p></div>
                          <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm relative overflow-hidden"><div className="absolute top-0 right-0 w-16 h-16 bg-amber-50 rounded-bl-full -mr-2 -mt-2"></div><h4 className="font-bold text-slate-800 text-xs mb-1 relative z-10">Jatuh Tempo (7 Hari)</h4><div className="text-xl font-black text-amber-600 mb-1 relative z-10">{formatRupiah(stats.dueSoon)}</div><p className="text-[10px] text-slate-400 relative z-10">{stats.countDue} faktur dari supplier</p></div>
@@ -2139,6 +2132,7 @@
                                                 <span className="font-bold text-slate-800 text-base whitespace-nowrap">{formatRupiah(p.total)}</span>
                                             </div>
                                             {p.isConsignment && <span className="inline-block bg-indigo-100 text-indigo-600 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider mt-0.5">Konsinyasi</span>}
+                                            {currentProfile.id === 'all_stores' && p.storeName && <span className="inline-block bg-sky-100 text-sky-700 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider mt-0.5 ml-1"><Icon name="shop" className="mr-0.5" />{p.storeName}</span>}
                                         </div>
                                     </div>
                                     {/* Items */}
@@ -7296,7 +7290,7 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                                 <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-red-500 hover:bg-red-50 font-bold text-xs transition-all mb-2">
                                     <Icon name="right-from-bracket" className="text-sm" /> Keluar / Logout
                                 </button>
-                                <p className="text-[10px] text-center text-slate-400">Versi 43 • Pengaturan Sidebar & Submenu Dikontrol Owner</p>
+                                <p className="text-[10px] text-center text-slate-400">Versi 44 • Faktur Pembelian Dipisah Per Toko</p>
                             </div>
                         </div>
                     </aside>
