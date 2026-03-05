@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sistem Kasir Toko Husna (V42 - Pengaturan di Sidebar)</title>
+    <title>Sistem Kasir Toko Husna (V43 - Pengaturan Akses Lengkap)</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -264,6 +264,24 @@
             enableCatatan: true,
             enableInputManual: true,
             enableImport: true,
+            // Visibilitas sidebar (hide/show item dari sidebar)
+            showMenuCashier: true,
+            showMenuHistory: true,
+            showMenuPurchases: true,
+            showMenuDashboard: true,
+            showMenuStock: true,
+            showMenuStockOpname: true,
+            showMenuCashbook: true,
+            showMenuCatatan: true,
+            showMenuAdd: true,
+            showMenuImport: true,
+            // Submenu pengaturan yang bisa diakses karyawan
+            enableSettingsToko: true,
+            enableSettingsStok: true,
+            enableSettingsStruk: true,
+            enableSettingsKasir: true,
+            enableSettingsPembayaran: true,
+            enableSettingsWhatsapp: true,
         };
 
         // --- BLUETOOTH PRINTER HELPERS ---
@@ -753,7 +771,7 @@
         const OwnerPanel = ({ onBack, localSettings, handleChange, onSave, savingSettings, ownerSettings, onSaveSettings, ownerAuthSession }) => {
             const [users, setUsers] = useState([]);
             const [loadingUsers, setLoadingUsers] = useState(true);
-            const [activeTab, setActiveTab] = useState('karyawan'); // 'karyawan' | 'akses_menu' | 'kode'
+            const [activeTab, setActiveTab] = useState('karyawan'); // 'karyawan' | 'akses_menu' | 'sidebar' | 'pengaturan_menu' | 'kode'
             const [confirmModal, setConfirmModal] = useState({ show: false, type: '', user: null });
             const [actionLoading, setActionLoading] = useState(false);
             const [toast, setToast] = useState('');
@@ -845,6 +863,26 @@
                 { key: 'enableInputManual', label: 'Input Manual', icon: 'pen-to-square', desc: 'Tambah/edit barang' },
                 { key: 'enableImport', label: 'Import Masal', icon: 'file-import', desc: 'Import data Excel' },
             ];
+            const settingsAccessList = [
+                { key: 'enableSettingsToko', label: 'Profil & Cabang Toko', icon: 'shop', desc: 'Edit nama, alamat toko' },
+                { key: 'enableSettingsStok', label: 'Pengaturan Stok', icon: 'boxes-stacked', desc: 'Batas stok menipis' },
+                { key: 'enableSettingsStruk', label: 'Format Cetak Struk', icon: 'print', desc: 'Header & footer struk' },
+                { key: 'enableSettingsKasir', label: 'Identitas Kasir', icon: 'user-tie', desc: 'Nama kasir perangkat' },
+                { key: 'enableSettingsPembayaran', label: 'Metode Pembayaran', icon: 'credit-card', desc: 'QRIS & rekening transfer' },
+                { key: 'enableSettingsWhatsapp', label: 'Format WhatsApp', icon: 'whatsapp', desc: 'Info kirim struk via WA' },
+            ];
+            const sidebarVisibilityList = [
+                { key: 'showMenuCashier', label: 'Kasir', icon: 'cash-register', desc: 'Tampilkan menu kasir' },
+                { key: 'showMenuHistory', label: 'Riwayat', icon: 'clock-rotate-left', desc: 'Tampilkan menu riwayat' },
+                { key: 'showMenuPurchases', label: 'Faktur Pembelian', icon: 'file-invoice-dollar', desc: 'Tampilkan faktur pembelian' },
+                { key: 'showMenuDashboard', label: 'Dashboard', icon: 'chart-pie', desc: 'Tampilkan dashboard' },
+                { key: 'showMenuStock', label: 'Stok Barang', icon: 'boxes-stacked', desc: 'Tampilkan stok barang' },
+                { key: 'showMenuStockOpname', label: 'Stock Opname', icon: 'clipboard-check', desc: 'Tampilkan stock opname' },
+                { key: 'showMenuCashbook', label: 'Buku Kas', icon: 'book', desc: 'Tampilkan buku kas' },
+                { key: 'showMenuCatatan', label: 'Catatan', icon: 'thumbtack', desc: 'Tampilkan catatan' },
+                { key: 'showMenuAdd', label: 'Input Manual', icon: 'pen-to-square', desc: 'Tampilkan input manual' },
+                { key: 'showMenuImport', label: 'Import Masal', icon: 'file-import', desc: 'Tampilkan import masal' },
+            ];
 
             const filteredUsers = users.filter(u =>
                 !isOwnerEmail(u.email) &&
@@ -867,6 +905,8 @@
                     <div className="flex gap-1 p-4 pb-0 flex-wrap">
                         <button onClick={() => setActiveTab('karyawan')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab==='karyawan' ? 'bg-amber-500 text-white shadow-md' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}><Icon name="users" className="mr-1.5" />Karyawan ({filteredUsers.length})</button>
                         <button onClick={() => setActiveTab('akses_menu')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab==='akses_menu' ? 'bg-amber-500 text-white shadow-md' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}><Icon name="sliders" className="mr-1.5" />Akses Menu</button>
+                        <button onClick={() => setActiveTab('sidebar')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab==='sidebar' ? 'bg-amber-500 text-white shadow-md' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}><Icon name="sidebar" className="mr-1.5" />Sidebar</button>
+                        <button onClick={() => setActiveTab('pengaturan_menu')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab==='pengaturan_menu' ? 'bg-amber-500 text-white shadow-md' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}><Icon name="gears" className="mr-1.5" />Menu Pengaturan</button>
                         <button onClick={() => setActiveTab('kode')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab==='kode' ? 'bg-amber-500 text-white shadow-md' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}><Icon name="key" className="mr-1.5" />Ubah Kode</button>
                     </div>
 
@@ -945,6 +985,60 @@
                             menuAccessList={menuAccessList}
                             showToast={showToast}
                         />
+                    )}
+
+                    {/* ---- TAB: VISIBILITAS SIDEBAR ---- */}
+                    {activeTab === 'sidebar' && (
+                        <div className="p-4 space-y-3">
+                            <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl">
+                                <p className="text-xs text-indigo-800 font-semibold"><Icon name="circle-info" className="mr-1" />Menu yang dinonaktifkan di sini akan <strong>disembunyikan dari sidebar</strong> untuk semua karyawan (tidak berlaku untuk owner).</p>
+                            </div>
+                            {sidebarVisibilityList.map(item => (
+                                <div key={item.key} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200 hover:border-indigo-200 transition-all">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0"><Icon name={item.icon} className="text-indigo-500 text-xs" /></div>
+                                        <div>
+                                            <p className="font-bold text-slate-800 text-xs">{item.label}</p>
+                                            <p className="text-[10px] text-slate-400 leading-tight">{item.desc}</p>
+                                        </div>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer flex-shrink-0 ml-2">
+                                        <input type="checkbox" className="sr-only peer" checked={localSettings[item.key] !== false} onChange={e => handleChange(item.key, e.target.checked)} />
+                                        <div className="w-10 h-[22px] bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-[18px] after:w-[18px] after:transition-all peer-checked:bg-indigo-500"></div>
+                                    </label>
+                                </div>
+                            ))}
+                            <button onClick={onSave} disabled={savingSettings} className="w-full mt-2 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+                                {savingSettings ? <><span className="typing-dot bg-white"></span><span className="typing-dot bg-white"></span><span className="typing-dot bg-white"></span></> : <><Icon name="floppy-disk" /> Simpan Visibilitas Sidebar</>}
+                            </button>
+                        </div>
+                    )}
+
+                    {/* ---- TAB: MENU PENGATURAN ---- */}
+                    {activeTab === 'pengaturan_menu' && (
+                        <div className="p-4 space-y-3">
+                            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                                <p className="text-xs text-slate-700 font-semibold"><Icon name="circle-info" className="mr-1" />Submenu Pengaturan yang bisa diakses karyawan. Owner selalu bisa akses semua.</p>
+                            </div>
+                            {settingsAccessList.map(item => (
+                                <div key={item.key} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200 hover:border-amber-200 transition-all">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0"><Icon name={item.icon} className="text-amber-500 text-xs" /></div>
+                                        <div>
+                                            <p className="font-bold text-slate-800 text-xs">{item.label}</p>
+                                            <p className="text-[10px] text-slate-400 leading-tight">{item.desc}</p>
+                                        </div>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer flex-shrink-0 ml-2">
+                                        <input type="checkbox" className="sr-only peer" checked={localSettings[item.key] !== false} onChange={e => handleChange(item.key, e.target.checked)} />
+                                        <div className="w-10 h-[22px] bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-[18px] after:w-[18px] after:transition-all peer-checked:bg-amber-500"></div>
+                                    </label>
+                                </div>
+                            ))}
+                            <button onClick={onSave} disabled={savingSettings} className="w-full mt-2 py-3.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+                                {savingSettings ? <><span className="typing-dot bg-white"></span><span className="typing-dot bg-white"></span><span className="typing-dot bg-white"></span></> : <><Icon name="floppy-disk" /> Simpan Pengaturan Menu</>}
+                            </button>
+                        </div>
                     )}
 
                     {/* ---- TAB: UBAH KODE ---- */}
@@ -1156,15 +1250,16 @@
 
             const [activeMenu, setActiveMenu] = useState(null);
 
-            const settingsMenus = [
-                { id: 'toko', label: 'Profil & Cabang Toko', desc: 'Kelola nama, alamat, dan cabang toko', icon: 'shop', color: 'sky' },
-                { id: 'stok', label: 'Pengaturan Stok', desc: 'Batas stok menipis', icon: 'boxes-stacked', color: 'slate' },
-                { id: 'struk', label: 'Format Cetak Struk', desc: 'Header, footer, dan format struk printer', icon: 'print', color: 'slate' },
-                { id: 'kasir', label: 'Identitas Kasir', desc: 'Nama kasir default perangkat ini', icon: 'user-tie', color: 'sky' },
-                { id: 'pembayaran', label: 'Metode Pembayaran', desc: 'Setting QRIS dan rekening transfer', icon: 'credit-card', color: 'teal' },
-                { id: 'whatsapp', label: 'Format WhatsApp', desc: 'Info pengiriman gambar struk via WA', icon: 'whatsapp', color: 'green' },
-                ...(isOwner && !inOwnerPanel ? [{ id: 'owner_panel', label: 'Panel Owner 👑', desc: 'Kelola karyawan, akses menu, dan akun', icon: 'crown', color: 'amber' }] : []),
+            const settingsMenuAll = [
+                { id: 'toko', label: 'Profil & Cabang Toko', desc: 'Kelola nama, alamat, dan cabang toko', icon: 'shop', color: 'sky', settingsKey: 'enableSettingsToko' },
+                { id: 'stok', label: 'Pengaturan Stok', desc: 'Batas stok menipis', icon: 'boxes-stacked', color: 'slate', settingsKey: 'enableSettingsStok' },
+                { id: 'struk', label: 'Format Cetak Struk', desc: 'Header, footer, dan format struk printer', icon: 'print', color: 'slate', settingsKey: 'enableSettingsStruk' },
+                { id: 'kasir', label: 'Identitas Kasir', desc: 'Nama kasir default perangkat ini', icon: 'user-tie', color: 'sky', settingsKey: 'enableSettingsKasir' },
+                { id: 'pembayaran', label: 'Metode Pembayaran', desc: 'Setting QRIS dan rekening transfer', icon: 'credit-card', color: 'teal', settingsKey: 'enableSettingsPembayaran' },
+                { id: 'whatsapp', label: 'Format WhatsApp', desc: 'Info pengiriman gambar struk via WA', icon: 'whatsapp', color: 'green', settingsKey: 'enableSettingsWhatsapp' },
+                ...(isOwner && !inOwnerPanel ? [{ id: 'owner_panel', label: 'Panel Owner 👑', desc: 'Kelola karyawan, akses menu, dan akun', icon: 'crown', color: 'amber', settingsKey: null }] : []),
             ];
+            const settingsMenus = isOwner ? settingsMenuAll : settingsMenuAll.filter(m => !m.settingsKey || settings[m.settingsKey] !== false);
 
             const colorMap = {
                 sky: { bg: 'bg-sky-50', border: 'border-sky-200', icon: 'bg-sky-600', text: 'text-sky-800', btn: 'bg-sky-600 hover:bg-sky-700' },
@@ -2027,15 +2122,21 @@
                                             {p.isPaid ? (
                                                 <span className="flex items-center px-4 py-1.5 rounded-full border text-sm font-semibold bg-green-50 text-green-700 border-green-300 cursor-default select-none">Lunas</span>
                                             ) : (
-                                                <button onClick={(e) => { e.stopPropagation(); togglePaid(p); }} className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border text-sm font-semibold bg-white text-slate-700 border-slate-300 hover:border-teal-400 transition-all active:scale-95">
-                                                    Belum lunas
-                                                    <Icon name="pen" className="text-xs" />
-                                                </button>
+                                                readOnly ? (
+                                                    <span className="flex items-center px-4 py-1.5 rounded-full border text-sm font-semibold bg-slate-50 text-slate-500 border-slate-200 cursor-default select-none">Belum lunas</span>
+                                                ) : (
+                                                    <button onClick={(e) => { e.stopPropagation(); togglePaid(p); }} className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border text-sm font-semibold bg-white text-slate-700 border-slate-300 hover:border-teal-400 transition-all active:scale-95">
+                                                        Belum lunas
+                                                        <Icon name="pen" className="text-xs" />
+                                                    </button>
+                                                )
                                             )}
                                         </div>
-                                        <button onClick={(e) => { e.stopPropagation(); deletePurchase(p.id); }} className="text-[11px] text-red-400 hover:text-red-600 font-bold flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-red-50 transition-all">
-                                            <Icon name="trash" /> Hapus
-                                        </button>
+                                        {!readOnly && (
+                                            <button onClick={(e) => { e.stopPropagation(); deletePurchase(p.id); }} className="text-[11px] text-red-400 hover:text-red-600 font-bold flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-red-50 transition-all">
+                                                <Icon name="trash" /> Hapus
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             );
@@ -2463,12 +2564,22 @@
 
                             {/* FOOTER */}
                             <div className="flex-shrink-0 flex justify-between items-center px-4 py-3 border-t border-gray-200 bg-white">
-                                <button type="button" onClick={() => { if(confirm(`Hapus faktur ini?`)) { deletePurchase(selectedPurchase.id); setDetailModalOpen(false); } }} className="bg-white border border-red-400 text-red-500 px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1">
-                                    <Icon name="trash" /> Hapus
-                                </button>
-                                <button type="button" onClick={() => handleOpenEdit(selectedPurchase)} className="bg-teal-600 text-white px-4 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 hover:bg-teal-700 active:scale-95 transition-all">
-                                    <Icon name="pen-to-square" /> Edit Faktur
-                                </button>
+                                {!readOnly ? (
+                                    <button type="button" onClick={() => { if(confirm(`Hapus faktur ini?`)) { deletePurchase(selectedPurchase.id); setDetailModalOpen(false); } }} className="bg-white border border-red-400 text-red-500 px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1">
+                                        <Icon name="trash" /> Hapus
+                                    </button>
+                                ) : (
+                                    <div className="flex items-center gap-1 text-amber-600 text-xs font-semibold"><Icon name="lock" /> Akses Terbatas</div>
+                                )}
+                                {!readOnly ? (
+                                    <button type="button" onClick={() => handleOpenEdit(selectedPurchase)} className="bg-teal-600 text-white px-4 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 hover:bg-teal-700 active:scale-95 transition-all">
+                                        <Icon name="pen-to-square" /> Edit Faktur
+                                    </button>
+                                ) : (
+                                    <button type="button" onClick={() => setDetailModalOpen(false)} className="bg-slate-100 text-slate-600 px-4 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5">
+                                        <Icon name="xmark" /> Tutup
+                                    </button>
+                                )}
                             </div>
                         </div>
                     )}
@@ -6997,18 +7108,22 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                 return globalVal !== false;
             };
 
+            const showMenu = (key, globalVal) => {
+                if (isOwner) return true;
+                return globalVal !== false;
+            };
             const menuItems = [ 
-                { id: 'cashier',     label: 'Kasir',             icon: 'cash-register',      enabled: true, readOnly: !isOwner && !menuOn('enableCashier', settingsData.enableCashier),    badge: notifCounts.pendingCarts + notifCounts.activeCarts }, 
-                { id: 'history',     label: 'Riwayat',           icon: 'clock-rotate-left',  enabled: true, readOnly: !isOwner && !menuOn('enableHistory', settingsData.enableHistory) }, 
-                { id: 'purchases',   label: 'Faktur Pembelian',  icon: 'file-invoice-dollar', enabled: true, readOnly: !isOwner && !menuOn('enablePurchases', settingsData.enablePurchases) }, 
-                { id: 'home',        label: 'Dashboard',         icon: 'chart-pie',           enabled: true, readOnly: false }, 
-                { id: 'list',        label: 'Stok Barang',       icon: 'boxes-stacked',       enabled: true, readOnly: !isOwner && !menuOn('enableStock', settingsData.enableStock) }, 
-                { id: 'stock_opname',label: 'Stock Opname',      icon: 'clipboard-check',     enabled: true, readOnly: !isOwner && !menuOn('enableStockOpname', settingsData.enableStockOpname) },
-                { id: 'cashbook',    label: 'Buku Kas',          icon: 'book',                enabled: true, readOnly: !isOwner && !menuOn('enableCashbook', settingsData.enableCashbook) },
-                { id: 'catatan',     label: 'Catatan',           icon: 'thumbtack',           enabled: true, readOnly: !isOwner && !menuOn('enableCatatan', settingsData.enableCatatan) },
-                { id: 'add',         label: 'Input Manual',      icon: 'pen-to-square',       enabled: true, readOnly: !isOwner && !menuOn('enableInputManual', settingsData.enableInputManual) }, 
-                { id: 'import',      label: 'Import Masal',      icon: 'file-import',         enabled: true, readOnly: !isOwner && !menuOn('enableImport', settingsData.enableImport) }, 
-                ...(isOwner ? [{ id: 'settings', label: 'Pengaturan', icon: 'gears', enabled: true, readOnly: false }] : []),
+                { id: 'cashier',     label: 'Kasir',             icon: 'cash-register',      enabled: isOwner || showMenu('showMenuCashier', settingsData.showMenuCashier),    readOnly: !isOwner && !menuOn('enableCashier', settingsData.enableCashier),    badge: notifCounts.pendingCarts + notifCounts.activeCarts }, 
+                { id: 'history',     label: 'Riwayat',           icon: 'clock-rotate-left',  enabled: isOwner || showMenu('showMenuHistory', settingsData.showMenuHistory),    readOnly: !isOwner && !menuOn('enableHistory', settingsData.enableHistory) }, 
+                { id: 'purchases',   label: 'Faktur Pembelian',  icon: 'file-invoice-dollar', enabled: isOwner || showMenu('showMenuPurchases', settingsData.showMenuPurchases), readOnly: !isOwner && !menuOn('enablePurchases', settingsData.enablePurchases) }, 
+                { id: 'home',        label: 'Dashboard',         icon: 'chart-pie',           enabled: isOwner || showMenu('showMenuDashboard', settingsData.showMenuDashboard), readOnly: false }, 
+                { id: 'list',        label: 'Stok Barang',       icon: 'boxes-stacked',       enabled: isOwner || showMenu('showMenuStock', settingsData.showMenuStock),        readOnly: !isOwner && !menuOn('enableStock', settingsData.enableStock) }, 
+                { id: 'stock_opname',label: 'Stock Opname',      icon: 'clipboard-check',     enabled: isOwner || showMenu('showMenuStockOpname', settingsData.showMenuStockOpname), readOnly: !isOwner && !menuOn('enableStockOpname', settingsData.enableStockOpname) },
+                { id: 'cashbook',    label: 'Buku Kas',          icon: 'book',                enabled: isOwner || showMenu('showMenuCashbook', settingsData.showMenuCashbook),  readOnly: !isOwner && !menuOn('enableCashbook', settingsData.enableCashbook) },
+                { id: 'catatan',     label: 'Catatan',           icon: 'thumbtack',           enabled: isOwner || showMenu('showMenuCatatan', settingsData.showMenuCatatan),    readOnly: !isOwner && !menuOn('enableCatatan', settingsData.enableCatatan) },
+                { id: 'add',         label: 'Input Manual',      icon: 'pen-to-square',       enabled: isOwner || showMenu('showMenuAdd', settingsData.showMenuAdd),            readOnly: !isOwner && !menuOn('enableInputManual', settingsData.enableInputManual) }, 
+                { id: 'import',      label: 'Import Masal',      icon: 'file-import',         enabled: isOwner || showMenu('showMenuImport', settingsData.showMenuImport),      readOnly: !isOwner && !menuOn('enableImport', settingsData.enableImport) }, 
+                { id: 'settings',    label: 'Pengaturan',        icon: 'gears',               enabled: true, readOnly: false },
             ];
             const visibleMenuItems = menuItems.filter(m => m.enabled);
 
@@ -7117,7 +7232,7 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                                 <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-red-500 hover:bg-red-50 font-bold text-xs transition-all mb-2">
                                     <Icon name="right-from-bracket" className="text-sm" /> Keluar / Logout
                                 </button>
-                                <p className="text-[10px] text-center text-slate-400">Versi 42 • Mode Lihat Saja & Pengaturan di Sidebar</p>
+                                <p className="text-[10px] text-center text-slate-400">Versi 43 • Pengaturan Sidebar & Submenu Dikontrol Owner</p>
                             </div>
                         </div>
                     </aside>
