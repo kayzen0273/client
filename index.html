@@ -2386,173 +2386,363 @@ Sisa : ${formatRupiah(remaining)}`;
 
         // --- LOGIN SCREEN COMPONENT ---
         const LoginScreen = ({ onLoginSuccess }) => {
-            const [mode, setMode] = useState('login'); // 'login' | 'register'
-            const [username, setUsername] = useState('');
+            // mode: 'login' | 'register' | 'forgot' | 'otp'
+            const [mode, setMode] = useState('login');
+            // Login fields
+            const [loginId, setLoginId] = useState(''); // username / email / nama lengkap
             const [password, setPassword] = useState('');
-            const [confirmPassword, setConfirmPassword] = useState('');
-            const [inviteCode, setInviteCode] = useState('');
-            const [showInviteCode, setShowInviteCode] = useState(false);
             const [showPass, setShowPass] = useState(false);
-            const INVITE_CODE = '12345670';
+            // Register fields
+            const [regFullName, setRegFullName] = useState('');
+            const [regPhone, setRegPhone] = useState('');
+            const [regEmail, setRegEmail] = useState('');
+            const [regUsername, setRegUsername] = useState('');
+            const [regPassword, setRegPassword] = useState('');
+            const [regConfirm, setRegConfirm] = useState('');
+            const [regInvite, setRegInvite] = useState('');
+            const [showInvite, setShowInvite] = useState(false);
+            const [showRegPass, setShowRegPass] = useState(false);
+            // Forgot password fields
+            const [forgotInput, setForgotInput] = useState(''); // email or phone
+            const [forgotMethod, setForgotMethod] = useState('email'); // 'email' | 'wa'
+            const [foundUser, setFoundUser] = useState(null); // { username, email, phone }
+            const [otpInput, setOtpInput] = useState('');
+            const [newPassword, setNewPassword] = useState('');
+            const [confirmNewPass, setConfirmNewPass] = useState('');
+            const [showNewPass, setShowNewPass] = useState(false);
+            const [otpSent, setOtpSent] = useState(false);
+            const [otpCopied, setOtpCopied] = useState(false);
+            // Common
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState('');
             const [success, setSuccess] = useState('');
+            const INVITE_CODE = '12345670';
 
+            const resetAll = () => { setError(''); setSuccess(''); };
+            const switchMode = (m) => { resetAll(); setMode(m); setFoundUser(null); setOtpSent(false); setOtpInput(''); setForgotInput(''); };
+
+            // --- Cari user di Firestore berdasarkan username, email, atau nama lengkap ---
+            const findUserByAny = async (input) => {
+                const key = input.trim().toLowerCase();
+                // Coba by username dulu
+                const byUsername = await window.getDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'app_users', key));
+                if (byUsername.exists()) return { id: key, ...byUsername.data() };
+                // Coba by email
+                const emailQ = await window.getDocs(window.query(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'app_users'), window.where('email', '==', key)));
+                if (!emailQ.empty) return { id: emailQ.docs[0].id, ...emailQ.docs[0].data() };
+                // Coba by nama lengkap (case insensitive disimpan lowercase)
+                const nameQ = await window.getDocs(window.query(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'app_users'), window.where('fullNameLower', '==', key)));
+                if (!nameQ.empty) return { id: nameQ.docs[0].id, ...nameQ.docs[0].data() };
+                return null;
+            };
+
+            // --- LOGIN ---
             const handleLogin = async (e) => {
                 e.preventDefault();
-                if (!username.trim() || !password) { setError('Username dan password wajib diisi'); return; }
+                if (!loginId.trim() || !password) { setError('Identitas dan password wajib diisi'); return; }
                 setLoading(true); setError('');
                 try {
+                    const userData = await findUserByAny(loginId);
+                    if (!userData) { setError('Akun tidak ditemukan. Coba username, email, atau nama lengkap.'); setLoading(false); return; }
                     const hashedPass = await hashPassword(password);
-                    const userDocRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'app_users', username.trim().toLowerCase());
-                    const userSnap = await window.getDoc(userDocRef);
-                    if (!userSnap.exists()) { setError('Username tidak ditemukan'); setLoading(false); return; }
-                    const userData = userSnap.data();
                     if (userData.password !== hashedPass) { setError('Password salah'); setLoading(false); return; }
-                    // Simpan sesi di localStorage
-                    const session = { username: userData.username, displayName: userData.displayName || userData.username, loggedInAt: new Date().toISOString() };
+                    const session = { username: userData.username, displayName: userData.displayName || userData.username, fullName: userData.fullName || '', email: userData.email || '', loggedInAt: new Date().toISOString() };
                     localStorage.setItem('rafa_medica_session', JSON.stringify(session));
                     onLoginSuccess(session);
                 } catch (err) { console.error(err); setError('Terjadi kesalahan, coba lagi'); }
                 setLoading(false);
             };
 
+            // --- REGISTER ---
             const handleRegister = async (e) => {
                 e.preventDefault();
-                if (!username.trim() || !password || !confirmPassword || !inviteCode) { setError('Semua field wajib diisi'); return; }
-                if (inviteCode !== INVITE_CODE) { setError('Kode undangan salah! Minta ke pemilik / owner.'); return; }
-                if (username.trim().length < 3) { setError('Username minimal 3 karakter'); return; }
-                if (password.length < 6) { setError('Password minimal 6 karakter'); return; }
-                if (password !== confirmPassword) { setError('Konfirmasi password tidak cocok'); return; }
+                if (!regFullName.trim() || !regPhone.trim() || !regEmail.trim() || !regUsername.trim() || !regPassword || !regConfirm || !regInvite) { setError('Semua field wajib diisi'); return; }
+                if (regInvite !== INVITE_CODE) { setError('Kode undangan salah! Minta ke pemilik / owner.'); return; }
+                if (regFullName.trim().length < 3) { setError('Nama lengkap minimal 3 karakter'); return; }
+                if (!/^[0-9+\-\s]{8,15}$/.test(regPhone.trim())) { setError('Nomor HP tidak valid (8-15 digit)'); return; }
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regEmail.trim())) { setError('Format email tidak valid'); return; }
+                if (regUsername.trim().length < 3) { setError('Username minimal 3 karakter'); return; }
+                if (/\s/.test(regUsername.trim())) { setError('Username tidak boleh mengandung spasi'); return; }
+                if (regPassword.length < 6) { setError('Password minimal 6 karakter'); return; }
+                if (regPassword !== regConfirm) { setError('Konfirmasi password tidak cocok'); return; }
                 setLoading(true); setError('');
                 try {
-                    const key = username.trim().toLowerCase();
-                    const userDocRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'app_users', key);
-                    const userSnap = await window.getDoc(userDocRef);
+                    const key = regUsername.trim().toLowerCase();
+                    const emailLower = regEmail.trim().toLowerCase();
+                    // Cek username
+                    const userSnap = await window.getDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'app_users', key));
                     if (userSnap.exists()) { setError('Username sudah digunakan'); setLoading(false); return; }
-                    const hashedPass = await hashPassword(password);
-                    await window.setDoc(userDocRef, { username: key, displayName: username.trim(), password: hashedPass, createdAt: window.serverTimestamp() });
+                    // Cek email unik
+                    const emailSnap = await window.getDocs(window.query(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'app_users'), window.where('email', '==', emailLower)));
+                    if (!emailSnap.empty) { setError('Email sudah terdaftar'); setLoading(false); return; }
+                    const hashedPass = await hashPassword(regPassword);
+                    await window.setDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'app_users', key), {
+                        username: key, displayName: regUsername.trim(), fullName: regFullName.trim(),
+                        fullNameLower: regFullName.trim().toLowerCase(),
+                        phone: regPhone.trim(), email: emailLower,
+                        password: hashedPass, createdAt: window.serverTimestamp()
+                    });
                     setSuccess('Akun berhasil dibuat! Silahkan login.');
-                    setMode('login'); setUsername(username.trim()); setPassword(''); setConfirmPassword(''); setInviteCode('');
+                    setMode('login'); setLoginId(key);
+                    setRegFullName(''); setRegPhone(''); setRegEmail(''); setRegUsername(''); setRegPassword(''); setRegConfirm(''); setRegInvite('');
                 } catch (err) { console.error(err); setError('Gagal mendaftar, coba lagi'); }
                 setLoading(false);
             };
 
+            // --- FORGOT PASSWORD: Cari akun & kirim OTP ---
+            const handleForgotFind = async (e) => {
+                e.preventDefault();
+                if (!forgotInput.trim()) { setError('Isi email atau nomor HP terlebih dahulu'); return; }
+                setLoading(true); setError('');
+                try {
+                    const input = forgotInput.trim().toLowerCase();
+                    let userData = null;
+                    // Cari by email
+                    const emailSnap = await window.getDocs(window.query(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'app_users'), window.where('email', '==', input)));
+                    if (!emailSnap.empty) { userData = { id: emailSnap.docs[0].id, ...emailSnap.docs[0].data() }; }
+                    // Cari by phone jika belum ketemu
+                    if (!userData) {
+                        const phoneSnap = await window.getDocs(window.query(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'app_users'), window.where('phone', '==', forgotInput.trim())));
+                        if (!phoneSnap.empty) { userData = { id: phoneSnap.docs[0].id, ...phoneSnap.docs[0].data() }; }
+                    }
+                    if (!userData) { setError('Akun tidak ditemukan dengan email / nomor HP tersebut'); setLoading(false); return; }
+                    setFoundUser(userData);
+                    // Tentukan metode default
+                    if (input.includes('@')) setForgotMethod('email'); else setForgotMethod('wa');
+                    setMode('otp');
+                } catch (err) { console.error(err); setError('Terjadi kesalahan, coba lagi'); }
+                setLoading(false);
+            };
+
+            // --- KIRIM OTP ---
+            const handleSendOTP = async () => {
+                if (!foundUser) return;
+                setLoading(true); setError('');
+                try {
+                    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+                    const expiry = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // 5 menit
+                    await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'app_users', foundUser.id), { resetOtp: otp, otpExpiry: expiry });
+                    // Kirim via metode yang dipilih
+                    if (forgotMethod === 'email') {
+                        const subject = encodeURIComponent('Kode OTP Reset Password Rafa Medica');
+                        const body = encodeURIComponent(`Halo ${foundUser.fullName || foundUser.displayName},\n\nKode OTP reset password Anda:\n\n${otp}\n\nKode berlaku 5 menit.\n\n— Rafa Medica Sistem`);
+                        window.open(`mailto:${foundUser.email}?subject=${subject}&body=${body}`, '_blank');
+                    } else {
+                        const rawPhone = foundUser.phone.replace(/[^0-9]/g, '');
+                        const intlPhone = rawPhone.startsWith('0') ? '62' + rawPhone.slice(1) : rawPhone;
+                        const msg = encodeURIComponent(`Halo ${foundUser.fullName || foundUser.displayName}, kode OTP reset password Rafa Medica Anda: *${otp}*\nBerlaku 5 menit.`);
+                        window.open(`https://wa.me/${intlPhone}?text=${msg}`, '_blank');
+                    }
+                    setOtpSent(true);
+                    setSuccess(`Kode OTP telah dikirim via ${forgotMethod === 'email' ? 'Email' : 'WhatsApp'}. Berlaku 5 menit.`);
+                } catch (err) { console.error(err); setError('Gagal mengirim OTP, coba lagi'); }
+                setLoading(false);
+            };
+
+            // --- VERIFIKASI OTP & RESET PASSWORD ---
+            const handleResetPassword = async (e) => {
+                e.preventDefault();
+                if (!otpInput || !newPassword || !confirmNewPass) { setError('Semua field wajib diisi'); return; }
+                if (newPassword.length < 6) { setError('Password baru minimal 6 karakter'); return; }
+                if (newPassword !== confirmNewPass) { setError('Konfirmasi password tidak cocok'); return; }
+                setLoading(true); setError('');
+                try {
+                    const userDocRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'app_users', foundUser.id);
+                    const snap = await window.getDoc(userDocRef);
+                    const data = snap.data();
+                    if (data.resetOtp !== otpInput.trim()) { setError('Kode OTP salah'); setLoading(false); return; }
+                    if (new Date(data.otpExpiry) < new Date()) { setError('Kode OTP sudah kadaluarsa. Kirim ulang.'); setLoading(false); return; }
+                    const hashedPass = await hashPassword(newPassword);
+                    await window.updateDoc(userDocRef, { password: hashedPass, resetOtp: null, otpExpiry: null });
+                    setSuccess('Password berhasil diubah! Silahkan login.');
+                    setMode('login'); setLoginId(foundUser.id);
+                    setFoundUser(null); setOtpInput(''); setNewPassword(''); setConfirmNewPass(''); setOtpSent(false);
+                } catch (err) { console.error(err); setError('Gagal reset password, coba lagi'); }
+                setLoading(false);
+            };
+
+            const BG = (
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    <div className="absolute top-10 left-10 w-64 h-64 bg-sky-500/10 rounded-full blur-3xl"></div>
+                    <div className="absolute bottom-10 right-10 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl"></div>
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl"></div>
+                    {[...Array(20)].map((_, i) => (<div key={i} className="absolute w-1 h-1 bg-white rounded-full opacity-30 animate-twinkle" style={{ top: Math.random()*100+'%', left: Math.random()*100+'%', animationDelay: Math.random()*4+'s', animationDuration: (Math.random()*3+2)+'s' }}></div>))}
+                </div>
+            );
+
+            const Logo = (
+                <div className="text-center mb-6">
+                    <div className="inline-flex w-16 h-16 bg-gradient-to-br from-sky-400 to-blue-600 rounded-2xl items-center justify-center shadow-2xl shadow-sky-500/40 mb-3">
+                        <Icon name="pills" className="text-white text-2xl" />
+                    </div>
+                    <h1 className="text-2xl font-black text-white tracking-tight">Rafa Medica</h1>
+                    <p className="text-sky-300 text-xs font-medium mt-0.5">Sistem Apotek Digital</p>
+                </div>
+            );
+
+            const InputField = ({ label, icon, type='text', value, onChange, placeholder, autoComplete, right, accent }) => (
+                <div>
+                    <label className={`text-xs font-bold uppercase tracking-wider mb-1.5 block ${accent ? 'text-amber-300/80' : 'text-white/70'}`}>{label}</label>
+                    <div className="relative">
+                        <Icon name={icon} className={`absolute left-4 top-1/2 -translate-y-1/2 text-sm ${accent ? 'text-amber-400/60' : 'text-white/40'}`} />
+                        <input type={type} value={value} onChange={onChange} autoComplete={autoComplete}
+                            className={`w-full border text-white placeholder-white/30 rounded-xl pl-10 ${right ? 'pr-12' : 'pr-4'} py-3 text-sm font-medium outline-none transition-all ${accent ? 'bg-amber-500/10 border-amber-400/30 focus:border-amber-400 focus:bg-amber-500/15 placeholder-amber-200/30' : 'bg-white/10 border-white/20 focus:border-sky-400 focus:bg-white/15'}`}
+                            placeholder={placeholder} />
+                        {right}
+                    </div>
+                </div>
+            );
+
+            const EyeBtn = (show, setShow) => (
+                <button type="button" onClick={() => setShow(!show)} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70">
+                    <Icon name={show ? 'eye-slash' : 'eye'} className="text-sm" />
+                </button>
+            );
+
             return (
                 <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" style={{background: 'linear-gradient(135deg, #0f172a 0%, #0c4a6e 50%, #164e63 100%)'}}>
-                    {/* Background decoration */}
-                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                        <div className="absolute top-10 left-10 w-64 h-64 bg-sky-500/10 rounded-full blur-3xl"></div>
-                        <div className="absolute bottom-10 right-10 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl"></div>
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl"></div>
-                        {[...Array(20)].map((_, i) => (
-                            <div key={i} className="absolute w-1 h-1 bg-white rounded-full opacity-30 animate-twinkle" style={{ top: Math.random()*100+'%', left: Math.random()*100+'%', animationDelay: Math.random()*4+'s', animationDuration: (Math.random()*3+2)+'s' }}></div>
-                        ))}
-                    </div>
-                    
+                    {BG}
                     <div className="w-full max-w-sm relative z-10 fade-in">
-                        {/* Logo */}
-                        <div className="text-center mb-8">
-                            <div className="inline-flex w-20 h-20 bg-gradient-to-br from-sky-400 to-blue-600 rounded-3xl items-center justify-center shadow-2xl shadow-sky-500/40 mb-4">
-                                <Icon name="pills" className="text-white text-3xl" />
-                            </div>
-                            <h1 className="text-3xl font-black text-white tracking-tight">Rafa Medica</h1>
-                            <p className="text-sky-300 text-sm font-medium mt-1">Sistem Apotek Digital</p>
-                        </div>
+                        {Logo}
 
-                        {/* Card */}
-                        <div className="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl p-6">
-                            {/* Tab switcher */}
-                            <div className="flex bg-white/10 rounded-2xl p-1 mb-6">
-                                <button onClick={() => { setMode('login'); setError(''); setSuccess(''); }} className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${mode === 'login' ? 'bg-white text-slate-800 shadow-sm' : 'text-white/70 hover:text-white'}`}>
-                                    <Icon name="right-to-bracket" className="mr-2" />Masuk
-                                </button>
-                                <button onClick={() => { setMode('register'); setError(''); setSuccess(''); }} className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${mode === 'register' ? 'bg-white text-slate-800 shadow-sm' : 'text-white/70 hover:text-white'}`}>
-                                    <Icon name="user-plus" className="mr-2" />Daftar
-                                </button>
-                            </div>
-
-                            {/* Error / Success messages */}
-                            {error && (
-                                <div className="bg-red-500/20 border border-red-400/30 text-red-200 rounded-xl px-4 py-3 text-sm font-medium mb-4 flex items-center gap-2 fade-in">
-                                    <Icon name="circle-exclamation" /> {error}
+                        {/* ===== LOGIN ===== */}
+                        {mode === 'login' && (
+                            <div className="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl p-6">
+                                <div className="flex bg-white/10 rounded-2xl p-1 mb-5">
+                                    <button onClick={() => switchMode('login')} className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all bg-white text-slate-800 shadow-sm">
+                                        <Icon name="right-to-bracket" className="mr-1.5" />Masuk
+                                    </button>
+                                    <button onClick={() => switchMode('register')} className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all text-white/70 hover:text-white">
+                                        <Icon name="user-plus" className="mr-1.5" />Daftar
+                                    </button>
                                 </div>
-                            )}
-                            {success && (
-                                <div className="bg-green-500/20 border border-green-400/30 text-green-200 rounded-xl px-4 py-3 text-sm font-medium mb-4 flex items-center gap-2 fade-in">
-                                    <Icon name="circle-check" /> {success}
-                                </div>
-                            )}
-
-                            {mode === 'login' ? (
-                                <form onSubmit={handleLogin} className="space-y-4">
-                                    <div>
-                                        <label className="text-xs font-bold text-white/70 uppercase tracking-wider mb-2 block">Username</label>
-                                        <div className="relative">
-                                            <Icon name="user" className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-sm" />
-                                            <input value={username} onChange={e => setUsername(e.target.value)} className="w-full bg-white/10 border border-white/20 text-white placeholder-white/30 rounded-xl pl-10 pr-4 py-3.5 text-sm font-medium outline-none focus:border-sky-400 focus:bg-white/15 transition-all" placeholder="Masukkan username" autoComplete="username" />
-                                        </div>
+                                {error && <div className="bg-red-500/20 border border-red-400/30 text-red-200 rounded-xl px-4 py-3 text-sm font-medium mb-4 flex items-center gap-2 fade-in"><Icon name="circle-exclamation" /> {error}</div>}
+                                {success && <div className="bg-green-500/20 border border-green-400/30 text-green-200 rounded-xl px-4 py-3 text-sm font-medium mb-4 flex items-center gap-2 fade-in"><Icon name="circle-check" /> {success}</div>}
+                                <form onSubmit={handleLogin} className="space-y-3">
+                                    <InputField label="Username / Email / Nama Lengkap" icon="user" value={loginId} onChange={e => setLoginId(e.target.value)} placeholder="Masukkan salah satu identitas" autoComplete="username" />
+                                    <InputField label="Password" icon="lock" type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Masukkan password" autoComplete="current-password" right={EyeBtn(showPass, setShowPass)} />
+                                    <div className="flex justify-end">
+                                        <button type="button" onClick={() => switchMode('forgot')} className="text-xs text-sky-300 hover:text-sky-200 font-semibold">Lupa password?</button>
                                     </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-white/70 uppercase tracking-wider mb-2 block">Password</label>
-                                        <div className="relative">
-                                            <Icon name="lock" className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-sm" />
-                                            <input type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-white/10 border border-white/20 text-white placeholder-white/30 rounded-xl pl-10 pr-12 py-3.5 text-sm font-medium outline-none focus:border-sky-400 focus:bg-white/15 transition-all" placeholder="Masukkan password" autoComplete="current-password" />
-                                            <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70">
-                                                <Icon name={showPass ? 'eye-slash' : 'eye'} className="text-sm" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-sky-500/30 transition-all active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2 mt-2">
-                                        {loading ? <><div className="typing-dot bg-white"></div><div className="typing-dot bg-white"></div><div className="typing-dot bg-white"></div></> : <><Icon name="right-to-bracket" /> Masuk</>}
+                                    <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-sky-500/30 transition-all active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2">
+                                        {loading ? <><div className="typing-dot bg-white"/><div className="typing-dot bg-white"/><div className="typing-dot bg-white"/></> : <><Icon name="right-to-bracket" /> Masuk</>}
                                     </button>
                                 </form>
-                            ) : (
-                                <form onSubmit={handleRegister} className="space-y-4">
-                                    <div>
-                                        <label className="text-xs font-bold text-white/70 uppercase tracking-wider mb-2 block">Username</label>
-                                        <div className="relative">
-                                            <Icon name="user" className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-sm" />
-                                            <input value={username} onChange={e => setUsername(e.target.value)} className="w-full bg-white/10 border border-white/20 text-white placeholder-white/30 rounded-xl pl-10 pr-4 py-3.5 text-sm font-medium outline-none focus:border-sky-400 focus:bg-white/15 transition-all" placeholder="Min. 3 karakter" autoComplete="username" />
-                                        </div>
+                            </div>
+                        )}
+
+                        {/* ===== REGISTER ===== */}
+                        {mode === 'register' && (
+                            <div className="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl p-6">
+                                <div className="flex bg-white/10 rounded-2xl p-1 mb-5">
+                                    <button onClick={() => switchMode('login')} className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all text-white/70 hover:text-white">
+                                        <Icon name="right-to-bracket" className="mr-1.5" />Masuk
+                                    </button>
+                                    <button onClick={() => switchMode('register')} className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all bg-white text-slate-800 shadow-sm">
+                                        <Icon name="user-plus" className="mr-1.5" />Daftar
+                                    </button>
+                                </div>
+                                {error && <div className="bg-red-500/20 border border-red-400/30 text-red-200 rounded-xl px-4 py-3 text-sm font-medium mb-4 flex items-center gap-2 fade-in"><Icon name="circle-exclamation" /> {error}</div>}
+                                {success && <div className="bg-green-500/20 border border-green-400/30 text-green-200 rounded-xl px-4 py-3 text-sm font-medium mb-4 flex items-center gap-2 fade-in"><Icon name="circle-check" /> {success}</div>}
+                                <form onSubmit={handleRegister} className="space-y-3">
+                                    <InputField label="Nama Lengkap" icon="id-card" value={regFullName} onChange={e => setRegFullName(e.target.value)} placeholder="Sesuai KTP" autoComplete="name" />
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <InputField label="Nomor HP" icon="phone" type="tel" value={regPhone} onChange={e => setRegPhone(e.target.value)} placeholder="08xxx" autoComplete="tel" />
+                                        <InputField label="Email" icon="envelope" type="email" value={regEmail} onChange={e => setRegEmail(e.target.value)} placeholder="email@..." autoComplete="email" />
                                     </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-white/70 uppercase tracking-wider mb-2 block">Password</label>
-                                        <div className="relative">
-                                            <Icon name="lock" className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-sm" />
-                                            <input type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-white/10 border border-white/20 text-white placeholder-white/30 rounded-xl pl-10 pr-12 py-3.5 text-sm font-medium outline-none focus:border-sky-400 focus:bg-white/15 transition-all" placeholder="Min. 6 karakter" autoComplete="new-password" />
-                                            <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70">
-                                                <Icon name={showPass ? 'eye-slash' : 'eye'} className="text-sm" />
-                                            </button>
-                                        </div>
+                                    <div className="border-t border-white/10 pt-2">
+                                        <p className="text-[10px] text-white/40 mb-2 font-semibold text-center tracking-widest uppercase">— Akun Login —</p>
+                                        <InputField label="Username" icon="at" value={regUsername} onChange={e => setRegUsername(e.target.value)} placeholder="Min. 3 karakter, tanpa spasi" autoComplete="username" />
                                     </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-white/70 uppercase tracking-wider mb-2 block">Konfirmasi Password</label>
-                                        <div className="relative">
-                                            <Icon name="lock" className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-sm" />
-                                            <input type={showPass ? 'text' : 'password'} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="w-full bg-white/10 border border-white/20 text-white placeholder-white/30 rounded-xl pl-10 pr-4 py-3.5 text-sm font-medium outline-none focus:border-sky-400 focus:bg-white/15 transition-all" placeholder="Ulangi password" autoComplete="new-password" />
-                                        </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <InputField label="Password" icon="lock" type={showRegPass ? 'text' : 'password'} value={regPassword} onChange={e => setRegPassword(e.target.value)} placeholder="Min. 6 karakter" autoComplete="new-password" right={EyeBtn(showRegPass, setShowRegPass)} />
+                                        <InputField label="Konfirmasi" icon="lock" type={showRegPass ? 'text' : 'password'} value={regConfirm} onChange={e => setRegConfirm(e.target.value)} placeholder="Ulangi" autoComplete="new-password" />
                                     </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-amber-300/80 uppercase tracking-wider mb-2 block flex items-center gap-1.5">
-                                            <Icon name="key" className="text-amber-400" /> Kode Undangan
-                                        </label>
-                                        <div className="relative">
-                                            <Icon name="ticket" className="absolute left-4 top-1/2 -translate-y-1/2 text-amber-400/60 text-sm" />
-                                            <input type={showInviteCode ? 'text' : 'password'} value={inviteCode} onChange={e => setInviteCode(e.target.value)} className="w-full bg-amber-500/10 border border-amber-400/30 text-white placeholder-amber-200/30 rounded-xl pl-10 pr-12 py-3.5 text-sm font-medium outline-none focus:border-amber-400 focus:bg-amber-500/15 transition-all" placeholder="Minta kode ke owner / pemilik" />
-                                            <button type="button" onClick={() => setShowInviteCode(!showInviteCode)} className="absolute right-4 top-1/2 -translate-y-1/2 text-amber-400/50 hover:text-amber-300">
-                                                <Icon name={showInviteCode ? 'eye-slash' : 'eye'} className="text-sm" />
-                                            </button>
-                                        </div>
-                                        <p className="text-[10px] text-amber-300/50 mt-1.5 ml-1">Hubungi pemilik apotek untuk mendapatkan kode undangan.</p>
-                                    </div>
-                                    <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-green-500/30 transition-all active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2 mt-2">
-                                        {loading ? <><div className="typing-dot bg-white"></div><div className="typing-dot bg-white"></div><div className="typing-dot bg-white"></div></> : <><Icon name="user-plus" /> Buat Akun</>}
+                                    <InputField label={<span className="flex items-center gap-1"><Icon name="key" className="text-amber-400" /> Kode Undangan</span>} icon="ticket" type={showInvite ? 'text' : 'password'} value={regInvite} onChange={e => setRegInvite(e.target.value)} placeholder="Minta ke owner / pemilik" accent right={EyeBtn(showInvite, setShowInvite)} />
+                                    <p className="text-[10px] text-amber-300/40 -mt-1 ml-1">Hubungi pemilik apotek untuk mendapatkan kode undangan.</p>
+                                    <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-green-500/30 transition-all active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2">
+                                        {loading ? <><div className="typing-dot bg-white"/><div className="typing-dot bg-white"/><div className="typing-dot bg-white"/></> : <><Icon name="user-plus" /> Buat Akun</>}
                                     </button>
                                 </form>
-                            )}
-                        </div>
-                        <p className="text-center text-white/30 text-xs mt-6">© 2024 Rafa Medica · Sistem Apotek Digital</p>
+                            </div>
+                        )}
+
+                        {/* ===== LUPA PASSWORD: Cari akun ===== */}
+                        {mode === 'forgot' && (
+                            <div className="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl p-6 fade-in">
+                                <button onClick={() => switchMode('login')} className="flex items-center gap-2 text-sky-300 hover:text-sky-200 text-sm font-bold mb-4">
+                                    <Icon name="chevron-left" /> Kembali ke Login
+                                </button>
+                                <div className="text-center mb-5">
+                                    <div className="w-14 h-14 bg-orange-500/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                                        <Icon name="unlock-keyhole" className="text-orange-300 text-2xl" />
+                                    </div>
+                                    <h2 className="text-white font-black text-lg">Lupa Password</h2>
+                                    <p className="text-white/50 text-xs mt-1">Masukkan email atau nomor HP yang terdaftar</p>
+                                </div>
+                                {error && <div className="bg-red-500/20 border border-red-400/30 text-red-200 rounded-xl px-4 py-3 text-sm font-medium mb-4 flex items-center gap-2 fade-in"><Icon name="circle-exclamation" /> {error}</div>}
+                                <form onSubmit={handleForgotFind} className="space-y-4">
+                                    <InputField label="Email atau Nomor HP" icon="magnifying-glass" value={forgotInput} onChange={e => setForgotInput(e.target.value)} placeholder="Contoh: email@... atau 0812xxx" />
+                                    <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2">
+                                        {loading ? <><div className="typing-dot bg-white"/><div className="typing-dot bg-white"/><div className="typing-dot bg-white"/></> : <><Icon name="magnifying-glass" /> Cari Akun</>}
+                                    </button>
+                                </form>
+                            </div>
+                        )}
+
+                        {/* ===== OTP + RESET PASSWORD ===== */}
+                        {mode === 'otp' && foundUser && (
+                            <div className="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl p-6 fade-in">
+                                <button onClick={() => switchMode('forgot')} className="flex items-center gap-2 text-sky-300 hover:text-sky-200 text-sm font-bold mb-4">
+                                    <Icon name="chevron-left" /> Kembali
+                                </button>
+                                <div className="bg-white/5 rounded-2xl p-3 mb-4 flex items-center gap-3 border border-white/10">
+                                    <div className="w-10 h-10 bg-sky-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                                        <Icon name="user-check" className="text-sky-300" />
+                                    </div>
+                                    <div>
+                                        <p className="text-white font-bold text-sm">{foundUser.fullName || foundUser.displayName}</p>
+                                        <p className="text-white/50 text-xs">{foundUser.email || foundUser.phone}</p>
+                                    </div>
+                                </div>
+                                {error && <div className="bg-red-500/20 border border-red-400/30 text-red-200 rounded-xl px-4 py-3 text-sm font-medium mb-4 flex items-center gap-2 fade-in"><Icon name="circle-exclamation" /> {error}</div>}
+                                {success && <div className="bg-green-500/20 border border-green-400/30 text-green-200 rounded-xl px-4 py-3 text-sm font-medium mb-4 flex items-center gap-2 fade-in"><Icon name="circle-check" /> {success}</div>}
+
+                                {/* Pilih metode kirim OTP */}
+                                <div className="mb-4">
+                                    <p className="text-xs text-white/60 font-bold uppercase tracking-wider mb-2">Kirim OTP via</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button type="button" onClick={() => setForgotMethod('email')} className={`py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 border transition-all ${forgotMethod === 'email' ? 'bg-sky-500/30 border-sky-400/50 text-sky-200' : 'bg-white/5 border-white/10 text-white/50 hover:text-white/80'}`}>
+                                            <Icon name="envelope" /> Email
+                                        </button>
+                                        <button type="button" onClick={() => setForgotMethod('wa')} className={`py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 border transition-all ${forgotMethod === 'wa' ? 'bg-green-500/30 border-green-400/50 text-green-200' : 'bg-white/5 border-white/10 text-white/50 hover:text-white/80'}`}>
+                                            <Icon name="whatsapp" style={{fontFamily:'Font Awesome 6 Brands'}} /> WhatsApp
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-white/30 mt-1.5 text-center">
+                                        {forgotMethod === 'email' ? `Dikirim ke: ${foundUser.email || '(tidak ada)'}` : `Dikirim ke WA: ${foundUser.phone || '(tidak ada)'}`}
+                                    </p>
+                                </div>
+
+                                <button type="button" onClick={handleSendOTP} disabled={loading || (forgotMethod==='email' && !foundUser.email) || (forgotMethod==='wa' && !foundUser.phone)} className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-bold py-3 rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 mb-4">
+                                    {loading ? <><div className="typing-dot bg-white"/><div className="typing-dot bg-white"/><div className="typing-dot bg-white"/></> : <><Icon name={forgotMethod === 'wa' ? 'paper-plane' : 'envelope'} /> {otpSent ? 'Kirim Ulang OTP' : 'Kirim Kode OTP'}</>}
+                                </button>
+
+                                {otpSent && (
+                                    <form onSubmit={handleResetPassword} className="space-y-3 border-t border-white/10 pt-4 fade-in">
+                                        <p className="text-xs text-white/60 font-bold text-center mb-1">Masukkan kode OTP yang diterima</p>
+                                        <InputField label="Kode OTP (6 digit)" icon="hashtag" value={otpInput} onChange={e => setOtpInput(e.target.value)} placeholder="Contoh: 123456" autoComplete="one-time-code" />
+                                        <InputField label="Password Baru" icon="lock" type={showNewPass ? 'text' : 'password'} value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Min. 6 karakter" right={EyeBtn(showNewPass, setShowNewPass)} />
+                                        <InputField label="Konfirmasi Password Baru" icon="lock" type={showNewPass ? 'text' : 'password'} value={confirmNewPass} onChange={e => setConfirmNewPass(e.target.value)} placeholder="Ulangi password baru" />
+                                        <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2">
+                                            {loading ? <><div className="typing-dot bg-white"/><div className="typing-dot bg-white"/><div className="typing-dot bg-white"/></> : <><Icon name="rotate" /> Reset Password</>}
+                                        </button>
+                                    </form>
+                                )}
+                            </div>
+                        )}
+
+                        <p className="text-center text-white/20 text-xs mt-4">© 2024 Rafa Medica · Sistem Apotek Digital</p>
                     </div>
                 </div>
             );
