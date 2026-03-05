@@ -2448,9 +2448,11 @@
                                         {selectedPurchase.invoiceNumber && <span className="ml-2 text-[10px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded font-mono">#{selectedPurchase.invoiceNumber}</span>}
                                     </div>
                                 </div>
-                                <button type="button" onClick={() => handleOpenEdit(selectedPurchase)} className="flex items-center gap-1.5 bg-teal-600 text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-teal-700 active:scale-95 transition-all">
-                                    <Icon name="pen-to-square" /> Edit
-                                </button>
+                                {!readOnly && (
+                                    <button type="button" onClick={() => handleOpenEdit(selectedPurchase)} className="flex items-center gap-1.5 bg-teal-600 text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-teal-700 active:scale-95 transition-all">
+                                        <Icon name="pen-to-square" /> Edit
+                                    </button>
+                                )}
                             </div>
 
                             {/* CONTENT */}
