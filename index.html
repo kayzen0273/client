@@ -2385,6 +2385,26 @@ Sisa : ${formatRupiah(remaining)}`;
         };
 
         // --- LOGIN SCREEN COMPONENT ---
+        // --- AUTH INPUT HELPERS (harus di luar LoginScreen agar tidak re-mount) ---
+        const AuthInputField = ({ label, icon, type='text', value, onChange, placeholder, autoComplete, rightSlot, accent }) => (
+            <div>
+                <label className={`text-xs font-bold uppercase tracking-wider mb-1.5 block ${accent ? 'text-amber-300/80' : 'text-white/70'}`}>{label}</label>
+                <div className="relative">
+                    <Icon name={icon} className={`absolute left-4 top-1/2 -translate-y-1/2 text-sm ${accent ? 'text-amber-400/60' : 'text-white/40'}`} />
+                    <input type={type} value={value} onChange={onChange} autoComplete={autoComplete}
+                        className={`w-full border text-white placeholder-white/30 rounded-xl pl-10 ${rightSlot ? 'pr-12' : 'pr-4'} py-3 text-sm font-medium outline-none transition-all ${accent ? 'bg-amber-500/10 border-amber-400/30 focus:border-amber-400 focus:bg-amber-500/15 placeholder-amber-200/30' : 'bg-white/10 border-white/20 focus:border-sky-400 focus:bg-white/15'}`}
+                        placeholder={placeholder} />
+                    {rightSlot}
+                </div>
+            </div>
+        );
+
+        const AuthEyeBtn = (show, setShow) => (
+            <button type="button" onClick={() => setShow(!show)} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70">
+                <Icon name={show ? 'eye-slash' : 'eye'} className="text-sm" />
+            </button>
+        );
+
         const LoginScreen = ({ onLoginSuccess }) => {
             // mode: 'login' | 'register' | 'forgot' | 'otp'
             const [mode, setMode] = useState('login');
@@ -2593,12 +2613,6 @@ Sisa : ${formatRupiah(remaining)}`;
                 </div>
             );
 
-            const EyeBtn = (show, setShow) => (
-                <button type="button" onClick={() => setShow(!show)} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70">
-                    <Icon name={show ? 'eye-slash' : 'eye'} className="text-sm" />
-                </button>
-            );
-
             return (
                 <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" style={{background: 'linear-gradient(135deg, #0f172a 0%, #0c4a6e 50%, #164e63 100%)'}}>
                     {BG}
@@ -2619,8 +2633,8 @@ Sisa : ${formatRupiah(remaining)}`;
                                 {error && <div className="bg-red-500/20 border border-red-400/30 text-red-200 rounded-xl px-4 py-3 text-sm font-medium mb-4 flex items-center gap-2 fade-in"><Icon name="circle-exclamation" /> {error}</div>}
                                 {success && <div className="bg-green-500/20 border border-green-400/30 text-green-200 rounded-xl px-4 py-3 text-sm font-medium mb-4 flex items-center gap-2 fade-in"><Icon name="circle-check" /> {success}</div>}
                                 <form onSubmit={handleLogin} className="space-y-3">
-                                    <InputField label="Username / Email / Nama Lengkap" icon="user" value={loginId} onChange={e => setLoginId(e.target.value)} placeholder="Masukkan salah satu identitas" autoComplete="username" />
-                                    <InputField label="Password" icon="lock" type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Masukkan password" autoComplete="current-password" right={EyeBtn(showPass, setShowPass)} />
+                                    <AuthInputField label="Username / Email / Nama Lengkap" icon="user" value={loginId} onChange={e => setLoginId(e.target.value)} placeholder="Masukkan salah satu identitas" autoComplete="username" />
+                                    <AuthInputField label="Password" icon="lock" type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Masukkan password" autoComplete="current-password" rightSlot={AuthEyeBtn(showPass, setShowPass)} />
                                     <div className="flex justify-end">
                                         <button type="button" onClick={() => switchMode('forgot')} className="text-xs text-sky-300 hover:text-sky-200 font-semibold">Lupa password?</button>
                                     </div>
@@ -2645,20 +2659,20 @@ Sisa : ${formatRupiah(remaining)}`;
                                 {error && <div className="bg-red-500/20 border border-red-400/30 text-red-200 rounded-xl px-4 py-3 text-sm font-medium mb-4 flex items-center gap-2 fade-in"><Icon name="circle-exclamation" /> {error}</div>}
                                 {success && <div className="bg-green-500/20 border border-green-400/30 text-green-200 rounded-xl px-4 py-3 text-sm font-medium mb-4 flex items-center gap-2 fade-in"><Icon name="circle-check" /> {success}</div>}
                                 <form onSubmit={handleRegister} className="space-y-3">
-                                    <InputField label="Nama Lengkap" icon="id-card" value={regFullName} onChange={e => setRegFullName(e.target.value)} placeholder="Sesuai KTP" autoComplete="name" />
+                                    <AuthInputField label="Nama Lengkap" icon="id-card" value={regFullName} onChange={e => setRegFullName(e.target.value)} placeholder="Sesuai KTP" autoComplete="name" />
                                     <div className="grid grid-cols-2 gap-3">
-                                        <InputField label="Nomor HP" icon="phone" type="tel" value={regPhone} onChange={e => setRegPhone(e.target.value)} placeholder="08xxx" autoComplete="tel" />
-                                        <InputField label="Email" icon="envelope" type="email" value={regEmail} onChange={e => setRegEmail(e.target.value)} placeholder="email@..." autoComplete="email" />
+                                        <AuthInputField label="Nomor HP" icon="phone" type="tel" value={regPhone} onChange={e => setRegPhone(e.target.value)} placeholder="08xxx" autoComplete="tel" />
+                                        <AuthInputField label="Email" icon="envelope" type="email" value={regEmail} onChange={e => setRegEmail(e.target.value)} placeholder="email@..." autoComplete="email" />
                                     </div>
                                     <div className="border-t border-white/10 pt-2">
                                         <p className="text-[10px] text-white/40 mb-2 font-semibold text-center tracking-widest uppercase">— Akun Login —</p>
-                                        <InputField label="Username" icon="at" value={regUsername} onChange={e => setRegUsername(e.target.value)} placeholder="Min. 3 karakter, tanpa spasi" autoComplete="username" />
+                                        <AuthInputField label="Username" icon="at" value={regUsername} onChange={e => setRegUsername(e.target.value)} placeholder="Min. 3 karakter, tanpa spasi" autoComplete="username" />
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
-                                        <InputField label="Password" icon="lock" type={showRegPass ? 'text' : 'password'} value={regPassword} onChange={e => setRegPassword(e.target.value)} placeholder="Min. 6 karakter" autoComplete="new-password" right={EyeBtn(showRegPass, setShowRegPass)} />
-                                        <InputField label="Konfirmasi" icon="lock" type={showRegPass ? 'text' : 'password'} value={regConfirm} onChange={e => setRegConfirm(e.target.value)} placeholder="Ulangi" autoComplete="new-password" />
+                                        <AuthInputField label="Password" icon="lock" type={showRegPass ? 'text' : 'password'} value={regPassword} onChange={e => setRegPassword(e.target.value)} placeholder="Min. 6 karakter" autoComplete="new-password" rightSlot={AuthEyeBtn(showRegPass, setShowRegPass)} />
+                                        <AuthInputField label="Konfirmasi" icon="lock" type={showRegPass ? 'text' : 'password'} value={regConfirm} onChange={e => setRegConfirm(e.target.value)} placeholder="Ulangi" autoComplete="new-password" />
                                     </div>
-                                    <InputField label={<span className="flex items-center gap-1"><Icon name="key" className="text-amber-400" /> Kode Undangan</span>} icon="ticket" type={showInvite ? 'text' : 'password'} value={regInvite} onChange={e => setRegInvite(e.target.value)} placeholder="Minta ke owner / pemilik" accent right={EyeBtn(showInvite, setShowInvite)} />
+                                    <AuthInputField label={<span className="flex items-center gap-1"><Icon name="key" className="text-amber-400" /> Kode Undangan</span>} icon="ticket" type={showInvite ? 'text' : 'password'} value={regInvite} onChange={e => setRegInvite(e.target.value)} placeholder="Minta ke owner / pemilik" accent rightSlot={AuthEyeBtn(showInvite, setShowInvite)} />
                                     <p className="text-[10px] text-amber-300/40 -mt-1 ml-1">Hubungi pemilik apotek untuk mendapatkan kode undangan.</p>
                                     <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-green-500/30 transition-all active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2">
                                         {loading ? <><div className="typing-dot bg-white"/><div className="typing-dot bg-white"/><div className="typing-dot bg-white"/></> : <><Icon name="user-plus" /> Buat Akun</>}
@@ -2682,7 +2696,7 @@ Sisa : ${formatRupiah(remaining)}`;
                                 </div>
                                 {error && <div className="bg-red-500/20 border border-red-400/30 text-red-200 rounded-xl px-4 py-3 text-sm font-medium mb-4 flex items-center gap-2 fade-in"><Icon name="circle-exclamation" /> {error}</div>}
                                 <form onSubmit={handleForgotFind} className="space-y-4">
-                                    <InputField label="Email atau Nomor HP" icon="magnifying-glass" value={forgotInput} onChange={e => setForgotInput(e.target.value)} placeholder="Contoh: email@... atau 0812xxx" />
+                                    <AuthInputField label="Email atau Nomor HP" icon="magnifying-glass" value={forgotInput} onChange={e => setForgotInput(e.target.value)} placeholder="Contoh: email@... atau 0812xxx" />
                                     <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2">
                                         {loading ? <><div className="typing-dot bg-white"/><div className="typing-dot bg-white"/><div className="typing-dot bg-white"/></> : <><Icon name="magnifying-glass" /> Cari Akun</>}
                                     </button>
@@ -2731,9 +2745,9 @@ Sisa : ${formatRupiah(remaining)}`;
                                 {otpSent && (
                                     <form onSubmit={handleResetPassword} className="space-y-3 border-t border-white/10 pt-4 fade-in">
                                         <p className="text-xs text-white/60 font-bold text-center mb-1">Masukkan kode OTP yang diterima</p>
-                                        <InputField label="Kode OTP (6 digit)" icon="hashtag" value={otpInput} onChange={e => setOtpInput(e.target.value)} placeholder="Contoh: 123456" autoComplete="one-time-code" />
-                                        <InputField label="Password Baru" icon="lock" type={showNewPass ? 'text' : 'password'} value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Min. 6 karakter" right={EyeBtn(showNewPass, setShowNewPass)} />
-                                        <InputField label="Konfirmasi Password Baru" icon="lock" type={showNewPass ? 'text' : 'password'} value={confirmNewPass} onChange={e => setConfirmNewPass(e.target.value)} placeholder="Ulangi password baru" />
+                                        <AuthInputField label="Kode OTP (6 digit)" icon="hashtag" value={otpInput} onChange={e => setOtpInput(e.target.value)} placeholder="Contoh: 123456" autoComplete="one-time-code" />
+                                        <AuthInputField label="Password Baru" icon="lock" type={showNewPass ? 'text' : 'password'} value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Min. 6 karakter" rightSlot={AuthEyeBtn(showNewPass, setShowNewPass)} />
+                                        <AuthInputField label="Konfirmasi Password Baru" icon="lock" type={showNewPass ? 'text' : 'password'} value={confirmNewPass} onChange={e => setConfirmNewPass(e.target.value)} placeholder="Ulangi password baru" />
                                         <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2">
                                             {loading ? <><div className="typing-dot bg-white"/><div className="typing-dot bg-white"/><div className="typing-dot bg-white"/></> : <><Icon name="rotate" /> Reset Password</>}
                                         </button>
