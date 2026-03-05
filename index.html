@@ -1167,7 +1167,8 @@ Sisa : ${formatRupiah(remaining)}`;
             );
         };
 
-        const CashierView = ({ items, user, showToast, settings, onGenerateImage, currentProfile }) => {
+        const CashierView = ({ items, user, showToast, settings, onGenerateImage, currentProfile, initialCashierName, onCashierNameChange }) => {
+            const props = { initialCashierName };
             const [isSessionActive, setIsSessionActive] = useState(false);
             const [search, setSearch] = useState('');
             const [cart, setCart] = useState([]);
@@ -1179,7 +1180,7 @@ Sisa : ${formatRupiah(remaining)}`;
             const [cancelModal, setCancelModal] = useState(false);
             const [btDevice, setBtDevice] = useState(null);
             const [pendingCarts, setPendingCarts] = useState([]);
-            const [cashierName, setCashierName] = useState(() => localStorage.getItem('cashierName') || '');
+            const [cashierName, setCashierName] = useState(props.initialCashierName || '');
             const [showCashierLogin, setShowCashierLogin] = useState(false);
             const [tempCashierName, setTempCashierName] = useState('');
 
@@ -1212,7 +1213,7 @@ Sisa : ${formatRupiah(remaining)}`;
                 }
                 const name = tempCashierName.trim();
                 setCashierName(name);
-                localStorage.setItem('cashierName', name);
+                if (onCashierNameChange) onCashierNameChange(name);
                 setShowCashierLogin(false);
                 setIsSessionActive(true);
                 setTempCashierName('');
@@ -2466,8 +2467,9 @@ Sisa : ${formatRupiah(remaining)}`;
                     if (!userData) { setError('Akun tidak ditemukan. Coba username, email, atau nama lengkap.'); setLoading(false); return; }
                     const hashedPass = await hashPassword(password);
                     if (userData.password !== hashedPass) { setError('Password salah'); setLoading(false); return; }
-                    const session = { username: userData.username, displayName: userData.displayName || userData.username, fullName: userData.fullName || '', email: userData.email || '', loggedInAt: new Date().toISOString() };
-                    localStorage.setItem('rafa_medica_session', JSON.stringify(session));
+                    const session = { username: userData.username, displayName: userData.displayName || userData.username, fullName: userData.fullName || '', email: userData.email || '', phone: userData.phone || '', loggedInAt: new Date().toISOString() };
+                    // Simpan hanya token username di localStorage, data lengkap dari Firestore
+                    localStorage.setItem('rafa_medica_token', userData.username);
                     onLoginSuccess(session);
                 } catch (err) { console.error(err); setError('Terjadi kesalahan, coba lagi'); }
                 setLoading(false);
@@ -2781,19 +2783,89 @@ Sisa : ${formatRupiah(remaining)}`;
             const [isSidebarOpen, setIsSidebarOpen] = useState(false);
             const [receiptToPrint, setReceiptToPrint] = useState(null);
             const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-            const [activeStoreId, setActiveStoreId] = useState(localStorage.getItem('activeStoreId') || 'default');
+            const [activeStoreId, setActiveStoreId] = useState('default');
             const [showStoreMenu, setShowStoreMenu] = useState(false);
             const hasSetInitialTab = useRef(false);
+            const [sessionLoading, setSessionLoading] = useState(true);
             
             // Notification State
             const [showNotifications, setShowNotifications] = useState(false);
-            const [appSession, setAppSession] = useState(() => {
-                try { const s = localStorage.getItem('rafa_medica_session'); return s ? JSON.parse(s) : null; } catch { return null; }
-            });
-            const handleLoginSuccess = (session) => { setAppSession(session); };
-            const handleLogout = () => { localStorage.removeItem('rafa_medica_session'); setAppSession(null); };
+            const [appSession, setAppSession] = useState(null);
+            const [cashierNameGlobal, setCashierNameGlobal] = useState('');
 
-            useEffect(() => { const initAuth = async () => { if (window.initialAuthToken) { await window.signInWithCustomToken(window.auth, window.initialAuthToken); } else { await window.signInAnonymously(window.auth); } }; initAuth(); const unsubscribeAuth = window.onAuthStateChanged(window.auth, (currentUser) => { setUser(currentUser); if (!currentUser) setLoading(true); }); return () => unsubscribeAuth(); }, []);
+            // --- Simpan preferensi akun ke Firestore ---
+            const saveUserPrefs = useCallback(async (username, prefs) => {
+                if (!username) return;
+                try {
+                    await window.setDoc(
+                        window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'app_users', username),
+                        prefs,
+                        { merge: true }
+                    );
+                } catch (e) { console.error('Gagal simpan prefs:', e); }
+            }, []);
+
+            // --- Auto-login dari Firestore berdasarkan token localStorage ---
+            useEffect(() => {
+                const restoreSession = async () => {
+                    const token = localStorage.getItem('rafa_medica_token');
+                    if (!token) { setSessionLoading(false); return; }
+                    try {
+                        const snap = await window.getDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'app_users', token));
+                        if (snap.exists()) {
+                            const d = snap.data();
+                            const session = { username: d.username, displayName: d.displayName || d.username, fullName: d.fullName || '', email: d.email || '', phone: d.phone || '', loggedInAt: new Date().toISOString() };
+                            setAppSession(session);
+                            // Muat preferensi akun dari Firestore
+                            if (d.activeStoreId) setActiveStoreId(d.activeStoreId);
+                            if (d.cashierName) setCashierNameGlobal(d.cashierName);
+                        } else {
+                            localStorage.removeItem('rafa_medica_token');
+                        }
+                    } catch (e) { console.error('Restore session error:', e); localStorage.removeItem('rafa_medica_token'); }
+                    setSessionLoading(false);
+                };
+                // Tunggu Firebase auth siap dulu
+                const unsubAuth = window.onAuthStateChanged(window.auth, (firebaseUser) => {
+                    if (firebaseUser) restoreSession();
+                    else setSessionLoading(false);
+                });
+                return () => unsubAuth();
+            }, []);
+
+            const handleLoginSuccess = async (session) => {
+                // Muat preferensi dari Firestore setelah login
+                try {
+                    const snap = await window.getDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'app_users', session.username));
+                    if (snap.exists()) {
+                        const d = snap.data();
+                        if (d.activeStoreId) setActiveStoreId(d.activeStoreId);
+                        if (d.cashierName) setCashierNameGlobal(d.cashierName);
+                    }
+                } catch (e) { console.error(e); }
+                setAppSession(session);
+            };
+
+            const handleLogout = async () => {
+                localStorage.removeItem('rafa_medica_token');
+                setAppSession(null);
+                setCashierNameGlobal('');
+                setActiveStoreId('default');
+            };
+
+            const handleCashierNameChange = useCallback(async (name) => {
+                setCashierNameGlobal(name);
+                if (appSession?.username) await saveUserPrefs(appSession.username, { cashierName: name });
+            }, [appSession, saveUserPrefs]);
+
+            useEffect(() => {
+                const initAuth = async () => {
+                    if (window.initialAuthToken) { await window.signInWithCustomToken(window.auth, window.initialAuthToken); }
+                    else { await window.signInAnonymously(window.auth); }
+                };
+                initAuth();
+            }, []);
+
             useEffect(() => { const globalClickHandler = (e) => { triggerFireworks(e.clientX, e.clientY); }; window.addEventListener('click', globalClickHandler); return () => window.removeEventListener('click', globalClickHandler); }, []);
 
             useEffect(() => {
@@ -2807,8 +2879,9 @@ Sisa : ${formatRupiah(remaining)}`;
                         window.globalSettings = newSettings; // Make available globally for FormView
                         const profiles = fetched.storeProfiles || [{ id: 'default' }];
                         if(activeStoreId !== 'all_stores' && !profiles.find(p => p.id === activeStoreId)) { 
-                            setActiveStoreId(profiles[0].id); 
-                            localStorage.setItem('activeStoreId', profiles[0].id); 
+                            const fallbackId = profiles[0].id;
+                            setActiveStoreId(fallbackId);
+                            if (appSession?.username) saveUserPrefs(appSession.username, { activeStoreId: fallbackId });
                         }
                     } 
                 });
@@ -2874,7 +2947,7 @@ Sisa : ${formatRupiah(remaining)}`;
             const getCurrentProfile = () => { if (activeStoreId === 'all_stores') { return { id: 'all_stores', name: 'SEMUA TOKO', address: 'Mode Gabungan' }; } const profiles = settingsData.storeProfiles || []; const profile = profiles.find(p => p.id === activeStoreId); return profile || { id: 'default', name: settingsData.storeName || APP_NAME, address: settingsData.storeAddress || '' }; };
             const currentProfile = getCurrentProfile();
 
-            const handleSwitchStore = (profileId) => { setActiveStoreId(profileId); localStorage.setItem('activeStoreId', profileId); setShowStoreMenu(false); showToast(`Profil toko diganti`); };
+            const handleSwitchStore = (profileId) => { setActiveStoreId(profileId); if (appSession?.username) saveUserPrefs(appSession.username, { activeStoreId: profileId }); setShowStoreMenu(false); showToast(`Profil toko diganti`); };
             const showToast = useCallback((message, type = "success") => { setToast({ show: true, message, type }); setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000); }, []);
             const handleGenerateImage = async (transaction) => { setIsGeneratingImage(true); const storeProfiles = settingsData.storeProfiles || []; const txProfile = storeProfiles.find(p => p.id === transaction.storeId) || storeProfiles[0] || {}; setReceiptToPrint({ ...transaction, storeName: txProfile.name || settingsData.storeName, storeAddress: txProfile.address || settingsData.storeAddress, footer: txProfile.footer || settingsData.receiptFooter, headers: txProfile.additionalHeaders || [] }); showToast("Membuat gambar struk..."); setTimeout(async () => { const element = document.getElementById('receipt-hidden-container'); if (!element) { showToast("Gagal menemukan elemen struk", "error"); setIsGeneratingImage(false); return; } try { const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#ffffff' }); canvas.toBlob(async (blob) => { if (!blob) return; const file = new File([blob], `struk-${transaction.id || 'trx'}.jpg`, { type: 'image/jpeg' }); const shareData = { files: [file], title: 'Struk Belanja', text: `Struk Transaksi ${transaction.id || ''}` }; if (navigator.canShare && navigator.canShare(shareData)) { try { await navigator.share(shareData); showToast("Berhasil membuka menu share!"); } catch (err) { const link = document.createElement('a'); link.href = canvas.toDataURL('image/jpeg'); link.download = `struk-${transaction.id}.jpg`; link.click(); } } else { const link = document.createElement('a'); link.href = canvas.toDataURL('image/jpeg'); link.download = `struk-${transaction.id}.jpg`; link.click(); showToast("Gambar diunduh. Kirim manual ke WA Web."); } setIsGeneratingImage(false); setReceiptToPrint(null); }, 'image/jpeg', 0.9); } catch (error) { console.error("Image gen error:", error); showToast("Gagal membuat gambar", "error"); setIsGeneratingImage(false); setReceiptToPrint(null); } }, 500); };
 
@@ -3015,6 +3088,25 @@ Sisa : ${formatRupiah(remaining)}`;
                 return true;
             });
 
+            // Tampilkan loading saat restore sesi dari Firestore
+            if (sessionLoading) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center" style={{background: 'linear-gradient(135deg, #0f172a 0%, #0c4a6e 50%, #164e63 100%)'}}>
+                        <div className="text-center">
+                            <div className="inline-flex w-16 h-16 bg-gradient-to-br from-sky-400 to-blue-600 rounded-2xl items-center justify-center shadow-2xl mb-4">
+                                <Icon name="pills" className="text-white text-2xl" />
+                            </div>
+                            <div className="flex items-center justify-center gap-1.5 mt-2">
+                                <div className="typing-dot" style={{background:'#38bdf8'}}></div>
+                                <div className="typing-dot" style={{background:'#38bdf8'}}></div>
+                                <div className="typing-dot" style={{background:'#38bdf8'}}></div>
+                            </div>
+                            <p className="text-sky-300 text-xs mt-3 font-medium">Memuat sesi...</p>
+                        </div>
+                    </div>
+                );
+            }
+
             // Tampilkan layar login jika belum login
             if (!appSession) {
                 return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
@@ -3102,7 +3194,7 @@ Sisa : ${formatRupiah(remaining)}`;
                         </div>
 
                         {activeTab === 'home' && (<DashboardView items={inventoryData} settings={settingsData} onShowLowStock={() => { setActiveTab('list'); setShowOnlyLowStock(true); }} />)}
-                        {activeTab === 'cashier' && (<CashierView items={inventoryData} user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} />)}
+                        {activeTab === 'cashier' && (<CashierView items={inventoryData} user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} initialCashierName={cashierNameGlobal} onCashierNameChange={handleCashierNameChange} />)}
                         {activeTab === 'transfer' && (<TransferView items={rawInventory} settings={settingsData} showToast={showToast} currentProfile={currentProfile} user={user} />)}
                         {activeTab === 'opname' && (<StockOpnameView items={inventoryData} user={user} showToast={showToast} currentProfile={currentProfile} />)}
                         {activeTab === 'history' && (<HistoryView user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} />)}
