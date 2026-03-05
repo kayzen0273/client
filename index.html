@@ -1775,6 +1775,8 @@
                     const invoicePayload = {
                         supplier: invoiceData.supplier, 
                         invoiceNumber: invoiceData.invoiceNumber || '',
+                        storeId: currentProfile.id,
+                        storeName: currentProfile.name,
                         total: grandTotal, 
                         subtotal: subtotal,
                         diskon: diskonNominal,
@@ -2064,7 +2066,11 @@
                 const q = purchaseSearch.toLowerCase();
                 const matchText = !q || (p.supplier || '').toLowerCase().includes(q) || (p.invoiceNumber || '').toLowerCase().includes(q) || (p.paymentMethod || '').toLowerCase().includes(q);
                 const matchStatus = purchaseFilterStatus === 'all' ? true : purchaseFilterStatus === 'paid' ? p.isPaid : purchaseFilterStatus === 'unpaid' ? !p.isPaid : purchaseFilterStatus === 'overdue' ? (!p.isPaid && p.dueDate && new Date(p.dueDate) < new Date()) : purchaseFilterStatus === 'consignment' ? p.isConsignment : true;
-                return matchText && matchStatus;
+                // Filter per toko — faktur lama tanpa storeId dianggap milik toko default
+                const matchStore = currentProfile.id === 'all_stores' ? true :
+                    p.storeId ? p.storeId === currentProfile.id :
+                    currentProfile.id === 'default';
+                return matchText && matchStatus && matchStore;
             });
 
             // Guard untuk mode all_stores
