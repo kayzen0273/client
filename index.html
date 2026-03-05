@@ -780,6 +780,8 @@
             // Kode settings
             const [kodeUndangan, setKodeUndangan] = useState('');
             const [kodeOTP, setKodeOTP] = useState('');
+            const [kodeHapus, setKodeHapus] = useState('');
+            const [showKodeHapus, setShowKodeHapus] = useState(false);
             const [savingKode, setSavingKode] = useState(false);
             const [kodeLoaded, setKodeLoaded] = useState(false);
 
@@ -806,11 +808,13 @@
                             const data = snap.data();
                             setKodeUndangan(data.invitationCode || INVITATION_CODE);
                             setKodeOTP(data.otpCode || '654321');
+                            setKodeHapus(data.deleteCode || '1234');
                         } else {
                             setKodeUndangan(INVITATION_CODE);
                             setKodeOTP('654321');
+                            setKodeHapus('1234');
                         }
-                    } catch (e) { setKodeUndangan(INVITATION_CODE); setKodeOTP('654321'); }
+                    } catch (e) { setKodeUndangan(INVITATION_CODE); setKodeOTP('654321'); setKodeHapus('1234'); }
                     setKodeLoaded(true);
                 };
                 loadKode();
@@ -819,10 +823,11 @@
             const handleSaveKode = async () => {
                 if (!kodeUndangan.trim()) { showToast('Kode undangan tidak boleh kosong'); return; }
                 if (!kodeOTP.trim() || kodeOTP.length !== 6 || !/^\d+$/.test(kodeOTP)) { showToast('Kode OTP harus 6 digit angka'); return; }
+                if (!kodeHapus.trim()) { showToast('Kode hapus faktur tidak boleh kosong'); return; }
                 setSavingKode(true);
                 try {
                     const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'system_codes', 'codes');
-                    await window.setDoc(ref, { invitationCode: kodeUndangan.trim(), otpCode: kodeOTP.trim(), updatedAt: window.serverTimestamp() });
+                    await window.setDoc(ref, { invitationCode: kodeUndangan.trim(), otpCode: kodeOTP.trim(), deleteCode: kodeHapus.trim(), updatedAt: window.serverTimestamp() });
                     showToast('Kode berhasil diperbarui!');
                 } catch (e) { showToast('Gagal menyimpan kode'); }
                 setSavingKode(false);
@@ -1094,6 +1099,33 @@
                                     {kodeOTP.length === 6 && (
                                         <p className="text-[10px] text-green-600 mt-1.5 font-semibold flex items-center gap-1"><Icon name="circle-check" /> Kode valid</p>
                                     )}
+                                </div>
+                            </div>
+
+                            {/* Kode Hapus Faktur */}
+                            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                                <div className="px-4 pt-4 pb-3 border-b border-slate-100 flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center"><Icon name="trash" className="text-red-500 text-sm" /></div>
+                                    <div>
+                                        <p className="font-bold text-slate-800 text-sm">Kode Hapus Faktur</p>
+                                        <p className="text-[10px] text-slate-400">Diperlukan saat menghapus faktur pembelian</p>
+                                    </div>
+                                </div>
+                                <div className="p-4">
+                                    <div className="relative">
+                                        <input
+                                            type={showKodeHapus ? "text" : "password"}
+                                            value={kodeHapus}
+                                            onChange={e => setKodeHapus(e.target.value)}
+                                            maxLength={20}
+                                            placeholder="Kode hapus faktur..."
+                                            className="w-full px-4 py-3 pr-12 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:border-red-400 bg-slate-50 tracking-widest"
+                                        />
+                                        <button type="button" onClick={() => setShowKodeHapus(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                                            <Icon name={showKodeHapus ? "eye-slash" : "eye"} className="text-sm" />
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 mt-1.5">Kode ini wajib dimasukkan setiap kali menghapus faktur.</p>
                                 </div>
                             </div>
 
@@ -1496,7 +1528,21 @@
             const [deletePasswordModal, setDeletePasswordModal] = useState({ show: false, purchaseId: null, closeDetailAfter: false });
             const [deletePassword, setDeletePassword] = useState('');
             const [deletePasswordError, setDeletePasswordError] = useState('');
-            const DELETE_PASSWORD = '1234';
+            const [deleteCode, setDeleteCode] = useState('1234');
+
+            // Load delete code from Firestore
+            useEffect(() => {
+                const loadDeleteCode = async () => {
+                    try {
+                        const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'system_codes', 'codes');
+                        const snap = await window.getDoc(ref);
+                        if (snap.exists() && snap.data().deleteCode) {
+                            setDeleteCode(snap.data().deleteCode);
+                        }
+                    } catch (e) {}
+                };
+                loadDeleteCode();
+            }, []);
 
             // Load draft on mount
             useEffect(() => {
@@ -1932,7 +1978,7 @@
             const deletePurchase = async (id) => { try { await window.deleteDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'purchases', id)); showToast("Faktur dihapus"); } catch(err) { showToast("Gagal hapus", "error"); } };
             const openDeleteModal = (purchaseId, closeDetailAfter = false) => { setDeletePassword(''); setDeletePasswordError(''); setDeletePasswordModal({ show: true, purchaseId, closeDetailAfter }); };
             const handleConfirmDelete = () => {
-                if (deletePassword !== DELETE_PASSWORD) { setDeletePasswordError('Kata sandi salah!'); return; }
+                if (deletePassword !== deleteCode) { setDeletePasswordError('Kata sandi salah!'); return; }
                 deletePurchase(deletePasswordModal.purchaseId);
                 if (deletePasswordModal.closeDetailAfter) setDetailModalOpen(false);
                 setDeletePasswordModal({ show: false, purchaseId: null, closeDetailAfter: false });
