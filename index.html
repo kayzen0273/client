@@ -2390,7 +2390,10 @@ Sisa : ${formatRupiah(remaining)}`;
             const [username, setUsername] = useState('');
             const [password, setPassword] = useState('');
             const [confirmPassword, setConfirmPassword] = useState('');
+            const [inviteCode, setInviteCode] = useState('');
+            const [showInviteCode, setShowInviteCode] = useState(false);
             const [showPass, setShowPass] = useState(false);
+            const INVITE_CODE = '12345670';
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState('');
             const [success, setSuccess] = useState('');
@@ -2416,7 +2419,8 @@ Sisa : ${formatRupiah(remaining)}`;
 
             const handleRegister = async (e) => {
                 e.preventDefault();
-                if (!username.trim() || !password || !confirmPassword) { setError('Semua field wajib diisi'); return; }
+                if (!username.trim() || !password || !confirmPassword || !inviteCode) { setError('Semua field wajib diisi'); return; }
+                if (inviteCode !== INVITE_CODE) { setError('Kode undangan salah! Minta ke pemilik / owner.'); return; }
                 if (username.trim().length < 3) { setError('Username minimal 3 karakter'); return; }
                 if (password.length < 6) { setError('Password minimal 6 karakter'); return; }
                 if (password !== confirmPassword) { setError('Konfirmasi password tidak cocok'); return; }
@@ -2429,7 +2433,7 @@ Sisa : ${formatRupiah(remaining)}`;
                     const hashedPass = await hashPassword(password);
                     await window.setDoc(userDocRef, { username: key, displayName: username.trim(), password: hashedPass, createdAt: window.serverTimestamp() });
                     setSuccess('Akun berhasil dibuat! Silahkan login.');
-                    setMode('login'); setUsername(username.trim()); setPassword(''); setConfirmPassword('');
+                    setMode('login'); setUsername(username.trim()); setPassword(''); setConfirmPassword(''); setInviteCode('');
                 } catch (err) { console.error(err); setError('Gagal mendaftar, coba lagi'); }
                 setLoading(false);
             };
@@ -2528,6 +2532,19 @@ Sisa : ${formatRupiah(remaining)}`;
                                             <Icon name="lock" className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-sm" />
                                             <input type={showPass ? 'text' : 'password'} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="w-full bg-white/10 border border-white/20 text-white placeholder-white/30 rounded-xl pl-10 pr-4 py-3.5 text-sm font-medium outline-none focus:border-sky-400 focus:bg-white/15 transition-all" placeholder="Ulangi password" autoComplete="new-password" />
                                         </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-amber-300/80 uppercase tracking-wider mb-2 block flex items-center gap-1.5">
+                                            <Icon name="key" className="text-amber-400" /> Kode Undangan
+                                        </label>
+                                        <div className="relative">
+                                            <Icon name="ticket" className="absolute left-4 top-1/2 -translate-y-1/2 text-amber-400/60 text-sm" />
+                                            <input type={showInviteCode ? 'text' : 'password'} value={inviteCode} onChange={e => setInviteCode(e.target.value)} className="w-full bg-amber-500/10 border border-amber-400/30 text-white placeholder-amber-200/30 rounded-xl pl-10 pr-12 py-3.5 text-sm font-medium outline-none focus:border-amber-400 focus:bg-amber-500/15 transition-all" placeholder="Minta kode ke owner / pemilik" />
+                                            <button type="button" onClick={() => setShowInviteCode(!showInviteCode)} className="absolute right-4 top-1/2 -translate-y-1/2 text-amber-400/50 hover:text-amber-300">
+                                                <Icon name={showInviteCode ? 'eye-slash' : 'eye'} className="text-sm" />
+                                            </button>
+                                        </div>
+                                        <p className="text-[10px] text-amber-300/50 mt-1.5 ml-1">Hubungi pemilik apotek untuk mendapatkan kode undangan.</p>
                                     </div>
                                     <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-green-500/30 transition-all active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2 mt-2">
                                         {loading ? <><div className="typing-dot bg-white"></div><div className="typing-dot bg-white"></div><div className="typing-dot bg-white"></div></> : <><Icon name="user-plus" /> Buat Akun</>}
