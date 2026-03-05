@@ -4255,6 +4255,7 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
             const [filterKasir, setFilterKasir] = useState('all');
             const [filterPayment, setFilterPayment] = useState('all');
             const [sortOrder, setSortOrder] = useState('newest');
+            const [registeredUsers, setRegisteredUsers] = useState([]);
 
             const [uploadingProof, setUploadingProof] = useState(false);
             const [deletingProof, setDeletingProof] = useState(false);
@@ -4334,6 +4335,22 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                 const q = window.query(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'purchases'), window.orderBy('date', 'desc'), window.limit(200));
                 const unsub = window.onSnapshot(q, (snapshot) => {
                     setPurchasesData(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                });
+                return () => unsub();
+            }, [user]);
+
+            // Fetch daftar akun terdaftar untuk filter kasir
+            useEffect(() => {
+                if (!user) return;
+                const usersRef = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'users');
+                const unsub = window.onSnapshot(usersRef, (snap) => {
+                    const users = snap.docs
+                        .map(d => ({ id: d.id, ...d.data() }))
+                        .filter(u => u.isActive !== false)
+                        .map(u => u.namaLengkap || u.username)
+                        .filter(Boolean)
+                        .sort();
+                    setRegisteredUsers(users);
                 });
                 return () => unsub();
             }, [user]);
@@ -4443,12 +4460,12 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
             
             // Daftar kasir unik dari semua transaksi (bukan hanya yang sudah difilter tanggal)
             const uniqueKasirList = useMemo(() => {
-                const names = transactions
-                    .map(tx => tx.cashierName)
-                    .filter(Boolean)
-                    .reduce((acc, name) => { if (!acc.includes(name)) acc.push(name); return acc; }, []);
-                return names.sort();
-            }, [transactions]);
+                // Gabung: akun terdaftar + nama kasir dari transaksi (kalau ada yang belum terdaftar)
+                const fromTx = transactions.map(tx => tx.cashierName).filter(Boolean);
+                const merged = [...registeredUsers];
+                fromTx.forEach(name => { if (!merged.includes(name)) merged.push(name); });
+                return merged.sort();
+            }, [transactions, registeredUsers]);
 
             const processedTransactions = useMemo(() => {
                 let data = [...dailyTransactions];
