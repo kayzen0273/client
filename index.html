@@ -4165,7 +4165,7 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                         const racikanTotal = racikanSubtotal + racikanUangNum;
                         const invoiceNo = '#' + new Date().toISOString().slice(2,10).replace(/-/g,'') + String(Math.floor(Math.random()*9000+1000));
                         return (
-                        <div className="fixed inset-0 z-[200] bg-white flex flex-col fade-in">
+                        <div className="fixed inset-x-0 bottom-0 top-16 z-[200] bg-white flex flex-col fade-in rounded-t-2xl shadow-2xl">
                             {/* ── TOP BAR ── */}
                             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white flex-shrink-0">
                                 <button onClick={() => setRacikanModal(false)} className="flex items-center gap-1 text-slate-500 hover:text-slate-700 font-bold text-sm">
