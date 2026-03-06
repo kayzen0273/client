@@ -5069,6 +5069,7 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
             const [daysOffset30, setDaysOffset30] = useState(0); // 0 = 30 hari terakhir
 
             const [historySearch, setHistorySearch] = useState('');
+            const [racikanInfoModal, setRacikanInfoModal] = useState(null);
             const [filterStatus, setFilterStatus] = useState('all'); 
             const [filterKasir, setFilterKasir] = useState('all');
             const [filterPayment, setFilterPayment] = useState('all');
@@ -5285,7 +5286,19 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                 let data = [...dailyTransactions];
                 if (historySearch) {
                     const lowerQ = historySearch.toLowerCase();
-                    data = data.filter(tx => (tx.id && tx.id.toLowerCase().includes(lowerQ)) || (tx.items && tx.items.some(i => i.name.toLowerCase().includes(lowerQ))) || (tx.cashierName && tx.cashierName.toLowerCase().includes(lowerQ)));
+                    data = data.filter(tx => {
+                        if (tx.id && tx.id.toLowerCase().includes(lowerQ)) return true;
+                        if (tx.cashierName && tx.cashierName.toLowerCase().includes(lowerQ)) return true;
+                        if (tx.items && tx.items.some(i => {
+                            if (i.name.toLowerCase().includes(lowerQ)) return true;
+                            if (i.racikanInfo) {
+                                if (i.racikanInfo.dokter && i.racikanInfo.dokter.toLowerCase().includes(lowerQ)) return true;
+                                if (i.racikanInfo.pasien && i.racikanInfo.pasien.toLowerCase().includes(lowerQ)) return true;
+                            }
+                            return false;
+                        })) return true;
+                        return false;
+                    });
                 }
                 if (filterStatus !== 'all') { data = data.filter(tx => tx.status === filterStatus); }
                 if (filterKasir !== 'all') { data = data.filter(tx => tx.cashierName === filterKasir); }
@@ -5587,7 +5600,7 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                         <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm"><h4 className="font-bold text-slate-800 text-sm mb-1">Rata-rata penjualan kasir</h4><div className="text-2xl font-black text-slate-800 mt-2">{formatRupiah(stats.avgSale)}</div></div>
                     </div>
                     <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm mb-4 space-y-3">
-                         <div className="relative"><input type="text" placeholder="Cari Ref Transaksi / Nama Barang..." className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none text-sm font-medium" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} /><Icon name="magnifying-glass" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm" /></div>
+                         <div className="relative"><input type="text" placeholder="Cari transaksi, barang, dokter, pasien..." className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none text-sm font-medium" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} /><Icon name="magnifying-glass" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm" /></div>
                         <div className="flex gap-2 flex-wrap">
                         <div className="relative flex-1 min-w-[120px]"><select className="w-full appearance-none pl-3 pr-8 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-sky-500" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} ><option value="all">Semua Status</option><option value="success">Sukses</option><option value="partial">Retur Sebagian</option><option value="returned">Retur Full (Batal)</option></select><Icon name="filter" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none" /></div>
                         <div className="relative flex-1 min-w-[120px]"><select className="w-full appearance-none pl-3 pr-8 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-sky-500" value={filterPayment} onChange={(e) => setFilterPayment(e.target.value)}><option value="all">Semua Pembayaran</option><option value="tunai">💵 Tunai</option><option value="qris">💳 QRIS</option><option value="transfer">🏦 Transfer</option></select><Icon name="credit-card" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none" /></div>
@@ -5597,13 +5610,13 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                     </div>
                     </div>
                     <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-1">
-                        {loading ? <div className="text-center py-10 text-slate-400"><div className="typing-dot bg-sky-500"></div> Loading...</div> : processedTransactions.length === 0 ? (<div className="text-center py-12 flex flex-col items-center opacity-60"><div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3"><Icon name="calendar-xmark" className="text-2xl text-slate-400" /></div><p className="font-semibold text-slate-500">Tidak ada transaksi</p><p className="text-xs text-slate-400">Sesuai filter pencarian</p></div>) : processedTransactions.map(tx => (<div key={tx.id} onClick={() => setSelectedTx(tx)} className={`p-4 rounded-2xl border shadow-sm cursor-pointer transition-all hover:shadow-md ${tx.status === 'returned' ? 'bg-red-50 border-red-100 opacity-80' : 'bg-white border-slate-100 hover:border-sky-300'}`}><div className="flex justify-between items-start mb-2"><div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{(() => { const d = new Date(tx.date.seconds ? tx.date.toDate() : tx.date); const hari = d.toLocaleDateString('id-ID', {weekday:'short'}); const tgl = d.toLocaleDateString('id-ID', {day:'numeric', month:'short'}); const jam = d.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}); return `${hari}, ${tgl}  •  ${jam} WIB${tx.storeName ? ` • ${tx.storeName}` : ''}`; })()}</p><h4 className={`font-black text-lg ${tx.status === 'returned' ? 'text-red-500 line-through' : 'text-slate-800'}`}>{formatRupiah(tx.total)}</h4></div>{tx.status === 'returned' ? <span className="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-1 rounded-full">BATAL</span> : (tx.status === 'partial' ? <span className="bg-amber-100 text-amber-600 text-[10px] font-bold px-2 py-1 rounded-full">SEBAGIAN</span> : <span className="bg-green-100 text-green-600 text-[10px] font-bold px-2 py-1 rounded-full">SUKSES</span>)}</div><div className="text-xs text-slate-500 truncate">{tx.items.map(i => i.name).join(', ')}</div><div className="mt-3 flex justify-between items-center border-t border-dashed border-slate-200 pt-2"><div className="flex items-center gap-2"><span className="text-[10px] font-bold text-slate-400">{tx.items.length} Barang</span>{tx.cashierName && <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1"><Icon name="user-tie" className="text-[9px]" /> {tx.cashierName}</span>}</div><div className="flex items-center gap-2">{tx.paymentProofImage && <span className="text-[10px] bg-teal-100 text-teal-700 font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1"><Icon name="camera" /> Bukti</span>}{tx.paymentMethod && tx.paymentMethod !== 'tunai' && <span className="text-[10px] bg-sky-100 text-sky-700 font-bold px-1.5 py-0.5 rounded-full">{tx.paymentMethod === 'qris' ? 'QRIS' : 'Transfer'}</span>}<span className="text-[10px] text-sky-600 font-bold flex items-center gap-1">Lihat Detail <Icon name="chevron-right" /></span></div></div></div>))}
+                        {loading ? <div className="text-center py-10 text-slate-400"><div className="typing-dot bg-sky-500"></div> Loading...</div> : processedTransactions.length === 0 ? (<div className="text-center py-12 flex flex-col items-center opacity-60"><div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3"><Icon name="calendar-xmark" className="text-2xl text-slate-400" /></div><p className="font-semibold text-slate-500">Tidak ada transaksi</p><p className="text-xs text-slate-400">Sesuai filter pencarian</p></div>) : processedTransactions.map(tx => (<div key={tx.id} onClick={() => setSelectedTx(tx)} className={`p-4 rounded-2xl border shadow-sm cursor-pointer transition-all hover:shadow-md ${tx.status === 'returned' ? 'bg-red-50 border-red-100 opacity-80' : 'bg-white border-slate-100 hover:border-sky-300'}`}><div className="flex justify-between items-start mb-2"><div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{(() => { const d = new Date(tx.date.seconds ? tx.date.toDate() : tx.date); const hari = d.toLocaleDateString('id-ID', {weekday:'short'}); const tgl = d.toLocaleDateString('id-ID', {day:'numeric', month:'short'}); const jam = d.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}); return `${hari}, ${tgl}  •  ${jam} WIB${tx.storeName ? ` • ${tx.storeName}` : ''}`; })()}</p><h4 className={`font-black text-lg ${tx.status === 'returned' ? 'text-red-500 line-through' : 'text-slate-800'}`}>{formatRupiah(tx.total)}</h4></div>{tx.status === 'returned' ? <span className="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-1 rounded-full">BATAL</span> : (tx.status === 'partial' ? <span className="bg-amber-100 text-amber-600 text-[10px] font-bold px-2 py-1 rounded-full">SEBAGIAN</span> : <span className="bg-green-100 text-green-600 text-[10px] font-bold px-2 py-1 rounded-full">SUKSES</span>)}</div><div className="text-xs text-slate-500 truncate">{tx.items.map(i => i.name).join(', ')}</div><div className="mt-3 flex justify-between items-center border-t border-dashed border-slate-200 pt-2"><div className="flex items-center gap-2 flex-wrap"><span className="text-[10px] font-bold text-slate-400">{tx.items.length} Barang</span>{tx.cashierName && <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1"><Icon name="user-tie" className="text-[9px]" /> {tx.cashierName}</span>}{tx.items.some(i=>i.isRacikanGroup) && (() => { const ri = tx.items.find(i=>i.isRacikanGroup)?.racikanInfo; return (<span className="text-[10px] bg-teal-100 text-teal-700 font-black px-1.5 py-0.5 rounded-full flex items-center gap-1">R/ {ri?.pasien ? ri.pasien.split(',')[0] : ''}</span>); })()}</div><div className="flex items-center gap-2">{tx.paymentProofImage && <span className="text-[10px] bg-teal-100 text-teal-700 font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1"><Icon name="camera" /> Bukti</span>}{tx.paymentMethod && tx.paymentMethod !== 'tunai' && <span className="text-[10px] bg-sky-100 text-sky-700 font-bold px-1.5 py-0.5 rounded-full">{tx.paymentMethod === 'qris' ? 'QRIS' : 'Transfer'}</span>}<span className="text-[10px] text-sky-600 font-bold flex items-center gap-1">Lihat Detail <Icon name="chevron-right" /></span></div></div></div>))}
                     </div>
                     {selectedTx && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm fade-in">
                             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-0 overflow-hidden flex flex-col max-h-[90vh]">
                                 <div className="p-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center"><div><h3 className="font-bold text-slate-800">Detail Transaksi</h3><p className="text-[10px] text-slate-500">{selectedTx.id} {selectedTx.storeName ? `(${selectedTx.storeName})` : ''}</p>{selectedTx.cashierName && <div className="flex items-center gap-1 mt-1"><div className="w-4 h-4 rounded-full bg-sky-500 flex items-center justify-center text-white text-[8px] font-black flex-shrink-0">{selectedTx.cashierName.charAt(0).toUpperCase()}</div><span className="text-[10px] font-bold text-sky-700">{selectedTx.cashierName}</span></div>}</div><button onClick={() => setSelectedTx(null)} className="w-8 h-8 rounded-full bg-white text-slate-400 hover:text-slate-600 flex items-center justify-center shadow-sm"><Icon name="xmark" /></button></div>
-                                <div className="p-5 overflow-y-auto flex-1"><div className="space-y-4">{selectedTx.items.map((item, idx) => { const returnedQty = item.returnedQty || 0; const remainingQty = item.cartQty - returnedQty; const isFullyReturned = remainingQty === 0; return (<div key={idx} className={`p-3 rounded-xl border ${isFullyReturned ? 'bg-red-50 border-red-100' : 'bg-slate-50 border-slate-100'}`}><div className="flex justify-between items-start mb-2"><div className="flex-1"><p className={`font-bold text-sm ${isFullyReturned ? 'text-red-600 line-through' : 'text-slate-700'}`}>{item.name}</p><p className="text-[10px] text-slate-500">{item.cartQty} x {formatRupiah(item.price)}</p>{returnedQty > 0 && <span className="text-[9px] font-bold text-red-500 bg-red-100 px-1.5 py-0.5 rounded-sm">Sudah Retur: {returnedQty}</span>}</div><div className="text-right"><p className="font-bold text-slate-800 text-sm">{formatRupiah(item.cartQty * item.price)}</p>{selectedTx.status !== 'returned' && remainingQty > 0 && (<button onClick={() => openReturModal(selectedTx, item, idx)} className="mt-2 bg-white border border-red-200 text-red-500 text-[10px] font-bold px-2 py-1 rounded-lg hover:bg-red-50 transition-colors shadow-sm">Retur Item</button>)}</div></div></div>); })}</div><div className="my-4 border-t border-dashed border-slate-300"></div>{(() => {
+                                <div className="p-5 overflow-y-auto flex-1"><div className="space-y-4">{selectedTx.items.map((item, idx) => { const returnedQty = item.returnedQty || 0; const remainingQty = item.cartQty - returnedQty; const isFullyReturned = remainingQty === 0; const ri = item.racikanInfo; return (<div key={idx} className={`p-3 rounded-xl border ${isFullyReturned ? 'bg-red-50 border-red-100' : item.isRacikanGroup ? 'bg-teal-50 border-teal-100' : 'bg-slate-50 border-slate-100'}`}><div className="flex justify-between items-start mb-2"><div className="flex-1 min-w-0 pr-2"><div className="flex items-center gap-1.5 flex-wrap"><p className={`font-bold text-sm ${isFullyReturned ? 'text-red-600 line-through' : 'text-slate-700'}`}>{item.name}</p>{item.isRacikanGroup && <span className="text-[8px] font-black bg-teal-600 text-white px-1 py-0.5 rounded flex-shrink-0">R/</span>}</div><p className="text-[10px] text-slate-500 mt-0.5">{item.cartQty} x {formatRupiah(item.price)}</p>{returnedQty > 0 && <span className="text-[9px] font-bold text-red-500 bg-red-100 px-1.5 py-0.5 rounded-sm">Sudah Retur: {returnedQty}</span>}{item.isRacikanGroup && ri && (ri.dokter || ri.pasien) && (<button onClick={() => setRacikanInfoModal(item)} className="mt-2 flex items-center gap-1.5 text-teal-600 hover:text-teal-800 text-[10px] font-bold bg-teal-100 hover:bg-teal-200 px-2.5 py-1.5 rounded-lg transition-colors"><Icon name="circle-info" className="text-xs" /> Info Pasien / Dokter</button>)}</div><div className="text-right flex-shrink-0"><p className="font-bold text-slate-800 text-sm">{formatRupiah(item.cartQty * item.price)}</p>{selectedTx.status !== 'returned' && remainingQty > 0 && (<button onClick={() => openReturModal(selectedTx, item, idx)} className="mt-2 bg-white border border-red-200 text-red-500 text-[10px] font-bold px-2 py-1 rounded-lg hover:bg-red-50 transition-colors shadow-sm">Retur Item</button>)}</div></div></div>); })}</div><div className="my-4 border-t border-dashed border-slate-300"></div>{(() => {
   const subtotalTx = selectedTx.items.reduce((acc, item) => acc + ((item.originalPrice || item.price) * (item.cartQty - (item.returnedQty || 0))), 0);
   const diskonTxRp = subtotalTx - selectedTx.total;
   const discountedItems = selectedTx.items.filter(i => i.discount && i.discount.value > 0);
@@ -5678,6 +5691,92 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                             </div>
                         </div>
                     )}
+                    {/* ===== RACIKAN INFO MODAL ===== */}
+                    {racikanInfoModal && (() => {
+                        const item = racikanInfoModal;
+                        const ri = item.racikanInfo || {};
+                        const bahan = item.racikanItems || [];
+                        return (
+                            <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm fade-in">
+                                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[90vh]">
+                                    {/* Header */}
+                                    <div className="px-5 py-4 bg-teal-600 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                                                <span className="text-white font-black text-sm">R/</span>
+                                            </div>
+                                            <h3 className="font-black text-white text-base">Info Racikan</h3>
+                                        </div>
+                                        <button onClick={() => setRacikanInfoModal(null)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors">
+                                            <Icon name="xmark" />
+                                        </button>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto">
+                                        {/* Dokter & Pasien */}
+                                        <div className="px-5 pt-5 pb-3 space-y-3">
+                                            {ri.dokter && (
+                                                <div className="flex items-start gap-3 p-3 bg-sky-50 rounded-xl border border-sky-100">
+                                                    <div className="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                        <Icon name="user-doctor" className="text-sky-600 text-sm" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-[10px] font-bold text-sky-500 uppercase tracking-wider mb-0.5">Dokter</p>
+                                                        <p className="font-bold text-slate-800 text-sm">{ri.dokter}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {ri.pasien && (
+                                                <div className="flex items-start gap-3 p-3 bg-teal-50 rounded-xl border border-teal-100">
+                                                    <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                        <Icon name="person" className="text-teal-600 text-sm" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-[10px] font-bold text-teal-500 uppercase tracking-wider mb-0.5">Pasien</p>
+                                                        <p className="font-bold text-slate-800 text-sm">{ri.pasien}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {ri.signa && (
+                                                <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-xl border border-amber-100">
+                                                    <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                        <Icon name="file-prescription" className="text-amber-600 text-sm" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wider mb-0.5">Signa</p>
+                                                        <p className="font-bold text-slate-800 text-sm">{ri.signa}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {ri.catatan && (
+                                                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Catatan</p>
+                                                    <p className="text-sm text-slate-700">{ri.catatan}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                        {/* Bahan Racikan */}
+                                        {bahan.length > 0 && (
+                                            <div className="px-5 pb-5">
+                                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Komposisi Bahan ({bahan.length} item)</p>
+                                                <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100">
+                                                    {bahan.map((b, i) => (
+                                                        <div key={i} className="flex items-center justify-between px-3 py-2.5 bg-white">
+                                                            <p className="text-sm font-bold text-slate-700 truncate flex-1 mr-2">{b.name}</p>
+                                                            <span className="text-xs font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full flex-shrink-0">{b.qty} {b.selectedUnit || b.unit}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="px-5 py-4 border-t border-slate-100">
+                                        <button onClick={() => setRacikanInfoModal(null)} className="w-full py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm active:scale-95 transition-all">Tutup</button>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
+
                     <ConfirmModal isOpen={returModal.show} title="Retur Barang" message={`Berapa banyak "${returModal.item?.name}" yang ingin diretur? Stok akan kembali ke toko asal.`} onConfirm={handleProcessRetur} onCancel={() => setReturModal({ show: false, tx: null, item: null, index: -1 })} confirmText={processingRetur ? "Memproses..." : "Konfirmasi Retur"}> {returModal.item && (<div className="bg-slate-50 p-4 rounded-xl border border-slate-200"><div className="flex items-center justify-between"><button onClick={() => setQtyToRetur(Math.max(1, qtyToRetur - 1))} className="w-10 h-10 bg-white border border-slate-300 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100"><Icon name="minus" /></button><div className="flex flex-col items-center"><span className="text-2xl font-black text-slate-800">{qtyToRetur}</span><span className="text-[10px] text-slate-400 font-bold uppercase">Maks: {returModal.max}</span></div><button onClick={() => setQtyToRetur(Math.min(returModal.max, qtyToRetur + 1))} className="w-10 h-10 bg-white border border-slate-300 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100"><Icon name="plus" /></button></div><div className="mt-3 text-center"><p className="text-xs text-slate-500">Nilai Pengembalian:</p><p className="text-lg font-bold text-red-600">{formatRupiah(qtyToRetur * returModal.item.price)}</p></div></div>)}</ConfirmModal>
                 </div>
             );
