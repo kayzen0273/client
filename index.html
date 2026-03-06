@@ -8166,21 +8166,22 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
             };
 
             // ── Presence tracking ──
+            // Gunakan sessionId unik per tab browser sebagai doc key presence
             const _sessionId = React.useRef((() => {
                 let sid = sessionStorage.getItem('_husna_sid');
                 if (!sid) { sid = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); sessionStorage.setItem('_husna_sid', sid); }
                 return sid;
             })());
             useEffect(() => {
-                if (!user || !window.db) return;
+                if (!authSession?.id || !window.db) return;
                 const AID = window.appId || 'default-app-id';
                 const presRef = window.doc(window.db, 'artifacts', AID, 'public', 'data', 'presence', _sessionId.current);
                 const writePresence = (online) => window.setDoc(presRef, {
                     sessionId: _sessionId.current,
-                    uid: user.uid,
-                    username: authSession?.username || 'guest',
-                    namaLengkap: authSession?.namaLengkap || 'Tamu',
-                    role: authSession?.role || 'viewer',
+                    accountId: authSession.id,         // ID akun permanen
+                    username: authSession.username || 'guest',
+                    namaLengkap: authSession.namaLengkap || 'Tamu',
+                    role: authSession.role || 'viewer',
                     lastSeen: window.serverTimestamp(),
                     online,
                 }, { merge: true }).catch(()=>{});
@@ -8193,32 +8194,38 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                     window.removeEventListener('beforeunload', handleUnload);
                     writePresence(false);
                 };
-            }, [user?.uid]);
+            }, [authSession?.id]);
 
-            // ── Feedback listener for own thread ──
+            // ── Feedback: gunakan authSession.id sebagai kunci dokumen ──
+            // Dengan ini, Akun A selalu baca/tulis ke doc yang SAMA dari browser/device manapun.
+            // Akun B punya doc terpisah → chat tidak pernah tercampur.
+            const _feedbackId = authSession?.id || null;
+
             useEffect(() => {
-                if (!user || !window.db) return;
+                if (!_feedbackId || !window.db) return;
                 const AID = window.appId || 'default-app-id';
-                const fbRef = window.doc(window.db, 'artifacts', AID, 'public', 'data', 'feedback', user.uid);
+                const fbRef = window.doc(window.db, 'artifacts', AID, 'public', 'data', 'feedback', _feedbackId);
                 const unsub = window.onSnapshot(fbRef, snap => {
                     if (snap.exists()) {
-                        const data = snap.data();
-                        const msgs = data.messages || [];
+                        const d = snap.data();
+                        const msgs = d.messages || [];
                         setMyMessages(msgs);
-                        // Count unread admin replies
                         const unreadAdmin = msgs.filter(m => m.role === 'admin' && !m.readByUser).length;
                         setAdminUnread(unreadAdmin);
+                    } else {
+                        setMyMessages([]);
+                        setAdminUnread(0);
                     }
                 }, ()=>{});
                 return () => unsub();
-            }, [user?.uid]);
+            }, [_feedbackId]);
 
-            // Mark admin replies as read when feedback tab opened
+            // Buka tab feedback → tandai balasan admin sebagai sudah dibaca
             const handleOpenFeedbackTab = async () => {
                 setBellTab('feedback');
-                if (adminUnread > 0 && user && window.db) {
+                if (adminUnread > 0 && _feedbackId && window.db) {
                     const AID = window.appId || 'default-app-id';
-                    const fbRef = window.doc(window.db, 'artifacts', AID, 'public', 'data', 'feedback', user.uid);
+                    const fbRef = window.doc(window.db, 'artifacts', AID, 'public', 'data', 'feedback', _feedbackId);
                     const updated = myMessages.map(m => m.role === 'admin' ? { ...m, readByUser: true } : m);
                     await window.setDoc(fbRef, { messages: updated }, { merge: true }).catch(()=>{});
                     setAdminUnread(0);
@@ -8226,11 +8233,11 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
             };
 
             const sendFeedback = async () => {
-                if (!feedbackText.trim() || feedbackSending || !user || !window.db) return;
+                if (!feedbackText.trim() || feedbackSending || !_feedbackId || !window.db) return;
                 setFeedbackSending(true);
                 try {
                     const AID = window.appId || 'default-app-id';
-                    const fbRef = window.doc(window.db, 'artifacts', AID, 'public', 'data', 'feedback', user.uid);
+                    const fbRef = window.doc(window.db, 'artifacts', AID, 'public', 'data', 'feedback', _feedbackId);
                     const newMsg = {
                         id: 'msg_' + Date.now(),
                         role: 'user',
@@ -8241,14 +8248,14 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                     };
                     const updMsgs = [...myMessages, newMsg];
                     await window.setDoc(fbRef, {
-                        uid: user.uid,
-                        username: authSession?.username || 'guest',
-                        namaLengkap: authSession?.namaLengkap || 'Tamu',
-                        role: authSession?.role || 'viewer',
+                        accountId: _feedbackId,                        // kunci permanen per akun
+                        username: authSession.username || 'guest',
+                        namaLengkap: authSession.namaLengkap || 'Tamu',
+                        role: authSession.role || 'viewer',
                         messages: updMsgs,
                         lastMessage: feedbackText.trim(),
                         lastTime: new Date().toISOString(),
-                        adminUnread: (myMessages.filter(m=>m.role==='user'&&!m.readByAdmin).length) + 1,
+                        adminUnread: myMessages.filter(m => m.role === 'user' && !m.readByAdmin).length + 1,
                     }, { merge: true });
                     setFeedbackText('');
                 } catch(e) { console.error(e); }
