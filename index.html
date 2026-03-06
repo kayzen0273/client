@@ -3070,6 +3070,12 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
             const [showRacikanPage, setShowRacikanPage] = useState(false);
             const [racikanSearch, setRacikanSearch] = useState('');
             const [racikanModal, setRacikanModal] = useState({ show: false, item: null, qty: 1, selectedUnit: '', selectedPrice: 0, uangR: '' });
+            const [racikanForm, setRacikanForm] = useState({
+                dokter: '', pasien: '', signa: '', catatan: '',
+                budD: '', budM: '', budY: '',
+                uangR: '', items: []
+            });
+            const [racikanItemSearch, setRacikanItemSearch] = useState('');
 
             useEffect(() => {
                 if (!user) return;
@@ -3487,31 +3493,62 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                 });
             };
 
+            const addRacikanItemToForm = () => {
+                const { item, qty, selectedUnit, selectedPrice } = racikanModal;
+                const finalQty = parseInt(qty) || 1;
+                if (!item || finalQty < 1) { showToast("Lengkapi data!", "error"); return; }
+                setRacikanForm(f => {
+                    const existing = f.items.find(i => i.id === item.id && i.selectedUnit === selectedUnit && i.price === selectedPrice);
+                    if (existing) {
+                        return { ...f, items: f.items.map(i => i.id === item.id && i.selectedUnit === selectedUnit && i.price === selectedPrice
+                            ? { ...i, qty: i.qty + finalQty } : i) };
+                    }
+                    return { ...f, items: [...f.items, { ...item, qty: finalQty, selectedUnit, price: selectedPrice }] };
+                });
+                setRacikanModal({ show: false, item: null, qty: 1, selectedUnit: '', selectedPrice: 0, uangR: '' });
+                setRacikanItemSearch('');
+                showToast(`${item.name} ditambahkan`);
+            };
+
             const addRacikanToCart = () => {
                 const { item, qty, selectedUnit, selectedPrice, uangR } = racikanModal;
                 const finalQty = parseInt(qty) || 1;
                 if (!item || finalQty < 1) { showToast("Lengkapi data!", "error"); return; }
                 setCart(prev => {
-                    // Racikan items dibedakan dengan flag isRacikan; bisa ada duplikat nama berbeda unit/harga
                     const existing = prev.find(c => c.id === item.id && c.selectedUnit === selectedUnit && c.price === selectedPrice && c.isRacikan);
                     if (existing) {
                         return prev.map(c => (c.id === item.id && c.selectedUnit === selectedUnit && c.price === selectedPrice && c.isRacikan)
-                            ? { ...c, cartQty: c.cartQty + finalQty }
-                            : c);
+                            ? { ...c, cartQty: c.cartQty + finalQty } : c);
                     }
-                    return [...prev, {
-                        ...item,
-                        cartQty: finalQty,
-                        price: selectedPrice,
-                        selectedUnit: selectedUnit,
-                        originalPrice: selectedPrice,
-                        discount: null,
-                        isRacikan: true,
-                        uangR: uangR ? parseInt(uangR) || 0 : 0
-                    }];
+                    return [...prev, { ...item, cartQty: finalQty, price: selectedPrice, selectedUnit, originalPrice: selectedPrice, discount: null, isRacikan: true, uangR: uangR ? parseInt(uangR) || 0 : 0 }];
                 });
                 setRacikanModal({ show: false, item: null, qty: 1, selectedUnit: '', selectedPrice: 0, uangR: '' });
                 showToast(`${item.name} ditambahkan ke keranjang`);
+            };
+
+            const simpanRacikan = () => {
+                if (racikanForm.items.length === 0) { showToast("Belum ada barang racikan!", "error"); return; }
+                const racikanLabel = `Racikan (${racikanForm.items.length} item)${racikanForm.pasien ? ' - ' + racikanForm.pasien : ''}`;
+                const subtotal = racikanForm.items.reduce((s, i) => s + (i.price * i.qty), 0);
+                const uangR = parseInt(racikanForm.uangR) || 0;
+                // Tambahkan setiap item racikan ke cart
+                racikanForm.items.forEach(ri => {
+                    setCart(prev => {
+                        const existing = prev.find(c => c.id === ri.id && c.selectedUnit === ri.selectedUnit && c.price === ri.price && c.isRacikan);
+                        if (existing) {
+                            return prev.map(c => (c.id === ri.id && c.selectedUnit === ri.selectedUnit && c.price === ri.price && c.isRacikan)
+                                ? { ...c, cartQty: c.cartQty + ri.qty } : c);
+                        }
+                        return [...prev, { ...ri, cartQty: ri.qty, originalPrice: ri.price, discount: null, isRacikan: true,
+                            racikanInfo: { dokter: racikanForm.dokter, pasien: racikanForm.pasien, signa: racikanForm.signa, catatan: racikanForm.catatan, uangR },
+                            selectedUnit: ri.selectedUnit }];
+                    });
+                });
+                // Reset form
+                setRacikanForm({ dokter: '', pasien: '', signa: '', catatan: '', budD: '', budM: '', budY: '', uangR: '', items: [] });
+                setRacikanItemSearch('');
+                setShowRacikanPage(false);
+                showToast(`Racikan (${racikanForm.items.length} barang) ditambahkan ke keranjang ✅`);
             };
 
             const removeFromCart = (id, selectedUnit = null, price = null) => {
@@ -4143,184 +4180,288 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                     {/* ===== RACIKAN PAGE OVERLAY ===== */}
                     {showRacikanPage && (() => {
                         const racikanFuse = new Fuse(items, { keys: ['name', 'rack'], threshold: 0.3 });
-                        const racikanItems = racikanSearch ? racikanFuse.search(racikanSearch).map(r => r.item).slice(0, 30) : [];
+                        const racikanSearchResults = racikanItemSearch ? racikanFuse.search(racikanItemSearch).map(r => r.item).slice(0, 20) : [];
+                        const racikanSubtotal = racikanForm.items.reduce((s, i) => s + (i.price * i.qty), 0);
+                        const uangRVal = parseInt(racikanForm.uangR) || 0;
+                        const racikanTotal = racikanSubtotal + uangRVal;
                         return (
                             <div className="fixed inset-0 z-[90] bg-white flex flex-col fade-in">
                                 {/* Header */}
-                                <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 bg-white shadow-sm">
-                                    <button onClick={() => { setShowRacikanPage(false); setRacikanSearch(''); }} className="w-9 h-9 flex items-center justify-center rounded-xl text-teal-600 hover:bg-teal-50 transition-colors">
-                                        <Icon name="arrow-left" className="text-xl" />
+                                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white">
+                                    <button onClick={() => { setShowRacikanPage(false); setRacikanItemSearch(''); }} className="w-8 h-8 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                                        <Icon name="xmark" className="text-xl" />
                                     </button>
-                                    <div className="flex items-center gap-2 flex-1">
-                                        <div className="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center text-white font-black text-sm">R/</div>
-                                        <div>
-                                            <h2 className="font-bold text-slate-800 text-sm leading-none">Pelayanan Racikan</h2>
-                                            <p className="text-[10px] text-slate-400 mt-0.5">Cari & tambah barang yang diresepkan</p>
-                                        </div>
-                                    </div>
-                                    <span className="text-xs font-bold bg-teal-100 text-teal-700 px-2 py-1 rounded-full">{cart.filter(c => c.isRacikan).length} R/</span>
+                                    <span className="text-sm font-bold text-slate-600">#{new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'2-digit'}).replace(/\//g,'')+Math.floor(Math.random()*9000+1000)}</span>
+                                    <button onClick={simpanRacikan} className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-lg shadow active:scale-95 transition-all">
+                                        Simpan
+                                    </button>
                                 </div>
 
-                                {/* Search */}
-                                <div className="px-4 py-3 border-b border-slate-100">
-                                    <div className="relative">
-                                        <input
-                                            autoFocus
-                                            type="text"
-                                            placeholder="Cari barang racikan..."
-                                            className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none font-medium text-slate-700 placeholder:text-slate-400"
-                                            value={racikanSearch}
-                                            onChange={e => setRacikanSearch(e.target.value)}
-                                        />
-                                        <Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                        {racikanSearch && <button onClick={() => setRacikanSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"><Icon name="xmark" /></button>}
+                                {/* Scrollable body */}
+                                <div className="flex-1 overflow-y-auto">
+                                    {/* Title */}
+                                    <div className="px-5 pt-5 pb-3">
+                                        <h1 className="text-2xl font-black text-slate-800">Racikan {cart.filter(c=>c.isRacikan).length + 1}</h1>
                                     </div>
-                                </div>
 
-                                {/* Items List */}
-                                <div className="flex-1 overflow-y-auto px-4 py-3">
-                                    {racikanSearch === '' ? (
-                                        <div className="h-full flex flex-col items-center justify-center text-slate-300 py-16">
-                                            <div className="w-16 h-16 bg-teal-50 rounded-2xl flex items-center justify-center text-teal-300 text-3xl font-black mb-3">R/</div>
-                                            <p className="font-semibold text-slate-400">Ketik nama barang resep...</p>
-                                            <p className="text-xs text-slate-300 mt-1">Stok dari: {currentProfile.name}</p>
+                                    {/* Info R/ */}
+                                    <div className="px-5 pb-2">
+                                        <h2 className="text-base font-bold text-slate-800 mb-3">Info R/</h2>
+                                        <div className="divide-y divide-slate-100 border-t border-b border-slate-100">
+                                            <div className="flex items-center justify-between py-3.5">
+                                                <span className="text-sm font-medium text-slate-700">Dokter</span>
+                                                <div className="flex items-center gap-1">
+                                                    {racikanForm.dokter
+                                                        ? <span className="text-sm font-bold text-teal-600">{racikanForm.dokter}</span>
+                                                        : <span className="text-sm font-bold text-teal-600">Pilih</span>
+                                                    }
+                                                    <Icon name="chevron-right" className="text-teal-500 text-sm" />
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-between py-3.5">
+                                                <span className="text-sm font-medium text-slate-700">Pasien</span>
+                                                <div className="flex items-center gap-1">
+                                                    {racikanForm.pasien
+                                                        ? <span className="text-sm font-bold text-teal-600">{racikanForm.pasien}</span>
+                                                        : <span className="text-sm font-bold text-teal-600">Pilih</span>
+                                                    }
+                                                    <Icon name="chevron-right" className="text-teal-500 text-sm" />
+                                                </div>
+                                            </div>
                                         </div>
-                                    ) : racikanItems.length === 0 ? (
-                                        <div className="py-10 text-center text-slate-400 text-sm">Barang tidak ditemukan</div>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            {racikanItems.map(item => {
-                                                const inCart = cart.find(c => c.id === item.id && c.isRacikan);
-                                                return (
-                                                    <button
-                                                        key={item.id}
-                                                        onClick={() => openRacikanItem(item)}
-                                                        className="w-full text-left p-3 rounded-xl border border-slate-100 bg-white hover:border-teal-300 hover:bg-teal-50 transition-all active:scale-[0.98] shadow-sm flex items-center gap-3"
-                                                    >
-                                                        <div className="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center text-teal-600 text-xs font-black flex-shrink-0">R/</div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className="font-bold text-slate-800 text-sm truncate">{item.name}</p>
-                                                            <p className="text-[11px] text-slate-400">Stok: {item.qty} {item.unit} · {formatRupiah(item.price)}</p>
-                                                        </div>
-                                                        {inCart && <span className="text-[10px] font-bold bg-teal-500 text-white px-2 py-0.5 rounded-full flex-shrink-0">{inCart.cartQty}x</span>}
-                                                        <Icon name="chevron-right" className="text-slate-300 flex-shrink-0" />
+                                    </div>
+
+                                    {/* Daftar Barang */}
+                                    <div className="px-5 pt-5 pb-2">
+                                        <h2 className="text-base font-bold text-slate-800 mb-3">Daftar Barang</h2>
+
+                                        {/* Search */}
+                                        <div className="relative mb-3">
+                                            <Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                                            <input
+                                                type="text"
+                                                placeholder="Cari barang"
+                                                value={racikanItemSearch}
+                                                onChange={e => setRacikanItemSearch(e.target.value)}
+                                                className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none text-sm text-slate-700 placeholder:text-slate-400"
+                                            />
+                                            {racikanItemSearch && <button onClick={() => setRacikanItemSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"><Icon name="xmark" /></button>}
+                                        </div>
+
+                                        {/* Search results dropdown */}
+                                        {racikanItemSearch && (
+                                            <div className="mb-3 border border-slate-200 rounded-xl overflow-hidden shadow-lg">
+                                                {racikanSearchResults.length === 0
+                                                    ? <div className="p-4 text-center text-sm text-slate-400">Barang tidak ditemukan</div>
+                                                    : racikanSearchResults.map(item => (
+                                                        <button key={item.id} onClick={() => openRacikanItem(item)}
+                                                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-teal-50 border-b border-slate-100 last:border-0 transition-colors text-left">
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="font-bold text-sm text-slate-800 truncate">{item.name}</p>
+                                                                <p className="text-[11px] text-slate-400">Stok {item.qty} {item.unit} · {formatRupiah(item.price)}</p>
+                                                            </div>
+                                                            <span className="text-xs font-bold text-teal-600 flex-shrink-0">+ Tambah</span>
+                                                        </button>
+                                                    ))
+                                                }
+                                            </div>
+                                        )}
+
+                                        {/* Table header */}
+                                        <div className="flex justify-between px-1 mb-1">
+                                            <span className="text-xs font-bold text-slate-700">Barang</span>
+                                            <span className="text-xs font-bold text-slate-700">Subtotal</span>
+                                        </div>
+                                        <div className="border border-slate-200 rounded-xl overflow-hidden">
+                                            {racikanForm.items.length === 0 ? (
+                                                <div className="py-10 px-4 flex flex-col items-center justify-center gap-2 text-slate-300">
+                                                    <div className="flex gap-2 text-4xl opacity-40">
+                                                        <Icon name="circle-half-stroke" />
+                                                        <Icon name="leaf" />
+                                                    </div>
+                                                    <p className="text-sm font-bold text-slate-400 mt-1">Belum ada barang pada resep ini</p>
+                                                    <button onClick={() => { const el = document.querySelector('.racikan-search-input'); if(el) el.focus(); setRacikanItemSearch(' '); setTimeout(() => setRacikanItemSearch(''), 10); }}
+                                                        className="mt-2 px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-lg active:scale-95 transition-all flex items-center gap-2">
+                                                        <Icon name="plus" /> Barang
                                                     </button>
-                                                );
-                                            })}
+                                                </div>
+                                            ) : (
+                                                <div className="divide-y divide-slate-100">
+                                                    {racikanForm.items.map((ri, idx) => (
+                                                        <div key={ri.id + idx} className="flex items-center gap-2 px-3 py-2.5">
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="font-bold text-sm text-slate-800 truncate">{ri.name}</p>
+                                                                <p className="text-[11px] text-slate-400">{formatRupiah(ri.price)} × {ri.qty} {ri.selectedUnit}</p>
+                                                            </div>
+                                                            <span className="text-sm font-bold text-slate-700 flex-shrink-0">{formatRupiah(ri.price * ri.qty)}</span>
+                                                            <button onClick={() => setRacikanForm(f => ({ ...f, items: f.items.filter((_,i) => i !== idx) }))}
+                                                                className="w-6 h-6 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 rounded flex-shrink-0">
+                                                                <Icon name="xmark" className="text-xs" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                    <div className="px-3 py-2">
+                                                        <button onClick={() => setRacikanItemSearch(' ')}
+                                                            className="w-full py-2 border border-dashed border-teal-300 text-teal-600 font-bold text-sm rounded-lg hover:bg-teal-50 transition-colors flex items-center justify-center gap-1">
+                                                            <Icon name="plus" /> Barang
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
+                                    </div>
+
+                                    {/* Signa */}
+                                    <div className="px-5 pt-4 pb-2">
+                                        <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+                                            <label className="text-sm font-medium text-slate-700 w-20 flex-shrink-0">Signa</label>
+                                            <input type="text" value={racikanForm.signa}
+                                                onChange={e => setRacikanForm(f => ({...f, signa: e.target.value}))}
+                                                className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-200 text-slate-800 font-medium"
+                                                placeholder=""
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Catatan */}
+                                    <div className="px-5 pt-2 pb-2">
+                                        <div className="flex gap-3 border-b border-slate-100 pb-3">
+                                            <label className="text-sm font-medium text-slate-700 w-20 flex-shrink-0 pt-2">Catatan</label>
+                                            <div className="flex-1">
+                                                <textarea rows={3} value={racikanForm.catatan}
+                                                    onChange={e => setRacikanForm(f => ({...f, catatan: e.target.value.slice(0,100)}))}
+                                                    placeholder="Contoh: obat luar, dikocok dahulu sebelum diminum, dll"
+                                                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-200 text-slate-800 resize-none placeholder:text-slate-400"
+                                                />
+                                                <div className="flex items-center gap-1 mt-1">
+                                                    <Icon name="circle-info" className="text-teal-500 text-xs" />
+                                                    <span className="text-[11px] text-slate-400 flex-1">Keterangan dipakai dalam etiket</span>
+                                                    <span className="text-[11px] text-slate-400">{racikanForm.catatan.length}/100</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* BUD */}
+                                    <div className="px-5 pt-2 pb-2">
+                                        <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+                                            <label className="text-sm font-medium text-slate-700 w-20 flex-shrink-0">BUD</label>
+                                            <div className="flex gap-2 flex-1">
+                                                <input type="text" inputMode="numeric" placeholder="DD" maxLength={2}
+                                                    value={racikanForm.budD} onChange={e => setRacikanForm(f => ({...f, budD: e.target.value.replace(/[^0-9]/g,'')}))}
+                                                    className="w-14 border border-slate-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-teal-500 text-center font-medium text-slate-700"
+                                                />
+                                                <input type="text" inputMode="numeric" placeholder="MM" maxLength={2}
+                                                    value={racikanForm.budM} onChange={e => setRacikanForm(f => ({...f, budM: e.target.value.replace(/[^0-9]/g,'')}))}
+                                                    className="w-14 border border-slate-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-teal-500 text-center font-medium text-slate-700"
+                                                />
+                                                <input type="text" inputMode="numeric" placeholder="YYYY" maxLength={4}
+                                                    value={racikanForm.budY} onChange={e => setRacikanForm(f => ({...f, budY: e.target.value.replace(/[^0-9]/g,'')}))}
+                                                    className="w-20 border border-slate-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-teal-500 text-center font-medium text-slate-700"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Atur pengingat */}
+                                    <div className="px-5 pt-2 pb-2">
+                                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                                            <span className="text-sm font-medium text-slate-700">Atur pengingat obat habis</span>
+                                            <button className="flex items-center gap-1 text-teal-600 font-bold text-sm">
+                                                Atur <Icon name="calendar-days" className="text-sm" />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Subtotal & Uang R/ & Total */}
+                                    <div className="px-5 pt-2 pb-4 divide-y divide-slate-100">
+                                        <div className="flex items-center justify-between py-3">
+                                            <span className="text-sm font-medium text-slate-700">Subtotal</span>
+                                            <span className="text-sm font-bold text-slate-800">{racikanSubtotal > 0 ? formatRupiah(racikanSubtotal) : '0'}</span>
+                                        </div>
+                                        <div className="flex items-center gap-3 py-3">
+                                            <span className="text-sm font-medium text-slate-700 w-20 flex-shrink-0">Uang R/</span>
+                                            <div className="flex gap-2 flex-1 items-center">
+                                                <div className="flex items-center gap-1 border border-slate-200 rounded-lg px-3 py-2 bg-white">
+                                                    <span className="text-sm font-bold text-slate-600">Rp</span>
+                                                    <Icon name="chevron-down" className="text-slate-400 text-xs" />
+                                                </div>
+                                                <input type="text" inputMode="numeric" value={racikanForm.uangR}
+                                                    onChange={e => setRacikanForm(f => ({...f, uangR: e.target.value.replace(/[^0-9]/g,'')}))}
+                                                    placeholder="0"
+                                                    className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 font-bold text-slate-800 text-right"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-between py-3">
+                                            <span className="text-sm font-bold text-slate-800">Total</span>
+                                            <span className="text-base font-black text-slate-800">{racikanTotal > 0 ? formatRupiah(racikanTotal) : '0'}</span>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                {/* Footer: lihat keranjang */}
-                                {cart.filter(c => c.isRacikan).length > 0 && (
-                                    <div className="px-4 py-3 border-t border-slate-100 bg-slate-50">
-                                        <button
-                                            onClick={() => setShowRacikanPage(false)}
-                                            className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
-                                        >
-                                            <Icon name="cart-shopping" />
-                                            Lihat Keranjang ({cart.filter(c => c.isRacikan).length} barang R/)
-                                        </button>
-                                    </div>
-                                )}
+                                {/* Bottom: Hapus */}
+                                <div className="px-5 py-4 border-t border-slate-100">
+                                    <button onClick={() => { setRacikanForm({ dokter:'', pasien:'', signa:'', catatan:'', budD:'', budM:'', budY:'', uangR:'', items:[] }); setRacikanItemSearch(''); }}
+                                        className="flex items-center gap-2 text-red-500 font-bold text-sm hover:text-red-700 transition-colors">
+                                        <Icon name="trash" /> Hapus
+                                    </button>
+                                </div>
                             </div>
                         );
                     })()}
 
-                    {/* ===== RACIKAN ITEM DETAIL MODAL (mirip screenshot ke-2) ===== */}
+                    {/* ===== RACIKAN ITEM DETAIL MODAL ===== */}
                     {racikanModal.show && racikanModal.item && (
                         <div className="fixed inset-0 z-[95] flex flex-col bg-white fade-in">
-                            {/* Header */}
                             <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200">
-                                <button
-                                    onClick={() => setRacikanModal({ show: false, item: null, qty: 1, selectedUnit: '', selectedPrice: 0, uangR: '' })}
-                                    className="text-teal-600 hover:text-teal-800 transition-colors"
-                                >
+                                <button onClick={() => setRacikanModal({ show: false, item: null, qty: 1, selectedUnit: '', selectedPrice: 0, uangR: '' })} className="text-slate-500 hover:text-slate-700 transition-colors">
                                     <Icon name="arrow-left" className="text-xl" />
                                 </button>
                                 <h3 className="font-bold text-slate-600 text-sm">#{racikanModal.item.id?.slice(-10) || 'ITEM'}</h3>
                             </div>
-
-                            {/* Content */}
                             <div className="flex-1 overflow-y-auto p-5">
-                                {/* Nama & Stok */}
                                 <div className="mb-6 border-b border-slate-100 pb-4">
                                     <h2 className="text-2xl font-black text-slate-800 mb-1">{racikanModal.item.name}</h2>
                                     <p className="text-sm text-slate-500">Stok {racikanModal.item.qty} {racikanModal.item.unit}</p>
                                 </div>
-
-                                {/* Total harga */}
                                 <div className="mb-6 text-right">
                                     <p className="text-sm text-slate-400">{racikanModal.qty || 1} x {formatRupiah(racikanModal.selectedPrice)}</p>
                                     <p className="text-3xl font-black text-slate-800">{formatRupiah(racikanModal.selectedPrice * (parseInt(racikanModal.qty) || 1))}</p>
                                 </div>
-
-                                {/* Jumlah */}
                                 <div className="mb-5">
                                     <label className="text-sm font-bold text-slate-700 mb-2 block">Jumlah</label>
                                     <div className="flex gap-3">
-                                        <input
-                                            type="text"
-                                            inputMode="numeric"
-                                            value={racikanModal.qty}
-                                            onChange={e => {
-                                                const val = e.target.value.replace(/[^0-9]/g, '');
-                                                setRacikanModal(m => ({ ...m, qty: val === '' ? '' : Math.max(1, parseInt(val)) }));
-                                            }}
-                                            onBlur={() => setRacikanModal(m => ({ ...m, qty: parseInt(m.qty) || 1 }))}
+                                        <input type="text" inputMode="numeric" value={racikanModal.qty}
+                                            onChange={e => { const v = e.target.value.replace(/[^0-9]/g,''); setRacikanModal(m => ({...m, qty: v===''?'':Math.max(1,parseInt(v))})); }}
+                                            onBlur={() => setRacikanModal(m => ({...m, qty: parseInt(m.qty)||1}))}
                                             className="flex-1 p-3 rounded-xl border-2 border-slate-200 focus:border-teal-500 outline-none font-bold text-slate-800 text-center text-xl"
                                         />
                                         <div className="relative w-36">
-                                            <select
-                                                value={`${racikanModal.selectedUnit}|${racikanModal.selectedPrice}`}
-                                                onChange={e => {
-                                                    const [unit, price] = e.target.value.split('|');
-                                                    setRacikanModal(m => ({ ...m, selectedUnit: unit, selectedPrice: parseFloat(price) }));
-                                                }}
-                                                className="w-full p-3 rounded-xl border-2 border-slate-200 focus:border-teal-500 outline-none appearance-none font-bold text-slate-700 bg-white"
-                                            >
-                                                {racikanModal.item.price > 0 && (
-                                                    <option value={`${racikanModal.item.unit}|${racikanModal.item.price}`}>
-                                                        {racikanModal.item.unit}
-                                                    </option>
-                                                )}
+                                            <select value={`${racikanModal.selectedUnit}|${racikanModal.selectedPrice}`}
+                                                onChange={e => { const [u,p] = e.target.value.split('|'); setRacikanModal(m => ({...m, selectedUnit: u, selectedPrice: parseFloat(p)})); }}
+                                                className="w-full p-3 rounded-xl border-2 border-slate-200 focus:border-teal-500 outline-none appearance-none font-bold text-slate-700 bg-white">
+                                                {racikanModal.item.price > 0 && <option value={`${racikanModal.item.unit}|${racikanModal.item.price}`}>{racikanModal.item.unit}</option>}
                                             </select>
                                             <Icon name="chevron-down" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                         </div>
                                     </div>
                                 </div>
-
-                                {/* Uang R/ (opsional) */}
                                 <div className="mb-6">
                                     <label className="text-sm font-bold text-slate-700 block">Uang R/ <span className="text-slate-400 font-normal">(opsional)</span></label>
                                     <p className="text-[11px] text-slate-400 mb-2">Disembunyikan pada struk</p>
                                     <div className="flex gap-3">
-                                        <div className="relative w-24">
-                                            <div className="w-full p-3 rounded-xl border-2 border-slate-200 font-bold text-slate-500 bg-slate-50 flex items-center justify-between">
-                                                Rp <Icon name="chevron-down" className="text-slate-300 text-xs" />
-                                            </div>
-                                        </div>
-                                        <input
-                                            type="text"
-                                            inputMode="numeric"
-                                            value={racikanModal.uangR}
-                                            onChange={e => {
-                                                const val = e.target.value.replace(/[^0-9]/g, '');
-                                                setRacikanModal(m => ({ ...m, uangR: val }));
-                                            }}
+                                        <div className="w-24 p-3 rounded-xl border-2 border-slate-200 font-bold text-slate-500 bg-slate-50 flex items-center justify-between">Rp <Icon name="chevron-down" className="text-slate-300 text-xs" /></div>
+                                        <input type="text" inputMode="numeric" value={racikanModal.uangR}
+                                            onChange={e => setRacikanModal(m => ({...m, uangR: e.target.value.replace(/[^0-9]/g,'')}))}
                                             placeholder=""
                                             className="flex-1 p-3 rounded-xl border-2 border-slate-200 focus:border-teal-500 outline-none font-bold text-slate-800"
                                         />
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Footer */}
                             <div className="px-5 py-4 border-t border-slate-100">
-                                <button
-                                    onClick={addRacikanToCart}
-                                    className="w-full py-4 bg-teal-600 hover:bg-teal-700 text-white font-black text-base rounded-2xl shadow-lg active:scale-95 transition-all"
-                                >
+                                <button onClick={addRacikanItemToForm} className="w-full py-4 bg-teal-600 hover:bg-teal-700 text-white font-black text-base rounded-2xl shadow-lg active:scale-95 transition-all">
                                     Tambahkan
                                 </button>
                             </div>
