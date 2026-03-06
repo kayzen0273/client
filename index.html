@@ -247,6 +247,22 @@
         // --- CHANGELOG / NOTIFIKASI UPDATE ---
         const CHANGELOG = [
             {
+                id: 'v48_1',
+                version: 'v48.1',
+                date: '07 Mar 2025',
+                title: 'Kirim Pesan & Laporan ke Admin',
+                tag: 'Fitur Baru',
+                tagColor: 'bg-green-100 text-green-700',
+                icon: 'comments',
+                items: [
+                    '💬 Kini kamu bisa kirim pesan langsung ke admin lewat lonceng notifikasi',
+                    '🐛 Lapor bug atau masalah teknis yang kamu temui',
+                    '💡 Kirim masukkan & saran untuk pengembangan sistem',
+                    '✨ Request fitur baru yang kamu butuhkan',
+                    '📩 Admin akan membalas pesanmu langsung di panel yang sama',
+                ]
+            },
+            {
                 id: 'v47_10',
                 version: 'v47.10',
                 date: '06 Mar 2025',
@@ -8782,7 +8798,7 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                                                     </div>
                                                 </div>
                                             ))}
-                                            <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100"><p className="text-[10px] text-center text-slate-400 font-bold">Sistem Kasir Toko Husna • Selalu diperbarui 🚀</p></div>
+                                            <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100"><p className="text-[10px] text-center text-slate-400 font-bold">Sistem Kasir Toko Husna • Selalu diperbarui 🚀</p><p className="text-[10px] text-center text-sky-400 font-bold mt-0.5">💬 Ada masukkan? Gunakan tab <b>Pesan &amp; Lapor</b> untuk hubungi admin!</p></div>
                                         </div>
                                     )}
 
