@@ -8117,15 +8117,35 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
             const [readChangelogs, setReadChangelogs] = useState(() => {
                 try { return JSON.parse(localStorage.getItem(CHANGELOG_STORAGE_KEY) || '[]'); } catch { return []; }
             });
-            const [liveChangelog, setLiveChangelog] = useState(() => getLiveChangelog());
-            // Poll localStorage setiap 5 detik agar update dari admin panel langsung muncul
+            const [liveChangelog, setLiveChangelog] = useState(CHANGELOG);
+
+            // Firestore real-time listener untuk changelog notifikasi (dari admin panel)
             React.useEffect(() => {
-                const interval = setInterval(() => {
-                    setLiveChangelog(getLiveChangelog());
-                    try { setReadChangelogs(JSON.parse(localStorage.getItem(CHANGELOG_STORAGE_KEY) || '[]')); } catch {}
-                }, 5000);
-                return () => clearInterval(interval);
+                if (!window.db) return;
+                const COLL = ['artifacts', window.appId || 'default-app-id', 'public', 'data', 'changelog'];
+                const collRef = window.collection(window.db, ...COLL);
+                const q = window.query(collRef, window.orderBy('position', 'asc'));
+                let unsub;
+                // Coba dengan orderBy, fallback tanpa index
+                try {
+                    unsub = window.onSnapshot(q, snap => {
+                        if (!snap.empty) {
+                            setLiveChangelog(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                        }
+                    }, () => {
+                        // fallback tanpa orderBy
+                        unsub = window.onSnapshot(collRef, snap => {
+                            if (!snap.empty) {
+                                const sorted = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+                                    .sort((a, b) => (a.position ?? 99) - (b.position ?? 99));
+                                setLiveChangelog(sorted);
+                            }
+                        });
+                    });
+                } catch(e) { /* gunakan CHANGELOG bawaan */ }
+                return () => unsub && unsub();
             }, []);
+
             const unreadCount = liveChangelog.filter(c => !readChangelogs.includes(c.id)).length;
             const handleOpenNotif = () => {
                 setShowNotifPanel(true);
