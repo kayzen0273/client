@@ -3093,6 +3093,8 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
             const [newPasienAge, setNewPasienAge] = useState('');
             const [savingDokter, setSavingDokter] = useState(false);
             const [savingPasien, setSavingPasien] = useState(false);
+            const [editingDokter, setEditingDokter] = useState(null); // { id, name }
+            const [editingPasien, setEditingPasien] = useState(null); // { id, name, age }
 
             // Load daftar dokter & pasien dari Firestore
             useEffect(() => {
@@ -3108,25 +3110,49 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                 return () => { unsubDokter(); unsubPasien(); };
             }, [user]);
 
-            const saveDokter = async (name) => {
+            const saveDokter = async (name, editId = null) => {
                 if (!name.trim()) return;
-                const exists = dokterList.find(d => d.name.toLowerCase() === name.trim().toLowerCase());
-                if (!exists) {
-                    await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'dokter_list'), { name: name.trim(), createdAt: window.serverTimestamp() });
+                if (editId) {
+                    await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'dokter_list', editId), { name: name.trim() });
+                    showToast('Data dokter diperbarui');
+                } else {
+                    const exists = dokterList.find(d => d.name.toLowerCase() === name.trim().toLowerCase());
+                    if (!exists) {
+                        await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'dokter_list'), { name: name.trim(), createdAt: window.serverTimestamp() });
+                    }
+                    setRacikanForm(f => ({ ...f, dokter: name.trim() }));
+                    setDokterInput(''); setDokterSearch(''); setShowDokterPicker(false);
                 }
-                setRacikanForm(f => ({ ...f, dokter: name.trim() }));
-                setDokterInput(''); setDokterSearch(''); setShowDokterPicker(false);
             };
 
-            const savePasien = async (name, age) => {
+            const deleteDokter = async (id) => {
+                try {
+                    await window.deleteDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'dokter_list', id));
+                    showToast('Dokter dihapus');
+                } catch (e) { showToast('Gagal hapus', 'error'); }
+            };
+
+            const savePasien = async (name, age, editId = null) => {
                 if (!name.trim()) return;
-                const exists = pasienList.find(p => p.name.toLowerCase() === name.trim().toLowerCase());
-                if (!exists) {
-                    await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'pasien_list'), { name: name.trim(), age: age || '', createdAt: window.serverTimestamp() });
+                if (editId) {
+                    await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'pasien_list', editId), { name: name.trim(), age: age || '' });
+                    showToast('Data pasien diperbarui');
+                } else {
+                    const exists = pasienList.find(p => p.name.toLowerCase() === name.trim().toLowerCase());
+                    if (!exists) {
+                        await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'pasien_list'), { name: name.trim(), age: age || '', createdAt: window.serverTimestamp() });
+                    }
+                    const label = age ? `${name.trim()}, ${age}` : name.trim();
+                    setRacikanForm(f => ({ ...f, pasien: label }));
+                    setPasienInput(''); setPasienAge(''); setPasienSearch(''); setShowPasienPicker(false);
                 }
-                const label = age ? `${name.trim()}, ${age}` : name.trim();
-                setRacikanForm(f => ({ ...f, pasien: label }));
-                setPasienInput(''); setPasienAge(''); setPasienSearch(''); setShowPasienPicker(false);
+            };
+
+            const deletePasien = async (id) => {
+                try {
+                    await window.deleteDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'pasien_list', id));
+                    showToast('Pasien dihapus');
+                } catch (e) { showToast('Gagal hapus', 'error'); }
             };
 
             useEffect(() => {
@@ -4526,28 +4552,40 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                     {/* ===== DOKTER PICKER ===== */}
                     {showDokterPicker && (
                         <div className="fixed inset-0 z-[98] bg-white flex flex-col fade-in">
-                            {/* ---- FORM TAMBAH DOKTER ---- */}
+                            {/* ---- FORM TAMBAH / EDIT DOKTER ---- */}
                             {showAddDokterForm ? (
                                 <>
                                     <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 bg-white" style={{paddingTop: 'calc(env(safe-area-inset-top, 0px) + 68px)'}}>
-                                        <button onClick={() => { setShowAddDokterForm(false); setNewDokterName(''); }} className="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+                                        <button onClick={() => { setShowAddDokterForm(false); setNewDokterName(''); setEditingDokter(null); }} className="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
                                             <Icon name="arrow-left" className="text-xl" />
                                         </button>
-                                        <h2 className="font-black text-slate-800 text-lg flex-1">Tambah Dokter</h2>
+                                        <h2 className="font-black text-slate-800 text-lg flex-1">{editingDokter ? 'Edit Dokter' : 'Tambah Dokter'}</h2>
+                                        {editingDokter && (
+                                            <button onClick={async () => { if (window.confirm('Hapus dokter ini?')) { await deleteDokter(editingDokter.id); setShowAddDokterForm(false); setEditingDokter(null); setNewDokterName(''); } }}
+                                                className="w-9 h-9 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                                                <Icon name="trash" />
+                                            </button>
+                                        )}
                                     </div>
                                     <div className="flex-1 overflow-y-auto px-5 pt-8 pb-6">
                                         <div className="mb-6">
                                             <label className="block text-sm font-bold text-slate-700 mb-2">Nama Dokter <span className="text-red-500">*</span></label>
                                             <input autoFocus type="text" placeholder="cth: dr. Budi Santoso, Sp.PD" value={newDokterName}
                                                 onChange={e => setNewDokterName(e.target.value)}
-                                                onKeyDown={e => { if (e.key === 'Enter' && newDokterName.trim()) { setSavingDokter(true); saveDokter(newDokterName).finally(() => { setSavingDokter(false); setShowAddDokterForm(false); setNewDokterName(''); }); } }}
                                                 className="w-full border-2 border-slate-200 rounded-2xl px-4 py-3.5 text-sm font-medium outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all placeholder:text-slate-400" />
                                         </div>
                                         <button
                                             disabled={!newDokterName.trim() || savingDokter}
-                                            onClick={async () => { setSavingDokter(true); await saveDokter(newDokterName); setSavingDokter(false); setShowAddDokterForm(false); setNewDokterName(''); }}
+                                            onClick={async () => {
+                                                setSavingDokter(true);
+                                                await saveDokter(newDokterName, editingDokter?.id || null);
+                                                setSavingDokter(false);
+                                                setShowAddDokterForm(false);
+                                                setNewDokterName('');
+                                                setEditingDokter(null);
+                                            }}
                                             className="w-full py-4 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-black text-base rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2">
-                                            {savingDokter ? <div className="typing-dot bg-white"></div> : <><Icon name="floppy-disk" /> Simpan Dokter</>}
+                                            {savingDokter ? <div className="typing-dot bg-white"></div> : <><Icon name="floppy-disk" /> {editingDokter ? 'Simpan Perubahan' : 'Simpan Dokter'}</>}
                                         </button>
                                     </div>
                                 </>
@@ -4596,15 +4634,21 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                                             return (
                                                 <div className="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden">
                                                     {filtered.map(d => (
-                                                        <div key={d.id} className="flex items-center justify-between px-4 py-3.5 hover:bg-teal-50 transition-colors">
-                                                            <div className="flex items-center gap-3">
+                                                        <div key={d.id} className="flex items-center justify-between px-4 py-3.5 hover:bg-teal-50 transition-colors group">
+                                                            <div className="flex items-center gap-3 flex-1 min-w-0">
                                                                 <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center flex-shrink-0">
                                                                     <Icon name="user-doctor" className="text-teal-600 text-sm" />
                                                                 </div>
-                                                                <span className="font-bold text-slate-800 text-sm">{d.name}</span>
+                                                                <span className="font-bold text-slate-800 text-sm truncate">{d.name}</span>
                                                             </div>
-                                                            <button onClick={() => { setRacikanForm(f => ({...f, dokter: d.name})); setShowDokterPicker(false); setDokterSearch(''); }}
-                                                                className="px-4 py-1.5 border border-teal-400 text-teal-600 font-bold text-sm rounded-xl hover:bg-teal-50 active:scale-95 transition-all">Pilih</button>
+                                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                                <button onClick={() => { setEditingDokter(d); setNewDokterName(d.name); setShowAddDokterForm(true); }}
+                                                                    className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors" title="Edit">
+                                                                    <Icon name="pen-to-square" className="text-sm" />
+                                                                </button>
+                                                                <button onClick={() => { setRacikanForm(f => ({...f, dokter: d.name})); setShowDokterPicker(false); setDokterSearch(''); }}
+                                                                    className="px-4 py-1.5 border border-teal-400 text-teal-600 font-bold text-sm rounded-xl hover:bg-teal-50 active:scale-95 transition-all">Pilih</button>
+                                                            </div>
                                                         </div>
                                                     ))}
                                                 </div>
@@ -4626,14 +4670,20 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                     {/* ===== PASIEN PICKER ===== */}
                     {showPasienPicker && (
                         <div className="fixed inset-0 z-[98] bg-white flex flex-col fade-in">
-                            {/* ---- FORM TAMBAH PASIEN ---- */}
+                            {/* ---- FORM TAMBAH / EDIT PASIEN ---- */}
                             {showAddPasienForm ? (
                                 <>
                                     <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 bg-white" style={{paddingTop: 'calc(env(safe-area-inset-top, 0px) + 68px)'}}>
-                                        <button onClick={() => { setShowAddPasienForm(false); setNewPasienName(''); setNewPasienAge(''); }} className="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+                                        <button onClick={() => { setShowAddPasienForm(false); setNewPasienName(''); setNewPasienAge(''); setEditingPasien(null); }} className="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
                                             <Icon name="arrow-left" className="text-xl" />
                                         </button>
-                                        <h2 className="font-black text-slate-800 text-lg flex-1">Tambah Pasien</h2>
+                                        <h2 className="font-black text-slate-800 text-lg flex-1">{editingPasien ? 'Edit Pasien' : 'Tambah Pasien'}</h2>
+                                        {editingPasien && (
+                                            <button onClick={async () => { if (window.confirm('Hapus pasien ini?')) { await deletePasien(editingPasien.id); setShowAddPasienForm(false); setEditingPasien(null); setNewPasienName(''); setNewPasienAge(''); } }}
+                                                className="w-9 h-9 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                                                <Icon name="trash" />
+                                            </button>
+                                        )}
                                     </div>
                                     <div className="flex-1 overflow-y-auto px-5 pt-8 pb-6">
                                         <div className="mb-5">
@@ -4656,9 +4706,16 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                                         )}
                                         <button
                                             disabled={!newPasienName.trim() || savingPasien}
-                                            onClick={async () => { setSavingPasien(true); await savePasien(newPasienName, newPasienAge); setSavingPasien(false); setShowAddPasienForm(false); setNewPasienName(''); setNewPasienAge(''); }}
+                                            onClick={async () => {
+                                                setSavingPasien(true);
+                                                await savePasien(newPasienName, newPasienAge, editingPasien?.id || null);
+                                                setSavingPasien(false);
+                                                setShowAddPasienForm(false);
+                                                setNewPasienName(''); setNewPasienAge('');
+                                                setEditingPasien(null);
+                                            }}
                                             className="w-full py-4 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-black text-base rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2">
-                                            {savingPasien ? <div className="typing-dot bg-white"></div> : <><Icon name="floppy-disk" /> Simpan Pasien</>}
+                                            {savingPasien ? <div className="typing-dot bg-white"></div> : <><Icon name="floppy-disk" /> {editingPasien ? 'Simpan Perubahan' : 'Simpan Pasien'}</>}
                                         </button>
                                     </div>
                                 </>
@@ -4707,17 +4764,23 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                                             return (
                                                 <div className="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden">
                                                     {filtered.map(p => (
-                                                        <div key={p.id} className="flex items-center justify-between px-4 py-3.5 hover:bg-teal-50 transition-colors">
-                                                            <div className="flex items-center gap-3">
+                                                        <div key={p.id} className="flex items-center justify-between px-4 py-3.5 hover:bg-teal-50 transition-colors group">
+                                                            <div className="flex items-center gap-3 flex-1 min-w-0">
                                                                 <div className="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center flex-shrink-0">
                                                                     <Icon name="person" className="text-sky-600 text-sm" />
                                                                 </div>
-                                                                <div>
-                                                                    <p className="font-bold text-slate-800 text-sm">{p.name}{p.age ? `, ${p.age}` : ''}</p>
+                                                                <div className="min-w-0">
+                                                                    <p className="font-bold text-slate-800 text-sm truncate">{p.name}{p.age ? `, ${p.age}` : ''}</p>
                                                                 </div>
                                                             </div>
-                                                            <button onClick={() => { const label = p.age ? `${p.name}, ${p.age}` : p.name; setRacikanForm(f => ({...f, pasien: label})); setShowPasienPicker(false); setPasienSearch(''); }}
-                                                                className="px-4 py-1.5 border border-teal-400 text-teal-600 font-bold text-sm rounded-xl hover:bg-teal-50 active:scale-95 transition-all flex-shrink-0">Pilih</button>
+                                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                                <button onClick={() => { setEditingPasien(p); setNewPasienName(p.name); setNewPasienAge(p.age || ''); setShowAddPasienForm(true); }}
+                                                                    className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors" title="Edit">
+                                                                    <Icon name="pen-to-square" className="text-sm" />
+                                                                </button>
+                                                                <button onClick={() => { const label = p.age ? `${p.name}, ${p.age}` : p.name; setRacikanForm(f => ({...f, pasien: label})); setShowPasienPicker(false); setPasienSearch(''); }}
+                                                                    className="px-4 py-1.5 border border-teal-400 text-teal-600 font-bold text-sm rounded-xl hover:bg-teal-50 active:scale-95 transition-all flex-shrink-0">Pilih</button>
+                                                            </div>
                                                         </div>
                                                     ))}
                                                 </div>
