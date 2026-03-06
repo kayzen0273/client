@@ -2118,6 +2118,14 @@
                             const itemDisplay = itemNames.length === 0 ? '-' : itemNames.length <= 3 ? itemNames.join(', ') : itemNames.slice(0,3).join(', ') + `, +${itemNames.length - 3} lainnya`;
                             return (
                                 <div key={p.id} onClick={() => handleOpenDetail(p)} className={`bg-white cursor-pointer active:scale-[0.99] border-b border-slate-100 py-4 px-2 transition-all hover:bg-slate-50 ${isOverdue ? 'border-l-4 border-l-red-500' : ''}`}>
+                                    {/* Store badge — hanya muncul di mode semua toko */}
+                                    {isAllStores && (
+                                        <div className="ml-11 mb-2">
+                                            <span className="inline-flex items-center gap-1 bg-sky-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm">
+                                                <Icon name="shop" className="text-[9px]" />{p.storeName || 'Toko Default'}
+                                            </span>
+                                        </div>
+                                    )}
                                     {/* Row 1: checkbox + no + invoice + amount */}
                                     <div className="flex items-start gap-3 mb-3">
                                         <div onClick={e => e.stopPropagation()} className="mt-0.5 flex-shrink-0">
@@ -2132,7 +2140,6 @@
                                                 <span className="font-bold text-slate-800 text-base whitespace-nowrap">{formatRupiah(p.total)}</span>
                                             </div>
                                             {p.isConsignment && <span className="inline-block bg-indigo-100 text-indigo-600 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider mt-0.5">Konsinyasi</span>}
-                                            {currentProfile.id === 'all_stores' && p.storeName && <span className="inline-block bg-sky-100 text-sky-700 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider mt-0.5 ml-1"><Icon name="shop" className="mr-0.5" />{p.storeName}</span>}
                                         </div>
                                     </div>
                                     {/* Items */}
@@ -2168,7 +2175,7 @@
                                             {p.isPaid ? (
                                                 <span className="flex items-center px-4 py-1.5 rounded-full border text-sm font-semibold bg-green-50 text-green-700 border-green-300 cursor-default select-none">Lunas</span>
                                             ) : (
-                                                readOnly ? (
+                                                (readOnly || isAllStores) ? (
                                                     <span className="flex items-center px-4 py-1.5 rounded-full border text-sm font-semibold bg-slate-50 text-slate-500 border-slate-200 cursor-default select-none">Belum lunas</span>
                                                 ) : (
                                                     <button onClick={(e) => { e.stopPropagation(); togglePaid(p); }} className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border text-sm font-semibold bg-white text-slate-700 border-slate-300 hover:border-teal-400 transition-all active:scale-95">
@@ -2178,7 +2185,7 @@
                                                 )
                                             )}
                                         </div>
-                                        {!readOnly && (
+                                        {(!readOnly && !isAllStores) && (
                                             <button onClick={(e) => { e.stopPropagation(); openDeleteModal(p.id, false); }} className="text-[11px] text-red-400 hover:text-red-600 font-bold flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-red-50 transition-all">
                                                 <Icon name="trash" /> Hapus
                                             </button>
@@ -2490,6 +2497,13 @@
                                 <div className="flex items-center gap-2">
                                     <button type="button" onClick={() => setDetailModalOpen(false)} className="text-slate-400 hover:text-slate-700 mr-1"><Icon name="chevron-left" /></button>
                                     <div>
+                                        {isAllStores && selectedPurchase.storeName && (
+                                            <div className="mb-0.5">
+                                                <span className="inline-flex items-center gap-1 bg-sky-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
+                                                    <Icon name="shop" className="text-[8px]" />{selectedPurchase.storeName}
+                                                </span>
+                                            </div>
+                                        )}
                                         <span className="font-medium text-sm">{selectedPurchase.supplier}</span>
                                         {selectedPurchase.invoiceNumber && <span className="ml-2 text-[10px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded font-mono">#{selectedPurchase.invoiceNumber}</span>}
                                     </div>
@@ -2612,14 +2626,14 @@
 
                             {/* FOOTER */}
                             <div className="flex-shrink-0 flex justify-between items-center px-4 py-3 border-t border-gray-200 bg-white">
-                                {!readOnly ? (
+                                {(!readOnly && !isAllStores) ? (
                                     <button type="button" onClick={() => openDeleteModal(selectedPurchase.id, true)} className="bg-white border border-red-400 text-red-500 px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1">
                                         <Icon name="trash" /> Hapus
                                     </button>
                                 ) : (
-                                    <div className="flex items-center gap-1 text-amber-600 text-xs font-semibold"><Icon name="lock" /> Akses Terbatas</div>
+                                    <div className="flex items-center gap-1 text-amber-600 text-xs font-semibold"><Icon name="lock" /> {isAllStores ? 'Mode Gabungan' : 'Akses Terbatas'}</div>
                                 )}
-                                {!readOnly ? (
+                                {(!readOnly && !isAllStores) ? (
                                     <button type="button" onClick={() => handleOpenEdit(selectedPurchase)} className="bg-teal-600 text-white px-4 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 hover:bg-teal-700 active:scale-95 transition-all">
                                         <Icon name="pen-to-square" /> Edit Faktur
                                     </button>
