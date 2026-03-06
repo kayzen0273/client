@@ -4453,9 +4453,19 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
 
                                 {/* Bottom: Hapus */}
                                 <div className="px-5 py-4 border-t border-slate-100">
-                                    <button onClick={() => { setRacikanForm({ dokter:'', pasien:'', signa:'', catatan:'', budD:'', budM:'', budY:'', uangR:'', items:[] }); setRacikanItemSearch(''); }}
+                                    <button onClick={() => {
+                                        if (editingRacikanCartId) {
+                                            // Hapus racikan dari keranjang
+                                            setCart(prev => prev.filter(c => c.racikanCartId !== editingRacikanCartId));
+                                            setEditingRacikanCartId(null);
+                                            showToast("Racikan dihapus dari keranjang", "success");
+                                        }
+                                        setRacikanForm({ dokter:'', pasien:'', signa:'', catatan:'', budD:'', budM:'', budY:'', uangR:'', items:[] });
+                                        setRacikanItemSearch('');
+                                        setShowRacikanPage(false);
+                                    }}
                                         className="flex items-center gap-2 text-red-500 font-bold text-sm hover:text-red-700 transition-colors">
-                                        <Icon name="trash" /> Hapus
+                                        <Icon name="trash" /> {editingRacikanCartId ? 'Hapus Racikan dari Keranjang' : 'Bersihkan Form'}
                                     </button>
                                 </div>
                             </div>
