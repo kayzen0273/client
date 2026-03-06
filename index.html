@@ -3077,6 +3077,50 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                 uangR: '', items: []
             });
             const [racikanItemSearch, setRacikanItemSearch] = useState('');
+            const [showDokterPicker, setShowDokterPicker] = useState(false);
+            const [showPasienPicker, setShowPasienPicker] = useState(false);
+            const [dokterList, setDokterList] = useState([]);
+            const [pasienList, setPasienList] = useState([]);
+            const [dokterSearch, setDokterSearch] = useState('');
+            const [pasienSearch, setPasienSearch] = useState('');
+            const [dokterInput, setDokterInput] = useState('');
+            const [pasienInput, setPasienInput] = useState('');
+            const [pasienAge, setPasienAge] = useState('');
+
+            // Load daftar dokter & pasien dari Firestore
+            useEffect(() => {
+                if (!user) return;
+                const unsubDokter = window.onSnapshot(
+                    window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'dokter_list'),
+                    snap => setDokterList(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+                );
+                const unsubPasien = window.onSnapshot(
+                    window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'pasien_list'),
+                    snap => setPasienList(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+                );
+                return () => { unsubDokter(); unsubPasien(); };
+            }, [user]);
+
+            const saveDokter = async (name) => {
+                if (!name.trim()) return;
+                const exists = dokterList.find(d => d.name.toLowerCase() === name.trim().toLowerCase());
+                if (!exists) {
+                    await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'dokter_list'), { name: name.trim(), createdAt: window.serverTimestamp() });
+                }
+                setRacikanForm(f => ({ ...f, dokter: name.trim() }));
+                setDokterInput(''); setDokterSearch(''); setShowDokterPicker(false);
+            };
+
+            const savePasien = async (name, age) => {
+                if (!name.trim()) return;
+                const exists = pasienList.find(p => p.name.toLowerCase() === name.trim().toLowerCase());
+                if (!exists) {
+                    await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'pasien_list'), { name: name.trim(), age: age || '', createdAt: window.serverTimestamp() });
+                }
+                const label = age ? `${name.trim()}, ${age}` : name.trim();
+                setRacikanForm(f => ({ ...f, pasien: label }));
+                setPasienInput(''); setPasienAge(''); setPasienSearch(''); setShowPasienPicker(false);
+            };
 
             useEffect(() => {
                 if (!user) return;
@@ -4259,26 +4303,26 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                                     <div className="px-5 pb-2">
                                         <h2 className="text-base font-bold text-slate-800 mb-3">Info R/</h2>
                                         <div className="divide-y divide-slate-100 border-t border-b border-slate-100">
-                                            <div className="flex items-center justify-between py-3.5">
+                                            <button onClick={() => { setDokterSearch(''); setDokterInput(''); setShowDokterPicker(true); }} className="w-full flex items-center justify-between py-3.5 hover:bg-teal-50 rounded-lg transition-colors px-1 -mx-1">
                                                 <span className="text-sm font-medium text-slate-700">Dokter</span>
                                                 <div className="flex items-center gap-1">
                                                     {racikanForm.dokter
                                                         ? <span className="text-sm font-bold text-teal-600">{racikanForm.dokter}</span>
-                                                        : <span className="text-sm font-bold text-teal-600">Pilih</span>
+                                                        : <span className="text-sm text-slate-400">Pilih</span>
                                                     }
                                                     <Icon name="chevron-right" className="text-teal-500 text-sm" />
                                                 </div>
-                                            </div>
-                                            <div className="flex items-center justify-between py-3.5">
+                                            </button>
+                                            <button onClick={() => { setPasienSearch(''); setPasienInput(''); setPasienAge(''); setShowPasienPicker(true); }} className="w-full flex items-center justify-between py-3.5 hover:bg-teal-50 rounded-lg transition-colors px-1 -mx-1">
                                                 <span className="text-sm font-medium text-slate-700">Pasien</span>
                                                 <div className="flex items-center gap-1">
                                                     {racikanForm.pasien
                                                         ? <span className="text-sm font-bold text-teal-600">{racikanForm.pasien}</span>
-                                                        : <span className="text-sm font-bold text-teal-600">Pilih</span>
+                                                        : <span className="text-sm text-slate-400">Pilih</span>
                                                     }
                                                     <Icon name="chevron-right" className="text-teal-500 text-sm" />
                                                 </div>
-                                            </div>
+                                            </button>
                                         </div>
                                     </div>
 
@@ -4471,6 +4515,131 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                             </div>
                         );
                     })()}
+
+                    {/* ===== DOKTER PICKER ===== */}
+                    {showDokterPicker && (
+                        <div className="fixed inset-0 z-[98] bg-white flex flex-col fade-in">
+                            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white sticky top-0" style={{paddingTop: 'calc(env(safe-area-inset-top, 0px) + 68px)'}}>
+                                <button onClick={() => setShowDokterPicker(false)} className="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+                                    <Icon name="arrow-left" className="text-xl" />
+                                </button>
+                                <h2 className="font-black text-slate-800 text-lg">Pilih dokter</h2>
+                                <button onClick={() => { if (dokterInput.trim()) saveDokter(dokterInput); }} className="text-teal-600 font-bold text-sm px-3 py-1.5 rounded-lg hover:bg-teal-50 transition-colors">
+                                    + Dokter
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto px-4 pt-4 pb-6">
+                                {/* Search bar */}
+                                <div className="flex gap-2 mb-4">
+                                    <div className="flex-1 flex items-center gap-2 bg-white border border-slate-300 rounded-xl px-3 py-2.5 focus-within:border-teal-500 focus-within:ring-2 focus-within:ring-teal-100">
+                                        <Icon name="magnifying-glass" className="text-teal-500 text-sm flex-shrink-0" />
+                                        <input autoFocus type="text" placeholder="Cari / ketik nama dokter..." value={dokterSearch} onChange={e => { setDokterSearch(e.target.value); setDokterInput(e.target.value); }}
+                                            className="flex-1 outline-none text-sm font-medium text-slate-700 placeholder:text-slate-400 bg-transparent" />
+                                    </div>
+                                    <button onClick={() => { if (dokterSearch.trim()) saveDokter(dokterSearch); }} className="px-4 py-2.5 bg-white border border-teal-300 text-teal-600 font-bold text-sm rounded-xl hover:bg-teal-50 transition-colors flex-shrink-0">Cari</button>
+                                </div>
+                                {/* Add new shortcut */}
+                                {dokterSearch.trim() && (
+                                    <button onClick={() => saveDokter(dokterSearch)} className="w-full mb-3 py-3 border-2 border-dashed border-teal-300 text-teal-600 font-bold text-sm rounded-xl hover:bg-teal-50 transition-colors flex items-center justify-center gap-2">
+                                        <Icon name="plus" /> Tambah &quot;{dokterSearch}&quot; sebagai dokter baru
+                                    </button>
+                                )}
+                                {/* List */}
+                                <div className="mb-2"><span className="text-sm font-bold text-slate-700">Dokter</span></div>
+                                {(() => {
+                                    const filtered = dokterSearch ? dokterList.filter(d => d.name.toLowerCase().includes(dokterSearch.toLowerCase())) : dokterList;
+                                    if (filtered.length === 0) return (
+                                        <div className="border border-slate-200 rounded-xl p-8 flex flex-col items-center text-slate-300 gap-2">
+                                            <Icon name="user-doctor" className="text-4xl opacity-40" />
+                                            <p className="font-bold text-slate-500 text-sm">Tidak ada data dokter</p>
+                                            <p className="text-xs text-slate-400 text-center">Ganti kata pencarian atau tambahkan dokter terlebih dahulu.</p>
+                                        </div>
+                                    );
+                                    return filtered.map(d => (
+                                        <div key={d.id} className="flex items-center justify-between py-3.5 border-b border-slate-100 last:border-0">
+                                            <span className="font-bold text-slate-800 text-sm">{d.name}</span>
+                                            <button onClick={() => { setRacikanForm(f => ({...f, dokter: d.name})); setShowDokterPicker(false); setDokterSearch(''); }}
+                                                className="px-4 py-1.5 border border-teal-400 text-teal-600 font-bold text-sm rounded-lg hover:bg-teal-50 transition-colors">Pilih</button>
+                                        </div>
+                                    ));
+                                })()}
+                                {/* Tidak ketemu? */}
+                                <div className="mt-6 flex items-center gap-3">
+                                    <span className="text-sm text-slate-500 font-medium">Tidak ketemu?</span>
+                                    <button onClick={() => { if (dokterSearch.trim()) saveDokter(dokterSearch); else { setDokterInput(''); } }}
+                                        className="px-4 py-2 border border-teal-400 text-teal-600 font-bold text-sm rounded-xl hover:bg-teal-50 transition-colors flex items-center gap-1.5">
+                                        <Icon name="plus" /> Dokter
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ===== PASIEN PICKER ===== */}
+                    {showPasienPicker && (
+                        <div className="fixed inset-0 z-[98] bg-white flex flex-col fade-in">
+                            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white sticky top-0" style={{paddingTop: 'calc(env(safe-area-inset-top, 0px) + 68px)'}}>
+                                <button onClick={() => setShowPasienPicker(false)} className="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+                                    <Icon name="arrow-left" className="text-xl" />
+                                </button>
+                                <h2 className="font-black text-slate-800 text-lg">Pilih pasien</h2>
+                                <button onClick={() => { if (pasienInput.trim()) savePasien(pasienInput, pasienAge); }} className="text-teal-600 font-bold text-sm px-3 py-1.5 rounded-lg hover:bg-teal-50 transition-colors">
+                                    + Pasien
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto px-4 pt-4 pb-6">
+                                {/* Search bar */}
+                                <div className="flex gap-2 mb-3">
+                                    <div className="flex-1 flex items-center gap-2 bg-white border border-slate-300 rounded-xl px-3 py-2.5 focus-within:border-teal-500 focus-within:ring-2 focus-within:ring-teal-100">
+                                        <Icon name="magnifying-glass" className="text-teal-500 text-sm flex-shrink-0" />
+                                        <input autoFocus type="text" placeholder="Cari / ketik nama pasien..." value={pasienSearch} onChange={e => { setPasienSearch(e.target.value); setPasienInput(e.target.value); }}
+                                            className="flex-1 outline-none text-sm font-medium text-slate-700 placeholder:text-slate-400 bg-transparent" />
+                                    </div>
+                                    <button onClick={() => { if (pasienSearch.trim()) savePasien(pasienSearch, pasienAge); }} className="px-4 py-2.5 bg-white border border-teal-300 text-teal-600 font-bold text-sm rounded-xl hover:bg-teal-50 transition-colors flex-shrink-0">Cari</button>
+                                </div>
+                                {/* Umur input */}
+                                <div className="flex items-center gap-2 mb-4">
+                                    <input type="text" placeholder="Umur (cth: 55 thn 2 bln)" value={pasienAge} onChange={e => setPasienAge(e.target.value)}
+                                        className="flex-1 border border-slate-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 placeholder:text-slate-400" />
+                                </div>
+                                {/* Add new shortcut */}
+                                {pasienSearch.trim() && (
+                                    <button onClick={() => savePasien(pasienSearch, pasienAge)} className="w-full mb-3 py-3 border-2 border-dashed border-teal-300 text-teal-600 font-bold text-sm rounded-xl hover:bg-teal-50 transition-colors flex items-center justify-center gap-2">
+                                        <Icon name="plus" /> Tambah &quot;{pasienSearch}{pasienAge ? `, ${pasienAge}` : ''}&quot; sebagai pasien baru
+                                    </button>
+                                )}
+                                {/* List */}
+                                <div className="mb-2"><span className="text-sm font-bold text-slate-700">Pasien</span></div>
+                                {(() => {
+                                    const filtered = pasienSearch ? pasienList.filter(p => p.name.toLowerCase().includes(pasienSearch.toLowerCase())) : pasienList;
+                                    if (filtered.length === 0) return (
+                                        <div className="border border-slate-200 rounded-xl p-8 flex flex-col items-center text-slate-300 gap-2">
+                                            <Icon name="person" className="text-4xl opacity-40" />
+                                            <p className="font-bold text-slate-500 text-sm">Tidak ada data pasien</p>
+                                            <p className="text-xs text-slate-400 text-center">Ganti kata pencarian atau tambahkan pasien terlebih dahulu.</p>
+                                        </div>
+                                    );
+                                    return filtered.map(p => (
+                                        <div key={p.id} className="flex items-center justify-between py-3.5 border-b border-slate-100 last:border-0">
+                                            <div>
+                                                <p className="font-bold text-slate-800 text-sm">{p.name}{p.age ? `, ${p.age}` : ''}</p>
+                                            </div>
+                                            <button onClick={() => { const label = p.age ? `${p.name}, ${p.age}` : p.name; setRacikanForm(f => ({...f, pasien: label})); setShowPasienPicker(false); setPasienSearch(''); }}
+                                                className="px-4 py-1.5 border border-teal-400 text-teal-600 font-bold text-sm rounded-lg hover:bg-teal-50 transition-colors flex-shrink-0">Pilih</button>
+                                        </div>
+                                    ));
+                                })()}
+                                {/* Tidak ketemu? */}
+                                <div className="mt-6 flex items-center gap-3">
+                                    <span className="text-sm text-slate-500 font-medium">Tidak ketemu?</span>
+                                    <button onClick={() => { if (pasienSearch.trim()) savePasien(pasienSearch, pasienAge); }}
+                                        className="px-4 py-2 border border-teal-400 text-teal-600 font-bold text-sm rounded-xl hover:bg-teal-50 transition-colors flex items-center gap-1.5">
+                                        <Icon name="plus" /> Pasien
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* ===== RACIKAN ITEM DETAIL MODAL ===== */}
                     {racikanModal.show && racikanModal.item && (
