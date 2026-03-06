@@ -4950,9 +4950,19 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                     
                     // RETUR KE STOK TOKO YANG MELAKUKAN TRANSAKSI
                     const storeIdToReturn = tx.storeId || 'default';
-                    const invRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', item.id);
                     const stockField = `stocks.${storeIdToReturn}`;
-                    batch.update(invRef, { [stockField]: window.increment(qtyToRetur) });
+
+                    if (item.isRacikanGroup) {
+                        // Racikan gabungan: kembalikan stok tiap bahan satu per satu
+                        (item.racikanItems || []).forEach(ri => {
+                            const invRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', ri.id);
+                            batch.update(invRef, { [stockField]: window.increment(ri.qty * qtyToRetur), updatedAt: window.serverTimestamp() });
+                        });
+                    } else {
+                        // Item biasa
+                        const invRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', item.id);
+                        batch.update(invRef, { [stockField]: window.increment(qtyToRetur) });
+                    }
                     
                     const txRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'transactions', tx.id);
                     const updatedItems = [...tx.items];
@@ -4963,7 +4973,8 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                     if (totalReturnedCount === totalItemsCount) newStatus = 'returned'; else if (totalReturnedCount > 0) newStatus = 'partial';
                     batch.update(txRef, { items: updatedItems, status: newStatus, returnedAt: window.serverTimestamp() });
                     await batch.commit();
-                    showToast(`Berhasil meretur ${qtyToRetur} ${item.unit} ke Stok Toko`, "success");
+                    const label = item.isRacikanGroup ? 'Racikan' : `${qtyToRetur} ${item.unit}`;
+                    showToast(`Berhasil meretur ${label} ke Stok Toko`, "success");
                     setReturModal({ show: false, tx: null, item: null, index: -1 }); setSelectedTx(null);
                 } catch (error) { console.error("Retur error", error); showToast("Gagal melakukan retur", "error"); } finally { setProcessingRetur(false); }
             };
