@@ -8178,20 +8178,35 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                 const presRef = window.doc(window.db, 'artifacts', AID, 'public', 'data', 'presence', _sessionId.current);
                 const writePresence = (online) => window.setDoc(presRef, {
                     sessionId: _sessionId.current,
-                    accountId: authSession.id,         // ID akun permanen
+                    accountId: authSession.id,
                     username: authSession.username || 'guest',
                     namaLengkap: authSession.namaLengkap || 'Tamu',
                     role: authSession.role || 'viewer',
                     lastSeen: window.serverTimestamp(),
                     online,
                 }, { merge: true }).catch(()=>{});
+
                 writePresence(true);
-                const interval = setInterval(() => writePresence(true), 30000);
-                const handleUnload = () => writePresence(false);
-                window.addEventListener('beforeunload', handleUnload);
+
+                // Heartbeat tiap 8 detik agar admin tahu masih aktif
+                const interval = setInterval(() => {
+                    if (document.visibilityState === 'visible') writePresence(true);
+                }, 8000);
+
+                // visibilitychange: paling andal di mobile & desktop (ganti tab, minimize, kunci layar)
+                const handleVisibility = () => writePresence(document.visibilityState === 'visible');
+                document.addEventListener('visibilitychange', handleVisibility);
+
+                // pagehide: lebih andal dari beforeunload di mobile Safari & Chrome
+                const handleHide = () => writePresence(false);
+                window.addEventListener('pagehide', handleHide);
+                window.addEventListener('beforeunload', handleHide);
+
                 return () => {
                     clearInterval(interval);
-                    window.removeEventListener('beforeunload', handleUnload);
+                    document.removeEventListener('visibilitychange', handleVisibility);
+                    window.removeEventListener('pagehide', handleHide);
+                    window.removeEventListener('beforeunload', handleHide);
                     writePresence(false);
                 };
             }, [authSession?.id]);
