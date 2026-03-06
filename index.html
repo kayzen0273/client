@@ -3396,7 +3396,9 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
             const submitRacikan = () => {
                 if (racikanItems.length === 0) { showToast('Tambahkan barang ke racikan dulu!', 'error'); return; }
                 const label = racikanName.trim() || 'Racikan';
-                const totalHarga = racikanItems.reduce((sum, r) => sum + (r.price * r.qty), 0);
+                const subtotalBahan = racikanItems.reduce((sum, r) => sum + (r.price * r.qty), 0);
+                const uangResep = parseInt((racikanUang||'0').replace(/\D/g,'')) || 0;
+                const totalHarga = subtotalBahan + uangResep;
                 const detailStr = racikanItems.map(r => `${r.name} ×${r.qty}`).join(', ');
                 const cartItem = {
                     id: 'racikan_' + Date.now(),
@@ -3406,8 +3408,9 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                     cartQty: 1,
                     unit: 'Racikan',
                     isRacikan: true,
-                    racikanDetail: detailStr,
+                    racikanDetail: detailStr + (uangResep > 0 ? ` + Uang R/ ${formatRupiah(uangResep)}` : ''),
                     racikanItems: racikanItems,
+                    racikanUangResep: uangResep,
                     racikanDokter: racikanDokter,
                     racikanPasien: racikanPasien,
                     racikanSigna: racikanSigna,
