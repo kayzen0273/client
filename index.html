@@ -3717,10 +3717,19 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                     const batch = window.writeBatch(window.db);
                     
                     // UPDATE STOCK SPECIFIC TO CURRENT STORE
-                    cart.forEach(item => { 
-                        const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', item.id);
+                    cart.forEach(item => {
                         const stockField = `stocks.${currentProfile.id}`;
-                        batch.update(docRef, { [stockField]: window.increment(-item.cartQty), updatedAt: window.serverTimestamp() }); 
+                        if (item.isRacikanGroup) {
+                            // Untuk racikan gabungan: update stok tiap bahan satu per satu
+                            (item.racikanItems || []).forEach(ri => {
+                                const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', ri.id);
+                                batch.update(docRef, { [stockField]: window.increment(-ri.qty), updatedAt: window.serverTimestamp() });
+                            });
+                        } else {
+                            // Item biasa
+                            const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', item.id);
+                            batch.update(docRef, { [stockField]: window.increment(-item.cartQty), updatedAt: window.serverTimestamp() });
+                        }
                     });
 
                     const transactionRef = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'transactions');
