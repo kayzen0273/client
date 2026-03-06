@@ -247,19 +247,6 @@
         // --- CHANGELOG / NOTIFIKASI UPDATE ---
         const CHANGELOG = [
             {
-                id: 'v48_1',
-                version: 'v48.1',
-                date: '07 Mar 2026',
-                title: 'Hapus Field Uang R/ pada Tambah Item',
-                tag: 'Perbaikan UI',
-                tagColor: 'bg-sky-100 text-sky-700',
-                icon: 'trash',
-                items: [
-                    'Field Uang R/ (opsional) dihapus dari halaman tambah item',
-                    'Tampilan form lebih bersih dan sederhana',
-                ]
-            },
-            {
                 id: 'v47_10',
                 version: 'v47.10',
                 date: '06 Mar 2025',
@@ -8128,11 +8115,52 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                 const collRef = window.collection(window.db, ...COLL);
                 const q = window.query(collRef, window.orderBy('position', 'asc'));
                 let unsub;
-                // Coba dengan orderBy, fallback tanpa index
+                let _synced = false; // hanya sync sekali per session
+
+                // ── Auto-upsert: push entri CHANGELOG baru ke Firebase ──
+                // Jika versi di CHANGELOG (hardcode) belum ada di Firebase, tambahkan otomatis.
+                // Admin panel akan langsung menerima update tanpa perlu ubah HTML admin.
+                async function autoSyncChangelogToFirebase(firestoreDocs) {
+                    if (_synced) return;
+                    _synced = true;
+                    try {
+                        const existingIds = new Set(firestoreDocs.map(d => d.id));
+                        const newEntries = CHANGELOG.filter(c => !existingIds.has(c.id));
+                        if (newEntries.length === 0) return;
+                        // Hitung posisi awal: letakkan entri baru di urutan terdepan (posisi terkecil)
+                        const minPos = firestoreDocs.length > 0
+                            ? Math.min(...firestoreDocs.map(d => d.data?.()?.position ?? d.position ?? 99))
+                            : 0;
+                        const batch = window.writeBatch(window.db);
+                        newEntries.forEach((entry, i) => {
+                            const ref = window.doc(window.db, ...COLL, entry.id);
+                            batch.set(ref, {
+                                id: entry.id,
+                                version: entry.version,
+                                date: entry.date,
+                                title: entry.title,
+                                tag: entry.tag,
+                                icon: entry.icon,
+                                items: entry.items,
+                                position: minPos - (newEntries.length - i), // urutan di atas yg lama
+                            }, { merge: false });
+                        });
+                        await batch.commit();
+                        console.log(`✅ ${newEntries.length} entri changelog baru di-sync ke Firebase`);
+                    } catch(e) {
+                        console.warn('Auto-sync changelog gagal:', e);
+                    }
+                }
+
                 try {
                     unsub = window.onSnapshot(q, snap => {
                         if (!snap.empty) {
-                            setLiveChangelog(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                            const sorted = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                            setLiveChangelog(sorted);
+                            autoSyncChangelogToFirebase(snap.docs);
+                        } else {
+                            // Firebase kosong → seed dari CHANGELOG hardcode
+                            autoSyncChangelogToFirebase([]);
                         }
                     }, () => {
                         // fallback tanpa orderBy
@@ -8141,6 +8169,9 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                                 const sorted = snap.docs.map(d => ({ id: d.id, ...d.data() }))
                                     .sort((a, b) => (a.position ?? 99) - (b.position ?? 99));
                                 setLiveChangelog(sorted);
+                                autoSyncChangelogToFirebase(snap.docs);
+                            } else {
+                                autoSyncChangelogToFirebase([]);
                             }
                         });
                     });
