@@ -3528,22 +3528,23 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
 
             const simpanRacikan = () => {
                 if (racikanForm.items.length === 0) { showToast("Belum ada barang racikan!", "error"); return; }
-                const racikanLabel = `Racikan (${racikanForm.items.length} item)${racikanForm.pasien ? ' - ' + racikanForm.pasien : ''}`;
-                const subtotal = racikanForm.items.reduce((s, i) => s + (i.price * i.qty), 0);
                 const uangR = parseInt(racikanForm.uangR) || 0;
-                // Tambahkan setiap item racikan ke cart
-                racikanForm.items.forEach(ri => {
-                    setCart(prev => {
-                        const existing = prev.find(c => c.id === ri.id && c.selectedUnit === ri.selectedUnit && c.price === ri.price && c.isRacikan);
-                        if (existing) {
-                            return prev.map(c => (c.id === ri.id && c.selectedUnit === ri.selectedUnit && c.price === ri.price && c.isRacikan)
-                                ? { ...c, cartQty: c.cartQty + ri.qty } : c);
-                        }
-                        return [...prev, { ...ri, cartQty: ri.qty, originalPrice: ri.price, discount: null, isRacikan: true,
-                            racikanInfo: { dokter: racikanForm.dokter, pasien: racikanForm.pasien, signa: racikanForm.signa, catatan: racikanForm.catatan, uangR },
-                            selectedUnit: ri.selectedUnit }];
-                    });
-                });
+                const subtotal = racikanForm.items.reduce((s, i) => s + (i.price * i.qty), 0);
+                const totalPrice = subtotal + uangR;
+                const racikanId = 'racikan_' + Date.now();
+                const racikanLabel = `R/ ${racikanForm.pasien ? racikanForm.pasien : 'Racikan'} (${racikanForm.items.length} item)`;
+                // Tambahkan sebagai SATU item gabungan ke cart
+                setCart(prev => [...prev, {
+                    id: racikanId,
+                    name: racikanLabel,
+                    cartQty: 1,
+                    price: totalPrice,
+                    originalPrice: totalPrice,
+                    discount: null,
+                    isRacikan: true,
+                    racikanItems: racikanForm.items,
+                    racikanInfo: { dokter: racikanForm.dokter, pasien: racikanForm.pasien, signa: racikanForm.signa, catatan: racikanForm.catatan, uangR },
+                }]);
                 // Reset form
                 setRacikanForm({ dokter: '', pasien: '', signa: '', catatan: '', budD: '', budM: '', budY: '', uangR: '', items: [] });
                 setRacikanItemSearch('');
@@ -4074,7 +4075,28 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                     </div>
                     <div className="w-full md:w-80 lg:w-96 flex flex-col bg-white rounded-3xl shadow-soft border border-slate-100 h-fit md:h-full max-h-[calc(100vh-100px)]">
                         <div className="p-4 border-b border-slate-100 bg-slate-50/50 rounded-t-3xl flex justify-between items-center"><h3 className="font-bold text-slate-800 flex items-center gap-2"><Icon name="cart-shopping" className="text-sky-600" /> Keranjang</h3><span className="text-xs font-bold bg-sky-100 text-sky-700 px-2 py-1 rounded-full">{cart.length} Item</span></div>
-                        <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar min-h-[200px]">{cart.length === 0 ? (<div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-60"><Icon name="basket-shopping" className="text-4xl mb-2" /><p className="text-xs font-medium">Keranjang Kosong</p></div>) : (cart.map(item => (<div key={item.id + (item.selectedUnit || '') + (item.price || '')} onClick={() => editCartItem(item)} className={`p-3 rounded-xl border flex gap-3 group relative cursor-pointer transition-all ${item.isRacikan ? 'bg-teal-50 border-teal-100 hover:bg-teal-100 hover:border-teal-300' : 'bg-slate-50 border-slate-100 hover:bg-sky-50 hover:border-sky-300'}`}><div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity"><Icon name="pen-to-square" className="text-[10px] text-sky-500" /></div><div className="flex-1 min-w-0"><div className="flex items-center gap-1.5"><h4 className="text-xs font-bold text-slate-700 truncate">{item.name}</h4>{item.isRacikan && <span className="text-[8px] font-black bg-teal-600 text-white px-1 py-0.5 rounded flex-shrink-0">R/</span>}</div><p className="text-[10px] text-slate-500">{formatRupiah(item.originalPrice || item.price)} {item.selectedUnit ? `per ${item.selectedUnit}` : ''} x {item.cartQty}</p>{item.discount && <p className="text-[9px] text-red-500 font-bold">Diskon: {item.discount.type === '%' ? `${item.discount.value}%` : formatRupiah(item.discount.value)}</p>}</div><div className="flex flex-col items-end gap-1"><p className="text-xs font-bold text-slate-800">{formatRupiah(item.price * item.cartQty)}</p><div className="flex items-center gap-1 bg-white rounded-lg shadow-sm border border-slate-200 p-0.5" onClick={e => e.stopPropagation()}><button onClick={() => updateQty(item.id, -1, item.selectedUnit, item.price)} className="w-5 h-5 flex items-center justify-center text-[8px] hover:bg-slate-100 rounded text-slate-500"><Icon name="minus" /></button><span className="text-xs font-bold w-4 text-center">{item.cartQty}</span><button onClick={() => updateQty(item.id, 1, item.selectedUnit, item.price)} className="w-5 h-5 flex items-center justify-center text-[8px] hover:bg-slate-100 rounded text-slate-500"><Icon name="plus" /></button></div></div></div>)))}</div>
+                        <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar min-h-[200px]">{cart.length === 0 ? (<div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-60"><Icon name="basket-shopping" className="text-4xl mb-2" /><p className="text-xs font-medium">Keranjang Kosong</p></div>) : (cart.map(item => (
+                            item.isRacikan && item.racikanItems ? (
+                                <div key={item.id} onClick={() => editCartItem(item)} className="p-3 rounded-xl border bg-teal-50 border-teal-200 cursor-pointer hover:bg-teal-100 transition-all group relative">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                            <span className="text-[8px] font-black bg-teal-600 text-white px-1.5 py-0.5 rounded flex-shrink-0">R/</span>
+                                            <h4 className="text-xs font-bold text-teal-800 truncate">{item.name}</h4>
+                                        </div>
+                                        <p className="text-xs font-bold text-slate-800 flex-shrink-0 ml-2">{formatRupiah(item.price)}</p>
+                                    </div>
+                                    <div className="space-y-0.5 pl-1 border-l-2 border-teal-300 ml-1">
+                                        {item.racikanItems.map((ri, idx) => (
+                                            <p key={idx} className="text-[10px] text-teal-700">{ri.name} <span className="text-teal-500">x{ri.qty} {ri.selectedUnit || ''}</span></p>
+                                        ))}
+                                    </div>
+                                    {item.racikanInfo?.dokter && <p className="text-[9px] text-slate-400 mt-1">dr. {item.racikanInfo.dokter}</p>}
+                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"><Icon name="pen-to-square" className="text-[10px] text-sky-500" /></div>
+                                </div>
+                            ) : (
+                                <div key={item.id + (item.selectedUnit || '') + (item.price || '')} onClick={() => editCartItem(item)} className="p-3 rounded-xl border flex gap-3 group relative cursor-pointer transition-all bg-slate-50 border-slate-100 hover:bg-sky-50 hover:border-sky-300"><div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity"><Icon name="pen-to-square" className="text-[10px] text-sky-500" /></div><div className="flex-1 min-w-0"><div className="flex items-center gap-1.5"><h4 className="text-xs font-bold text-slate-700 truncate">{item.name}</h4></div><p className="text-[10px] text-slate-500">{formatRupiah(item.originalPrice || item.price)} {item.selectedUnit ? `per ${item.selectedUnit}` : ''} x {item.cartQty}</p>{item.discount && <p className="text-[9px] text-red-500 font-bold">Diskon: {item.discount.type === '%' ? `${item.discount.value}%` : formatRupiah(item.discount.value)}</p>}</div><div className="flex flex-col items-end gap-1"><p className="text-xs font-bold text-slate-800">{formatRupiah(item.price * item.cartQty)}</p><div className="flex items-center gap-1 bg-white rounded-lg shadow-sm border border-slate-200 p-0.5" onClick={e => e.stopPropagation()}><button onClick={() => updateQty(item.id, -1, item.selectedUnit, item.price)} className="w-5 h-5 flex items-center justify-center text-[8px] hover:bg-slate-100 rounded text-slate-500"><Icon name="minus" /></button><span className="text-xs font-bold w-4 text-center">{item.cartQty}</span><button onClick={() => updateQty(item.id, 1, item.selectedUnit, item.price)} className="w-5 h-5 flex items-center justify-center text-[8px] hover:bg-slate-100 rounded text-slate-500"><Icon name="plus" /></button></div></div></div>
+                            )
+                        )))}</div>
                         <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-3xl">
                             <div className="flex justify-between items-end mb-4"><span className="text-xs text-slate-500 font-medium">Total Tagihan</span><span className="text-xl font-black text-slate-800">{formatRupiah(grandTotal)}</span></div>
                             <button onClick={() => { if(readOnly){showToast('Akses terbatas — hubungi owner','error');return;} setPaymentAmount(''); setPaymentMethod(''); setCheckoutModal(true); }} disabled={cart.length === 0} className="w-full py-3.5 bg-gradient-to-r from-sky-600 to-sky-500 text-white rounded-xl font-bold shadow-lg shadow-sky-200 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2"><Icon name="money-bill-wave" /> Bayar Sekarang</button>
