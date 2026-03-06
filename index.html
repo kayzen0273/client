@@ -1485,7 +1485,7 @@
         };
 
         // --- PURCHASE VIEW ---
-        const PurchaseView = ({ user, showToast, items, currentProfile, readOnly }) => {
+        const PurchaseView = ({ user, showToast, items, currentProfile, settings, readOnly }) => {
             const [purchases, setPurchases] = useState([]);
             const [suppliers, setSuppliers] = useState([]);
             const [loading, setLoading] = useState(true);
@@ -2079,6 +2079,17 @@
             // Guard untuk mode all_stores — boleh lihat, tapi tidak bisa input
             const isAllStores = currentProfile.id === 'all_stores';
 
+            // Resolver nama toko dari storeId (untuk data lama yang tidak punya storeName)
+            const resolveStoreName = (purchase) => {
+                if (purchase.storeName) return purchase.storeName;
+                const profiles = settings?.storeProfiles || [];
+                const sid = purchase.storeId || 'default';
+                const found = profiles.find(p => p.id === sid);
+                if (found) return found.name;
+                // fallback ke nama toko utama dari settings
+                return settings?.storeName || 'Toko Utama';
+            };
+
             return (
                 <>
                 <div className="fade-in pb-20 md:pb-0 h-full flex flex-col relative z-10">
@@ -2122,7 +2133,7 @@
                                     {isAllStores && (
                                         <div className="ml-11 mb-2">
                                             <span className="inline-flex items-center gap-1 bg-sky-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm">
-                                                <Icon name="shop" className="text-[9px]" />{p.storeName || 'Toko Default'}
+                                                <Icon name="shop" className="text-[9px]" />{resolveStoreName(p)}
                                             </span>
                                         </div>
                                     )}
@@ -2497,10 +2508,10 @@
                                 <div className="flex items-center gap-2">
                                     <button type="button" onClick={() => setDetailModalOpen(false)} className="text-slate-400 hover:text-slate-700 mr-1"><Icon name="chevron-left" /></button>
                                     <div>
-                                        {isAllStores && selectedPurchase.storeName && (
+                                        {isAllStores && (
                                             <div className="mb-0.5">
                                                 <span className="inline-flex items-center gap-1 bg-sky-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
-                                                    <Icon name="shop" className="text-[8px]" />{selectedPurchase.storeName}
+                                                    <Icon name="shop" className="text-[8px]" />{resolveStoreName(selectedPurchase)}
                                                 </span>
                                             </div>
                                         )}
@@ -7313,7 +7324,7 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                         {activeTab === 'home' && (<DashboardView items={inventoryData} settings={settingsData} onShowLowStock={() => { setActiveTab('list'); setShowOnlyLowStock(true); }} />)}
                         {activeTab === 'cashier' && (<CashierView items={inventoryData} user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='cashier')?.readOnly} authSession={authSession} />)}
                         {activeTab === 'history' && (<HistoryView user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} items={inventoryData} readOnly={menuItems.find(m=>m.id==='history')?.readOnly} />)}
-                        {activeTab === 'purchases' && (<PurchaseView user={user} showToast={showToast} items={inventoryData} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='purchases')?.readOnly} />)}
+                        {activeTab === 'purchases' && (<PurchaseView user={user} showToast={showToast} items={inventoryData} currentProfile={currentProfile} settings={settingsData} readOnly={menuItems.find(m=>m.id==='purchases')?.readOnly} />)}
                         {activeTab === 'cashbook' && (<CashBookView user={user} currentProfile={currentProfile} showToast={showToast} readOnly={menuItems.find(m=>m.id==='cashbook')?.readOnly} />)}
                         {activeTab === 'list' && (<ListView items={inventoryData} loading={loading} settings={settingsData} searchQuery={searchQuery} setSearchQuery={setSearchQuery} showOnlyLowStock={showOnlyLowStock} setShowOnlyLowStock={setShowOnlyLowStock} selectedRacks={selectedRacks} setSelectedRacks={setSelectedRacks} uniqueRacksData={uniqueRacksData} onCopySuccess={showToast} onEdit={(item) => { setFormData({...item}); setEditingItem(item); setActiveTab('add'); }} onDelete={(item) => setDeleteModal({ show: true, item: item })} onDeleteRack={(rackName) => setDeleteRackModal({ show: true, rackName })} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='list')?.readOnly} />)}
                         {activeTab === 'add' && (<FormView formData={formData} setFormData={setFormData} onSubmit={handleSubmit} isEditing={!!editingItem} submitting={submitting} onCancel={() => { setEditingItem(null); setFormData({name:'', qty:'', unit:'Pcs', exp:'', rack:'', price:'', costPrice:'', minStock: ''}); setActiveTab('list'); }} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='add')?.readOnly} />)}
