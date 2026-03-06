@@ -318,6 +318,15 @@
             },
         ];
         const CHANGELOG_STORAGE_KEY = 'husna_read_changelogs';
+        const CHANGELOG_DATA_KEY   = 'husna_changelog_data';
+        // Baca dari localStorage jika ada (dikelola admin panel), fallback ke CHANGELOG hardcode
+        function getLiveChangelog() {
+            try {
+                const stored = localStorage.getItem(CHANGELOG_DATA_KEY);
+                if (stored) { const parsed = JSON.parse(stored); if (Array.isArray(parsed) && parsed.length) return parsed; }
+            } catch {}
+            return CHANGELOG;
+        }
         
         // --- DEFAULT SETTINGS ---
         const DEFAULT_SETTINGS = {
@@ -8108,10 +8117,19 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
             const [readChangelogs, setReadChangelogs] = useState(() => {
                 try { return JSON.parse(localStorage.getItem(CHANGELOG_STORAGE_KEY) || '[]'); } catch { return []; }
             });
-            const unreadCount = CHANGELOG.filter(c => !readChangelogs.includes(c.id)).length;
+            const [liveChangelog, setLiveChangelog] = useState(() => getLiveChangelog());
+            // Poll localStorage setiap 5 detik agar update dari admin panel langsung muncul
+            React.useEffect(() => {
+                const interval = setInterval(() => {
+                    setLiveChangelog(getLiveChangelog());
+                    try { setReadChangelogs(JSON.parse(localStorage.getItem(CHANGELOG_STORAGE_KEY) || '[]')); } catch {}
+                }, 5000);
+                return () => clearInterval(interval);
+            }, []);
+            const unreadCount = liveChangelog.filter(c => !readChangelogs.includes(c.id)).length;
             const handleOpenNotif = () => {
                 setShowNotifPanel(true);
-                const allIds = CHANGELOG.map(c => c.id);
+                const allIds = liveChangelog.map(c => c.id);
                 setReadChangelogs(allIds);
                 try { localStorage.setItem(CHANGELOG_STORAGE_KEY, JSON.stringify(allIds)); } catch {}
             };
@@ -8557,8 +8575,8 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                                         </button>
                                     </div>
                                     <div className="overflow-y-auto" style={{maxHeight:'calc(80vh - 52px)'}}>
-                                        {CHANGELOG.map((log, idx) => (
-                                            <div key={log.id} className={`p-4 ${idx < CHANGELOG.length - 1 ? 'border-b border-slate-100' : ''}`}>
+                                        {liveChangelog.map((log, idx) => (
+                                            <div key={log.id} className={`p-4 ${idx < liveChangelog.length - 1 ? 'border-b border-slate-100' : ''}`}>
                                                 <div className="flex items-start gap-3">
                                                     <div className="w-8 h-8 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                                                         <Icon name={log.icon} className="text-sky-500 text-xs" />
