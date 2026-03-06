@@ -3054,11 +3054,19 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
             const [cancelModal, setCancelModal] = useState(false);
             const [racikanModal, setRacikanModal] = useState(false);
             const [racikanItems, setRacikanItems] = useState([]);
-            const [racikanName, setRacikanName] = useState('');
+            const [racikanName, setRacikanName] = useState('Racikan 1');
             const [racikanDokter, setRacikanDokter] = useState('');
             const [racikanPasien, setRacikanPasien] = useState('');
             const [racikanSearch, setRacikanSearch] = useState('');
             const [racikanQtyInput, setRacikanQtyInput] = useState('1');
+            const [racikanSigna, setRacikanSigna] = useState('');
+            const [racikanCatatan, setRacikanCatatan] = useState('');
+            const [racikanBudDD, setRacikanBudDD] = useState('');
+            const [racikanBudMM, setRacikanBudMM] = useState('');
+            const [racikanBudYYYY, setRacikanBudYYYY] = useState('');
+            const [racikanUang, setRacikanUang] = useState('0');
+            const [racikanAddItemSearch, setRacikanAddItemSearch] = useState('');
+            const [racikanAddItemOpen, setRacikanAddItemOpen] = useState(false);
             const [btDevice, setBtDevice] = useState(null);
             const [pendingCarts, setPendingCarts] = useState([]);
             
@@ -3402,15 +3410,16 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                     racikanItems: racikanItems,
                     racikanDokter: racikanDokter,
                     racikanPasien: racikanPasien,
+                    racikanSigna: racikanSigna,
+                    racikanCatatan: racikanCatatan,
                 };
                 setCart(prev => [...prev, cartItem]);
                 showToast(`R/ ${label} ditambahkan ke keranjang`);
                 setRacikanModal(false);
-                setRacikanItems([]);
-                setRacikanName('');
-                setRacikanDokter('');
-                setRacikanPasien('');
-                setRacikanSearch('');
+                setRacikanItems([]); setRacikanName('Racikan 1'); setRacikanDokter('');
+                setRacikanPasien(''); setRacikanSearch(''); setRacikanSigna('');
+                setRacikanCatatan(''); setRacikanBudDD(''); setRacikanBudMM('');
+                setRacikanBudYYYY(''); setRacikanUang('0'); setRacikanAddItemSearch('');
             };
 
             const addToCart = (item) => {
@@ -4150,105 +4159,210 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                     <ConfirmModal isOpen={cancelModal} title="Batalkan Transaksi?" message="Keranjang akan dikosongkan dan semua item akan dihapus dari sesi ini." onConfirm={confirmCancel} onCancel={() => setCancelModal(false)} confirmText="Ya, Batalkan" confirmColor="red" />
 
                     {/* ===== MODAL RACIKAN ===== */}
-                    {racikanModal && (
-                        <div className="fixed inset-0 z-[200] bg-slate-900/70 backdrop-blur-sm flex items-end md:items-center justify-center fade-in" onClick={() => setRacikanModal(false)}>
-                            <div className="bg-white w-full max-w-lg rounded-t-3xl md:rounded-3xl shadow-2xl flex flex-col max-h-[92vh] pop-in" onClick={e => e.stopPropagation()}>
-                                {/* Header */}
-                                <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-emerald-600 rounded-t-3xl md:rounded-t-3xl">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                                            <span className="text-white font-black text-lg">R/</span>
-                                        </div>
-                                        <div>
-                                            <h2 className="text-white font-black text-base">Racikan / Resep</h2>
-                                            <p className="text-emerald-100 text-[10px]">Tambahkan bahan racikan</p>
-                                        </div>
-                                    </div>
-                                    <button onClick={() => setRacikanModal(false)} className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30"><Icon name="xmark" /></button>
+                    {racikanModal && (() => {
+                        const racikanSubtotal = racikanItems.reduce((s,r) => s + r.price * r.qty, 0);
+                        const racikanUangNum = parseInt((racikanUang||'0').replace(/\D/g,'')) || 0;
+                        const racikanTotal = racikanSubtotal + racikanUangNum;
+                        const invoiceNo = '#' + new Date().toISOString().slice(2,10).replace(/-/g,'') + String(Math.floor(Math.random()*9000+1000));
+                        return (
+                        <div className="fixed inset-0 z-[200] bg-white flex flex-col fade-in">
+                            {/* ── TOP BAR ── */}
+                            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white flex-shrink-0">
+                                <button onClick={() => setRacikanModal(false)} className="flex items-center gap-1 text-slate-500 hover:text-slate-700 font-bold text-sm">
+                                    <Icon name="xmark" className="text-base" /> {invoiceNo}
+                                </button>
+                                <button onClick={submitRacikan} disabled={racikanItems.length === 0} className="px-5 py-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-40 text-white font-bold text-sm rounded-lg active:scale-95 transition-all">
+                                    Simpan
+                                </button>
+                            </div>
+
+                            {/* ── SCROLLABLE CONTENT ── */}
+                            <div className="flex-1 overflow-y-auto">
+                                {/* Title */}
+                                <div className="px-5 pt-5 pb-3">
+                                    <input
+                                        type="text"
+                                        value={racikanName}
+                                        onChange={e => setRacikanName(e.target.value)}
+                                        className="text-2xl font-black text-slate-800 w-full outline-none border-b-2 border-transparent focus:border-teal-400 bg-transparent pb-1"
+                                        placeholder="Nama Racikan..."
+                                    />
                                 </div>
 
-                                {/* Form Info Resep */}
-                                <div className="px-5 pt-4 pb-3 grid grid-cols-2 gap-3 border-b border-slate-100">
-                                    <div className="col-span-2">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase">Nama Racikan</label>
-                                        <input type="text" className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-400" placeholder="Contoh: Racikan Batuk Anak..." value={racikanName} onChange={e => setRacikanName(e.target.value)} />
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase">Nama Pasien</label>
-                                        <input type="text" className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-400" placeholder="Opsional..." value={racikanPasien} onChange={e => setRacikanPasien(e.target.value)} />
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase">Dokter / Penulis Resep</label>
-                                        <input type="text" className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-400" placeholder="Opsional..." value={racikanDokter} onChange={e => setRacikanDokter(e.target.value)} />
+                                {/* ── INFO R/ ── */}
+                                <div className="px-5 pb-2">
+                                    <h3 className="text-base font-black text-slate-800 mb-3">Info R/</h3>
+                                    <div className="divide-y divide-slate-100 border-t border-slate-100">
+                                        <div className="flex items-center justify-between py-3.5">
+                                            <span className="text-sm font-medium text-slate-700">Dokter</span>
+                                            <div className="flex items-center gap-1">
+                                                <input
+                                                    type="text"
+                                                    value={racikanDokter}
+                                                    onChange={e => setRacikanDokter(e.target.value)}
+                                                    placeholder="Pilih"
+                                                    className="text-sm font-semibold text-teal-600 text-right outline-none bg-transparent placeholder:text-teal-500 w-36"
+                                                />
+                                                <Icon name="chevron-right" className="text-teal-500 text-xs" />
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-between py-3.5">
+                                            <span className="text-sm font-medium text-slate-700">Pasien</span>
+                                            <div className="flex items-center gap-1">
+                                                <input
+                                                    type="text"
+                                                    value={racikanPasien}
+                                                    onChange={e => setRacikanPasien(e.target.value)}
+                                                    placeholder="Pilih"
+                                                    className="text-sm font-semibold text-teal-600 text-right outline-none bg-transparent placeholder:text-teal-500 w-36"
+                                                />
+                                                <Icon name="chevron-right" className="text-teal-500 text-xs" />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Cari Barang */}
-                                <div className="px-5 pt-3 pb-2">
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase">Tambah Bahan</label>
-                                    <div className="relative mt-1">
+                                {/* ── DAFTAR BARANG ── */}
+                                <div className="px-5 pt-3 pb-4 border-t border-slate-100">
+                                    <h3 className="text-base font-black text-slate-800 mb-3">Daftar Barang</h3>
+
+                                    {/* Search barang */}
+                                    <div className="relative mb-3">
                                         <Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
-                                        <input autoFocus type="text" className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-400" placeholder="Ketik nama bahan / obat..." value={racikanSearch} onChange={e => setRacikanSearch(e.target.value)} />
+                                        <input
+                                            type="text"
+                                            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-teal-400 bg-white"
+                                            placeholder="Cari barang"
+                                            value={racikanAddItemSearch}
+                                            onChange={e => setRacikanAddItemSearch(e.target.value)}
+                                        />
                                     </div>
-                                    {racikanSearch && (
-                                        <div className="mt-2 rounded-xl border border-slate-200 overflow-hidden shadow-md max-h-40 overflow-y-auto">
-                                            {items.filter(i => i.name.toLowerCase().includes(racikanSearch.toLowerCase()) && safeNumber(i.qty) > 0).slice(0, 8).map(item => (
-                                                <button key={item.id} onClick={() => addItemToRacikan(item)} className="w-full text-left px-3 py-2.5 text-sm hover:bg-emerald-50 transition-colors flex items-center justify-between border-b border-slate-50 last:border-0">
-                                                    <span className="font-bold text-slate-700 truncate">{item.name}</span>
-                                                    <span className="text-[10px] text-slate-400 flex-shrink-0 ml-2">{formatRupiah(item.price)} / {item.unit}</span>
+
+                                    {/* Dropdown hasil cari */}
+                                    {racikanAddItemSearch.trim() && (
+                                        <div className="mb-3 rounded-xl border border-slate-200 overflow-hidden shadow-md max-h-44 overflow-y-auto">
+                                            {items.filter(i => i.name.toLowerCase().includes(racikanAddItemSearch.toLowerCase()) && safeNumber(i.qty) > 0).slice(0, 8).map(item => (
+                                                <button key={item.id} onClick={() => { addItemToRacikan(item); setRacikanAddItemSearch(''); }} className="w-full text-left px-4 py-3 text-sm hover:bg-teal-50 transition-colors flex items-center justify-between border-b border-slate-50 last:border-0">
+                                                    <span className="font-semibold text-slate-700 truncate">{item.name}</span>
+                                                    <span className="text-[11px] text-teal-600 font-bold flex-shrink-0 ml-2">{formatRupiah(item.price)}</span>
                                                 </button>
                                             ))}
-                                            {items.filter(i => i.name.toLowerCase().includes(racikanSearch.toLowerCase()) && safeNumber(i.qty) > 0).length === 0 && (
+                                            {items.filter(i => i.name.toLowerCase().includes(racikanAddItemSearch.toLowerCase()) && safeNumber(i.qty) > 0).length === 0 && (
                                                 <div className="py-4 text-center text-xs text-slate-400">Barang tidak ditemukan</div>
                                             )}
                                         </div>
                                     )}
-                                </div>
 
-                                {/* Daftar Bahan Racikan */}
-                                <div className="flex-1 overflow-y-auto px-5 pb-3 space-y-2 min-h-[80px]">
-                                    {racikanItems.length === 0 ? (
-                                        <div className="py-6 text-center text-slate-300 flex flex-col items-center opacity-70">
-                                            <Icon name="mortar-pestle" className="text-3xl mb-2" />
-                                            <p className="text-xs font-medium">Belum ada bahan ditambahkan</p>
+                                    {/* Tabel barang */}
+                                    <div className="border border-slate-200 rounded-xl overflow-hidden">
+                                        <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+                                            <span className="text-xs font-bold text-slate-600">Barang</span>
+                                            <span className="text-xs font-bold text-slate-600">Subtotal</span>
                                         </div>
-                                    ) : (
-                                        <>
-                                            <div className="flex items-center justify-between mb-1">
-                                                <span className="text-[10px] font-bold text-slate-500 uppercase">{racikanItems.length} Bahan</span>
-                                                <span className="text-[10px] font-bold text-emerald-600">{formatRupiah(racikanItems.reduce((s,r)=>s+r.price*r.qty,0))}</span>
-                                            </div>
-                                            {racikanItems.map((r, idx) => (
-                                                <div key={r.id} className="flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
-                                                    <span className="w-5 h-5 flex-shrink-0 rounded-full bg-emerald-200 text-emerald-800 text-[10px] font-black flex items-center justify-center">{idx+1}</span>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-xs font-bold text-slate-800 truncate">{r.name}</p>
-                                                        <p className="text-[10px] text-slate-500">{formatRupiah(r.price)} / {r.unit} → {formatRupiah(r.price * r.qty)}</p>
-                                                    </div>
-                                                    <div className="flex items-center gap-1 bg-white rounded-lg border border-emerald-200 p-0.5">
-                                                        <button onClick={() => updateRacikanQty(r.id, -1)} className="w-6 h-6 flex items-center justify-center text-emerald-700 hover:bg-emerald-50 rounded text-xs"><Icon name="minus" /></button>
-                                                        <span className="text-xs font-black w-6 text-center text-emerald-800">{r.qty}</span>
-                                                        <button onClick={() => updateRacikanQty(r.id, 1)} className="w-6 h-6 flex items-center justify-center text-emerald-700 hover:bg-emerald-50 rounded text-xs"><Icon name="plus" /></button>
-                                                    </div>
-                                                    <button onClick={() => removeRacikanItem(r.id)} className="text-red-400 hover:text-red-600 p-1"><Icon name="trash" className="text-xs" /></button>
+                                        {racikanItems.length === 0 ? (
+                                            <div className="py-10 flex flex-col items-center text-slate-300">
+                                                <div className="text-4xl mb-3 flex gap-2 opacity-40">
+                                                    <Icon name="capsules" /><Icon name="leaf" />
                                                 </div>
-                                            ))}
-                                        </>
-                                    )}
+                                                <p className="text-sm font-semibold text-slate-400 mb-4">Belum ada barang pada resep ini</p>
+                                                <button onClick={() => document.querySelector('input[placeholder="Cari barang"]')?.focus()} className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white rounded-xl font-bold text-sm active:scale-95 transition-all">
+                                                    <Icon name="plus" /> Barang
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            racikanItems.map((r, idx) => (
+                                                <div key={r.id} className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 last:border-0">
+                                                    <span className="text-[10px] font-bold text-slate-400 w-4 flex-shrink-0">{idx+1}</span>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-semibold text-slate-800 truncate">{r.name}</p>
+                                                        <p className="text-[11px] text-slate-400">{formatRupiah(r.price)} × {r.qty} {r.unit}</p>
+                                                        <div className="flex items-center gap-1 mt-1 w-fit bg-slate-100 rounded-lg p-0.5">
+                                                            <button onClick={() => updateRacikanQty(r.id, -1)} className="w-6 h-6 flex items-center justify-center text-slate-600 hover:bg-white rounded-md text-xs transition-all"><Icon name="minus" /></button>
+                                                            <span className="text-xs font-black w-5 text-center text-slate-700">{r.qty}</span>
+                                                            <button onClick={() => updateRacikanQty(r.id, 1)} className="w-6 h-6 flex items-center justify-center text-slate-600 hover:bg-white rounded-md text-xs transition-all"><Icon name="plus" /></button>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex flex-col items-end gap-2">
+                                                        <span className="text-sm font-bold text-slate-800">{formatRupiah(r.price * r.qty)}</span>
+                                                        <button onClick={() => removeRacikanItem(r.id)} className="text-red-400 hover:text-red-600 p-0.5"><Icon name="trash" className="text-xs" /></button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
 
-                                {/* Footer */}
-                                <div className="px-5 py-4 border-t border-slate-100 bg-slate-50 rounded-b-3xl">
-                                    <div className="flex justify-between items-center mb-3">
-                                        <span className="text-xs text-slate-500 font-medium">Total Harga Racikan</span>
-                                        <span className="text-lg font-black text-emerald-700">{formatRupiah(racikanItems.reduce((s,r)=>s+r.price*r.qty,0))}</span>
+                                {/* ── SIGNA & CATATAN ── */}
+                                <div className="px-5 pb-4 border-t border-slate-100 pt-4 divide-y divide-slate-100">
+                                    <div className="flex items-center justify-between py-3.5">
+                                        <span className="text-sm font-medium text-slate-700 flex-shrink-0 w-24">Signa</span>
+                                        <input
+                                            type="text"
+                                            value={racikanSigna}
+                                            onChange={e => setRacikanSigna(e.target.value)}
+                                            placeholder="Contoh: 3×1"
+                                            className="flex-1 text-sm text-right border border-slate-200 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-teal-400"
+                                        />
                                     </div>
-                                    <button onClick={submitRacikan} disabled={racikanItems.length === 0} className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl font-bold shadow-lg shadow-emerald-200 active:scale-95 transition-all flex items-center justify-center gap-2">
-                                        <Icon name="plus" /> Tambahkan R/ ke Keranjang
-                                    </button>
+                                    <div className="py-3.5">
+                                        <div className="flex items-start justify-between mb-1.5">
+                                            <span className="text-sm font-medium text-slate-700">Catatan</span>
+                                            <span className="text-[10px] text-slate-400">{racikanCatatan.length}/100</span>
+                                        </div>
+                                        <textarea
+                                            value={racikanCatatan}
+                                            onChange={e => setRacikanCatatan(e.target.value.slice(0,100))}
+                                            placeholder="Contoh: obat luar, dikocok dahulu sebelum diminum, dll"
+                                            rows={3}
+                                            className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-teal-400 resize-none placeholder:text-slate-400"
+                                        />
+                                        <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-1"><Icon name="circle-info" className="text-slate-300" /> Keterangan dipakai dalam etiket</p>
+                                    </div>
+                                    <div className="flex items-center justify-between py-3.5">
+                                        <span className="text-sm font-medium text-slate-700">BUD</span>
+                                        <div className="flex items-center gap-1.5">
+                                            <input type="number" value={racikanBudDD} onChange={e => setRacikanBudDD(e.target.value.slice(0,2))} placeholder="DD" className="w-12 text-sm text-center border border-slate-200 rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-teal-400" />
+                                            <input type="number" value={racikanBudMM} onChange={e => setRacikanBudMM(e.target.value.slice(0,2))} placeholder="MM" className="w-12 text-sm text-center border border-slate-200 rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-teal-400" />
+                                            <input type="number" value={racikanBudYYYY} onChange={e => setRacikanBudYYYY(e.target.value.slice(0,4))} placeholder="YYYY" className="w-16 text-sm text-center border border-slate-200 rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-teal-400" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* ── SUBTOTAL / UANG R/ / TOTAL ── */}
+                                <div className="px-5 pb-6 border-t border-slate-100 pt-4 divide-y divide-slate-100">
+                                    <div className="flex items-center justify-between py-3">
+                                        <span className="text-sm font-medium text-slate-700">Subtotal</span>
+                                        <span className="text-sm font-bold text-slate-800">{formatRupiah(racikanSubtotal)}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between py-3">
+                                        <span className="text-sm font-medium text-slate-700">Uang R/</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg">Rp</span>
+                                            <input
+                                                type="number"
+                                                value={racikanUang === '0' ? '' : racikanUang}
+                                                onChange={e => setRacikanUang(e.target.value || '0')}
+                                                placeholder="0"
+                                                className="w-28 text-sm font-semibold text-right border border-slate-200 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-teal-400"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between py-3">
+                                        <span className="text-sm font-bold text-slate-800">Total</span>
+                                        <span className="text-base font-black text-teal-700">{formatRupiah(racikanTotal)}</span>
+                                    </div>
                                 </div>
                             </div>
+
+                            {/* ── BOTTOM BAR ── */}
+                            <div className="flex-shrink-0 px-5 py-4 border-t border-slate-100 bg-white">
+                                <button onClick={() => { setRacikanModal(false); setRacikanItems([]); setRacikanName('Racikan 1'); setRacikanDokter(''); setRacikanPasien(''); setRacikanSigna(''); setRacikanCatatan(''); setRacikanBudDD(''); setRacikanBudMM(''); setRacikanBudYYYY(''); setRacikanUang('0'); setRacikanAddItemSearch(''); }} className="flex items-center gap-2 px-5 py-2.5 border-2 border-red-400 text-red-500 rounded-xl font-bold text-sm hover:bg-red-50 active:scale-95 transition-all">
+                                    <Icon name="trash" /> Hapus
+                                </button>
+                            </div>
                         </div>
+                        );
+                    })()}
                     )}
 
                     
