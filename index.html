@@ -1674,6 +1674,11 @@
             const [itemBuyPrice, setItemBuyPrice] = useState('');
             const [editingItemIndex, setEditingItemIndex] = useState(null); // index item yang sedang diedit
             const [originalItemsSnapshot, setOriginalItemsSnapshot] = useState({}); // qty asli sebelum diedit { itemId: qty }
+            // State untuk tambah barang baru via faktur
+            const [showNewItemForm, setShowNewItemForm] = useState(false);
+            const [newItemData, setNewItemData] = useState({ name: '', unit: 'Pcs', rack: '', exp: '', minStock: '' });
+            const [addingNewItem, setAddingNewItem] = useState(false);
+            const unitOptionsFaktur = ["Pcs","Box","Botol","Strip","Tube","Ampul","Vial","Tablet","Kapsul","Sachet","Pack","Roll","Set","Lembar","Pasang","Galon"];
 
             useEffect(() => {
                 if (!user) return;
@@ -1784,6 +1789,74 @@
                 setItemQty('');
                 setItemPrice('');
                 setItemBuyPrice('');
+            };
+
+            // Fungsi untuk tambah barang BARU via faktur (barang belum ada di daftar)
+            const handleAddNewItemToInvoice = async () => {
+                if (!newItemData.name.trim()) { showToast("Nama barang wajib diisi!", "error"); return; }
+                if (!itemQty || !itemPrice) { showToast("Qty beli dan harga jual wajib diisi!", "error"); return; }
+                const qty = parseFloat(itemQty);
+                const price = parseFloat(itemPrice);
+                if (qty <= 0 || price <= 0) { showToast("Qty dan harga harus lebih dari 0!", "error"); return; }
+                setAddingNewItem(true);
+                try {
+                    // Cek apakah barang sudah ada (nama sama)
+                    const existingItem = items.find(i => i.name.toLowerCase() === newItemData.name.trim().toLowerCase());
+                    let finalItemId, finalName;
+                    if (existingItem) {
+                        finalItemId = existingItem.id;
+                        finalName = existingItem.name;
+                        showToast(`Barang sudah ada, dipakai yang sudah ada`);
+                    } else {
+                        const collRef = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory');
+                        const storeId = currentProfile.id;
+                        const buyPriceVal = itemBuyPrice ? parseFloat(itemBuyPrice) : 0;
+                        const baseData = {
+                            name: newItemData.name.trim(),
+                            unit: newItemData.unit || 'Pcs',
+                            rack: newItemData.rack || '-',
+                            exp: newItemData.exp || '',
+                            price: price,
+                            costPrice: buyPriceVal,
+                            minStock: newItemData.minStock ? parseFloat(newItemData.minStock) : null,
+                            updatedAt: window.serverTimestamp()
+                        };
+                        const newDoc = await window.addDoc(collRef, {
+                            ...baseData,
+                            stocks: { [storeId]: qty },
+                            qty: qty,
+                            createdAt: window.serverTimestamp()
+                        });
+                        finalItemId = newDoc.id;
+                        finalName = newItemData.name.trim();
+                        showToast("✅ Barang baru dibuat & ditambahkan ke faktur");
+                    }
+                    // Tambahkan ke daftar item faktur
+                    setInvoiceData(prev => ({
+                        ...prev,
+                        items: [...prev.items, {
+                            id: finalItemId,
+                            name: finalName,
+                            qty: qty,
+                            price: price,
+                            buyPrice: itemBuyPrice ? parseFloat(itemBuyPrice) : 0,
+                            currentStock: existingItem ? (existingItem.qty || 0) : 0
+                        }]
+                    }));
+                    // Reset semua field
+                    setShowNewItemForm(false);
+                    setNewItemData({ name: '', unit: 'Pcs', rack: '', exp: '', minStock: '' });
+                    setSelectedItem(null);
+                    setItemSearch('');
+                    setItemQty('');
+                    setItemPrice('');
+                    setItemBuyPrice('');
+                } catch (err) {
+                    console.error('Error menambah barang baru:', err);
+                    showToast("Gagal membuat barang baru", "error");
+                } finally {
+                    setAddingNewItem(false);
+                }
             };
             
             // Fungsi untuk remove item dari faktur
@@ -2439,24 +2512,98 @@
                                     {editingItemIndex === null && (
                                         <>
                                             <div className="relative mb-2">
-                                                <input type="text" className="w-full h-8 pl-3 pr-8 border border-gray-300 rounded-md text-xs bg-white outline-none focus:border-teal-500" placeholder="Cari barang..." value={itemSearch} onChange={e => setItemSearch(e.target.value)} />
+                                                <input type="text" className="w-full h-8 pl-3 pr-8 border border-gray-300 rounded-md text-xs bg-white outline-none focus:border-teal-500" placeholder="Cari barang..." value={itemSearch} onChange={e => { setItemSearch(e.target.value); setShowNewItemForm(false); setSelectedItem(null); }} />
                                                 <Icon name="magnifying-glass" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
                                             </div>
                                             {itemSearch && filteredItems.length > 0 && (
                                                 <div className="mb-2 bg-white border border-slate-200 rounded-xl max-h-40 overflow-y-auto shadow-lg">
                                                     {filteredItems.map(item => (
-                                                        <button key={item.id} type="button" onClick={() => { setSelectedItem(item); setItemSearch(item.name); setItemPrice(item.price ? item.price.toString() : ''); }} className="w-full text-left px-3 py-2 hover:bg-teal-50 flex justify-between items-center border-b border-slate-100 last:border-0">
+                                                        <button key={item.id} type="button" onClick={() => { setSelectedItem(item); setItemSearch(item.name); setItemPrice(item.price ? item.price.toString() : ''); setShowNewItemForm(false); }} className="w-full text-left px-3 py-2 hover:bg-teal-50 flex justify-between items-center border-b border-slate-100 last:border-0">
                                                             <span className="text-xs font-medium text-slate-800">{item.name}</span>
                                                             <span className="text-[10px] text-slate-500">Stok: {item.qty || 0}</span>
                                                         </button>
                                                     ))}
                                                 </div>
                                             )}
+                                            {/* Tombol tambah barang baru jika pencarian tidak menemukan hasil */}
+                                            {itemSearch && filteredItems.length === 0 && !showNewItemForm && (
+                                                <div className="mb-2 bg-white border border-dashed border-amber-300 rounded-xl p-3 flex items-center justify-between gap-2">
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <Icon name="circle-exclamation" className="text-amber-400 flex-shrink-0" />
+                                                        <span className="text-xs text-slate-500 truncate">Barang <b className="text-slate-700">"{itemSearch}"</b> tidak ditemukan</span>
+                                                    </div>
+                                                    <button type="button" onClick={() => { setNewItemData(prev => ({ ...prev, name: itemSearch })); setShowNewItemForm(true); setSelectedItem(null); }} className="flex-shrink-0 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1 active:scale-95 transition-all">
+                                                        <Icon name="plus" /> Barang Baru
+                                                    </button>
+                                                </div>
+                                            )}
                                         </>
                                     )}
 
-                                    {/* Form Input Barang — tampil saat selectedItem ATAU sedang edit */}
-                                    {(selectedItem || editingItemIndex !== null) && (
+                                    {/* Form Tambah Barang BARU lewat faktur */}
+                                    {showNewItemForm && editingItemIndex === null && (
+                                        <div className="mb-3 p-3 bg-amber-50 rounded-md border border-amber-300">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-xs font-black text-amber-700 flex items-center gap-1.5">
+                                                    <Icon name="plus-circle" className="text-amber-500" /> Tambah Barang Baru
+                                                </span>
+                                                <button type="button" onClick={() => { setShowNewItemForm(false); setItemSearch(''); }} className="text-slate-400 hover:text-red-500 text-xs"><Icon name="xmark" /></button>
+                                            </div>
+                                            {/* Nama barang */}
+                                            <div className="mb-2">
+                                                <label className="block text-[10px] text-gray-500 mb-1">Nama Barang <span className="text-red-500">*</span></label>
+                                                <input type="text" className="w-full h-8 px-2 border border-amber-300 rounded text-xs bg-white outline-none focus:border-teal-500" placeholder="Nama barang baru..." value={newItemData.name} onChange={e => setNewItemData(p => ({ ...p, name: e.target.value }))} autoFocus />
+                                            </div>
+                                            {/* Satuan + Rak */}
+                                            <div className="flex gap-2 mb-2">
+                                                <div className="flex-1">
+                                                    <label className="block text-[10px] text-gray-500 mb-1">Satuan</label>
+                                                    <select className="w-full h-8 px-2 border border-gray-300 rounded text-xs bg-white outline-none focus:border-teal-500" value={newItemData.unit} onChange={e => setNewItemData(p => ({ ...p, unit: e.target.value }))}>
+                                                        {unitOptionsFaktur.map(u => <option key={u} value={u}>{u}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div className="flex-1">
+                                                    <label className="block text-[10px] text-gray-500 mb-1">Rak</label>
+                                                    <input type="text" className="w-full h-8 px-2 border border-gray-300 rounded text-xs bg-white outline-none focus:border-teal-500" placeholder="Contoh: A1" value={newItemData.rack} onChange={e => setNewItemData(p => ({ ...p, rack: e.target.value }))} />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <label className="block text-[10px] text-gray-500 mb-1">Min. Stok</label>
+                                                    <input type="number" className="w-full h-8 px-2 border border-gray-300 rounded text-xs bg-white outline-none focus:border-teal-500" placeholder="0" value={newItemData.minStock} onChange={e => setNewItemData(p => ({ ...p, minStock: e.target.value }))} />
+                                                </div>
+                                            </div>
+                                            {/* Qty + Harga Beli + Harga Jual */}
+                                            <div className="flex gap-2 mb-2">
+                                                <div className="flex-1">
+                                                    <label className="block text-[10px] text-gray-500 mb-1">Qty Beli <span className="text-red-500">*</span></label>
+                                                    <input type="number" className="w-full h-8 px-2 border border-amber-300 rounded text-xs bg-white outline-none focus:border-teal-500" placeholder="0" value={itemQty} onChange={e => setItemQty(e.target.value)} step="0.01" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <label className="block text-[10px] text-gray-500 mb-1">Harga Beli</label>
+                                                    <input type="number" className="w-full h-8 px-2 border border-gray-300 rounded text-xs bg-white outline-none focus:border-teal-500" placeholder="0" value={itemBuyPrice} onChange={e => setItemBuyPrice(e.target.value)} />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <label className="block text-[10px] text-gray-500 mb-1">Harga Jual <span className="text-red-500">*</span></label>
+                                                    <input type="number" className="w-full h-8 px-2 border border-amber-300 rounded text-xs bg-white outline-none focus:border-teal-500" placeholder="0" value={itemPrice} onChange={e => setItemPrice(e.target.value)} />
+                                                </div>
+                                            </div>
+                                            {/* Kadaluarsa (opsional) */}
+                                            <div className="mb-3">
+                                                <label className="block text-[10px] text-gray-500 mb-1">Kadaluarsa <span className="text-slate-300">(opsional)</span></label>
+                                                <input type="date" className="w-full h-8 px-2 border border-gray-300 rounded text-xs bg-white outline-none focus:border-teal-500" value={newItemData.exp} onChange={e => setNewItemData(p => ({ ...p, exp: e.target.value }))} />
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button type="button" onClick={() => { setShowNewItemForm(false); setItemSearch(''); setItemQty(''); setItemPrice(''); setItemBuyPrice(''); }} className="flex-1 py-1.5 bg-white border border-gray-300 text-gray-600 rounded text-xs font-bold hover:bg-gray-50 active:scale-95 transition-all">
+                                                    Batal
+                                                </button>
+                                                <button type="button" onClick={handleAddNewItemToInvoice} disabled={addingNewItem} className="flex-1 py-1.5 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded text-xs font-bold active:scale-95 transition-all flex items-center justify-center gap-1">
+                                                    {addingNewItem ? <><Icon name="spinner" className="animate-spin" /> Menyimpan...</> : <><Icon name="plus" /> Buat & Tambah ke Faktur</>}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Form Input Barang — tampil saat selectedItem ATAU sedang edit, tapi TIDAK saat form barang baru aktif */}
+                                    {(selectedItem || editingItemIndex !== null) && !showNewItemForm && (
                                         <div className={`mb-3 p-3 bg-white rounded-md border ${editingItemIndex !== null ? 'border-amber-300 bg-amber-50' : 'border-teal-200'}`}>
                                             <div className="flex justify-between items-center mb-2">
                                                 <span className="text-xs font-bold text-slate-800">
