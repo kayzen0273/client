@@ -1674,10 +1674,9 @@
             const [itemBuyPrice, setItemBuyPrice] = useState('');
             const [editingItemIndex, setEditingItemIndex] = useState(null); // index item yang sedang diedit
             const [originalItemsSnapshot, setOriginalItemsSnapshot] = useState({}); // qty asli sebelum diedit { itemId: qty }
-            // State untuk tambah barang baru via faktur
+            // State untuk tambah barang baru via faktur (belum disimpan ke Firestore)
             const [showNewItemForm, setShowNewItemForm] = useState(false);
             const [newItemData, setNewItemData] = useState({ name: '', unit: 'Pcs', rack: '', exp: '', minStock: '' });
-            const [addingNewItem, setAddingNewItem] = useState(false);
             const unitOptionsFaktur = ["Pcs","Box","Botol","Strip","Tube","Ampul","Vial","Tablet","Kapsul","Sachet","Pack","Roll","Set","Lembar","Pasang","Galon"];
 
             useEffect(() => {
@@ -1791,74 +1790,58 @@
                 setItemBuyPrice('');
             };
 
-            // Fungsi untuk tambah barang BARU via faktur (barang belum ada di daftar)
-            // PENTING: item dibuat dengan stok=0, stok akan diisi oleh handleSubmitInvoice saat faktur disimpan
-            const handleAddNewItemToInvoice = async () => {
+            // Tambah barang BARU ke daftar faktur — hanya di memori, belum ke Firestore.
+            // Firestore akan dibuat di handleSubmitInvoice saat faktur benar-benar disimpan.
+            // Item ditandai dengan _pendingNew: true dan _newItemMeta untuk menyimpan data barang.
+            const addNewItemToInvoiceMemory = () => {
                 if (!newItemData.name.trim()) { showToast("Nama barang wajib diisi!", "error"); return; }
                 if (!itemQty || !itemPrice) { showToast("Qty beli dan harga jual wajib diisi!", "error"); return; }
                 const qty = parseFloat(itemQty);
                 const price = parseFloat(itemPrice);
                 if (qty <= 0 || price <= 0) { showToast("Qty dan harga harus lebih dari 0!", "error"); return; }
-                setAddingNewItem(true);
-                try {
-                    // Cek apakah barang sudah ada (nama sama)
-                    const existingItem = items.find(i => i.name.toLowerCase() === newItemData.name.trim().toLowerCase());
-                    let finalItemId, finalName;
-                    if (existingItem) {
-                        finalItemId = existingItem.id;
-                        finalName = existingItem.name;
-                        showToast(`Barang sudah ada, langsung digunakan`);
-                    } else {
-                        const collRef = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory');
-                        const storeId = currentProfile.id;
-                        const buyPriceVal = itemBuyPrice ? parseFloat(itemBuyPrice) : 0;
-                        const baseData = {
-                            name: newItemData.name.trim(),
+
+                // Cek nama barang sudah ada di daftar barang
+                const existingItem = items.find(i => i.name.toLowerCase() === newItemData.name.trim().toLowerCase());
+                if (existingItem) {
+                    // Barang sudah ada → pakai seperti biasa
+                    setSelectedItem(existingItem);
+                    setItemSearch(existingItem.name);
+                    setItemPrice(existingItem.price ? existingItem.price.toString() : price.toString());
+                    setShowNewItemForm(false);
+                    showToast(`Barang "${existingItem.name}" sudah ada, silakan klik "+ Barang"`, "info");
+                    return;
+                }
+
+                // Tandai dengan _pendingNew supaya handleSubmitInvoice tahu harus buat ke Firestore
+                const tempId = `_new_${Date.now()}_${Math.random().toString(36).slice(2,7)}`;
+                setInvoiceData(prev => ({
+                    ...prev,
+                    items: [...prev.items, {
+                        id: tempId,
+                        name: newItemData.name.trim(),
+                        qty: qty,
+                        price: price,
+                        buyPrice: itemBuyPrice ? parseFloat(itemBuyPrice) : 0,
+                        currentStock: 0,
+                        _pendingNew: true,           // flag: belum ada di Firestore
+                        _newItemMeta: {              // data untuk createDoc saat simpan faktur
                             unit: newItemData.unit || 'Pcs',
                             rack: newItemData.rack || '-',
                             exp: newItemData.exp || '',
-                            price: price,
-                            costPrice: buyPriceVal,
                             minStock: newItemData.minStock ? parseFloat(newItemData.minStock) : null,
-                            updatedAt: window.serverTimestamp()
-                        };
-                        // ⚠️ Stok dibuat 0 — handleSubmitInvoice yang akan menambahkan qty saat faktur disimpan
-                        const newDoc = await window.addDoc(collRef, {
-                            ...baseData,
-                            stocks: { [storeId]: 0 },
-                            qty: 0,
-                            createdAt: window.serverTimestamp()
-                        });
-                        finalItemId = newDoc.id;
-                        finalName = newItemData.name.trim();
-                        showToast("✅ Barang baru dibuat & ditambahkan ke faktur");
-                    }
-                    // Tambahkan ke daftar item faktur
-                    setInvoiceData(prev => ({
-                        ...prev,
-                        items: [...prev.items, {
-                            id: finalItemId,
-                            name: finalName,
-                            qty: qty,
-                            price: price,
-                            buyPrice: itemBuyPrice ? parseFloat(itemBuyPrice) : 0,
-                            currentStock: existingItem ? (existingItem.qty || 0) : 0
-                        }]
-                    }));
-                    // Reset semua field
-                    setShowNewItemForm(false);
-                    setNewItemData({ name: '', unit: 'Pcs', rack: '', exp: '', minStock: '' });
-                    setSelectedItem(null);
-                    setItemSearch('');
-                    setItemQty('');
-                    setItemPrice('');
-                    setItemBuyPrice('');
-                } catch (err) {
-                    console.error('Error menambah barang baru:', err);
-                    showToast("Gagal membuat barang baru", "error");
-                } finally {
-                    setAddingNewItem(false);
-                }
+                        }
+                    }]
+                }));
+
+                // Reset form
+                setShowNewItemForm(false);
+                setNewItemData({ name: '', unit: 'Pcs', rack: '', exp: '', minStock: '' });
+                setSelectedItem(null);
+                setItemSearch('');
+                setItemQty('');
+                setItemPrice('');
+                setItemBuyPrice('');
+                showToast(`"${newItemData.name.trim()}" ditambahkan — akan dibuat saat faktur disimpan`);
             };
             
             // Fungsi untuk remove item dari faktur
@@ -1947,6 +1930,46 @@
                 const grandTotal = dpp + ppn + numMaterai + numPengiriman + numPembulatan;
                 
                 try {
+                    // ── 0. Buat barang _pendingNew ke Firestore terlebih dahulu ──────────────
+                    // Barang ini baru diinput via form "Barang Baru" di faktur dan belum ada di database.
+                    // Stok dibuat 0 — akan diisi oleh loop update stok di bawah.
+                    const storeIdForNew = currentProfile.id;
+                    const resolvedItems = await Promise.all(invoiceData.items.map(async (item) => {
+                        if (!item._pendingNew) return item; // barang lama, skip
+                        try {
+                            const meta = item._newItemMeta || {};
+                            const collRef = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory');
+                            // Cek sekali lagi apakah nama sudah ada (race condition)
+                            const existingByName = items.find(i => i.name.toLowerCase() === item.name.toLowerCase());
+                            if (existingByName) {
+                                // Sudah ada → pakai id yang sudah ada
+                                return { ...item, id: existingByName.id, _pendingNew: false, _newItemMeta: undefined };
+                            }
+                            const newDoc = await window.addDoc(collRef, {
+                                name: item.name,
+                                unit: meta.unit || 'Pcs',
+                                rack: meta.rack || '-',
+                                exp: meta.exp || '',
+                                price: item.price,
+                                costPrice: item.buyPrice || 0,
+                                minStock: meta.minStock || null,
+                                stocks: { [storeIdForNew]: 0 },
+                                qty: 0,
+                                createdAt: window.serverTimestamp(),
+                                updatedAt: window.serverTimestamp(),
+                            });
+                            console.log(`✨ Barang baru dibuat: ${item.name} → id: ${newDoc.id}`);
+                            return { ...item, id: newDoc.id, _pendingNew: false, _newItemMeta: undefined };
+                        } catch (err) {
+                            console.error(`❌ Gagal buat barang baru ${item.name}:`, err);
+                            showToast(`Gagal membuat barang "${item.name}"`, "error");
+                            throw err;
+                        }
+                    }));
+                    // Ganti invoiceData.items dengan hasil resolve (id sudah nyata semua)
+                    const finalItems = resolvedItems;
+                    // ─────────────────────────────────────────────────────────────────────────
+
                     // Konversi attachment ke base64 jika ada
                     let attachmentData = null;
                     let attachmentType = null;
@@ -1982,7 +2005,7 @@
                         dueDate: invoiceData.dueDate ? new Date(invoiceData.dueDate).toISOString() : null, 
                         isPaid: invoiceData.isPaid, 
                         isConsignment: invoiceData.isConsignment || false,
-                        items: invoiceData.items.map(item => ({ id: item.id, name: item.name, qty: item.qty, price: item.price, buyPrice: item.buyPrice || 0 })),
+                        items: finalItems.map(item => ({ id: item.id, name: item.name, qty: item.qty, price: item.price, buyPrice: item.buyPrice || 0 })),
                         updatedAt: window.serverTimestamp(),
                         ...(attachmentData ? { attachmentData, attachmentType, attachmentName } : {})
                     };
@@ -1996,12 +2019,12 @@
                     }
                     
                     console.log('✅ Faktur berhasil disimpan!');
-                    console.log('📦 Items yang akan diupdate stoknya:', invoiceData.items.length, 'barang');
+                    console.log('📦 Items yang akan diupdate stoknya:', finalItems.length, 'barang');
                     
                     // 2. Update stok untuk setiap barang
                     console.log('=== MULAI UPDATE STOK ===');
                     console.log('Store ID:', currentProfile.id);
-                    console.log('Items to update:', invoiceData.items);
+                    console.log('Items to update:', finalItems);
                     
                     const storeId = currentProfile.id;
                     let successCount = 0;
@@ -2014,7 +2037,7 @@
                         console.log('📋 Qty asli dari snapshot:', originalItemsMap);
                     }
                     
-                    for (const item of invoiceData.items) {
+                    for (const item of finalItems) {
                         try {
                             const itemRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', item.id);
                             
@@ -2099,7 +2122,7 @@
 
                     // Jika mode EDIT: kurangi stok untuk item yang DIHAPUS dari faktur
                     if (editingPurchaseId && Object.keys(originalItemsMap).length > 0) {
-                        const newItemIds = new Set(invoiceData.items.map(i => i.id));
+                        const newItemIds = new Set(finalItems.map(i => i.id));
                         for (const [removedId, removedQty] of Object.entries(originalItemsMap)) {
                             if (!newItemIds.has(removedId)) {
                                 try {
@@ -2527,7 +2550,7 @@
                                                     ))}
                                                 </div>
                                             )}
-                                            {/* Tombol tambah barang baru jika pencarian tidak menemukan hasil */}
+                                            {/* Notif barang tidak ditemukan + tombol Barang Baru */}
                                             {itemSearch && filteredItems.length === 0 && !showNewItemForm && (
                                                 <div className="mb-2 bg-white border border-dashed border-amber-300 rounded-xl p-3 flex items-center justify-between gap-2">
                                                     <div className="flex items-center gap-2 min-w-0">
@@ -2542,21 +2565,20 @@
                                         </>
                                     )}
 
-                                    {/* Form Tambah Barang BARU lewat faktur */}
+                                    {/* Form input barang BARU (hanya di memori, belum ke Firestore) */}
                                     {showNewItemForm && editingItemIndex === null && (
                                         <div className="mb-3 p-3 bg-amber-50 rounded-md border border-amber-300">
                                             <div className="flex items-center justify-between mb-2">
                                                 <span className="text-xs font-black text-amber-700 flex items-center gap-1.5">
-                                                    <Icon name="plus-circle" className="text-amber-500" /> Tambah Barang Baru
+                                                    <Icon name="plus-circle" className="text-amber-500" /> Barang Baru
+                                                    <span className="text-[9px] font-normal text-amber-500 bg-amber-100 px-1.5 py-0.5 rounded">akan dibuat saat simpan faktur</span>
                                                 </span>
                                                 <button type="button" onClick={() => { setShowNewItemForm(false); setItemSearch(''); }} className="text-slate-400 hover:text-red-500 text-xs"><Icon name="xmark" /></button>
                                             </div>
-                                            {/* Nama barang */}
                                             <div className="mb-2">
                                                 <label className="block text-[10px] text-gray-500 mb-1">Nama Barang <span className="text-red-500">*</span></label>
                                                 <input type="text" className="w-full h-8 px-2 border border-amber-300 rounded text-xs bg-white outline-none focus:border-teal-500" placeholder="Nama barang baru..." value={newItemData.name} onChange={e => setNewItemData(p => ({ ...p, name: e.target.value }))} autoFocus />
                                             </div>
-                                            {/* Satuan + Rak + Min Stok */}
                                             <div className="flex gap-2 mb-2">
                                                 <div className="flex-1">
                                                     <label className="block text-[10px] text-gray-500 mb-1">Satuan</label>
@@ -2573,7 +2595,6 @@
                                                     <input type="number" className="w-full h-8 px-2 border border-gray-300 rounded text-xs bg-white outline-none focus:border-teal-500" placeholder="0" value={newItemData.minStock} onChange={e => setNewItemData(p => ({ ...p, minStock: e.target.value }))} />
                                                 </div>
                                             </div>
-                                            {/* Qty + Harga Beli + Harga Jual */}
                                             <div className="flex gap-2 mb-2">
                                                 <div className="flex-1">
                                                     <label className="block text-[10px] text-gray-500 mb-1">Qty Beli <span className="text-red-500">*</span></label>
@@ -2588,17 +2609,14 @@
                                                     <input type="number" className="w-full h-8 px-2 border border-amber-300 rounded text-xs bg-white outline-none focus:border-teal-500" placeholder="0" value={itemPrice} onChange={e => setItemPrice(e.target.value)} />
                                                 </div>
                                             </div>
-                                            {/* Kadaluarsa opsional */}
                                             <div className="mb-3">
                                                 <label className="block text-[10px] text-gray-500 mb-1">Kadaluarsa <span className="text-slate-300">(opsional)</span></label>
                                                 <input type="date" className="w-full h-8 px-2 border border-gray-300 rounded text-xs bg-white outline-none focus:border-teal-500" value={newItemData.exp} onChange={e => setNewItemData(p => ({ ...p, exp: e.target.value }))} />
                                             </div>
                                             <div className="flex gap-2">
-                                                <button type="button" onClick={() => { setShowNewItemForm(false); setItemSearch(''); setItemQty(''); setItemPrice(''); setItemBuyPrice(''); }} className="flex-1 py-1.5 bg-white border border-gray-300 text-gray-600 rounded text-xs font-bold hover:bg-gray-50 active:scale-95 transition-all">
-                                                    Batal
-                                                </button>
-                                                <button type="button" onClick={handleAddNewItemToInvoice} disabled={addingNewItem} className="flex-1 py-1.5 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded text-xs font-bold active:scale-95 transition-all flex items-center justify-center gap-1">
-                                                    {addingNewItem ? <><Icon name="spinner" className="animate-spin" /> Menyimpan...</> : <><Icon name="plus" /> Buat & Tambah ke Faktur</>}
+                                                <button type="button" onClick={() => { setShowNewItemForm(false); setItemSearch(''); setItemQty(''); setItemPrice(''); setItemBuyPrice(''); }} className="flex-1 py-1.5 bg-white border border-gray-300 text-gray-600 rounded text-xs font-bold hover:bg-gray-50 active:scale-95 transition-all">Batal</button>
+                                                <button type="button" onClick={addNewItemToInvoiceMemory} className="flex-1 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded text-xs font-bold active:scale-95 transition-all flex items-center justify-center gap-1">
+                                                    <Icon name="plus" /> Tambah ke Faktur
                                                 </button>
                                             </div>
                                         </div>
@@ -2658,8 +2676,9 @@
                                                         <div className="flex-1 min-w-0" onClick={() => { if (editingItemIndex !== index) startEditItem(index); }}>
                                                             <div className="flex items-center gap-1.5">
                                                                 <h5 className="text-xs font-bold text-slate-800 truncate">{item.name}</h5>
+                                                                {item._pendingNew && <span className="text-[9px] bg-amber-100 text-amber-600 font-black px-1.5 py-0.5 rounded flex-shrink-0">BARU</span>}
                                                                 {editingItemIndex === index && <span className="text-[9px] bg-amber-100 text-amber-600 font-bold px-1.5 py-0.5 rounded flex-shrink-0">Diedit</span>}
-                                                                {editingItemIndex !== index && <Icon name="pen-to-square" className="text-[10px] text-slate-300 flex-shrink-0" />}
+                                                                {editingItemIndex !== index && !item._pendingNew && <Icon name="pen-to-square" className="text-[10px] text-slate-300 flex-shrink-0" />}
                                                             </div>
                                                             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                                                 <span className="text-[11px] text-slate-500">Qty: <b>{item.qty}</b></span>
