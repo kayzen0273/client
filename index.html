@@ -1792,6 +1792,7 @@
             };
 
             // Fungsi untuk tambah barang BARU via faktur (barang belum ada di daftar)
+            // PENTING: item dibuat dengan stok=0, stok akan diisi oleh handleSubmitInvoice saat faktur disimpan
             const handleAddNewItemToInvoice = async () => {
                 if (!newItemData.name.trim()) { showToast("Nama barang wajib diisi!", "error"); return; }
                 if (!itemQty || !itemPrice) { showToast("Qty beli dan harga jual wajib diisi!", "error"); return; }
@@ -1806,7 +1807,7 @@
                     if (existingItem) {
                         finalItemId = existingItem.id;
                         finalName = existingItem.name;
-                        showToast(`Barang sudah ada, dipakai yang sudah ada`);
+                        showToast(`Barang sudah ada, langsung digunakan`);
                     } else {
                         const collRef = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory');
                         const storeId = currentProfile.id;
@@ -1821,10 +1822,11 @@
                             minStock: newItemData.minStock ? parseFloat(newItemData.minStock) : null,
                             updatedAt: window.serverTimestamp()
                         };
+                        // ⚠️ Stok dibuat 0 — handleSubmitInvoice yang akan menambahkan qty saat faktur disimpan
                         const newDoc = await window.addDoc(collRef, {
                             ...baseData,
-                            stocks: { [storeId]: qty },
-                            qty: qty,
+                            stocks: { [storeId]: 0 },
+                            qty: 0,
                             createdAt: window.serverTimestamp()
                         });
                         finalItemId = newDoc.id;
@@ -2554,7 +2556,7 @@
                                                 <label className="block text-[10px] text-gray-500 mb-1">Nama Barang <span className="text-red-500">*</span></label>
                                                 <input type="text" className="w-full h-8 px-2 border border-amber-300 rounded text-xs bg-white outline-none focus:border-teal-500" placeholder="Nama barang baru..." value={newItemData.name} onChange={e => setNewItemData(p => ({ ...p, name: e.target.value }))} autoFocus />
                                             </div>
-                                            {/* Satuan + Rak */}
+                                            {/* Satuan + Rak + Min Stok */}
                                             <div className="flex gap-2 mb-2">
                                                 <div className="flex-1">
                                                     <label className="block text-[10px] text-gray-500 mb-1">Satuan</label>
@@ -2586,7 +2588,7 @@
                                                     <input type="number" className="w-full h-8 px-2 border border-amber-300 rounded text-xs bg-white outline-none focus:border-teal-500" placeholder="0" value={itemPrice} onChange={e => setItemPrice(e.target.value)} />
                                                 </div>
                                             </div>
-                                            {/* Kadaluarsa (opsional) */}
+                                            {/* Kadaluarsa opsional */}
                                             <div className="mb-3">
                                                 <label className="block text-[10px] text-gray-500 mb-1">Kadaluarsa <span className="text-slate-300">(opsional)</span></label>
                                                 <input type="date" className="w-full h-8 px-2 border border-gray-300 rounded text-xs bg-white outline-none focus:border-teal-500" value={newItemData.exp} onChange={e => setNewItemData(p => ({ ...p, exp: e.target.value }))} />
