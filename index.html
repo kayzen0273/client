@@ -8477,59 +8477,59 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
             const isOpen = pickerTarget !== null;
 
             return (
-                <div className="p-3 md:p-5 max-w-full fade-in">
+                <div className="p-3 md:p-4 max-w-full fade-in">
                     {/* HEADER */}
-                    <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white flex items-center justify-center shadow-lg text-lg">
+                    <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white flex items-center justify-center shadow text-sm">
                                 <Icon name="calendar-days" />
                             </div>
                             <div>
-                                <h2 className="font-extrabold text-slate-800 text-lg leading-tight">Jadwal Shift</h2>
-                                <p className="text-xs text-slate-400">Pagi & Siang per lokasi toko</p>
+                                <h2 className="font-extrabold text-slate-800 text-base leading-tight">Jadwal Shift</h2>
+                                <p className="text-[10px] text-slate-400">Pagi & Siang per lokasi toko</p>
                             </div>
                         </div>
-                        <div className="flex gap-2 flex-wrap">
+                        <div className="flex gap-1.5 flex-wrap">
                             {!readOnly && (
                                 <>
-                                    <button onClick={() => setModalLokasi(true)} className="flex items-center gap-1.5 px-3 py-2 bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold rounded-xl shadow transition-all active:scale-95">
+                                    <button onClick={() => setModalLokasi(true)} className="flex items-center gap-1 px-2.5 py-1.5 bg-sky-500 hover:bg-sky-600 text-white text-[11px] font-bold rounded-lg shadow transition-all active:scale-95">
                                         <Icon name="shop" /> Lokasi
                                     </button>
-                                    <button onClick={() => setModalKaryawan(true)} className="flex items-center gap-1.5 px-3 py-2 bg-violet-500 hover:bg-violet-600 text-white text-xs font-bold rounded-xl shadow transition-all active:scale-95">
+                                    <button onClick={() => setModalKaryawan(true)} className="flex items-center gap-1 px-2.5 py-1.5 bg-violet-500 hover:bg-violet-600 text-white text-[11px] font-bold rounded-lg shadow transition-all active:scale-95">
                                         <Icon name="users" /> Karyawan
                                     </button>
                                 </>
                             )}
-                            <button onClick={handlePrint} className="flex items-center gap-1.5 px-3 py-2 bg-slate-600 hover:bg-slate-700 text-white text-xs font-bold rounded-xl shadow transition-all active:scale-95">
+                            <button onClick={handlePrint} className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-600 hover:bg-slate-700 text-white text-[11px] font-bold rounded-lg shadow transition-all active:scale-95">
                                 <Icon name="print" /> Print
                             </button>
                         </div>
                     </div>
 
                     {/* TAB */}
-                    <div className="flex gap-2 mb-4">
+                    <div className="flex gap-1.5 mb-3">
                         {[{id:'jadwal',label:'Jadwal Mingguan',icon:'table-cells'},{id:'rekap',label:'Rekap Karyawan',icon:'chart-bar'}].map(v=>(
                             <button key={v.id} onClick={()=>setActiveView(v.id)}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${activeView===v.id?'bg-violet-500 text-white shadow':'bg-white text-slate-500 border border-slate-200 hover:border-violet-300'}`}>
-                                <Icon name={v.icon} className="text-[11px]" /> {v.label}
+                                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${activeView===v.id?'bg-violet-500 text-white shadow':'bg-white text-slate-500 border border-slate-200 hover:border-violet-300'}`}>
+                                <Icon name={v.icon} className="text-[10px]" /> {v.label}
                             </button>
                         ))}
                     </div>
 
                     {/* NAVIGASI PEKAN */}
-                    <div className="flex items-center justify-between mb-4 bg-white rounded-2xl border border-slate-200 px-4 py-3 shadow-sm">
-                        <button onClick={()=>setWeekOffset(w=>w-1)} className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition-all active:scale-95">
+                    <div className="flex items-center justify-between mb-3 bg-white rounded-xl border border-slate-200 px-3 py-2 shadow-sm">
+                        <button onClick={()=>setWeekOffset(w=>w-1)} className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition-all active:scale-95 text-xs">
                             <Icon name="chevron-left" />
                         </button>
                         <div className="text-center">
-                            <p className="font-extrabold text-sm text-slate-700">{weekLabel}</p>
-                            <p className="text-[11px] text-slate-400">{fmtShort(dayDates[0])} – {fmtShort(dayDates[6])}</p>
+                            <p className="font-extrabold text-xs text-slate-700">{weekLabel}</p>
+                            <p className="text-[10px] text-slate-400">{fmtShort(dayDates[0])} – {fmtShort(dayDates[6])}</p>
                         </div>
                         <div className="flex items-center gap-1">
                             {weekOffset!==0 && (
-                                <button onClick={()=>setWeekOffset(0)} className="px-2 py-1 text-[10px] font-bold text-violet-600 bg-violet-50 rounded-lg border border-violet-200 hover:bg-violet-100 mr-1">Hari ini</button>
+                                <button onClick={()=>setWeekOffset(0)} className="px-2 py-0.5 text-[10px] font-bold text-violet-600 bg-violet-50 rounded-md border border-violet-200 hover:bg-violet-100 mr-1">Hari ini</button>
                             )}
-                            <button onClick={()=>setWeekOffset(w=>w+1)} className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition-all active:scale-95">
+                            <button onClick={()=>setWeekOffset(w=>w+1)} className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition-all active:scale-95 text-xs">
                                 <Icon name="chevron-right" />
                             </button>
                         </div>
@@ -8562,19 +8562,19 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                             </div>
                             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                                 <div className="overflow-x-auto">
-                                    <table className="w-full text-xs border-collapse" style={{minWidth: `${200 + lokasiList.length * 110}px`}}>
+                                    <table className="w-full text-xs border-collapse" style={{minWidth: `${160 + lokasiList.length * 90}px`}}>
                                         {/* HEADER */}
                                         <thead>
                                             <tr style={{background:'#1e293b',color:'white'}}>
-                                                <th className="py-3 px-3 text-left font-bold border border-slate-600 w-28">Hari/tgl</th>
-                                                <th className="py-3 px-3 text-center font-bold border border-slate-600 w-32">Jam Kerja</th>
+                                                <th className="py-2 px-2 text-left font-bold border border-slate-600 w-20" style={{fontSize:'11px'}}>Hari/tgl</th>
+                                                <th className="py-2 px-2 text-center font-bold border border-slate-600 w-16" style={{fontSize:'11px'}}>Shift</th>
                                                 {lokasiList.map(loc => (
-                                                    <th key={loc.id} className="py-3 px-3 text-center font-bold border border-slate-600 min-w-[100px]">
+                                                    <th key={loc.id} className="py-2 px-2 text-center font-bold border border-slate-600 min-w-[80px]" style={{fontSize:'11px'}}>
                                                         {loc.nama}
                                                     </th>
                                                 ))}
                                                 {lokasiList.length === 0 && (
-                                                    <th className="py-3 px-3 text-center text-slate-400 border border-slate-600">— tambah lokasi —</th>
+                                                    <th className="py-2 px-2 text-center text-slate-400 border border-slate-600">— tambah lokasi —</th>
                                                 )}
                                             </tr>
                                         </thead>
@@ -8585,15 +8585,14 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                                                     <tr key={`${dayIdx}_${shift.id}`} className={si === 0 ? 'border-t-2 border-slate-300' : ''}>
                                                         {/* HARI (merged 3 baris via rowspan) */}
                                                         {si === 0 && (
-                                                            <td rowSpan={3} className={`px-3 py-2 font-extrabold text-center border border-slate-200 align-middle ${isWeekend ? 'bg-orange-50 text-orange-700' : 'bg-slate-50 text-slate-800'}`}>
-                                                                <div className="text-[13px]">{hari.toUpperCase()}</div>
-                                                                <div className="text-[10px] font-normal text-slate-500 mt-0.5">{fmtTgl(dayDates[dayIdx])}</div>
+                                                            <td rowSpan={3} className={`px-1.5 py-1 font-extrabold text-center border border-slate-200 align-middle ${isWeekend ? 'bg-orange-50 text-orange-700' : 'bg-slate-50 text-slate-800'}`}>
+                                                                <div style={{fontSize:'11px'}} className="font-extrabold">{hari.toUpperCase()}</div>
+                                                                <div style={{fontSize:'9px'}} className="font-normal text-slate-400 mt-0.5 leading-tight">{fmtTgl(dayDates[dayIdx])}</div>
                                                             </td>
                                                         )}
                                                         {/* SHIFT LABEL */}
-                                                        <td className="px-3 py-2 text-center font-bold border border-slate-200" style={{background: shift.id==='libur' ? '#f1f5f9' : shift.bg, color: shift.id==='libur' ? '#94a3b8' : shift.text}}>
-                                                            <div className="font-extrabold">{shift.label}</div>
-                                                            {shift.id !== 'libur' && <div className="text-[9px] font-normal opacity-80">{shift.jam}</div>}
+                                                        <td className="px-1.5 py-1 text-center font-extrabold border border-slate-200" style={{background: shift.id==='libur' ? '#f1f5f9' : shift.bg, color: shift.id==='libur' ? '#94a3b8' : shift.text, fontSize:'10px'}}>
+                                                            {shift.label}
                                                         </td>
                                                         {/* LOKASI CELLS */}
                                                         {lokasiList.map(loc => {
@@ -8602,18 +8601,19 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                                                             const isT  = pickerTarget?.dayIdx===dayIdx && pickerTarget?.shiftId===shift.id && pickerTarget?.lokasiId===loc.id;
                                                             const isLibur = shift.id === 'libur';
                                                             return (
-                                                                <td key={loc.id} className="px-1 py-1 text-center border border-slate-200 relative" style={{background: isLibur ? '#f8fafc' : shift.bg + '60'}}>
+                                                                <td key={loc.id} className="px-1 py-0.5 text-center border border-slate-200 relative" style={{background: isLibur ? '#f8fafc' : shift.bg + '60'}}>
                                                                     <button
                                                                         disabled={readOnly}
                                                                         onClick={()=>{ setPickerTarget(isT?null:{dayIdx,shiftId:shift.id,lokasiId:loc.id}); setPickerSearch(''); }}
-                                                                        className={`w-full rounded-lg py-1.5 px-2 font-bold transition-all text-[12px] ${!readOnly ? 'cursor-pointer hover:ring-2 ring-violet-400' : ''} ${isT ? 'ring-2 ring-violet-500 ring-offset-1' : ''}`}
+                                                                        className={`w-full rounded-md py-1 px-1 font-bold transition-all ${!readOnly ? 'cursor-pointer hover:ring-2 ring-violet-400' : ''} ${isT ? 'ring-2 ring-violet-500 ring-offset-1' : ''}`}
                                                                         style={{
-                                                                            color: k ? (isLibur ? '#dc2626' : shift.text) : '#cbd5e1',
+                                                                            fontSize: '11px',
+                                                                            color: k ? (isLibur ? '#dc2626' : shift.text) : '#d1d5db',
                                                                             background: k ? (isLibur ? '#fee2e2' : shift.bg) : 'transparent',
-                                                                            minHeight:'28px'
+                                                                            minHeight:'24px'
                                                                         }}
                                                                     >
-                                                                        {k ? `${k.nama}${isLibur ? ' (L)' : ''}` : <span className="text-slate-200 text-[11px]">—</span>}
+                                                                        {k ? `${k.nama}${isLibur ? ' (L)' : ''}` : <span style={{color:'#e2e8f0'}}>—</span>}
                                                                     </button>
                                                                     {/* PICKER DROPDOWN */}
                                                                     {isT && (
@@ -8630,7 +8630,7 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                                                                                     .filter(k => !pickerSearch || k.nama.toLowerCase().includes(pickerSearch.toLowerCase()))
                                                                                     .map(k => (
                                                                                     <button key={k.id} onClick={()=>setCell(dayIdx,shift.id,loc.id,k.id)}
-                                                                                        className="w-full text-left px-2.5 py-2 rounded-xl mb-0.5 text-[12px] font-bold hover:bg-violet-50 hover:text-violet-700 transition-all">
+                                                                                        className="w-full text-left px-2.5 py-1.5 rounded-xl mb-0.5 text-[12px] font-bold hover:bg-violet-50 hover:text-violet-700 transition-all">
                                                                                         {k.nama}
                                                                                         <span className="text-[9px] text-slate-400 font-normal block">{k.jabatan}</span>
                                                                                     </button>
@@ -8651,7 +8651,7 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                                                             );
                                                         })}
                                                         {lokasiList.length === 0 && (
-                                                            <td className="px-3 py-2 text-center text-slate-300 border border-slate-200">—</td>
+                                                            <td className="px-2 py-1 text-center text-slate-300 border border-slate-200">—</td>
                                                         )}
                                                     </tr>
                                                 ));
