@@ -990,6 +990,7 @@
                 { key: 'enableCatatan', label: 'Catatan', icon: 'thumbtack', desc: 'Papan catatan' },
                 { key: 'enableInputManual', label: 'Input Manual', icon: 'pen-to-square', desc: 'Tambah/edit barang' },
                 { key: 'enableImport', label: 'Import Masal', icon: 'file-import', desc: 'Import data Excel' },
+                { key: 'enableJadwalShift', label: 'Jadwal Shift', icon: 'calendar-days', desc: 'Jadwal shift karyawan' },
             ];
             const settingsAccessList = [
                 { key: 'enableSettingsToko', label: 'Profil & Cabang Toko', icon: 'shop', desc: 'Edit nama, alamat toko' },
@@ -1011,6 +1012,7 @@
                 { key: 'showMenuAdd', label: 'Input Manual', icon: 'pen-to-square', desc: 'Tampilkan input manual' },
                 { key: 'showMenuImport', label: 'Import Masal', icon: 'file-import', desc: 'Tampilkan import masal' },
                 { key: 'showMenuRekamMedis', label: 'Rekam Medis', icon: 'stethoscope', desc: 'Tampilkan rekam medis (dokter & pasien)' },
+                { key: 'showMenuJadwalShift', label: 'Jadwal Shift', icon: 'calendar-days', desc: 'Tampilkan jadwal shift karyawan' },
             ];
 
             const filteredUsers = users.filter(u =>
@@ -8315,374 +8317,424 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
             );
         };
 
-        // =============================================
-        // JADWAL SHIFT VIEW COMPONENT
-        // =============================================
-        const JadwalShiftView = ({ user, showToast, readOnly }) => {
-            const DAYS = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
-            const DEFAULT_SHIFTS = [
-                { id: 'pagi',   label: 'Pagi',   color: 'bg-amber-100 text-amber-800 border-amber-200',   icon: '🌅', start: '07:00', end: '14:00' },
-                { id: 'siang',  label: 'Siang',  color: 'bg-sky-100 text-sky-800 border-sky-200',         icon: '☀️',  start: '14:00', end: '20:00' },
-                { id: 'malam',  label: 'Malam',  color: 'bg-indigo-100 text-indigo-800 border-indigo-200',icon: '🌙', start: '20:00', end: '07:00' },
+        // =================== JADWAL SHIFT VIEW ===================
+        const JadwalShiftView = ({ user, showToast, readOnly, currentProfile }) => {
+            const HARI = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
+            const SHIFT_TYPES = [
+                { id: 'pagi',   label: 'Pagi',   jam: '07:00 – 14:00', color: 'bg-amber-100 text-amber-700 border-amber-200' },
+                { id: 'siang',  label: 'Siang',  jam: '12:00 – 19:00', color: 'bg-sky-100 text-sky-700 border-sky-200' },
+                { id: 'malam',  label: 'Malam',  jam: '19:00 – 22:00', color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+                { id: 'full',   label: 'Full',   jam: '08:00 – 20:00', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+                { id: 'libur',  label: 'Libur',  jam: '—',             color: 'bg-red-100 text-red-500 border-red-200' },
             ];
 
-            const [shifts, setShifts] = useState([]);
-            const [schedule, setSchedule] = useState({});
-            const [loading, setLoading] = useState(true);
-            const [saving, setSaving] = useState(false);
-            const [editShiftModal, setEditShiftModal] = useState(null); // {shift} or null
-            const [addShiftModal, setAddShiftModal] = useState(false);
-            const [newShift, setNewShift] = useState({ label: '', icon: '⭐', start: '08:00', end: '16:00' });
-            const [cellModal, setCellModal] = useState(null); // {day, shiftId, names:[]}
-            const [tempNames, setTempNames] = useState('');
-            const [deleteShiftConfirm, setDeleteShiftConfirm] = useState(null);
-            const [editingShift, setEditingShift] = useState({ label:'', icon:'', start:'', end:'' });
+            // Pekan aktif: offset dari pekan ini (0 = pekan ini, 1 = minggu depan, dll)
+            const [weekOffset, setWeekOffset] = useState(0);
+            const [jadwal, setJadwal] = useState({}); // { [weekKey]: { [karyawanId]: { [hariIdx]: shiftId } } }
+            const [karyawanList, setKaryawanList] = useState([]);
+            const [loadingData, setLoadingData] = useState(true);
+            const [addModal, setAddModal] = useState(false);
+            const [newNama, setNewNama] = useState('');
+            const [newJabatan, setNewJabatan] = useState('');
+            const [savingShift, setSavingShift] = useState(false);
+            const [editKaryawan, setEditKaryawan] = useState(null);
+            const [deleteKonfirm, setDeleteKonfirm] = useState(null);
+            const [activeView, setActiveView] = useState('jadwal'); // 'jadwal' | 'rekap'
+            const [pickerTarget, setPickerTarget] = useState(null); // { karyawanId, hariIdx }
 
-            const SHIFT_COLORS = [
-                'bg-amber-100 text-amber-800 border-amber-200',
-                'bg-sky-100 text-sky-800 border-sky-200',
-                'bg-indigo-100 text-indigo-800 border-indigo-200',
-                'bg-green-100 text-green-800 border-green-200',
-                'bg-rose-100 text-rose-800 border-rose-200',
-                'bg-purple-100 text-purple-800 border-purple-200',
-                'bg-orange-100 text-orange-800 border-orange-200',
-                'bg-teal-100 text-teal-800 border-teal-200',
-            ];
+            // Hitung tanggal awal pekan (Senin)
+            const getMondayOfWeek = (offset = 0) => {
+                const today = new Date();
+                const day = today.getDay(); // 0=Sun
+                const diff = (day === 0 ? -6 : 1 - day);
+                const monday = new Date(today);
+                monday.setDate(today.getDate() + diff + offset * 7);
+                monday.setHours(0, 0, 0, 0);
+                return monday;
+            };
 
-            const AID = window.appId || 'default-app-id';
-            const shiftDocRef = () => window.doc(window.db, 'artifacts', AID, 'public', 'data', 'jadwal_shift', 'config');
+            const weekStart = getMondayOfWeek(weekOffset);
+            const weekKey = `${weekStart.getFullYear()}-W${String(Math.ceil((weekStart.getDate() + new Date(weekStart.getFullYear(), 0, 1).getDay()) / 7)).padStart(2,'0')}`;
 
+            const getDayDates = () => Array.from({length: 7}, (_, i) => {
+                const d = new Date(weekStart);
+                d.setDate(weekStart.getDate() + i);
+                return d;
+            });
+            const dayDates = getDayDates();
+
+            const formatTanggal = (d) => d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
+
+            // Firestore collections
+            const getKaryawanCol = () => window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'shift_karyawan');
+            const getJadwalCol   = () => window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'shift_jadwal');
+
+            // Load karyawan
             useEffect(() => {
                 if (!user) return;
-                const unsub = window.onSnapshot(shiftDocRef(), (snap) => {
-                    if (snap.exists()) {
-                        const d = snap.data();
-                        setShifts(d.shifts || DEFAULT_SHIFTS);
-                        setSchedule(d.schedule || {});
-                    } else {
-                        setShifts(DEFAULT_SHIFTS);
-                        setSchedule({});
-                    }
-                    setLoading(false);
-                }, () => { setShifts(DEFAULT_SHIFTS); setLoading(false); });
+                const q = window.query(getKaryawanCol(), window.orderBy('createdAt', 'asc'));
+                const unsub = window.onSnapshot(q, snap => {
+                    setKaryawanList(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                    setLoadingData(false);
+                });
                 return () => unsub();
             }, [user]);
 
-            const saveAll = async (newShifts, newSchedule) => {
+            // Load jadwal untuk pekan aktif
+            useEffect(() => {
                 if (!user) return;
-                setSaving(true);
-                try {
-                    await window.setDoc(shiftDocRef(), { shifts: newShifts, schedule: newSchedule }, { merge: false });
-                    showToast('Jadwal shift disimpan ✅');
-                } catch(e) {
-                    showToast('Gagal menyimpan', 'error');
-                } finally { setSaving(false); }
-            };
-
-            const handleSaveShiftEdit = () => {
-                if (!editingShift.label.trim()) return;
-                const updated = shifts.map(s => s.id === editShiftModal.id ? { ...editShiftModal, ...editingShift } : s);
-                setShifts(updated);
-                saveAll(updated, schedule);
-                setEditShiftModal(null);
-            };
-
-            const handleAddShift = () => {
-                if (!newShift.label.trim()) return;
-                const id = 'shift_' + Date.now();
-                const colorIdx = shifts.length % SHIFT_COLORS.length;
-                const created = { id, label: newShift.label.trim(), icon: newShift.icon || '⭐', start: newShift.start, end: newShift.end, color: SHIFT_COLORS[colorIdx] };
-                const updated = [...shifts, created];
-                setShifts(updated);
-                saveAll(updated, schedule);
-                setNewShift({ label: '', icon: '⭐', start: '08:00', end: '16:00' });
-                setAddShiftModal(false);
-            };
-
-            const handleDeleteShift = (shiftId) => {
-                const updated = shifts.filter(s => s.id !== shiftId);
-                const newSched = {};
-                Object.keys(schedule).forEach(day => {
-                    const daySched = { ...schedule[day] };
-                    delete daySched[shiftId];
-                    newSched[day] = daySched;
-                });
-                setShifts(updated);
-                setSchedule(newSched);
-                saveAll(updated, newSched);
-                setDeleteShiftConfirm(null);
-            };
-
-            const handleOpenCell = (day, shiftId) => {
-                if (readOnly) return;
-                const names = schedule[day]?.[shiftId] || [];
-                setCellModal({ day, shiftId, names: [...names] });
-                setTempNames(names.join('\n'));
-            };
-
-            const handleSaveCell = () => {
-                const names = tempNames.split('\n').map(n => n.trim()).filter(Boolean);
-                const newSched = {
-                    ...schedule,
-                    [cellModal.day]: {
-                        ...(schedule[cellModal.day] || {}),
-                        [cellModal.shiftId]: names,
+                const docRef = window.doc(getJadwalCol(), weekKey);
+                const unsub = window.onSnapshot(docRef, snap => {
+                    if (snap.exists()) {
+                        setJadwal(prev => ({ ...prev, [weekKey]: snap.data() || {} }));
+                    } else {
+                        setJadwal(prev => ({ ...prev, [weekKey]: {} }));
                     }
-                };
-                setSchedule(newSched);
-                saveAll(shifts, newSched);
-                setCellModal(null);
+                });
+                return () => unsub();
+            }, [user, weekKey]);
+
+            const weekJadwal = jadwal[weekKey] || {};
+
+            const setShift = async (karyawanId, hariIdx, shiftId) => {
+                if (readOnly) { showToast('Anda tidak punya akses edit', 'error'); return; }
+                const docRef = window.doc(getJadwalCol(), weekKey);
+                const key = `${karyawanId}_${hariIdx}`;
+                try {
+                    await window.setDoc(docRef, { [key]: shiftId, updatedAt: window.serverTimestamp() }, { merge: true });
+                } catch (e) { showToast('Gagal menyimpan shift', 'error'); }
+                setPickerTarget(null);
             };
 
-            if (loading) return (
-                <div className="flex items-center justify-center min-h-[50vh]">
-                    <div className="text-center text-slate-400">
-                        <div className="text-4xl mb-3 animate-spin">⏳</div>
-                        <p className="font-bold">Memuat jadwal...</p>
-                    </div>
-                </div>
-            );
+            const addKaryawan = async () => {
+                if (!newNama.trim()) return;
+                try {
+                    await window.addDoc(getKaryawanCol(), { nama: newNama.trim(), jabatan: newJabatan.trim() || 'Karyawan', createdAt: window.serverTimestamp() });
+                    setNewNama(''); setNewJabatan(''); setAddModal(false);
+                    showToast('Karyawan ditambahkan');
+                } catch(e) { showToast('Gagal menambah karyawan', 'error'); }
+            };
+
+            const updateKaryawan = async () => {
+                if (!editKaryawan || !editKaryawan.nama.trim()) return;
+                try {
+                    await window.updateDoc(window.doc(getKaryawanCol(), editKaryawan.id), { nama: editKaryawan.nama, jabatan: editKaryawan.jabatan });
+                    setEditKaryawan(null);
+                    showToast('Data karyawan diperbarui');
+                } catch(e) { showToast('Gagal mengupdate karyawan', 'error'); }
+            };
+
+            const deleteKaryawan = async (id) => {
+                try {
+                    await window.deleteDoc(window.doc(getKaryawanCol(), id));
+                    setDeleteKonfirm(null);
+                    showToast('Karyawan dihapus');
+                } catch(e) { showToast('Gagal menghapus karyawan', 'error'); }
+            };
+
+            const getShift = (karyawanId, hariIdx) => {
+                const key = `${karyawanId}_${hariIdx}`;
+                return weekJadwal[key] || null;
+            };
+
+            const getShiftObj = (shiftId) => SHIFT_TYPES.find(s => s.id === shiftId);
+
+            // Rekap: hitung total shift per karyawan per pekan
+            const getRekapKaryawan = (k) => {
+                const counts = {};
+                SHIFT_TYPES.forEach(s => { counts[s.id] = 0; });
+                for (let i = 0; i < 7; i++) {
+                    const s = getShift(k.id, i);
+                    if (s) counts[s] = (counts[s] || 0) + 1;
+                }
+                return counts;
+            };
+
+            const isWeekCurrent = weekOffset === 0;
+            const weekLabel = weekOffset === 0 ? 'Pekan Ini' : weekOffset === 1 ? 'Pekan Depan' : weekOffset === -1 ? 'Pekan Lalu' : `${weekOffset > 0 ? '+' : ''}${weekOffset} Pekan`;
 
             return (
-                <div className="fade-in max-w-5xl mx-auto">
-                    {/* Header */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-                        <div>
-                            <h1 className="text-2xl font-black text-slate-800 flex items-center gap-2">
-                                📅 Jadwal Shift
-                            </h1>
-                            <p className="text-sm text-slate-400 mt-0.5">Atur jadwal kerja per hari & shift</p>
+                <div className="p-3 md:p-5 max-w-full fade-in">
+                    {/* HEADER */}
+                    <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white flex items-center justify-center shadow-lg">
+                                <Icon name="calendar-days" />
+                            </div>
+                            <div>
+                                <h2 className="font-extrabold text-slate-800 text-lg leading-tight">Jadwal Shift</h2>
+                                <p className="text-xs text-slate-400">Atur jadwal kerja karyawan per pekan</p>
+                            </div>
                         </div>
                         {!readOnly && (
-                            <button onClick={() => { setNewShift({ label:'', icon:'⭐', start:'08:00', end:'16:00' }); setAddShiftModal(true); }}
-                                className="flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md active:scale-95 transition-all">
-                                <Icon name="plus" /> Tambah Shift
+                            <button onClick={() => setAddModal(true)} className="flex items-center gap-2 px-4 py-2 bg-violet-500 hover:bg-violet-600 text-white text-xs font-bold rounded-xl shadow transition-all active:scale-95">
+                                <Icon name="plus" /> Tambah Karyawan
                             </button>
                         )}
                     </div>
 
-                    {/* Shift Badges */}
-                    <div className="flex flex-wrap gap-2 mb-5">
-                        {shifts.map(shift => (
-                            <div key={shift.id} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold ${shift.color} group`}>
-                                <span>{shift.icon}</span>
-                                <span>{shift.label}</span>
-                                <span className="opacity-60 font-medium">{shift.start}–{shift.end}</span>
-                                {!readOnly && (
-                                    <div className="flex items-center gap-1 ml-1">
-                                        <button onClick={() => { setEditShiftModal(shift); setEditingShift({ label: shift.label, icon: shift.icon, start: shift.start, end: shift.end }); }}
-                                            className="opacity-50 hover:opacity-100 transition-opacity" title="Edit shift">
-                                            <Icon name="pen-to-square" className="text-[10px]" />
-                                        </button>
-                                        <button onClick={() => setDeleteShiftConfirm(shift)}
-                                            className="opacity-50 hover:opacity-100 text-red-500 transition-opacity" title="Hapus shift">
-                                            <Icon name="trash" className="text-[10px]" />
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
+                    {/* TAB VIEW */}
+                    <div className="flex gap-2 mb-4">
+                        {[{id:'jadwal',label:'Jadwal Mingguan',icon:'table-cells'},{id:'rekap',label:'Rekap Shift',icon:'chart-bar'}].map(v => (
+                            <button key={v.id} onClick={() => setActiveView(v.id)}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${activeView === v.id ? 'bg-violet-500 text-white shadow' : 'bg-white text-slate-500 border border-slate-200 hover:border-violet-300'}`}>
+                                <Icon name={v.icon} className="text-[11px]" /> {v.label}
+                            </button>
                         ))}
-                        {shifts.length === 0 && <p className="text-slate-400 text-sm italic">Belum ada shift. Klik "Tambah Shift" untuk mulai.</p>}
                     </div>
 
-                    {/* Tabel Jadwal - Responsive scroll */}
-                    <div className="bg-white rounded-2xl shadow-soft border border-slate-100 overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full min-w-[600px]">
-                                <thead>
-                                    <tr className="bg-slate-50 border-b border-slate-100">
-                                        <th className="text-left px-4 py-3 text-xs font-black text-slate-500 uppercase tracking-wider w-28">Hari</th>
-                                        {shifts.map(shift => (
-                                            <th key={shift.id} className="text-center px-3 py-3 text-xs font-black text-slate-500 uppercase tracking-wider">
-                                                <div className="flex flex-col items-center gap-0.5">
-                                                    <span>{shift.icon} {shift.label}</span>
-                                                    <span className="font-medium text-slate-400 normal-case">{shift.start}–{shift.end}</span>
-                                                </div>
-                                            </th>
-                                        ))}
-                                        {shifts.length === 0 && <th className="px-4 py-3 text-xs text-slate-300 italic font-normal">Tambah shift dulu</th>}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {DAYS.map((day, idx) => (
-                                        <tr key={day} className={`border-b border-slate-50 hover:bg-sky-50/30 transition-colors ${idx % 2 === 0 ? '' : 'bg-slate-50/30'}`}>
-                                            <td className="px-4 py-3 font-bold text-sm text-slate-700 whitespace-nowrap">{day}</td>
-                                            {shifts.map(shift => {
-                                                const names = schedule[day]?.[shift.id] || [];
-                                                return (
-                                                    <td key={shift.id} className="px-2 py-2 text-center align-top">
-                                                        <button
-                                                            onClick={() => handleOpenCell(day, shift.id)}
-                                                            className={`w-full min-h-[52px] rounded-xl border-2 border-dashed transition-all group text-left px-2 py-1.5 ${
-                                                                names.length > 0
-                                                                    ? `${shift.color} border-transparent`
-                                                                    : 'border-slate-200 hover:border-sky-300 bg-transparent'
-                                                            } ${readOnly ? 'cursor-default' : 'cursor-pointer hover:shadow-sm'}`}
-                                                        >
-                                                            {names.length > 0 ? (
-                                                                <div className="space-y-0.5">
-                                                                    {names.map((name, ni) => (
-                                                                        <div key={ni} className="text-xs font-bold truncate flex items-center gap-1">
-                                                                            <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60 flex-shrink-0"></span>
-                                                                            {name}
-                                                                        </div>
+                    {/* NAVIGASI PEKAN */}
+                    <div className="flex items-center justify-between mb-4 bg-white rounded-2xl border border-slate-200 px-4 py-3 shadow-sm">
+                        <button onClick={() => setWeekOffset(w => w - 1)} className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition-all active:scale-95">
+                            <Icon name="chevron-left" />
+                        </button>
+                        <div className="text-center">
+                            <p className="font-bold text-sm text-slate-700">{weekLabel}</p>
+                            <p className="text-[11px] text-slate-400">{formatTanggal(dayDates[0])} – {formatTanggal(dayDates[6])}</p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                            {weekOffset !== 0 && (
+                                <button onClick={() => setWeekOffset(0)} className="px-2 py-1 text-[10px] font-bold text-violet-600 bg-violet-50 rounded-lg border border-violet-200 hover:bg-violet-100 transition-all mr-1">Hari ini</button>
+                            )}
+                            <button onClick={() => setWeekOffset(w => w + 1)} className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition-all active:scale-95">
+                                <Icon name="chevron-right" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {loadingData ? (
+                        <div className="flex flex-col items-center justify-center py-20 gap-3">
+                            <div className="w-10 h-10 border-4 border-violet-200 border-t-violet-500 rounded-full animate-spin"></div>
+                            <p className="text-sm text-slate-400">Memuat data...</p>
+                        </div>
+                    ) : karyawanList.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
+                            <div className="w-16 h-16 rounded-3xl bg-violet-50 flex items-center justify-center">
+                                <Icon name="user-group" className="text-2xl text-violet-300" />
+                            </div>
+                            <p className="font-bold text-slate-600">Belum ada karyawan</p>
+                            <p className="text-xs text-slate-400 max-w-xs">Tambahkan karyawan terlebih dahulu untuk mulai mengatur jadwal shift</p>
+                            {!readOnly && (
+                                <button onClick={() => setAddModal(true)} className="mt-2 px-5 py-2.5 bg-violet-500 text-white text-sm font-bold rounded-xl shadow hover:bg-violet-600 transition-all active:scale-95">
+                                    <Icon name="plus" className="mr-1.5" /> Tambah Karyawan
+                                </button>
+                            )}
+                        </div>
+                    ) : activeView === 'jadwal' ? (
+                        /* ===== TABEL JADWAL ===== */
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-xs" style={{minWidth: '620px'}}>
+                                    <thead>
+                                        <tr className="bg-gradient-to-r from-violet-50 to-purple-50 border-b border-slate-100">
+                                            <th className="py-3 px-3 text-left font-bold text-slate-600 w-36 sticky left-0 bg-gradient-to-r from-violet-50 to-violet-50 z-10">Karyawan</th>
+                                            {HARI.map((h, i) => (
+                                                <th key={h} className="py-3 px-1 text-center font-bold text-slate-600 min-w-[80px]">
+                                                    <div className={`font-extrabold ${i < 5 ? 'text-slate-700' : 'text-orange-500'}`}>{h}</div>
+                                                    <div className="text-[10px] text-slate-400 font-normal">{formatTanggal(dayDates[i])}</div>
+                                                </th>
+                                            ))}
+                                            <th className="py-3 px-2 text-center font-bold text-slate-500 w-10">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {karyawanList.map((k, ki) => (
+                                            <tr key={k.id} className={`border-b border-slate-50 hover:bg-violet-50/30 transition-colors ${ki % 2 === 0 ? '' : 'bg-slate-50/50'}`}>
+                                                {/* NAMA */}
+                                                <td className="py-2 px-3 sticky left-0 bg-white z-10" style={{background: ki % 2 === 0 ? 'white' : 'rgba(248,250,252,0.8)'}}>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-400 to-purple-500 text-white flex items-center justify-center font-bold text-[10px] flex-shrink-0">
+                                                            {k.nama.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-bold text-slate-700 leading-tight text-[11px]">{k.nama}</p>
+                                                            <p className="text-[9px] text-slate-400">{k.jabatan}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                {/* SHIFT PER HARI */}
+                                                {HARI.map((_, hIdx) => {
+                                                    const shiftId = getShift(k.id, hIdx);
+                                                    const shiftObj = shiftId ? getShiftObj(shiftId) : null;
+                                                    const isTarget = pickerTarget?.karyawanId === k.id && pickerTarget?.hariIdx === hIdx;
+                                                    return (
+                                                        <td key={hIdx} className="py-2 px-1 text-center relative">
+                                                            <button
+                                                                disabled={readOnly}
+                                                                onClick={() => setPickerTarget(isTarget ? null : { karyawanId: k.id, hariIdx: hIdx })}
+                                                                className={`w-full rounded-xl py-1 px-1 border font-bold transition-all text-[10px] leading-tight ${shiftObj ? shiftObj.color : 'bg-slate-100 text-slate-400 border-slate-200 hover:border-violet-300 hover:bg-violet-50'} ${!readOnly ? 'cursor-pointer active:scale-95 hover:shadow-sm' : ''} ${isTarget ? 'ring-2 ring-violet-400 ring-offset-1' : ''}`}
+                                                                style={{minHeight:'34px'}}
+                                                            >
+                                                                {shiftObj ? (
+                                                                    <>
+                                                                        <div>{shiftObj.label}</div>
+                                                                        <div className="text-[8px] opacity-70 hidden md:block">{shiftObj.jam}</div>
+                                                                    </>
+                                                                ) : (
+                                                                    <span className="text-slate-300 text-[10px]">—</span>
+                                                                )}
+                                                            </button>
+                                                            {/* SHIFT PICKER DROPDOWN */}
+                                                            {isTarget && (
+                                                                <div className="absolute z-30 top-full left-1/2 -translate-x-1/2 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl p-1.5 min-w-[110px]">
+                                                                    {SHIFT_TYPES.map(st => (
+                                                                        <button key={st.id} onClick={() => setShift(k.id, hIdx, st.id)}
+                                                                            className={`w-full text-left px-2.5 py-1.5 rounded-xl mb-0.5 last:mb-0 font-bold text-[11px] border transition-all hover:scale-[1.02] ${st.color}`}>
+                                                                            {st.label}
+                                                                            <span className="text-[9px] opacity-70 block font-normal">{st.jam}</span>
+                                                                        </button>
                                                                     ))}
-                                                                </div>
-                                                            ) : (
-                                                                <div className="flex items-center justify-center h-full">
-                                                                    {!readOnly && <Icon name="plus" className="text-slate-300 group-hover:text-sky-400 text-sm transition-colors" />}
+                                                                    <button onClick={() => { setShift(k.id, hIdx, null); setPickerTarget(null); }}
+                                                                        className="w-full text-left px-2.5 py-1.5 rounded-xl font-bold text-[11px] text-slate-400 hover:bg-slate-100 transition-all mt-0.5 border border-transparent">
+                                                                        Hapus Shift
+                                                                    </button>
                                                                 </div>
                                                             )}
-                                                        </button>
-                                                    </td>
-                                                );
+                                                        </td>
+                                                    );
+                                                })}
+                                                {/* AKSI */}
+                                                <td className="py-2 px-2 text-center">
+                                                    {!readOnly && (
+                                                        <div className="flex flex-col gap-1 items-center">
+                                                            <button onClick={() => setEditKaryawan({...k})} className="w-6 h-6 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-500 flex items-center justify-center transition-all" title="Edit">
+                                                                <Icon name="pen" className="text-[9px]" />
+                                                            </button>
+                                                            <button onClick={() => setDeleteKonfirm(k)} className="w-6 h-6 rounded-lg bg-red-50 hover:bg-red-100 text-red-400 flex items-center justify-center transition-all" title="Hapus">
+                                                                <Icon name="trash" className="text-[9px]" />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {/* LEGENDA */}
+                            <div className="border-t border-slate-100 px-4 py-3 flex flex-wrap gap-2">
+                                {SHIFT_TYPES.map(s => (
+                                    <span key={s.id} className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border ${s.color}`}>
+                                        {s.label} <span className="font-normal opacity-70">{s.jam}</span>
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    ) : (
+                        /* ===== REKAP ===== */
+                        <div className="grid gap-3">
+                            {karyawanList.map(k => {
+                                const rekap = getRekapKaryawan(k);
+                                const totalHadir = 7 - (rekap['libur'] || 0) - Object.entries(rekap).filter(([id]) => !rekap[id]).length;
+                                const totalKerja = SHIFT_TYPES.filter(s => s.id !== 'libur').reduce((a, s) => a + (rekap[s.id] || 0), 0);
+                                return (
+                                    <div key={k.id} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow transition-shadow">
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-400 to-purple-500 text-white flex items-center justify-center font-extrabold text-sm flex-shrink-0">
+                                                {k.nama.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="font-extrabold text-slate-700 text-sm">{k.nama}</p>
+                                                <p className="text-[11px] text-slate-400">{k.jabatan}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="font-extrabold text-violet-600 text-lg leading-none">{totalKerja}</p>
+                                                <p className="text-[10px] text-slate-400">hari kerja</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {SHIFT_TYPES.map(s => rekap[s.id] > 0 && (
+                                                <span key={s.id} className={`text-[11px] font-bold px-2.5 py-1 rounded-xl border ${s.color}`}>
+                                                    {s.label}: {rekap[s.id]}x
+                                                </span>
+                                            ))}
+                                            {totalKerja === 0 && <span className="text-xs text-slate-400 italic">Belum ada jadwal</span>}
+                                        </div>
+                                        {/* mini bar progress */}
+                                        <div className="mt-3 flex gap-0.5 h-2 rounded-full overflow-hidden">
+                                            {Array.from({length:7}, (_, i) => {
+                                                const s = getShift(k.id, i);
+                                                const obj = s ? getShiftObj(s) : null;
+                                                return <div key={i} className={`flex-1 rounded-sm ${obj ? obj.color.replace('text-','').replace('bg-','bg-').split(' ')[0] : 'bg-slate-100'}`}></div>;
                                             })}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                        </div>
+                                        <div className="flex justify-between mt-1 px-0.5">
+                                            {HARI.map((h, i) => <span key={i} className={`text-[8px] font-bold ${i < 5 ? 'text-slate-400' : 'text-orange-400'}`}>{h.charAt(0)}</span>)}
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
-                    </div>
-                    {!readOnly && (
-                        <p className="text-center text-xs text-slate-400 mt-3">
-                            Klik sel untuk isi nama karyawan pada shift tersebut
-                        </p>
                     )}
 
-                    {/* Modal: Edit Shift */}
-                    {editShiftModal && (
-                        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => setEditShiftModal(null)}>
-                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
-                                <h3 className="font-black text-slate-800 text-lg mb-4 flex items-center gap-2">✏️ Edit Shift</h3>
-                                <div className="space-y-3">
+                    {/* OVERLAY - tutup picker saat klik di luar */}
+                    {pickerTarget && <div className="fixed inset-0 z-20" onClick={() => setPickerTarget(null)} />}
+
+                    {/* MODAL TAMBAH KARYAWAN */}
+                    {addModal && (
+                        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4" style={{background:'rgba(0,0,0,0.45)'}}>
+                            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 slide-up">
+                                <div className="flex items-center gap-3 mb-5">
+                                    <div className="w-10 h-10 rounded-2xl bg-violet-500 text-white flex items-center justify-center"><Icon name="user-plus" /></div>
                                     <div>
-                                        <label className="text-xs font-bold text-slate-500 mb-1 block">Nama Shift</label>
-                                        <input value={editingShift.label} onChange={e => setEditingShift({...editingShift, label: e.target.value})}
-                                            className="w-full border-2 border-slate-200 focus:border-sky-400 rounded-xl px-3 py-2.5 text-sm font-bold outline-none transition-colors"
-                                            placeholder="Contoh: Pagi" />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-500 mb-1 block">Ikon (emoji)</label>
-                                        <input value={editingShift.icon} onChange={e => setEditingShift({...editingShift, icon: e.target.value})}
-                                            className="w-full border-2 border-slate-200 focus:border-sky-400 rounded-xl px-3 py-2.5 text-sm font-bold outline-none transition-colors"
-                                            placeholder="🌅" />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-500 mb-1 block">Jam Mulai</label>
-                                            <input type="time" value={editingShift.start} onChange={e => setEditingShift({...editingShift, start: e.target.value})}
-                                                className="w-full border-2 border-slate-200 focus:border-sky-400 rounded-xl px-3 py-2.5 text-sm font-bold outline-none transition-colors" />
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-500 mb-1 block">Jam Selesai</label>
-                                            <input type="time" value={editingShift.end} onChange={e => setEditingShift({...editingShift, end: e.target.value})}
-                                                className="w-full border-2 border-slate-200 focus:border-sky-400 rounded-xl px-3 py-2.5 text-sm font-bold outline-none transition-colors" />
-                                        </div>
+                                        <p className="font-extrabold text-slate-800">Tambah Karyawan</p>
+                                        <p className="text-xs text-slate-400">Data karyawan untuk jadwal shift</p>
                                     </div>
                                 </div>
-                                <div className="flex gap-3 mt-5">
-                                    <button onClick={() => setEditShiftModal(null)}
-                                        className="flex-1 py-2.5 rounded-xl border-2 border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition-all">Batal</button>
-                                    <button onClick={handleSaveShiftEdit} disabled={saving}
-                                        className="flex-1 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-sm shadow-md disabled:opacity-50 transition-all active:scale-95">
-                                        {saving ? '⏳ Menyimpan...' : '💾 Simpan'}
-                                    </button>
+                                <div className="space-y-3 mb-5">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-600 mb-1 block">Nama Lengkap *</label>
+                                        <input value={newNama} onChange={e=>setNewNama(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addKaryawan()} placeholder="Contoh: Siti Aminah" className="w-full border-2 border-slate-200 focus:border-violet-400 rounded-xl px-3 py-2.5 text-sm font-medium outline-none transition-all" autoFocus />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-600 mb-1 block">Jabatan</label>
+                                        <input value={newJabatan} onChange={e=>setNewJabatan(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addKaryawan()} placeholder="Contoh: Kasir, SPG, Gudang..." className="w-full border-2 border-slate-200 focus:border-violet-400 rounded-xl px-3 py-2.5 text-sm font-medium outline-none transition-all" />
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => { setAddModal(false); setNewNama(''); setNewJabatan(''); }} className="flex-1 py-3 rounded-xl border-2 border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50 transition-all">Batal</button>
+                                    <button onClick={addKaryawan} disabled={!newNama.trim()} className="flex-1 py-3 rounded-xl bg-violet-500 hover:bg-violet-600 disabled:opacity-40 text-white text-sm font-bold transition-all active:scale-95">Simpan</button>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* Modal: Tambah Shift Baru */}
-                    {addShiftModal && (
-                        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => setAddShiftModal(false)}>
-                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
-                                <h3 className="font-black text-slate-800 text-lg mb-4 flex items-center gap-2">➕ Tambah Shift Baru</h3>
-                                <div className="space-y-3">
+                    {/* MODAL EDIT KARYAWAN */}
+                    {editKaryawan && (
+                        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4" style={{background:'rgba(0,0,0,0.45)'}}>
+                            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 slide-up">
+                                <div className="flex items-center gap-3 mb-5">
+                                    <div className="w-10 h-10 rounded-2xl bg-sky-500 text-white flex items-center justify-center"><Icon name="user-pen" /></div>
+                                    <p className="font-extrabold text-slate-800">Edit Karyawan</p>
+                                </div>
+                                <div className="space-y-3 mb-5">
                                     <div>
-                                        <label className="text-xs font-bold text-slate-500 mb-1 block">Nama Shift</label>
-                                        <input value={newShift.label} onChange={e => setNewShift({...newShift, label: e.target.value})}
-                                            className="w-full border-2 border-slate-200 focus:border-sky-400 rounded-xl px-3 py-2.5 text-sm font-bold outline-none transition-colors"
-                                            placeholder="Contoh: Sore" autoFocus />
+                                        <label className="text-xs font-bold text-slate-600 mb-1 block">Nama Lengkap *</label>
+                                        <input value={editKaryawan.nama} onChange={e=>setEditKaryawan({...editKaryawan, nama: e.target.value})} className="w-full border-2 border-slate-200 focus:border-sky-400 rounded-xl px-3 py-2.5 text-sm font-medium outline-none transition-all" autoFocus />
                                     </div>
                                     <div>
-                                        <label className="text-xs font-bold text-slate-500 mb-1 block">Ikon (emoji)</label>
-                                        <input value={newShift.icon} onChange={e => setNewShift({...newShift, icon: e.target.value})}
-                                            className="w-full border-2 border-slate-200 focus:border-sky-400 rounded-xl px-3 py-2.5 text-sm font-bold outline-none transition-colors"
-                                            placeholder="⭐" />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-500 mb-1 block">Jam Mulai</label>
-                                            <input type="time" value={newShift.start} onChange={e => setNewShift({...newShift, start: e.target.value})}
-                                                className="w-full border-2 border-slate-200 focus:border-sky-400 rounded-xl px-3 py-2.5 text-sm font-bold outline-none transition-colors" />
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-500 mb-1 block">Jam Selesai</label>
-                                            <input type="time" value={newShift.end} onChange={e => setNewShift({...newShift, end: e.target.value})}
-                                                className="w-full border-2 border-slate-200 focus:border-sky-400 rounded-xl px-3 py-2.5 text-sm font-bold outline-none transition-colors" />
-                                        </div>
+                                        <label className="text-xs font-bold text-slate-600 mb-1 block">Jabatan</label>
+                                        <input value={editKaryawan.jabatan} onChange={e=>setEditKaryawan({...editKaryawan, jabatan: e.target.value})} className="w-full border-2 border-slate-200 focus:border-sky-400 rounded-xl px-3 py-2.5 text-sm font-medium outline-none transition-all" />
                                     </div>
                                 </div>
-                                <div className="flex gap-3 mt-5">
-                                    <button onClick={() => setAddShiftModal(false)}
-                                        className="flex-1 py-2.5 rounded-xl border-2 border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition-all">Batal</button>
-                                    <button onClick={handleAddShift} disabled={saving || !newShift.label.trim()}
-                                        className="flex-1 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-sm shadow-md disabled:opacity-50 transition-all active:scale-95">
-                                        {saving ? '⏳...' : '➕ Tambah'}
-                                    </button>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setEditKaryawan(null)} className="flex-1 py-3 rounded-xl border-2 border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50 transition-all">Batal</button>
+                                    <button onClick={updateKaryawan} disabled={!editKaryawan.nama.trim()} className="flex-1 py-3 rounded-xl bg-sky-500 hover:bg-sky-600 disabled:opacity-40 text-white text-sm font-bold transition-all active:scale-95">Update</button>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* Modal: Isi Karyawan di Cell */}
-                    {cellModal && (
-                        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => setCellModal(null)}>
-                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
-                                {(() => {
-                                    const sh = shifts.find(s => s.id === cellModal.shiftId);
-                                    return (
-                                        <>
-                                            <h3 className="font-black text-slate-800 text-lg mb-1">{sh?.icon} {sh?.label}</h3>
-                                            <p className="text-xs text-slate-400 mb-1 font-medium">Hari: <span className="text-slate-600 font-bold">{cellModal.day}</span></p>
-                                            <p className="text-xs text-slate-400 mb-3">Jam: <span className="text-slate-600 font-bold">{sh?.start} – {sh?.end}</span></p>
-                                        </>
-                                    );
-                                })()}
-                                <label className="text-xs font-bold text-slate-500 mb-1 block">Nama Karyawan <span className="text-slate-400 font-normal">(satu per baris)</span></label>
-                                <textarea
-                                    value={tempNames}
-                                    onChange={e => setTempNames(e.target.value)}
-                                    rows={5}
-                                    className="w-full border-2 border-slate-200 focus:border-sky-400 rounded-xl px-3 py-2.5 text-sm font-medium outline-none transition-colors resize-none"
-                                    placeholder={"Ahmad Fauzi\nSiti Rahayu\nBudi Santoso"}
-                                    autoFocus
-                                />
-                                <p className="text-[11px] text-slate-400 mt-1 mb-4">Kosongkan semua baris untuk menghapus jadwal di sel ini.</p>
-                                <div className="flex gap-3">
-                                    <button onClick={() => setCellModal(null)}
-                                        className="flex-1 py-2.5 rounded-xl border-2 border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition-all">Batal</button>
-                                    <button onClick={handleSaveCell} disabled={saving}
-                                        className="flex-1 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-sm shadow-md disabled:opacity-50 transition-all active:scale-95">
-                                        {saving ? '⏳...' : '💾 Simpan'}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Modal: Konfirmasi Hapus Shift */}
-                    {deleteShiftConfirm && (
-                        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => setDeleteShiftConfirm(null)}>
-                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-6 text-center" onClick={e => e.stopPropagation()}>
-                                <div className="text-4xl mb-3">🗑️</div>
-                                <h3 className="font-black text-slate-800 text-lg mb-1">Hapus Shift?</h3>
-                                <p className="text-slate-500 text-sm mb-5">Shift <strong>{deleteShiftConfirm.label}</strong> dan semua jadwal terkait akan dihapus permanen.</p>
-                                <div className="flex gap-3">
-                                    <button onClick={() => setDeleteShiftConfirm(null)}
-                                        className="flex-1 py-2.5 rounded-xl border-2 border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition-all">Batal</button>
-                                    <button onClick={() => handleDeleteShift(deleteShiftConfirm.id)}
-                                        className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold text-sm shadow-md transition-all active:scale-95">Hapus</button>
+                    {/* MODAL HAPUS KARYAWAN */}
+                    {deleteKonfirm && (
+                        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4" style={{background:'rgba(0,0,0,0.45)'}}>
+                            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 slide-up">
+                                <div className="w-14 h-14 rounded-2xl bg-red-100 text-red-500 flex items-center justify-center mx-auto mb-4 text-2xl"><Icon name="triangle-exclamation" /></div>
+                                <p className="font-extrabold text-slate-800 text-center mb-1">Hapus Karyawan?</p>
+                                <p className="text-xs text-slate-500 text-center mb-5">Data <strong>{deleteKonfirm.nama}</strong> akan dihapus permanen dari daftar karyawan. Jadwal shift yang sudah dibuat tidak akan terhapus.</p>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setDeleteKonfirm(null)} className="flex-1 py-3 rounded-xl border-2 border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50 transition-all">Batal</button>
+                                    <button onClick={() => deleteKaryawan(deleteKonfirm.id)} className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold transition-all active:scale-95">Ya, Hapus</button>
                                 </div>
                             </div>
                         </div>
@@ -8690,10 +8742,7 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                 </div>
             );
         };
-
-        // =============================================
-        // END JADWAL SHIFT VIEW
-        // =============================================
+        // =================== END JADWAL SHIFT VIEW ===================
 
                 const App = () => {
             const [inventoryData, setInventoryData] = useState([]);
@@ -9214,7 +9263,7 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                 { id: 'add',         label: 'Input Manual',      icon: 'pen-to-square',       enabled: isOwner || showMenu('showMenuAdd', settingsData.showMenuAdd),            readOnly: !isOwner && !menuOn('enableInputManual', settingsData.enableInputManual) }, 
                 { id: 'import',      label: 'Import Masal',      icon: 'file-import',         enabled: isOwner || showMenu('showMenuImport', settingsData.showMenuImport),      readOnly: !isOwner && !menuOn('enableImport', settingsData.enableImport) }, 
                 { id: 'rekam_medis', label: 'Rekam Medis',       icon: 'stethoscope',         enabled: isOwner || showMenu('showMenuRekamMedis', settingsData.showMenuRekamMedis), readOnly: !isOwner && !menuOn('enableRekamMedis', settingsData.enableRekamMedis) },
-                { id: 'jadwal_shift', label: 'Jadwal Shift',      icon: 'calendar-days',       enabled: isOwner || showMenu('showMenuJadwalShift', settingsData.showMenuJadwalShift), readOnly: !isOwner && !menuOn('enableJadwalShift', settingsData.enableJadwalShift) },
+                { id: 'jadwal_shift', label: 'Jadwal Shift',     icon: 'calendar-days',       enabled: isOwner || showMenu('showMenuJadwalShift', settingsData.showMenuJadwalShift), readOnly: !isOwner && !menuOn('enableJadwalShift', settingsData.enableJadwalShift) },
                 { id: 'settings',    label: 'Pengaturan',        icon: 'gears',               enabled: true, readOnly: false },
             ];
             const visibleMenuItems = menuItems.filter(m => m.enabled);
@@ -9526,9 +9575,9 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                         {activeTab === 'import' && (<BulkImportView user={user} onImportComplete={(count) => { showToast(`${count} Barang berhasil diimport`); setActiveTab('list'); }} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='import')?.readOnly} />)}
                         {activeTab === 'stock_opname' && (<StockOpnameView items={inventoryData} user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='stock_opname')?.readOnly} />)}
                         {activeTab === 'rekam_medis' && (<RekamMedisView user={user} showToast={showToast} readOnly={menuItems.find(m=>m.id==='rekam_medis')?.readOnly} />)}
-                        {activeTab === 'jadwal_shift' && (<JadwalShiftView user={user} showToast={showToast} readOnly={menuItems.find(m=>m.id==='jadwal_shift')?.readOnly} />)}
                         {activeTab === 'settings' && (<SettingsView settings={settingsData} onSave={handleSaveSettings} loading={submitting} authSession={authSession} />)}
                         {activeTab === 'catatan' && (<PapanCatatan user={user} readOnly={menuItems.find(m=>m.id==='catatan')?.readOnly} />)}
+                        {activeTab === 'jadwal_shift' && (<JadwalShiftView user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='jadwal_shift')?.readOnly} />)}
                     </main>
                     <ConfirmModal isOpen={deleteModal.show} title="Hapus Barang?" message={`Yakin ingin menghapus permanen "${deleteModal.item?.name}"? Barang ini akan hilang dari SEMUA toko.`} onConfirm={handleDelete} onCancel={() => setDeleteModal({ show: false, item: null })} />
                     <ConfirmModal isOpen={deleteRackModal.show} title="Hapus Rak?" message={`Yakin ingin menghapus rak "${deleteRackModal.rackName}"? Semua barang di rak ini akan menjadi 'No Rack' (-).`} onConfirm={handleConfirmDeleteRack} onCancel={() => setDeleteRackModal({ show: false, rackName: null })} confirmText="Ya, Hapus Rak" />
