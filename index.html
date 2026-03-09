@@ -8319,38 +8319,43 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
             );
         };
 
+
         // ==================== JADWAL SHIFT ====================
         const JadwalShiftView = ({ user, showToast, readOnly }) => {
-            const { useState: useS, useEffect: useE, useRef: useR } = React;
+            const { useState: useS, useEffect: useE, useRef: useR, useMemo: useM } = React;
 
-            const SHIFT_TYPES = [
-                { id: 'pagi',   label: 'Pagi',   time: '06:00 – 14:00', color: 'bg-amber-100 text-amber-800 border-amber-300',  dot: 'bg-amber-400',  icon: 'sun' },
-                { id: 'siang',  label: 'Siang',  time: '14:00 – 22:00', color: 'bg-sky-100 text-sky-800 border-sky-300',         dot: 'bg-sky-400',    icon: 'cloud-sun' },
-                { id: 'malam',  label: 'Malam',  time: '22:00 – 06:00', color: 'bg-indigo-100 text-indigo-800 border-indigo-300',dot: 'bg-indigo-400', icon: 'moon' },
-                { id: 'full',   label: 'Full Day',time: '08:00 – 20:00', color: 'bg-green-100 text-green-800 border-green-300',  dot: 'bg-green-400',  icon: 'calendar-day' },
-                { id: 'libur',  label: 'Libur',  time: '—',             color: 'bg-red-100 text-red-700 border-red-300',         dot: 'bg-red-300',    icon: 'umbrella-beach' },
+            // ---- CONSTANTS ----
+            const HARI_NAMES = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
+
+            const DEFAULT_SHIFTS = [
+                { id: 'pagi',  label: 'Pagi',  time: '07:00 – 14:00', bg: '#FFFF00', text: '#1a1a00' },
+                { id: 'siang', label: 'Siang', time: '14:00 – 21:00', bg: '#00E5FF', text: '#00293d' },
+                { id: 'malam', label: 'Malam', time: '21:00 – 07:00', bg: '#C4B5FD', text: '#2e1065' },
             ];
-            const HARI = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
 
-            const [jadwalList, setJadwalList] = useS([]);
-            const [karyawanList, setKaryawanList] = useS([]);
+            // ---- STATE ----
+            const [entries, setEntries] = useS([]);          // [{id, tanggal, shiftId, storeId, nama, isLibur}]
+            const [config, setConfig] = useS({
+                title: 'JADWAL SHIFT',
+                stores: [{ id: 's1', name: 'Lokasi 1' }, { id: 's2', name: 'Lokasi 2' }],
+                shifts: DEFAULT_SHIFTS,
+                showMalam: false,
+            });
             const [loading, setLoading] = useS(true);
-            const [viewMode, setViewMode] = useS('mingguan'); // 'mingguan' | 'daftar'
             const [weekOffset, setWeekOffset] = useS(0);
-            const [showForm, setShowForm] = useS(false);
-            const [editingItem, setEditingItem] = useS(null);
+            const [editingCell, setEditingCell] = useS(null); // {tanggal, shiftId, storeId, existingId, existingNama, isLibur}
+            const [cellInput, setCellInput] = useS('');
             const [saving, setSaving] = useS(false);
-            const [deleting, setDeleting] = useS(null);
-            const [confirmDel, setConfirmDel] = useS(null);
-            const [form, setForm] = useS({ nama: '', shiftId: 'pagi', hari: 'Senin', tanggal: '', catatan: '', shiftCustom: '' });
-            const [filterHari, setFilterHari] = useS('Semua');
-            const [filterShift, setFilterShift] = useS('Semua');
+            const [showSettings, setShowSettings] = useS(false);
+            const [cfgDraft, setCfgDraft] = useS(null);
+            const [savingCfg, setSavingCfg] = useS(false);
+            const inputRef = useR(null);
 
-            // Hitung rentang minggu
+            // ---- WEEK DATES ----
             const getWeekDates = (offset = 0) => {
                 const now = new Date();
                 const day = now.getDay();
-                const diffToMon = (day === 0 ? -6 : 1 - day);
+                const diffToMon = day === 0 ? -6 : 1 - day;
                 const mon = new Date(now);
                 mon.setDate(now.getDate() + diffToMon + offset * 7);
                 return Array.from({ length: 7 }, (_, i) => {
@@ -8360,73 +8365,106 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                 });
             };
             const weekDates = getWeekDates(weekOffset);
-            const fmt = (d) => d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
-            const fmtFull = (d) => d.toISOString().split('T')[0];
-            const weekLabel = `${fmt(weekDates[0])} – ${fmt(weekDates[6])}`;
+            const fmtFull = d => {
+                const y = d.getFullYear();
+                const m = String(d.getMonth()+1).padStart(2,'0');
+                const dd = String(d.getDate()).padStart(2,'0');
+                return `${y}-${m}-${dd}`;
+            };
+            const fmtDisplay = d => {
+                const dd = String(d.getDate()).padStart(2,'0');
+                const mm = String(d.getMonth()+1).padStart(2,'0');
+                return `${dd}/${mm}/${d.getFullYear()}`;
+            };
+            const todayStr = fmtFull(new Date());
+            const weekLabel = (() => {
+                const s = weekDates[0];
+                const e = weekDates[6];
+                const fmt = d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+                return `${fmt(s)} – ${fmt(e)}/${e.getFullYear()}`;
+            })();
 
+            // ---- FIRESTORE LOAD ----
             useE(() => {
                 if (!user) return;
-                const unsub = window.onSnapshot(
-                    window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'jadwal_shift'),
-                    snap => { setJadwalList(snap.docs.map(d => ({ id: d.id, ...d.data() }))); setLoading(false); }
+                const unsubE = window.onSnapshot(
+                    window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'jadwal_shift_v2'),
+                    snap => { setEntries(snap.docs.map(d => ({ id: d.id, ...d.data() }))); setLoading(false); },
+                    () => setLoading(false)
                 );
-                // Load karyawan dari auth_users collection jika ada, fallback manual
-                const unsubK = window.onSnapshot(
-                    window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'auth_users'),
-                    snap => setKaryawanList(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
-                    () => setKaryawanList([])
+                const unsubC = window.onSnapshot(
+                    window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'jadwal_shift_config', 'main'),
+                    snap => { if (snap.exists()) setConfig(prev => ({ ...prev, ...snap.data() })); },
+                    () => {}
                 );
-                return () => { unsub(); unsubK(); };
+                return () => { unsubE(); unsubC(); };
             }, [user]);
 
-            const openAdd = () => {
-                setEditingItem(null);
-                setForm({ nama: '', shiftId: 'pagi', hari: HARI[new Date().getDay() === 0 ? 6 : new Date().getDay()-1], tanggal: '', catatan: '', shiftCustom: '' });
-                setShowForm(true);
+            // ---- ENTRY LOOKUP ----
+            const getEntry = (tanggal, shiftId, storeId) =>
+                entries.find(e => e.tanggal === tanggal && e.shiftId === shiftId && e.storeId === storeId && !e.isLibur);
+            const getLibur = (tanggal, storeId) =>
+                entries.find(e => e.tanggal === tanggal && e.storeId === storeId && e.isLibur);
+
+            // ---- ACTIVE SHIFTS ----
+            const activeShifts = config.shifts.filter(s => config.showMalam || s.id !== 'malam');
+
+            // ---- OPEN CELL EDIT ----
+            const openCell = (tanggal, shiftId, storeId) => {
+                if (readOnly) return;
+                const existing = getEntry(tanggal, shiftId, storeId);
+                setEditingCell({ tanggal, shiftId, storeId, existingId: existing?.id, isLibur: false });
+                setCellInput(existing?.nama || '');
+                setTimeout(() => inputRef.current?.focus(), 50);
             };
-            const openEdit = (item) => {
-                setEditingItem(item);
-                setForm({ nama: item.nama || '', shiftId: item.shiftId || 'pagi', hari: item.hari || 'Senin', tanggal: item.tanggal || '', catatan: item.catatan || '', shiftCustom: item.shiftCustom || '' });
-                setShowForm(true);
+            const openLiburCell = (tanggal, storeId) => {
+                if (readOnly) return;
+                const existing = getLibur(tanggal, storeId);
+                setEditingCell({ tanggal, shiftId: '__libur', storeId, existingId: existing?.id, isLibur: true });
+                setCellInput(existing?.nama || '');
+                setTimeout(() => inputRef.current?.focus(), 50);
             };
-            const handleSave = async () => {
-                if (!form.nama.trim()) { showToast('Nama karyawan wajib diisi', 'error'); return; }
+
+            // ---- SAVE CELL ----
+            const saveCell = async () => {
+                if (!editingCell) return;
                 setSaving(true);
                 try {
-                    const payload = { nama: form.nama.trim(), shiftId: form.shiftId, hari: form.hari, tanggal: form.tanggal || '', catatan: form.catatan.trim(), shiftCustom: form.shiftCustom.trim(), updatedAt: window.serverTimestamp() };
-                    if (editingItem) {
-                        await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'jadwal_shift', editingItem.id), payload);
-                        showToast('Jadwal diperbarui');
-                    } else {
-                        await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'jadwal_shift'), { ...payload, createdAt: window.serverTimestamp() });
-                        showToast('Jadwal ditambahkan');
+                    const { tanggal, shiftId, storeId, existingId, isLibur } = editingCell;
+                    const nama = cellInput.trim();
+                    if (existingId) {
+                        if (!nama) {
+                            await window.deleteDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'jadwal_shift_v2', existingId));
+                        } else {
+                            await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'jadwal_shift_v2', existingId), { nama, updatedAt: window.serverTimestamp() });
+                        }
+                    } else if (nama) {
+                        await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'jadwal_shift_v2'),
+                            { tanggal, shiftId, storeId, nama, isLibur: !!isLibur, createdAt: window.serverTimestamp() });
                     }
-                    setShowForm(false);
+                    setEditingCell(null); setCellInput('');
                 } catch(e) { showToast('Gagal simpan', 'error'); } finally { setSaving(false); }
             };
-            const handleDelete = async (id) => {
-                setDeleting(id);
+            const cancelCell = () => { setEditingCell(null); setCellInput(''); };
+
+            // ---- SAVE CONFIG ----
+            const saveConfig = async () => {
+                setSavingCfg(true);
                 try {
-                    await window.deleteDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'jadwal_shift', id));
-                    showToast('Jadwal dihapus'); setConfirmDel(null);
-                } catch(e) { showToast('Gagal hapus', 'error'); } finally { setDeleting(null); }
+                    await window.setDoc(
+                        window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'jadwal_shift_config', 'main'),
+                        cfgDraft
+                    );
+                    setConfig(cfgDraft);
+                    setShowSettings(false);
+                    showToast('Pengaturan disimpan');
+                } catch(e) { showToast('Gagal simpan pengaturan', 'error'); } finally { setSavingCfg(false); }
             };
 
-            const getShift = (id) => SHIFT_TYPES.find(s => s.id === id) || SHIFT_TYPES[0];
-
-            // Jadwal untuk view mingguan: tampilkan per hari dari weekDates
-            const jadwalByDate = (dateStr) => jadwalList.filter(j => j.tanggal === dateStr);
-            const jadwalByHari = (hari) => jadwalList.filter(j => j.hari === hari && !j.tanggal);
-
-            // Filter untuk view daftar
-            const filteredJadwal = jadwalList.filter(j => {
-                const matchHari = filterHari === 'Semua' || j.hari === filterHari;
-                const matchShift = filterShift === 'Semua' || j.shiftId === filterShift;
-                return matchHari && matchShift;
-            }).sort((a, b) => {
-                const hi = HARI.indexOf(a.hari) - HARI.indexOf(b.hari);
-                if (hi !== 0) return hi;
-                return SHIFT_TYPES.findIndex(s=>s.id===a.shiftId) - SHIFT_TYPES.findIndex(s=>s.id===b.shiftId);
+            // ---- CHECK if any day has libur entries ----
+            const hasAnyLibur = weekDates.some(d => {
+                const dateStr = fmtFull(d);
+                return config.stores.some(s => getLibur(dateStr, s.id));
             });
 
             if (readOnly) return (
@@ -8440,268 +8478,277 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
             );
 
             return (
-                <div className="fade-in w-full max-w-3xl mx-auto pb-10">
-                    {/* Header */}
-                    <div className="bg-white/90 backdrop-blur-sm rounded-[28px] shadow-soft border border-white mb-4 overflow-hidden">
-                        <div className="bg-gradient-to-r from-violet-600 to-indigo-600 p-5 flex items-center justify-between">
+                <div className="fade-in w-full pb-10">
+                    {/* ---- HEADER BAR ---- */}
+                    <div className="bg-white/90 backdrop-blur-sm rounded-[24px] shadow-soft border border-white mb-4 overflow-hidden">
+                        <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-4 flex items-center justify-between gap-3 flex-wrap">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center"><Icon name="calendar-days" className="text-white text-lg" /></div>
+                                <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                                    <Icon name="calendar-days" className="text-white" />
+                                </div>
                                 <div>
-                                    <h2 className="text-white font-black text-lg leading-none">Jadwal Shift</h2>
-                                    <p className="text-violet-200 text-xs mt-0.5">Manajemen jadwal kerja karyawan</p>
+                                    <h2 className="text-white font-black text-base leading-none">{config.title}</h2>
+                                    <p className="text-violet-200 text-[11px] mt-0.5">Jadwal Kerja Mingguan</p>
                                 </div>
                             </div>
-                            <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white font-bold text-sm rounded-xl transition-all active:scale-95 border border-white/30">
-                                <Icon name="plus" /> Tambah
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => { setCfgDraft({...config, stores: [...config.stores], shifts: [...config.shifts]}); setShowSettings(true); }}
+                                    className="flex items-center gap-1.5 px-3 py-2 bg-white/15 hover:bg-white/25 text-white text-xs font-bold rounded-xl transition-all border border-white/20">
+                                    <Icon name="gear" className="text-[11px]" /> Pengaturan
+                                </button>
+                            </div>
+                        </div>
+                        {/* Week nav */}
+                        <div className="px-5 py-3 flex items-center justify-between gap-3 border-b border-slate-100">
+                            <button onClick={() => setWeekOffset(w => w-1)} className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-violet-100 hover:text-violet-600 flex items-center justify-center text-slate-600 transition-all flex-shrink-0">
+                                <Icon name="chevron-left" className="text-xs" />
+                            </button>
+                            <div className="flex items-center gap-2 flex-1 justify-center">
+                                <Icon name="calendar-week" className="text-violet-500 text-sm" />
+                                <span className="text-sm font-black text-slate-700">{weekLabel}</span>
+                                {weekOffset !== 0 && (
+                                    <button onClick={() => setWeekOffset(0)} className="px-2 py-0.5 rounded-full bg-violet-100 text-violet-600 text-[10px] font-bold hover:bg-violet-200 transition-all">
+                                        Hari ini
+                                    </button>
+                                )}
+                            </div>
+                            <button onClick={() => setWeekOffset(w => w+1)} className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-violet-100 hover:text-violet-600 flex items-center justify-center text-slate-600 transition-all flex-shrink-0">
+                                <Icon name="chevron-right" className="text-xs" />
                             </button>
                         </div>
-                        {/* View Toggle + Week Nav */}
-                        <div className="px-5 py-3 flex items-center gap-2 flex-wrap border-b border-slate-100">
-                            <div className="flex rounded-xl overflow-hidden border border-slate-200 flex-shrink-0">
-                                {[{v:'mingguan',label:'Mingguan',icon:'table-columns'},{v:'daftar',label:'Daftar',icon:'list'}].map(m => (
-                                    <button key={m.v} onClick={() => setViewMode(m.v)} className={`px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 transition-all ${viewMode===m.v ? 'bg-violet-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
-                                        <Icon name={m.icon} className="text-[10px]" /> {m.label}
-                                    </button>
-                                ))}
-                            </div>
-                            {viewMode === 'mingguan' && (
-                                <div className="flex items-center gap-2 ml-auto">
-                                    <button onClick={() => setWeekOffset(w => w-1)} className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition-all"><Icon name="chevron-left" className="text-xs" /></button>
-                                    <span className="text-xs font-bold text-slate-600 whitespace-nowrap">{weekLabel}</span>
-                                    <button onClick={() => setWeekOffset(w => w+1)} className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition-all"><Icon name="chevron-right" className="text-xs" /></button>
-                                    {weekOffset !== 0 && <button onClick={() => setWeekOffset(0)} className="px-2 py-1 rounded-lg bg-violet-100 text-violet-600 text-[10px] font-bold">Hari ini</button>}
-                                </div>
-                            )}
-                            {viewMode === 'daftar' && (
-                                <div className="flex items-center gap-2 ml-auto flex-wrap">
-                                    <select value={filterHari} onChange={e => setFilterHari(e.target.value)} className="px-2 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold outline-none focus:border-violet-400">
-                                        <option value="Semua">Semua Hari</option>
-                                        {HARI.map(h => <option key={h} value={h}>{h}</option>)}
-                                    </select>
-                                    <select value={filterShift} onChange={e => setFilterShift(e.target.value)} className="px-2 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold outline-none focus:border-violet-400">
-                                        <option value="Semua">Semua Shift</option>
-                                        {SHIFT_TYPES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-                                    </select>
-                                </div>
-                            )}
-                        </div>
-                        {/* Shift Legend */}
-                        <div className="px-5 py-2.5 flex gap-2 flex-wrap">
-                            {SHIFT_TYPES.map(s => (
-                                <span key={s.id} className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full border ${s.color}`}>
-                                    <Icon name={s.icon} className="text-[9px]" /> {s.label} {s.time !== '—' && <span className="font-normal opacity-70">{s.time}</span>}
+                        {/* Legend */}
+                        <div className="px-5 py-2.5 flex items-center gap-2 flex-wrap">
+                            {activeShifts.map(s => (
+                                <span key={s.id} className="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border border-black/10" style={{background: s.bg, color: s.text}}>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60 inline-block"></span>
+                                    {s.label} <span className="opacity-60 font-normal">{s.time}</span>
                                 </span>
                             ))}
+                            <span className="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50 text-slate-500">
+                                <span className="w-1.5 h-1.5 rounded-full bg-slate-400 inline-block"></span>
+                                (L) = Libur
+                            </span>
+                            {!readOnly && <span className="text-[10px] text-slate-400 ml-auto">Klik sel untuk edit</span>}
                         </div>
                     </div>
 
                     {loading ? (
-                        <div className="flex flex-col items-center py-16 text-slate-400">
-                            <div className="typing-dot bg-violet-500 mb-2"></div>
+                        <div className="flex flex-col items-center py-16 text-slate-400 gap-2">
+                            <div className="typing-dot bg-violet-500"></div>
                             <p className="text-xs">Memuat jadwal...</p>
                         </div>
-                    ) : viewMode === 'mingguan' ? (
-                        /* ---- VIEW MINGGUAN ---- */
-                        <div className="grid grid-cols-1 gap-3">
-                            {weekDates.map((date, idx) => {
-                                const dateStr = fmtFull(date);
-                                const isToday = dateStr === fmtFull(new Date());
-                                const hariNama = HARI[idx];
-                                const itemsByDate = jadwalByDate(dateStr);
-                                const itemsByHari = jadwalByHari(hariNama);
-                                const allItems = [...itemsByDate, ...itemsByHari];
-                                return (
-                                    <div key={dateStr} className={`bg-white/90 backdrop-blur-sm rounded-2xl border shadow-sm overflow-hidden transition-all ${isToday ? 'border-violet-300 shadow-violet-100' : 'border-slate-100'}`}>
-                                        <div className={`px-4 py-2.5 flex items-center justify-between ${isToday ? 'bg-violet-600' : 'bg-slate-50'}`}>
-                                            <div className="flex items-center gap-2">
-                                                <span className={`text-sm font-black ${isToday ? 'text-white' : 'text-slate-700'}`}>{hariNama}</span>
-                                                <span className={`text-xs font-medium ${isToday ? 'text-violet-200' : 'text-slate-400'}`}>{fmt(date)}</span>
-                                                {isToday && <span className="px-2 py-0.5 bg-white/20 text-white text-[9px] font-black rounded-full">Hari Ini</span>}
-                                            </div>
-                                            <button onClick={() => { setForm({ nama:'', shiftId:'pagi', hari: hariNama, tanggal: dateStr, catatan:'', shiftCustom:'' }); setEditingItem(null); setShowForm(true); }}
-                                                className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black transition-all ${isToday ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-slate-200 text-slate-500 hover:bg-violet-100 hover:text-violet-600'}`}>
-                                                <Icon name="plus" />
+                    ) : (
+                        /* ---- TABEL EXCEL ---- */
+                        <div className="bg-white/90 backdrop-blur-sm rounded-[20px] shadow-soft border border-white overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse min-w-[520px]" style={{fontSize:'12px'}}>
+                                    {/* HEADER */}
+                                    <thead>
+                                        <tr>
+                                            <th colSpan={2 + config.stores.length} className="py-2.5 px-3 text-center font-black text-slate-800 text-sm bg-slate-100 border-b-2 border-slate-300 tracking-wide uppercase">
+                                                {config.title}
+                                            </th>
+                                        </tr>
+                                        <tr>
+                                            <th colSpan={2 + config.stores.length} className="py-1.5 px-3 text-center font-bold text-slate-500 text-xs bg-slate-50 border-b border-slate-200 tracking-wider uppercase">
+                                                Lokasi Kerja
+                                            </th>
+                                        </tr>
+                                        <tr className="bg-slate-700 text-white">
+                                            <th className="py-2.5 px-3 text-center font-black text-xs border-r border-slate-600 min-w-[80px]">Hari/tgl</th>
+                                            <th className="py-2.5 px-3 text-center font-black text-xs border-r border-slate-600 min-w-[100px]">Jam Kerja</th>
+                                            {config.stores.map((s, i) => (
+                                                <th key={s.id} className={`py-2.5 px-3 text-center font-black text-xs min-w-[110px] ${i < config.stores.length-1 ? 'border-r border-slate-600' : ''}`}>{s.name}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {weekDates.map((date, dayIdx) => {
+                                            const dateStr = fmtFull(date);
+                                            const hariNama = HARI_NAMES[dayIdx];
+                                            const isToday = dateStr === todayStr;
+                                            const liburRow = config.stores.some(s => getLibur(dateStr, s.id));
+                                            const totalRows = activeShifts.length + (liburRow ? 1 : 0);
+
+                                            return activeShifts.map((shift, sIdx) => {
+                                                const isFirst = sIdx === 0;
+                                                const isLastShift = sIdx === activeShifts.length - 1 && !liburRow;
+                                                const rowKey = `${dateStr}-${shift.id}`;
+
+                                                return (
+                                                    <tr key={rowKey} className={`transition-all ${isLastShift ? 'border-b-2 border-slate-300' : 'border-b border-slate-200'}`}>
+                                                        {/* HARI/TGL col — hanya di baris pertama (rowspan) */}
+                                                        {isFirst && (
+                                                            <td rowSpan={totalRows} className={`px-2 py-1 text-center border-r-2 border-slate-300 align-middle ${isToday ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-800'}`}
+                                                                style={{minWidth:'80px'}}>
+                                                                <div className="font-black text-sm leading-tight">{hariNama.toUpperCase()}</div>
+                                                                <div className={`text-[10px] font-bold mt-0.5 ${isToday ? 'text-violet-200' : 'text-slate-500'}`}>{fmtDisplay(date)}</div>
+                                                                {isToday && <div className="mt-1 px-1 py-0.5 bg-white/20 rounded text-[8px] font-black">HARI INI</div>}
+                                                            </td>
+                                                        )}
+                                                        {/* JAM KERJA col */}
+                                                        <td className="px-2 py-2 border-r-2 border-slate-300 font-bold text-xs text-center"
+                                                            style={{background: shift.bg, color: shift.text, minWidth:'100px'}}>
+                                                            <div className="font-black">{shift.label}</div>
+                                                            <div className="text-[10px] font-normal opacity-70">{shift.time}</div>
+                                                        </td>
+                                                        {/* STORE CELLS */}
+                                                        {config.stores.map((store, stIdx) => {
+                                                            const entry = getEntry(dateStr, shift.id, store.id);
+                                                            const isEditing = editingCell?.tanggal === dateStr && editingCell?.shiftId === shift.id && editingCell?.storeId === store.id;
+                                                            return (
+                                                                <td key={store.id}
+                                                                    onClick={() => !isEditing && openCell(dateStr, shift.id, store.id)}
+                                                                    className={`px-2 py-2 text-center text-xs font-bold transition-all cursor-pointer select-none border-r border-slate-200 last:border-r-0 ${isEditing ? 'p-0' : 'hover:opacity-80'}`}
+                                                                    style={{background: entry ? shift.bg : '#fafafa', color: entry ? shift.text : '#94a3b8', minWidth:'110px'}}>
+                                                                    {isEditing ? (
+                                                                        <input
+                                                                            ref={inputRef}
+                                                                            value={cellInput}
+                                                                            onChange={e => setCellInput(e.target.value)}
+                                                                            onKeyDown={e => { if(e.key==='Enter') saveCell(); if(e.key==='Escape') cancelCell(); }}
+                                                                            onBlur={saveCell}
+                                                                            className="w-full h-full px-2 py-2 text-center text-xs font-bold outline-none border-2 border-violet-500 rounded bg-white text-slate-800"
+                                                                            placeholder="Nama..."
+                                                                            style={{minHeight:'36px'}}
+                                                                        />
+                                                                    ) : (
+                                                                        entry ? entry.nama : <span className="opacity-30 text-[10px]">—</span>
+                                                                    )}
+                                                                </td>
+                                                            );
+                                                        })}
+                                                    </tr>
+                                                );
+                                            }).concat(liburRow ? [(
+                                                <tr key={`${dateStr}-libur`} className="border-b-2 border-slate-300 bg-white">
+                                                    <td className="px-2 py-1.5 border-r-2 border-slate-300 text-center text-[10px] font-black text-slate-400 italic bg-slate-50">
+                                                        Libur
+                                                    </td>
+                                                    {config.stores.map((store, stIdx) => {
+                                                        const existing = getLibur(dateStr, store.id);
+                                                        const isEditing = editingCell?.tanggal === dateStr && editingCell?.shiftId === '__libur' && editingCell?.storeId === store.id;
+                                                        return (
+                                                            <td key={store.id}
+                                                                onClick={() => !isEditing && openLiburCell(dateStr, store.id)}
+                                                                className={`px-2 py-1.5 text-center text-xs font-bold cursor-pointer border-r border-slate-200 last:border-r-0 bg-red-50 hover:bg-red-100 transition-all ${isEditing ? 'p-0' : ''}`}>
+                                                                {isEditing ? (
+                                                                    <input
+                                                                        ref={inputRef}
+                                                                        value={cellInput}
+                                                                        onChange={e => setCellInput(e.target.value)}
+                                                                        onKeyDown={e => { if(e.key==='Enter') saveCell(); if(e.key==='Escape') cancelCell(); }}
+                                                                        onBlur={saveCell}
+                                                                        className="w-full px-2 py-1.5 text-center text-xs font-bold outline-none border-2 border-red-400 rounded bg-white text-slate-800"
+                                                                        placeholder="Nama (L)..."
+                                                                    />
+                                                                ) : existing ? (
+                                                                    <span className="text-red-600">{existing.nama} (L)</span>
+                                                                ) : (
+                                                                    <span className="text-red-300 text-[10px]">+Libur</span>
+                                                                )}
+                                                            </td>
+                                                        );
+                                                    })}
+                                                </tr>
+                                            )] : []);
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {/* Add Libur Row button */}
+                            {!readOnly && (
+                                <div className="px-4 py-3 border-t border-slate-100 bg-slate-50 flex items-center gap-2">
+                                    <Icon name="circle-info" className="text-slate-400 text-xs" />
+                                    <p className="text-[10px] text-slate-400">Klik sel untuk mengisi nama. Kosongkan untuk menghapus. Untuk baris Libur, klik sel di tanggal yang diinginkan lalu isi nama.</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ---- MODAL PENGATURAN ---- */}
+                    {showSettings && cfgDraft && (
+                        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-4" onClick={() => setShowSettings(false)}>
+                            <div className="bg-white rounded-[28px] w-full max-w-sm shadow-2xl slide-up overflow-hidden" onClick={e => e.stopPropagation()}>
+                                <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-4 flex items-center gap-3">
+                                    <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center"><Icon name="gear" className="text-white" /></div>
+                                    <div>
+                                        <h3 className="font-black text-white text-base">Pengaturan Jadwal</h3>
+                                        <p className="text-violet-200 text-[10px]">Kelola judul, lokasi & shift</p>
+                                    </div>
+                                </div>
+                                <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+                                    {/* Judul */}
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Judul Jadwal</label>
+                                        <input value={cfgDraft.title} onChange={e => setCfgDraft({...cfgDraft, title: e.target.value})}
+                                            className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 outline-none font-bold text-sm text-slate-700 focus:border-violet-400" />
+                                    </div>
+                                    {/* Lokasi/Stores */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Lokasi Kerja</label>
+                                            <button onClick={() => setCfgDraft({...cfgDraft, stores: [...cfgDraft.stores, { id: 's'+Date.now(), name: 'Lokasi Baru' }]})}
+                                                className="px-2 py-1 bg-violet-100 text-violet-600 rounded-lg text-[10px] font-black hover:bg-violet-200 transition-all flex items-center gap-1">
+                                                <Icon name="plus" /> Tambah
                                             </button>
                                         </div>
-                                        <div className="p-3 space-y-2">
-                                            {allItems.length === 0 ? (
-                                                <p className="text-[10px] text-slate-300 text-center py-2 font-medium">Belum ada jadwal</p>
-                                            ) : allItems.map(item => {
-                                                const s = getShift(item.shiftId);
-                                                return (
-                                                    <div key={item.id} onClick={() => openEdit(item)} className={`flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer hover:shadow-sm transition-all ${s.color}`}>
-                                                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${s.dot}`}></div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className="text-xs font-black truncate">{item.nama}</p>
-                                                            <p className="text-[10px] font-medium opacity-70">{s.label} · {item.shiftCustom || s.time}</p>
-                                                            {item.catatan && <p className="text-[9px] opacity-60 truncate mt-0.5"><Icon name="note-sticky" className="mr-0.5" />{item.catatan}</p>}
-                                                        </div>
-                                                        <Icon name="pen-to-square" className="text-[10px] opacity-50 flex-shrink-0" />
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    ) : (
-                        /* ---- VIEW DAFTAR ---- */
-                        <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                            {filteredJadwal.length === 0 ? (
-                                <div className="flex flex-col items-center py-16 text-slate-300">
-                                    <Icon name="calendar-xmark" className="text-4xl mb-3" />
-                                    <p className="text-sm font-semibold">Belum ada jadwal</p>
-                                    <p className="text-xs mt-1">Tekan "+ Tambah" untuk membuat jadwal baru</p>
-                                </div>
-                            ) : filteredJadwal.map((item, idx) => {
-                                const s = getShift(item.shiftId);
-                                const prevItem = filteredJadwal[idx - 1];
-                                const showHariHeader = !prevItem || prevItem.hari !== item.hari;
-                                return (
-                                    <React.Fragment key={item.id}>
-                                        {showHariHeader && (
-                                            <div className="px-4 py-2 bg-slate-50 border-b border-t border-slate-100 first:border-t-0">
-                                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{item.hari}</p>
-                                            </div>
-                                        )}
-                                        <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-50 hover:bg-slate-50/70 transition-all group">
-                                            <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${s.dot}`}></div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-black text-slate-800 truncate">{item.nama}</p>
-                                                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${s.color}`}>{s.label}</span>
-                                                    <span className="text-[10px] text-slate-400 font-medium">{item.shiftCustom || s.time}</span>
-                                                    {item.tanggal && <span className="text-[10px] text-violet-500 font-bold"><Icon name="calendar" className="mr-0.5" />{item.tanggal}</span>}
-                                                    {item.catatan && <span className="text-[10px] text-slate-400"><Icon name="note-sticky" className="mr-0.5" />{item.catatan}</span>}
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                                <button onClick={() => openEdit(item)} className="w-7 h-7 rounded-lg bg-sky-100 text-sky-600 hover:bg-sky-200 flex items-center justify-center text-xs transition-all"><Icon name="pen-to-square" /></button>
-                                                <button onClick={() => setConfirmDel(item)} className="w-7 h-7 rounded-lg bg-red-100 text-red-500 hover:bg-red-200 flex items-center justify-center text-xs transition-all"><Icon name="trash" /></button>
-                                            </div>
-                                        </div>
-                                    </React.Fragment>
-                                );
-                            })}
-                        </div>
-                    )}
-
-                    {/* RINGKASAN */}
-                    {!loading && jadwalList.length > 0 && (
-                        <div className="mt-4 bg-white/80 rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Ringkasan Shift</p>
-                            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                                {SHIFT_TYPES.map(s => {
-                                    const count = jadwalList.filter(j => j.shiftId === s.id).length;
-                                    return (
-                                        <div key={s.id} className={`p-2.5 rounded-xl border text-center ${s.color}`}>
-                                            <p className="text-lg font-black">{count}</p>
-                                            <p className="text-[9px] font-bold opacity-70">{s.label}</p>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* FORM MODAL */}
-                    {showForm && (
-                        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4" onClick={() => setShowForm(false)}>
-                            <div className="bg-white rounded-[28px] w-full max-w-sm shadow-2xl p-6 slide-up" onClick={e => e.stopPropagation()}>
-                                <div className="flex items-center gap-3 mb-5">
-                                    <div className="w-10 h-10 rounded-2xl bg-violet-100 flex items-center justify-center"><Icon name="calendar-plus" className="text-violet-600" /></div>
-                                    <div>
-                                        <h3 className="font-black text-slate-800 text-base">{editingItem ? 'Edit Jadwal' : 'Tambah Jadwal'}</h3>
-                                        <p className="text-[10px] text-slate-400">Isi detail shift karyawan</p>
-                                    </div>
-                                </div>
-                                <div className="space-y-3">
-                                    {/* Nama Karyawan */}
-                                    <div className="space-y-1">
-                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Nama Karyawan</label>
-                                        {karyawanList.length > 0 ? (
-                                            <select value={form.nama} onChange={e => setForm({...form, nama: e.target.value})} className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none font-bold text-sm text-slate-700 focus:border-violet-400">
-                                                <option value="">-- Pilih Karyawan --</option>
-                                                {karyawanList.map(k => <option key={k.id} value={k.namaLengkap || k.username || k.email}>{k.namaLengkap || k.username || k.email}</option>)}
-                                                <option value="__manual">+ Ketik manual...</option>
-                                            </select>
-                                        ) : null}
-                                        {(karyawanList.length === 0 || form.nama === '__manual' || (form.nama && !karyawanList.find(k => (k.namaLengkap||k.username||k.email) === form.nama))) && (
-                                            <input value={form.nama === '__manual' ? '' : form.nama} onChange={e => setForm({...form, nama: e.target.value})}
-                                                className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none font-bold text-sm text-slate-700 focus:border-violet-400"
-                                                placeholder="Nama karyawan..." autoFocus={form.nama === '__manual'} />
-                                        )}
-                                    </div>
-                                    {/* Shift */}
-                                    <div className="space-y-1">
-                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Tipe Shift</label>
-                                        <div className="grid grid-cols-5 gap-1.5">
-                                            {SHIFT_TYPES.map(s => (
-                                                <button key={s.id} type="button" onClick={() => setForm({...form, shiftId: s.id})}
-                                                    className={`py-2 rounded-xl border text-[10px] font-black transition-all flex flex-col items-center gap-0.5 ${form.shiftId === s.id ? s.color + ' shadow-sm scale-105' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}`}>
-                                                    <Icon name={s.icon} className="text-xs" />
-                                                    {s.label}
+                                        {cfgDraft.stores.map((s, i) => (
+                                            <div key={s.id} className="flex items-center gap-2">
+                                                <input value={s.name} onChange={e => {
+                                                    const arr = [...cfgDraft.stores];
+                                                    arr[i] = {...s, name: e.target.value};
+                                                    setCfgDraft({...cfgDraft, stores: arr});
+                                                }} className="flex-1 p-2 rounded-lg bg-slate-50 border border-slate-200 outline-none font-bold text-xs text-slate-700 focus:border-violet-400" />
+                                                <button onClick={() => setCfgDraft({...cfgDraft, stores: cfgDraft.stores.filter((_,j) => j!==i)})}
+                                                    disabled={cfgDraft.stores.length <= 1}
+                                                    className="w-7 h-7 rounded-lg bg-red-100 text-red-500 disabled:opacity-30 flex items-center justify-center text-xs hover:bg-red-200 transition-all">
+                                                    <Icon name="trash" />
                                                 </button>
-                                            ))}
-                                        </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                    {/* Hari & Tanggal */}
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Hari</label>
-                                            <select value={form.hari} onChange={e => setForm({...form, hari: e.target.value})} className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 outline-none font-bold text-xs text-slate-700 focus:border-violet-400">
-                                                {HARI.map(h => <option key={h} value={h}>{h}</option>)}
-                                            </select>
+                                    {/* Shift config */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Shift & Jam Kerja</label>
+                                            <button onClick={() => setCfgDraft({...cfgDraft, shifts: [...cfgDraft.shifts, { id: 'sh'+Date.now(), label: 'Shift Baru', time: '08:00 – 16:00', bg: '#E2E8F0', text: '#1e293b' }]})}
+                                                className="px-2 py-1 bg-violet-100 text-violet-600 rounded-lg text-[10px] font-black hover:bg-violet-200 transition-all flex items-center gap-1">
+                                                <Icon name="plus" /> Tambah
+                                            </button>
                                         </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Tanggal <span className="font-normal normal-case text-slate-400">(opsional)</span></label>
-                                            <input type="date" value={form.tanggal} onChange={e => setForm({...form, tanggal: e.target.value})} className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 outline-none text-xs text-slate-600 focus:border-violet-400" />
-                                        </div>
-                                    </div>
-                                    {/* Jam Custom */}
-                                    <div className="space-y-1">
-                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Jam Kustom <span className="font-normal normal-case text-slate-400">(opsional — kosongkan untuk default)</span></label>
-                                        <input value={form.shiftCustom} onChange={e => setForm({...form, shiftCustom: e.target.value})}
-                                            className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 outline-none text-sm text-slate-700 font-medium focus:border-violet-400"
-                                            placeholder={`Contoh: ${getShift(form.shiftId).time}`} />
-                                    </div>
-                                    {/* Catatan */}
-                                    <div className="space-y-1">
-                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Catatan</label>
-                                        <input value={form.catatan} onChange={e => setForm({...form, catatan: e.target.value})}
-                                            className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 outline-none text-sm text-slate-700 font-medium focus:border-violet-400"
-                                            placeholder="Contoh: Gantiin Budi, Libur cuti..." />
+                                        {cfgDraft.shifts.map((sh, i) => (
+                                            <div key={sh.id} className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200" style={{background: sh.bg + '40'}}>
+                                                <div className="flex-1 space-y-1.5">
+                                                    <div className="flex gap-1.5">
+                                                        <input value={sh.label} onChange={e => { const arr=[...cfgDraft.shifts]; arr[i]={...sh,label:e.target.value}; setCfgDraft({...cfgDraft,shifts:arr}); }}
+                                                            className="w-20 p-1.5 rounded-lg bg-white border border-slate-200 outline-none font-black text-xs" placeholder="Label" />
+                                                        <input value={sh.time} onChange={e => { const arr=[...cfgDraft.shifts]; arr[i]={...sh,time:e.target.value}; setCfgDraft({...cfgDraft,shifts:arr}); }}
+                                                            className="flex-1 p-1.5 rounded-lg bg-white border border-slate-200 outline-none font-medium text-xs" placeholder="07:00 – 14:00" />
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <label className="text-[9px] text-slate-400 font-bold">Warna:</label>
+                                                        <input type="color" value={sh.bg} onChange={e => { const arr=[...cfgDraft.shifts]; arr[i]={...sh,bg:e.target.value}; setCfgDraft({...cfgDraft,shifts:arr}); }}
+                                                            className="w-7 h-7 rounded border border-slate-200 cursor-pointer p-0.5" />
+                                                        <label className="text-[9px] text-slate-400 font-bold">Teks:</label>
+                                                        <input type="color" value={sh.text} onChange={e => { const arr=[...cfgDraft.shifts]; arr[i]={...sh,text:e.target.value}; setCfgDraft({...cfgDraft,shifts:arr}); }}
+                                                            className="w-7 h-7 rounded border border-slate-200 cursor-pointer p-0.5" />
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => setCfgDraft({...cfgDraft, shifts: cfgDraft.shifts.filter((_,j) => j!==i)})}
+                                                    disabled={cfgDraft.shifts.length <= 1}
+                                                    className="w-7 h-7 rounded-lg bg-red-100 text-red-500 disabled:opacity-30 flex items-center justify-center text-xs hover:bg-red-200 transition-all flex-shrink-0">
+                                                    <Icon name="trash" />
+                                                </button>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
-                                <div className="flex gap-2 mt-5">
-                                    {editingItem && (
-                                        <button onClick={() => setConfirmDel(editingItem)} className="px-4 py-3 rounded-xl border border-red-200 text-red-500 font-bold text-sm hover:bg-red-50 transition-all flex items-center gap-1.5">
-                                            <Icon name="trash" />
-                                        </button>
-                                    )}
-                                    <button onClick={() => setShowForm(false)} className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition-all">Batal</button>
-                                    <button onClick={handleSave} disabled={saving || !form.nama.trim() || form.nama === '__manual'}
-                                        className="flex-1 py-3 rounded-xl bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-black text-sm shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2">
-                                        {saving ? <div className="typing-dot bg-white"></div> : <><Icon name="floppy-disk" /> {editingItem ? 'Simpan' : 'Tambah'}</>}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* CONFIRM DELETE */}
-                    {confirmDel && (
-                        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setConfirmDel(null)}>
-                            <div className="bg-white rounded-[24px] w-full max-w-xs shadow-2xl p-6 pop-in text-center" onClick={e => e.stopPropagation()}>
-                                <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-3"><Icon name="trash" className="text-red-500 text-xl" /></div>
-                                <h3 className="font-black text-slate-800 mb-1">Hapus Jadwal?</h3>
-                                <p className="text-xs text-slate-500 mb-4">Jadwal <b>{confirmDel.nama}</b> ({getShift(confirmDel.shiftId).label}, {confirmDel.hari}) akan dihapus permanen.</p>
-                                <div className="flex gap-2">
-                                    <button onClick={() => setConfirmDel(null)} className="flex-1 py-2.5 border border-slate-200 rounded-xl text-slate-600 font-bold text-sm">Batal</button>
-                                    <button onClick={() => handleDelete(confirmDel.id)} disabled={!!deleting}
-                                        className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white font-black text-sm rounded-xl disabled:opacity-50 flex items-center justify-center gap-1">
-                                        {deleting ? <div className="typing-dot bg-white"></div> : <><Icon name="trash" /> Hapus</>}
+                                <div className="px-5 pb-5 flex gap-2 pt-2 border-t border-slate-100">
+                                    <button onClick={() => setShowSettings(false)} className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 font-bold text-sm hover:bg-slate-50 transition-all">Batal</button>
+                                    <button onClick={saveConfig} disabled={savingCfg}
+                                        className="flex-1 py-3 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-black text-sm rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2">
+                                        {savingCfg ? <div className="typing-dot bg-white"></div> : <><Icon name="floppy-disk" /> Simpan</>}
                                     </button>
                                 </div>
                             </div>
