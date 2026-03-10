@@ -986,7 +986,7 @@
                 { key: 'enableImport', label: 'Import Masal', icon: 'file-import', desc: 'Import data Excel' },
                 { key: 'enableJadwalShift', label: 'Jadwal Shift', icon: 'calendar-days', desc: 'Jadwal shift karyawan' },
                 { key: 'enableCopyWA', label: 'Tombol Salin WhatsApp', icon: 'whatsapp', desc: 'Tombol salin stok ke WA di halaman Stok' },
-                { key: 'enableExportExcel', label: 'Tombol Export Excel', icon: 'file-excel', desc: 'Tombol export stok ke Excel di halaman Stok' },
+                { key: 'enableExportExcel', label: 'Tombol Export Excel', icon: 'file-excel', desc: 'Tombol export Excel di halaman Stok & Riwayat Kasir' },
             ];
             const settingsAccessList = [
                 { key: 'enableSettingsToko', label: 'Profil & Cabang Toko', icon: 'shop', desc: 'Edit nama, alamat toko' },
@@ -3009,6 +3009,7 @@
             const [tempExpName, setTempExpName] = useState('');
             const [tempExpAmount, setTempExpAmount] = useState('');
             const [isRevSubmitting, setIsRevSubmitting] = useState(false);
+            const prevBalanceInitialized = useRef(false);
 
             useEffect(() => {
                 if (!user) return;
@@ -3038,16 +3039,17 @@
                     const storeLogs = currentProfile.id === 'all_stores' ? allLogs : allLogs.filter(d => d.storeId === currentProfile.id);
                     setRevenueLogs(storeLogs);
 
-                    if (storeLogs.length > 0) {
+                    if (storeLogs.length > 0 && !prevBalanceInitialized.current) {
                         const today = new Date().toISOString().slice(0, 10);
                         const lastEntry = storeLogs.find(l => l.date < today);
                         if (lastEntry) {
                             setRevForm(prev => ({ ...prev, prevBalance: lastEntry.remaining || 0 }));
+                            prevBalanceInitialized.current = true;
                         }
                     }
                 });
 
-                return () => { unsubOp(); unsubRev(); };
+                return () => { unsubOp(); unsubRev(); prevBalanceInitialized.current = false; };
             }, [user, currentProfile]);
 
             const opStats = useMemo(() => {
@@ -3171,8 +3173,13 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
 ━━━━━━━━━━━━━━━━━
 🔖 *Sisa di Laci:* ${formatRupiah(log.remaining)}`;
 
-                navigator.clipboard.writeText(text);
-                showToast("Salin teks untuk WA!");
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(() => showToast("Salin teks untuk WA!")).catch(() => {
+                        const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); showToast("Salin teks untuk WA!"); } catch {} document.body.removeChild(ta);
+                    });
+                } else {
+                    const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); showToast("Salin teks untuk WA!"); } catch { showToast("Gagal menyalin, coba manual.","error"); } document.body.removeChild(ta);
+                }
             };
 
             // Compute derived values
@@ -3232,7 +3239,7 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                         </>
                     ) : (
                         <div className="space-y-6 pb-20">
-                            <div className="bg-white p-5 rounded-2xl shadow-sm border border-purple-100">
+                            {!readOnly && <div className="bg-white p-5 rounded-2xl shadow-sm border border-purple-100">
                                 <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="pen-to-square" className="text-purple-600" /> Input Setoran Harian</h3>
                                 <form onSubmit={handleRevSubmit} className="space-y-3">
                                     <div className="grid grid-cols-2 gap-3">
@@ -3265,11 +3272,11 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                                         </div>
                                     </div>
 
-                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase">Disetor Ke Owner</label><input type="number" placeholder="0" value={revForm.deposited} onChange={e => setRevForm({...revForm, deposited: e.target.value})} required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-green-500 focus:ring-1 focus:ring-green-500" /></div>
+                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase">Disetor Ke Owner</label><input type="number" placeholder="0" value={revForm.deposited} onChange={e => setRevForm({...revForm, deposited: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-green-500 focus:ring-1 focus:ring-green-500" /></div>
                                     <div className="bg-purple-50 p-3 rounded-xl border border-purple-100 flex justify-between items-center mt-2"><span className="text-xs font-bold text-purple-700">Sisa Belum Disetor:</span><span className={`text-lg font-black ${currentRevRemaining < 0 ? 'text-red-600' : 'text-slate-800'}`}>{formatRupiah(currentRevRemaining)}</span></div>
                                     <button type="submit" disabled={isRevSubmitting} className="w-full py-3 bg-purple-600 text-white rounded-xl font-bold shadow-lg shadow-purple-200 mt-2 active:scale-95 transition-all">{isRevSubmitting ? 'Menyimpan...' : 'Simpan Laporan'}</button>
                                 </form>
-                            </div>
+                            </div>}
 
                             <div className="space-y-3">
                                 <h3 className="font-bold text-slate-700 text-sm px-1">Riwayat Setoran</h3>
@@ -3279,7 +3286,7 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                                             <div><span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{formatDateFull(log.date)}</span></div>
                                             <div className="flex gap-2">
                                                 <button onClick={() => handleCopyRevenueToWA(log)} className="flex items-center gap-1 text-[10px] font-bold bg-[#25D366] text-white px-2 py-1 rounded hover:bg-[#128C7E] transition-colors"><Icon name="whatsapp" type="brands" /> Salin WA</button>
-                                                <button onClick={() => handleRevDelete(log.id)} className="w-6 h-6 flex items-center justify-center rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"><Icon name="trash" /></button>
+                                                {!readOnly && <button onClick={() => handleRevDelete(log.id)} className="w-6 h-6 flex items-center justify-center rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"><Icon name="trash" /></button>}
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
@@ -5866,11 +5873,13 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                                     </div>
                                 )}
                             </div>
+                        {settings?.enableExportExcel !== false && (
                         <button onClick={handleExportHistoryExcel} className="py-2 px-3.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all bg-emerald-600 hover:bg-emerald-700 text-white shadow-md active:scale-95 whitespace-nowrap h-10">
                             <Icon name="file-excel" className="text-sm" />
                             <span className="hidden sm:inline">Unduh Excel</span>
                             <span className="sm:hidden">Excel</span>
                         </button>
+                        )}
                         </div>
                     </header>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
