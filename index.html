@@ -399,9 +399,6 @@
             enableSettingsStruk: true,
             enableSettingsPembayaran: true,
             enableSettingsWhatsapp: true,
-            // Tombol aksi di halaman Stok
-            enableCopyWA: true,
-            enableExportExcel: true,
         };
 
         // --- BLUETOOTH PRINTER HELPERS ---
@@ -528,6 +525,7 @@
             return (new Date() - date) < (24 * 60 * 60 * 1000);
         };
         const formatDateIndo = (dateStr) => { if (!dateStr) return "-"; return new Date(dateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' }); };
+        const formatDateFull = (dateStr) => { if (!dateStr) return "-"; return new Date(dateStr + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); };
         const getDaysRemaining = (dateStr) => { if (!dateStr) return null; const today = new Date(); today.setHours(0,0,0,0); const exp = new Date(dateStr); exp.setHours(0,0,0,0); return Math.ceil((exp - today) / (1000 * 60 * 60 * 24)); };
 
         const Toast = ({ message, show, onClose, type = "success" }) => {
@@ -985,8 +983,6 @@
                 { key: 'enableInputManual', label: 'Input Manual', icon: 'pen-to-square', desc: 'Tambah/edit barang' },
                 { key: 'enableImport', label: 'Import Masal', icon: 'file-import', desc: 'Import data Excel' },
                 { key: 'enableJadwalShift', label: 'Jadwal Shift', icon: 'calendar-days', desc: 'Jadwal shift karyawan' },
-                { key: 'enableCopyWA', label: 'Tombol Salin WhatsApp', icon: 'whatsapp', desc: 'Tombol salin stok ke WA di halaman Stok' },
-                { key: 'enableExportExcel', label: 'Tombol Export Excel', icon: 'file-excel', desc: 'Tombol export Excel di halaman Stok & Riwayat Kasir' },
             ];
             const settingsAccessList = [
                 { key: 'enableSettingsToko', label: 'Profil & Cabang Toko', icon: 'shop', desc: 'Edit nama, alamat toko' },
@@ -3009,7 +3005,6 @@
             const [tempExpName, setTempExpName] = useState('');
             const [tempExpAmount, setTempExpAmount] = useState('');
             const [isRevSubmitting, setIsRevSubmitting] = useState(false);
-            const prevBalanceInitialized = useRef(false);
 
             useEffect(() => {
                 if (!user) return;
@@ -3039,17 +3034,16 @@
                     const storeLogs = currentProfile.id === 'all_stores' ? allLogs : allLogs.filter(d => d.storeId === currentProfile.id);
                     setRevenueLogs(storeLogs);
 
-                    if (storeLogs.length > 0 && !prevBalanceInitialized.current) {
+                    if (storeLogs.length > 0) {
                         const today = new Date().toISOString().slice(0, 10);
                         const lastEntry = storeLogs.find(l => l.date < today);
                         if (lastEntry) {
                             setRevForm(prev => ({ ...prev, prevBalance: lastEntry.remaining || 0 }));
-                            prevBalanceInitialized.current = true;
                         }
                     }
                 });
 
-                return () => { unsubOp(); unsubRev(); prevBalanceInitialized.current = false; };
+                return () => { unsubOp(); unsubRev(); };
             }, [user, currentProfile]);
 
             const opStats = useMemo(() => {
@@ -3173,13 +3167,8 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
 ━━━━━━━━━━━━━━━━━
 🔖 *Sisa di Laci:* ${formatRupiah(log.remaining)}`;
 
-                if (navigator.clipboard && window.isSecureContext) {
-                    navigator.clipboard.writeText(text).then(() => showToast("Salin teks untuk WA!")).catch(() => {
-                        const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); showToast("Salin teks untuk WA!"); } catch {} document.body.removeChild(ta);
-                    });
-                } else {
-                    const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); showToast("Salin teks untuk WA!"); } catch { showToast("Gagal menyalin, coba manual.","error"); } document.body.removeChild(ta);
-                }
+                navigator.clipboard.writeText(text);
+                showToast("Salin teks untuk WA!");
             };
 
             // Compute derived values
@@ -3239,7 +3228,7 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                         </>
                     ) : (
                         <div className="space-y-6 pb-20">
-                            {!readOnly && <div className="bg-white p-5 rounded-2xl shadow-sm border border-purple-100">
+                            <div className="bg-white p-5 rounded-2xl shadow-sm border border-purple-100">
                                 <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="pen-to-square" className="text-purple-600" /> Input Setoran Harian</h3>
                                 <form onSubmit={handleRevSubmit} className="space-y-3">
                                     <div className="grid grid-cols-2 gap-3">
@@ -3272,11 +3261,11 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                                         </div>
                                     </div>
 
-                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase">Disetor Ke Owner</label><input type="number" placeholder="0" value={revForm.deposited} onChange={e => setRevForm({...revForm, deposited: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-green-500 focus:ring-1 focus:ring-green-500" /></div>
+                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase">Disetor Ke Owner</label><input type="number" placeholder="0" value={revForm.deposited} onChange={e => setRevForm({...revForm, deposited: e.target.value})} required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-green-500 focus:ring-1 focus:ring-green-500" /></div>
                                     <div className="bg-purple-50 p-3 rounded-xl border border-purple-100 flex justify-between items-center mt-2"><span className="text-xs font-bold text-purple-700">Sisa Belum Disetor:</span><span className={`text-lg font-black ${currentRevRemaining < 0 ? 'text-red-600' : 'text-slate-800'}`}>{formatRupiah(currentRevRemaining)}</span></div>
                                     <button type="submit" disabled={isRevSubmitting} className="w-full py-3 bg-purple-600 text-white rounded-xl font-bold shadow-lg shadow-purple-200 mt-2 active:scale-95 transition-all">{isRevSubmitting ? 'Menyimpan...' : 'Simpan Laporan'}</button>
                                 </form>
-                            </div>}
+                            </div>
 
                             <div className="space-y-3">
                                 <h3 className="font-bold text-slate-700 text-sm px-1">Riwayat Setoran</h3>
@@ -3286,7 +3275,7 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                                             <div><span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{formatDateFull(log.date)}</span></div>
                                             <div className="flex gap-2">
                                                 <button onClick={() => handleCopyRevenueToWA(log)} className="flex items-center gap-1 text-[10px] font-bold bg-[#25D366] text-white px-2 py-1 rounded hover:bg-[#128C7E] transition-colors"><Icon name="whatsapp" type="brands" /> Salin WA</button>
-                                                {!readOnly && <button onClick={() => handleRevDelete(log.id)} className="w-6 h-6 flex items-center justify-center rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"><Icon name="trash" /></button>}
+                                                <button onClick={() => handleRevDelete(log.id)} className="w-6 h-6 flex items-center justify-center rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"><Icon name="trash" /></button>
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
@@ -5873,13 +5862,11 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                                     </div>
                                 )}
                             </div>
-                        {settings?.enableExportExcel !== false && (
                         <button onClick={handleExportHistoryExcel} className="py-2 px-3.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all bg-emerald-600 hover:bg-emerald-700 text-white shadow-md active:scale-95 whitespace-nowrap h-10">
                             <Icon name="file-excel" className="text-sm" />
                             <span className="hidden sm:inline">Unduh Excel</span>
                             <span className="sm:hidden">Excel</span>
                         </button>
-                        )}
                         </div>
                     </header>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -6456,19 +6443,15 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
                         
                         {/* Row Tombol - Responsive Grid */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 lg:flex lg:flex-wrap gap-2">
-                            {settings?.enableCopyWA !== false && (
                             <button onClick={handleCopyToWA} className="py-2.5 px-3.5 rounded-xl font-bold text-[10px] sm:text-xs flex items-center justify-center gap-2 transition-all bg-[#25D366] hover:bg-[#128C7E] text-white shadow-md active:scale-95 whitespace-nowrap">
                                 <Icon name="whatsapp" type="brands" className="text-sm" />
                                 Salin WhatsApp
                             </button>
-                            )}
                             
-                            {settings?.enableExportExcel !== false && (
                             <button onClick={handleExportExcel} className="py-2.5 px-3.5 rounded-xl font-bold text-[10px] sm:text-xs flex items-center justify-center gap-2 transition-all bg-emerald-600 hover:bg-emerald-700 text-white shadow-md active:scale-95 whitespace-nowrap">
                                 <Icon name="file-excel" className="text-sm" />
                                 Export Excel
                             </button>
-                            )}
                             
                             <button onClick={() => setShowOnlyLowStock(!showOnlyLowStock)} className={`py-2.5 px-3.5 rounded-xl font-bold text-[10px] sm:text-xs flex items-center justify-center gap-2 transition-all border shadow-sm whitespace-nowrap ${showOnlyLowStock ? 'bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                                 <Icon name="filter" className="text-sm" />
@@ -7786,7 +7769,7 @@ ${totalExp > 0 ? `💵 *Sisa Setelah Expense:* ${formatRupiah(netBalance)}\n` : 
 
         // ==================== AUTH UTILITIES ====================
         const INVITATION_CODE = "12345670";
-        const OWNER_EMAILS = ["kayzen796@gmail.com", "husna123456@gmail.com"];
+        const OWNER_EMAILS = ["kayzen796@gmail.com", "sugaramilk99@gmail.com"];
         const OWNER_EMAIL = OWNER_EMAILS[0]; // email utama untuk tampilan pesan
         const isOwnerEmail = (email) => OWNER_EMAILS.includes((email || '').toLowerCase());
 
