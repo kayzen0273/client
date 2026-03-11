@@ -234,30 +234,6 @@
         .otp-input:focus { border-color: #0ea5e9; box-shadow: 0 0 0 4px rgba(14,165,233,0.1); background: white; }
         .auth-floating-star { position: absolute; pointer-events: none; animation: authStar 4s ease-in-out infinite; }
         @keyframes authStar { 0%,100% { opacity:0.3; transform: scale(0.8) rotate(0deg); } 50% { opacity:0.8; transform: scale(1.2) rotate(15deg); } }
-
-        /* === MORPH ANIMATIONS === */
-        @keyframes authViewMorphIn {
-            0%   { opacity:0; transform: scale(0.9) translateY(10px); filter: blur(6px); clip-path: inset(8% 8% 8% 8% round 24px); }
-            60%  { filter: blur(0); clip-path: inset(0% 0% 0% 0% round 4px); }
-            100% { opacity:1; transform: scale(1) translateY(0); filter: blur(0); clip-path: inset(0% 0% 0% 0% round 0px); }
-        }
-        .auth-view-morph { animation: authViewMorphIn 0.42s cubic-bezier(0.34, 1.4, 0.64, 1) both; }
-
-        /* Slide out to right (auth card exit) */
-        @keyframes authSlideRight {
-            0%   { transform: translateX(0) scale(1);    opacity: 1; filter: blur(0); }
-            30%  { transform: translateX(6px) scale(1.01); filter: blur(0); }
-            100% { transform: translateX(110vw) scale(0.95); opacity: 0.4; filter: blur(4px); }
-        }
-        .auth-card-slide-out { animation: authSlideRight 0.52s cubic-bezier(0.55, 0, 1, 0.45) forwards !important; pointer-events:none; }
-
-        /* Main app slides in from left */
-        @keyframes appSlideInLeft {
-            0%   { transform: translateX(-80px) scale(0.97); opacity: 0; filter: blur(8px); }
-            60%  { filter: blur(0); }
-            100% { transform: translateX(0) scale(1); opacity: 1; filter: blur(0); }
-        }
-        .app-slide-in { animation: appSlideInLeft 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.28s both; }
     </style>
 </head>
 <body class="islamic-pattern relative">
@@ -1346,7 +1322,257 @@
         };
         // ==================== END OWNER PANEL ====================
 
-        const SettingsView = ({ settings, onSave, loading, authSession, inOwnerPanel }) => {
+        // ==================== PROFIL AKUN VIEW ====================
+        const ProfilAkunView = ({ authSession, onUpdateSession, onBack, c }) => {
+            const [form, setForm] = React.useState({ namaLengkap: authSession?.namaLengkap || '', username: authSession?.username || '', email: authSession?.email || '', whatsapp: authSession?.whatsapp || '' });
+            const [photoPreview, setPhotoPreview] = React.useState(authSession?.profilePhoto || null);
+            const [newPhotoData, setNewPhotoData] = React.useState(null);
+            const [saving, setSaving] = React.useState(false);
+            const [msg, setMsg] = React.useState({ type: '', text: '' });
+            const [section, setSection] = React.useState('profil'); // 'profil' | 'password'
+            const [passForm, setPassForm] = React.useState({ current: '', newPass: '', confirm: '' });
+            const [showCurrent, setShowCurrent] = React.useState(false);
+            const [showNew, setShowNew] = React.useState(false);
+            const photoRef = React.useRef(null);
+
+            const showMsg = (type, text) => { setMsg({ type, text }); setTimeout(() => setMsg({ type: '', text: '' }), 3500); };
+
+            const handlePhotoChange = (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const img = new window.Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX = 300;
+                        let w = img.width, h = img.height;
+                        if (w > h) { h = Math.round(h * MAX / w); w = MAX; } else { w = Math.round(w * MAX / h); h = MAX; }
+                        if (img.width < MAX && img.height < MAX) { w = img.width; h = img.height; }
+                        canvas.width = w; canvas.height = h;
+                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                        const data = canvas.toDataURL('image/jpeg', 0.85);
+                        setPhotoPreview(data);
+                        setNewPhotoData(data);
+                    };
+                    img.src = ev.target.result;
+                };
+                reader.readAsDataURL(file);
+                e.target.value = '';
+            };
+
+            const handleSaveProfil = async () => {
+                if (!form.namaLengkap.trim() || !form.username.trim() || !form.email.trim()) { showMsg('error', 'Nama, username, dan email wajib diisi'); return; }
+                if (!/^[a-zA-Z0-9_]+$/.test(form.username)) { showMsg('error', 'Username hanya boleh huruf, angka, underscore'); return; }
+                setSaving(true);
+                try {
+                    const uid = authSession.id;
+                    const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'users', uid);
+                    
+                    // Cek duplikat username (jika berubah)
+                    if (form.username.toLowerCase() !== authSession.username) {
+                        const usersRef = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'users');
+                        const snapUname = await window.getDocs(window.query(usersRef, window.where('username', '==', form.username.toLowerCase())));
+                        if (!snapUname.empty) { showMsg('error', 'Username sudah dipakai akun lain'); setSaving(false); return; }
+                    }
+                    // Cek duplikat email (jika berubah)
+                    if (form.email.toLowerCase() !== authSession.email) {
+                        const usersRef = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'users');
+                        const snapEmail = await window.getDocs(window.query(usersRef, window.where('email', '==', form.email.toLowerCase())));
+                        if (!snapEmail.empty) { showMsg('error', 'Email sudah dipakai akun lain'); setSaving(false); return; }
+                    }
+
+                    const updateData = { namaLengkap: form.namaLengkap.trim(), username: form.username.toLowerCase(), email: form.email.toLowerCase(), whatsapp: form.whatsapp.trim() };
+                    if (newPhotoData === 'REMOVE') { updateData.profilePhoto = ''; }
+                    else if (newPhotoData) { updateData.profilePhoto = newPhotoData; }
+                    await window.updateDoc(ref, updateData);
+
+                    const resolvedPhoto = newPhotoData === 'REMOVE' ? null : (newPhotoData || authSession.profilePhoto || null);
+                    const newSession = { ...authSession, namaLengkap: form.namaLengkap.trim(), username: form.username.toLowerCase(), email: form.email.toLowerCase(), whatsapp: form.whatsapp.trim(), profilePhoto: resolvedPhoto };
+                    localStorage.setItem('husna_auth_session', JSON.stringify(newSession));
+                    if (onUpdateSession) onUpdateSession(newSession);
+                    showMsg('success', 'Profil berhasil disimpan!');
+                    setNewPhotoData(null);
+                } catch (e) { console.error(e); showMsg('error', 'Gagal menyimpan profil'); }
+                setSaving(false);
+            };
+
+            const handleChangePassword = async () => {
+                const { current, newPass, confirm } = passForm;
+                if (!current || !newPass || !confirm) { showMsg('error', 'Isi semua field password'); return; }
+                if (newPass.length < 6) { showMsg('error', 'Password baru minimal 6 karakter'); return; }
+                if (newPass !== confirm) { showMsg('error', 'Konfirmasi password tidak cocok'); return; }
+                setSaving(true);
+                try {
+                    const uid = authSession.id;
+                    const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'users', uid);
+                    const snap = await window.getDoc(ref);
+                    if (!snap.exists()) { showMsg('error', 'Data akun tidak ditemukan'); setSaving(false); return; }
+                    const userData = snap.data();
+                    const hashedCurrent = await hashPassword(current);
+                    if (userData.password !== hashedCurrent) { showMsg('error', 'Kata sandi saat ini salah'); setSaving(false); return; }
+                    const hashedNew = await hashPassword(newPass);
+                    await window.updateDoc(ref, { password: hashedNew });
+                    setPassForm({ current: '', newPass: '', confirm: '' });
+                    showMsg('success', 'Kata sandi berhasil diubah!');
+                } catch (e) { console.error(e); showMsg('error', 'Gagal mengubah kata sandi'); }
+                setSaving(false);
+            };
+
+            const inputCls = "w-full p-2.5 rounded-xl border border-slate-200 bg-white focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none text-sm font-medium text-slate-800 transition-all";
+
+            return (
+                <div className={`bg-white/90 backdrop-blur-sm rounded-[30px] shadow-soft border border-purple-200 overflow-hidden fade-in`}>
+                    {/* Header */}
+                    <div className="p-5 border-b border-purple-100 flex items-center gap-3 bg-gradient-to-r from-purple-50 to-violet-50">
+                        <button onClick={onBack} className="w-9 h-9 rounded-xl bg-white border border-purple-200 flex items-center justify-center text-purple-400 hover:text-purple-700 shadow-sm active:scale-95 transition-all flex-shrink-0"><Icon name="arrow-left" /></button>
+                        <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center flex-shrink-0"><Icon name="user-pen" /></div>
+                        <div><p className="font-bold text-sm text-purple-900">Edit Profil Akun</p><p className="text-[10px] text-purple-500">Foto, nama, username, dan kata sandi</p></div>
+                    </div>
+
+                    {/* Toast message */}
+                    {msg.text && (
+                        <div className={`mx-5 mt-4 px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 fade-in ${msg.type === 'success' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
+                            <Icon name={msg.type === 'success' ? 'circle-check' : 'circle-xmark'} />{msg.text}
+                        </div>
+                    )}
+
+                    {/* Section Tabs */}
+                    <div className="flex gap-2 px-5 pt-4">
+                        <button onClick={() => setSection('profil')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${section==='profil' ? 'bg-purple-600 text-white shadow-md' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'}`}><Icon name="user" className="mr-1.5" />Data Profil</button>
+                        <button onClick={() => setSection('password')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${section==='password' ? 'bg-purple-600 text-white shadow-md' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'}`}><Icon name="lock" className="mr-1.5" />Ganti Kata Sandi</button>
+                    </div>
+
+                    {/* === SECTION: PROFIL === */}
+                    {section === 'profil' && (
+                        <div className="p-5 space-y-5">
+                            {/* Foto Profil */}
+                            <div className="flex flex-col items-center gap-3 py-4 bg-gradient-to-b from-purple-50 to-white rounded-2xl border border-purple-100">
+                                <div className="relative">
+                                    <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-lg bg-purple-100 flex items-center justify-center">
+                                        {photoPreview ? (
+                                            <img src={photoPreview} alt="Foto Profil" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="text-4xl font-black text-purple-400">{(form.namaLengkap || 'U').charAt(0).toUpperCase()}</span>
+                                        )}
+                                    </div>
+                                    <button onClick={() => photoRef.current?.click()} className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center shadow-md hover:bg-purple-700 active:scale-95 transition-all border-2 border-white">
+                                        <Icon name="camera" className="text-xs" />
+                                    </button>
+                                </div>
+                                <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+                                <div className="text-center">
+                                    <p className="text-xs font-bold text-slate-700">{form.namaLengkap || 'Nama Belum Diisi'}</p>
+                                    <p className="text-[10px] text-slate-400">@{form.username || '-'}</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => photoRef.current?.click()} className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold hover:bg-purple-200 transition-all flex items-center gap-1.5 active:scale-95">
+                                        <Icon name="arrow-up-from-bracket" /> {photoPreview ? 'Ganti Foto' : 'Upload Foto'}
+                                    </button>
+                                    {photoPreview && (
+                                        <button onClick={() => { setPhotoPreview(null); setNewPhotoData('REMOVE'); }} className="px-3 py-1.5 bg-red-100 text-red-600 rounded-lg text-xs font-bold hover:bg-red-200 transition-all flex items-center gap-1.5 active:scale-95">
+                                            <Icon name="trash" /> Hapus Foto
+                                        </button>
+                                    )}
+                                </div>
+                                <p className="text-[10px] text-slate-400">Foto akan dikompresi otomatis. Maks 300px.</p>
+                            </div>
+
+                            {/* Form Fields */}
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 block mb-1.5">Nama Lengkap <span className="text-red-400">*</span></label>
+                                    <input type="text" value={form.namaLengkap} onChange={e => setForm(p => ({...p, namaLengkap: e.target.value}))} className={inputCls} placeholder="Nama lengkap kamu" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 block mb-1.5">Username <span className="text-red-400">*</span></label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">@</span>
+                                        <input type="text" value={form.username} onChange={e => setForm(p => ({...p, username: e.target.value}))} className={inputCls + " pl-8"} placeholder="username_kamu" />
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 mt-1">Hanya huruf, angka, dan underscore (_)</p>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 block mb-1.5">Email <span className="text-red-400">*</span></label>
+                                    <input type="email" value={form.email} onChange={e => setForm(p => ({...p, email: e.target.value}))} className={inputCls} placeholder="email@contoh.com" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 block mb-1.5">No. WhatsApp</label>
+                                    <div className="relative">
+                                        <Icon name="whatsapp" type="brands" className="absolute left-3 top-1/2 -translate-y-1/2 text-green-500 text-sm" />
+                                        <input type="tel" value={form.whatsapp} onChange={e => setForm(p => ({...p, whatsapp: e.target.value}))} className={inputCls + " pl-9"} placeholder="08xxx" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Save Button */}
+                            <button onClick={handleSaveProfil} disabled={saving} className="w-full py-3.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl font-bold shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2">
+                                {saving ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></div> Menyimpan...</> : <><Icon name="floppy-disk" /> Simpan Profil</>}
+                            </button>
+                        </div>
+                    )}
+
+                    {/* === SECTION: PASSWORD === */}
+                    {section === 'password' && (
+                        <div className="p-5 space-y-4">
+                            <div className="flex gap-3 p-4 bg-amber-50 rounded-2xl border border-amber-200">
+                                <Icon name="triangle-exclamation" className="text-amber-500 text-lg flex-shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="font-bold text-amber-800 text-xs">Penting</p>
+                                    <p className="text-[11px] text-amber-700 mt-0.5">Setelah kata sandi diubah, kamu perlu login ulang jika menggunakan perangkat lain.</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 block mb-1.5">Kata Sandi Saat Ini <span className="text-red-400">*</span></label>
+                                    <div className="relative">
+                                        <Icon name="lock" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                                        <input type={showCurrent ? 'text' : 'password'} value={passForm.current} onChange={e => setPassForm(p => ({...p, current: e.target.value}))} className={inputCls + " pl-9 pr-10"} placeholder="••••••••" />
+                                        <button onClick={() => setShowCurrent(s => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                                            <Icon name={showCurrent ? 'eye-slash' : 'eye'} className="text-sm" />
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 block mb-1.5">Kata Sandi Baru <span className="text-red-400">*</span></label>
+                                    <div className="relative">
+                                        <Icon name="key" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                                        <input type={showNew ? 'text' : 'password'} value={passForm.newPass} onChange={e => setPassForm(p => ({...p, newPass: e.target.value}))} className={inputCls + " pl-9 pr-10"} placeholder="Min. 6 karakter" />
+                                        <button onClick={() => setShowNew(s => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                                            <Icon name={showNew ? 'eye-slash' : 'eye'} className="text-sm" />
+                                        </button>
+                                    </div>
+                                    {passForm.newPass && (
+                                        <div className="mt-1.5 flex gap-1">
+                                            {[...Array(4)].map((_, i) => (
+                                                <div key={i} className={`h-1 flex-1 rounded-full transition-all ${passForm.newPass.length > i*2 ? (passForm.newPass.length >= 8 ? 'bg-green-400' : 'bg-amber-400') : 'bg-slate-200'}`}></div>
+                                            ))}
+                                            <span className={`text-[10px] font-bold ml-1 ${passForm.newPass.length >= 8 ? 'text-green-600' : 'text-amber-600'}`}>{passForm.newPass.length >= 8 ? 'Kuat' : passForm.newPass.length >= 6 ? 'Cukup' : 'Lemah'}</span>
+                                        </div>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 block mb-1.5">Konfirmasi Kata Sandi Baru <span className="text-red-400">*</span></label>
+                                    <div className="relative">
+                                        <Icon name="shield-halved" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                                        <input type="password" value={passForm.confirm} onChange={e => setPassForm(p => ({...p, confirm: e.target.value}))} className={inputCls + " pl-9 " + (passForm.confirm && passForm.confirm !== passForm.newPass ? 'border-red-300 focus:border-red-400' : '')} placeholder="Ulangi kata sandi baru" />
+                                        {passForm.confirm && passForm.confirm === passForm.newPass && <Icon name="circle-check" className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500 text-sm" />}
+                                    </div>
+                                    {passForm.confirm && passForm.confirm !== passForm.newPass && <p className="text-[10px] text-red-500 mt-1 font-semibold">Kata sandi tidak cocok</p>}
+                                </div>
+                            </div>
+
+                            <button onClick={handleChangePassword} disabled={saving} className="w-full py-3.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl font-bold shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2">
+                                {saving ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></div> Memproses...</> : <><Icon name="lock" /> Ubah Kata Sandi</>}
+                            </button>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const SettingsView = ({ settings, onSave, loading, authSession, inOwnerPanel, onUpdateSession }) => {
             const isOwner = isOwnerEmail(authSession?.email);
             const [localSettings, setLocalSettings] = useState(settings);
             const [profiles, setProfiles] = useState(() => settings.storeProfiles || [{ id: 'default', name: settings.storeName || APP_NAME, address: settings.storeAddress || '', footer: settings.receiptFooter || "Terima Kasih", headers: [] }]);
@@ -1452,6 +1678,7 @@
             const [activeMenu, setActiveMenu] = useState(null);
 
             const settingsMenuAll = [
+                { id: 'profil', label: 'Edit Profil Akun', desc: 'Foto profil, nama, username & kata sandi', icon: 'user-pen', color: 'purple', settingsKey: null },
                 { id: 'toko', label: 'Profil & Cabang Toko', desc: 'Kelola nama, alamat, dan cabang toko', icon: 'shop', color: 'sky', settingsKey: 'enableSettingsToko' },
                 { id: 'stok', label: 'Pengaturan Stok', desc: 'Batas stok menipis', icon: 'boxes-stacked', color: 'slate', settingsKey: 'enableSettingsStok' },
                 { id: 'struk', label: 'Format Cetak Struk', desc: 'Header, footer, dan format struk printer', icon: 'print', color: 'slate', settingsKey: 'enableSettingsStruk' },
@@ -1468,6 +1695,7 @@
                 teal: { bg: 'bg-teal-50', border: 'border-teal-200', icon: 'bg-teal-600', text: 'text-teal-800', btn: 'bg-teal-600 hover:bg-teal-700' },
                 green: { bg: 'bg-green-50', border: 'border-green-200', icon: 'bg-green-600', text: 'text-green-800', btn: 'bg-green-600 hover:bg-green-700' },
                 amber: { bg: 'bg-amber-50', border: 'border-amber-200', icon: 'bg-amber-500', text: 'text-amber-900', btn: 'bg-amber-500 hover:bg-amber-600' },
+                purple: { bg: 'bg-purple-50', border: 'border-purple-200', icon: 'bg-purple-600', text: 'text-purple-800', btn: 'bg-purple-600 hover:bg-purple-700' },
             };
 
             return (
@@ -1516,6 +1744,10 @@
                             </div>
                         );
 
+
+                        if (activeMenu === 'profil') return (
+                            <ProfilAkunView authSession={authSession} onUpdateSession={onUpdateSession} onBack={() => setActiveMenu(null)} c={c} />
+                        );
 
                         if (activeMenu === 'toko') return (
                             <div className={`bg-white/90 backdrop-blur-sm rounded-[30px] shadow-soft border ${c.border} overflow-hidden`}>
@@ -7957,18 +8189,8 @@
             const [loginForm, setLoginForm] = useState({ emailOrUsername: '', password: '' });
             const [regForm, setRegForm] = useState({ namaLengkap: '', username: '', email: '', whatsapp: '', kodeUndangan: '', password: '', confirmPassword: '' });
             const [forgotEmail, setForgotEmail] = useState('');
-            const [morphKey, setMorphKey] = useState(0);
-            const [morphingOut, setMorphingOut] = useState(false);
-            const [showSuccessFlash, setShowSuccessFlash] = useState(false);
 
             const setErrTimeout = (msg) => { setError(msg); setTimeout(() => setError(''), 4000); };
-
-            const changeView = (v) => { setView(v); setMorphKey(k => k + 1); setError(''); setSuccess(''); };
-
-            const handleAuthSuccess = (sessionData) => {
-                setMorphingOut(true);
-                setTimeout(() => onAuthSuccess(sessionData), 480);
-            };
 
             const handleLogin = async () => {
                 if (!loginForm.emailOrUsername || !loginForm.password) { setErrTimeout('Isi semua field terlebih dahulu'); return; }
@@ -7993,9 +8215,9 @@
                     if (foundUser.password !== hashedPass) { setErrTimeout('Password salah'); setLoading(false); return; }
                     if (foundUser.isActive === false && !isOwnerEmail(foundUser.email)) { setErrTimeout('Akun kamu telah dinonaktifkan. Hubungi owner.'); setLoading(false); return; }
 
-                    const sessionData = { id: foundUser.id, namaLengkap: foundUser.namaLengkap, username: foundUser.username, email: foundUser.email, whatsapp: foundUser.whatsapp, loginAt: Date.now() };
+                    const sessionData = { id: foundUser.id, namaLengkap: foundUser.namaLengkap, username: foundUser.username, email: foundUser.email, whatsapp: foundUser.whatsapp, profilePhoto: foundUser.profilePhoto || null, loginAt: Date.now() };
                     saveSession(sessionData);
-                    handleAuthSuccess(sessionData);
+                    onAuthSuccess(sessionData);
                 } catch (e) { console.error(e); setErrTimeout('Terjadi kesalahan. Coba lagi.'); }
                 setLoading(false);
             };
@@ -8031,7 +8253,7 @@
 
                     const sessionData = { id: docRef.id, namaLengkap, username: username.toLowerCase(), email: email.toLowerCase(), whatsapp, loginAt: Date.now() };
                     saveSession(sessionData);
-                    handleAuthSuccess(sessionData);
+                    onAuthSuccess(sessionData);
                 } catch (e) { console.error(e); setErrTimeout('Gagal mendaftar. Coba lagi.'); }
                 setLoading(false);
             };
@@ -8061,7 +8283,7 @@
                     setGeneratedOTP(otp);
                     setOtpEmail(forgotEmail.toLowerCase());
                     setSuccess(`Permintaan reset password berhasil! Hubungi owner di ${OWNER_EMAIL} atau WhatsApp owner untuk mendapatkan kode OTP 6 digit.`);
-                    changeView('otp');
+                    setView('otp');
                 } catch (e) { console.error(e); setErrTimeout('Gagal mengirim OTP. Coba lagi.'); }
                 setLoading(false);
             };
@@ -8106,7 +8328,7 @@
                     await window.deleteDoc(otpDocRef);
                     
                     setSuccess('Password berhasil direset! Silakan login.');
-                    setTimeout(() => { changeView('login'); setOtpValues(['','','','','','']); setNewPass(''); setConfirmNewPass(''); }, 2000);
+                    setTimeout(() => { setView('login'); setSuccess(''); setOtpValues(['','','','','','']); setNewPass(''); setConfirmNewPass(''); }, 2000);
                 } catch (e) { console.error(e); setErrTimeout('Gagal verifikasi OTP.'); }
                 setLoading(false);
             };
@@ -8128,7 +8350,7 @@
                         }}><Icon name="star" /></div>
                     ))}
 
-                                        <div className={`auth-card auth-fade-in w-full max-w-md relative z-10 ${morphingOut ? "auth-card-slide-out" : ""}`}>
+                    <div className="auth-card auth-fade-in w-full max-w-md relative z-10">
                         {/* Header */}
                         <div className="text-center py-8 px-8 border-b border-slate-100">
                             <div className="relative inline-flex pulse-ring mb-4">
@@ -8140,12 +8362,12 @@
                             <p className="text-slate-500 text-sm font-medium mt-1">Sistem Kasir & Manajemen Stok</p>
                         </div>
 
-                        <div className="p-8"><div key={morphKey} className="auth-view-morph">
+                        <div className="p-8">
                             {/* Tab switcher (login/register only) */}
                             {(view === 'login' || view === 'register') && (
                                 <div className="flex gap-1 bg-slate-100 rounded-xl p-1 mb-6">
-                                    <button className={`auth-tab flex-1 ${view==='login'?'active':''}`} onClick={() => changeView('login')}>Masuk</button>
-                                    <button className={`auth-tab flex-1 ${view==='register'?'active':''}`} onClick={() => changeView('register')}>Daftar</button>
+                                    <button className={`auth-tab flex-1 ${view==='login'?'active':''}`} onClick={() => { setView('login'); setError(''); }}>Masuk</button>
+                                    <button className={`auth-tab flex-1 ${view==='register'?'active':''}`} onClick={() => { setView('register'); setError(''); }}>Daftar</button>
                                 </div>
                             )}
 
@@ -8168,7 +8390,7 @@
                                     <button className="auth-btn-primary" onClick={handleLogin} disabled={loading}>
                                         {loading ? <span className="flex items-center justify-center gap-2"><span className="typing-dot"></span><span className="typing-dot"></span><span className="typing-dot"></span></span> : <><Icon name="right-to-bracket" className="mr-2" />Masuk ke Sistem</>}
                                     </button>
-                                    <button className="w-full text-center text-sky-600 text-sm font-semibold hover:underline mt-2" onClick={()=>changeView('forgot')}>
+                                    <button className="w-full text-center text-sky-600 text-sm font-semibold hover:underline mt-2" onClick={()=>{setView('forgot');setError('');setSuccess('');}}>
                                         <Icon name="key" className="mr-1" /> Lupa Password?
                                     </button>
                                 </div>
@@ -8227,7 +8449,7 @@
                                     <button className="auth-btn-primary" onClick={handleForgotPassword} disabled={loading}>
                                         {loading ? <span className="flex items-center justify-center gap-2"><span className="typing-dot"></span><span className="typing-dot"></span><span className="typing-dot"></span></span> : <><Icon name="paper-plane" className="mr-2" />Kirim Kode OTP</>}
                                     </button>
-                                    <button className="w-full text-center text-slate-500 text-sm font-semibold hover:underline" onClick={()=>changeView('login')}>
+                                    <button className="w-full text-center text-slate-500 text-sm font-semibold hover:underline" onClick={()=>{setView('login');setError('');setSuccess('');}}>
                                         <Icon name="arrow-left" className="mr-1" /> Kembali ke Login
                                     </button>
                                 </div>
@@ -8261,13 +8483,12 @@
                                     <button className="auth-btn-primary" onClick={handleVerifyOTP} disabled={loading}>
                                         {loading ? <span className="flex items-center justify-center gap-2"><span className="typing-dot"></span><span className="typing-dot"></span><span className="typing-dot"></span></span> : <><Icon name="check" className="mr-2" />Reset Password</>}
                                     </button>
-                                    <button className="w-full text-center text-slate-500 text-sm font-semibold hover:underline" onClick={()=>changeView('forgot')}>
+                                    <button className="w-full text-center text-slate-500 text-sm font-semibold hover:underline" onClick={()=>{setView('forgot');setError('');setSuccess('');}}>
                                         <Icon name="arrow-left" className="mr-1" /> Minta OTP Ulang
                                     </button>
                                 </div>
                             )}
-                        </div>{/* end auth-view-morph */}
-                        </div>{/* end p-8 */}
+                        </div>
 
                         {/* Footer */}
                         <div className="px-8 pb-6 text-center">
@@ -9555,7 +9776,6 @@
             const [showStoreMenu, setShowStoreMenu] = useState(false);
             const [notifCounts, setNotifCounts] = useState({ pendingCarts: 0, activeCarts: 0 });
             const [authSession, setAuthSession] = useState(() => getStoredSession());
-            const [appJustEntered, setAppJustEntered] = useState(false);
             const [personalMenuAccess, setPersonalMenuAccess] = useState(null); // null = follow global
             const [showNotifPanel, setShowNotifPanel] = useState(false);
             const [readChangelogs, setReadChangelogs] = useState(() => {
@@ -10024,7 +10244,7 @@
 
             // Show auth screen if no session
             if (!authSession) {
-                return <AuthScreen onAuthSuccess={(sessionData) => { setAppJustEntered(true); setAuthSession(sessionData); }} />;
+                return <AuthScreen onAuthSuccess={(sessionData) => { setAuthSession(sessionData); }} />;
             }
             
             const isOwner = isOwnerEmail(authSession?.email);
@@ -10059,7 +10279,7 @@
             const visibleMenuItems = menuItems.filter(m => m.enabled);
 
             return (
-                <div className={`min-h-screen flex flex-col md:flex-row bg-sky-50/50 transition-colors duration-500 ${appJustEntered ? 'app-slide-in' : ''} ${activeStoreId === 'all_stores' ? 'theme-all-stores' : ''}`}>
+                <div className={`min-h-screen flex flex-col md:flex-row bg-sky-50/50 transition-colors duration-500 ${activeStoreId === 'all_stores' ? 'theme-all-stores' : ''}`}>
                     <RamadhanDecor /> <Toast show={toast.show} message={toast.message} type={toast.type} /> {isSidebarOpen && (<div className="fixed inset-0 bg-slate-900/50 z-40 md:hidden backdrop-blur-sm fade-in" onClick={() => setIsSidebarOpen(false)}></div>)}
                     
                     {/* HIDDEN RECEIPT CONTAINER (UPDATED FOR DYNAMIC STORE) */}
@@ -10163,8 +10383,12 @@
                                 {authSession && (
                                     <div className="mb-2 px-3 py-2 bg-sky-50 rounded-xl border border-sky-100">
                                         <div className="flex items-center gap-2">
-                                            <div className="w-7 h-7 rounded-lg bg-sky-500 flex items-center justify-center flex-shrink-0">
-                                                <span className="text-white text-xs font-black">{(authSession.namaLengkap||'U').charAt(0).toUpperCase()}</span>
+                                            <div className="w-7 h-7 rounded-lg bg-sky-500 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                                {authSession.profilePhoto ? (
+                                                    <img src={authSession.profilePhoto} alt="foto" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="text-white text-xs font-black">{(authSession.namaLengkap||'U').charAt(0).toUpperCase()}</span>
+                                                )}
                                             </div>
                                             <div className="min-w-0">
                                                 <p className="text-xs font-black text-slate-700 truncate">{authSession.namaLengkap}</p>
@@ -10365,7 +10589,7 @@
                         {activeTab === 'import' && (<BulkImportView user={user} onImportComplete={(count) => { showToast(`${count} Barang berhasil diimport`); setActiveTab('list'); }} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='import')?.readOnly} />)}
                         {activeTab === 'stock_opname' && (<StockOpnameView items={inventoryData} user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='stock_opname')?.readOnly} />)}
                         {activeTab === 'rekam_medis' && (<RekamMedisView user={user} showToast={showToast} readOnly={menuItems.find(m=>m.id==='rekam_medis')?.readOnly} />)}
-                        {activeTab === 'settings' && (<SettingsView settings={settingsData} onSave={handleSaveSettings} loading={submitting} authSession={authSession} />)}
+                        {activeTab === 'settings' && (<SettingsView settings={settingsData} onSave={handleSaveSettings} loading={submitting} authSession={authSession} onUpdateSession={(newSession) => { setAuthSession(newSession); saveSession(newSession); }} />)}
                         {activeTab === 'catatan' && (<PapanCatatan user={user} readOnly={menuItems.find(m=>m.id==='catatan')?.readOnly} />)}
                         {activeTab === 'jadwal_shift' && (<JadwalShiftView user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='jadwal_shift')?.readOnly} />)}
                         {activeTab === 'transfer_barang' && (<TransferBarangView user={user} showToast={showToast} rawInventory={rawInventory} settings={settingsData} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='transfer_barang')?.readOnly} authSession={authSession} />)}
