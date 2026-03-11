@@ -1358,20 +1358,22 @@
 
             const onPointerDown = (e) => {
                 if (e.touches && e.touches.length >= 2) {
+                    dragRef.current.dragging = false; // stop drag when pinch starts
                     const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
                     pinchRef.current = { pinching: true, lastDist: d, lastScale: scale };
                     return;
                 }
-                e.preventDefault();
                 const cx = e.touches ? e.touches[0].clientX : e.clientX;
                 const cy = e.touches ? e.touches[0].clientY : e.clientY;
                 dragRef.current = { dragging: true, lastX: cx, lastY: cy };
             };
 
             const onPointerMove = React.useCallback((e) => {
-                if (e.touches && e.touches.length >= 2 && pinchRef.current.pinching) {
+                if (e.touches && e.touches.length >= 2) {
+                    if (!pinchRef.current.pinching) return;
                     e.preventDefault();
                     const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                    if (pinchRef.current.lastDist === 0) { pinchRef.current.lastDist = d; return; }
                     const ratio = d / pinchRef.current.lastDist;
                     pinchRef.current.lastDist = d;
                     setScale(s => {
@@ -1392,7 +1394,8 @@
                 setOffset(o => clamp(o.x + dx, o.y + dy, scale, naturalSize.w, naturalSize.h));
             }, [scale, naturalSize]);
 
-            const onPointerUp = React.useCallback(() => {
+            const onPointerUp = React.useCallback((e) => {
+                if (e && e.touches && e.touches.length > 0) return; // still fingers on screen
                 dragRef.current.dragging = false;
                 pinchRef.current.pinching = false;
             }, []);
@@ -1400,11 +1403,13 @@
             React.useEffect(() => {
                 const el = containerRef.current;
                 if (!el) return;
+                el.addEventListener('touchstart', onPointerDown, { passive: false });
                 el.addEventListener('touchmove', onPointerMove, { passive: false });
                 el.addEventListener('touchend', onPointerUp);
                 window.addEventListener('mousemove', onPointerMove);
                 window.addEventListener('mouseup', onPointerUp);
                 return () => {
+                    el.removeEventListener('touchstart', onPointerDown);
                     el.removeEventListener('touchmove', onPointerMove);
                     el.removeEventListener('touchend', onPointerUp);
                     window.removeEventListener('mousemove', onPointerMove);
@@ -1455,7 +1460,6 @@
                         style={{position:'relative',width:`${CROP_SIZE}px`,height:`${CROP_SIZE}px`,borderRadius:'50%',overflow:'hidden',cursor:'grab',touchAction:'none',userSelect:'none',flexShrink:0,
                             boxShadow:`0 0 0 9999px rgba(0,0,0,0.82), 0 0 0 3px rgba(255,255,255,0.55)`,background:'#222'}}
                         onMouseDown={onPointerDown}
-                        onTouchStart={onPointerDown}
                         onWheel={onWheel}
                     >
                         {imgLoaded && (
@@ -2013,7 +2017,7 @@
                             style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.88)',zIndex:200,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'20px'}}
                         >
                             <div style={{position:'relative',maxWidth:'92vw',maxHeight:'85vh'}} onClick={e=>e.stopPropagation()}>
-                                <img src={photoLightbox.src} alt={photoLightbox.name} style={{maxWidth:'88vw',maxHeight:'80vh',borderRadius:'20px',objectFit:'contain',boxShadow:'0 8px 40px rgba(0,0,0,0.6)',display:'block'}} />
+                                <img src={photoLightbox.src} alt={photoLightbox.name} style={{maxWidth:'88vw',maxHeight:'80vh',borderRadius:'0',objectFit:'contain',boxShadow:'0 8px 40px rgba(0,0,0,0.6)',display:'block'}} />
                                 <button
                                     onClick={() => setPhotoLightbox(null)}
                                     style={{position:'absolute',top:'-12px',right:'-12px',width:'32px',height:'32px',background:'#ef4444',border:'none',borderRadius:'50%',color:'#fff',fontWeight:900,fontSize:'14px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 8px rgba(0,0,0,0.4)',zIndex:1}}
