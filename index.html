@@ -1572,6 +1572,262 @@
             );
         };
 
+        // ==================== PENGGUNA AKUN VIEW ====================
+        const PenggunaAkunView = ({ authSession, onUpdateSession, showToast }) => {
+            const isOwner = isOwnerEmail(authSession?.email);
+            const [users, setUsers] = React.useState([]);
+            const [loadingUsers, setLoadingUsers] = React.useState(true);
+            const [search, setSearch] = React.useState('');
+            const [actionLoading, setActionLoading] = React.useState(false);
+            const [confirmModal, setConfirmModal] = React.useState({ show: false, type: '', user: null });
+            const [editingUser, setEditingUser] = React.useState(null); // buka ProfilAkunView untuk user ini
+            const [toast, setToast] = React.useState('');
+            const [filterStatus, setFilterStatus] = React.useState('semua'); // 'semua' | 'aktif' | 'nonaktif'
+
+            const popToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(''), 3000); };
+
+            React.useEffect(() => {
+                const ref = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'users');
+                const unsub = window.onSnapshot(ref, snap => {
+                    const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    data.sort((a, b) => (a.namaLengkap || '').localeCompare(b.namaLengkap || ''));
+                    setUsers(data);
+                    setLoadingUsers(false);
+                });
+                return () => unsub();
+            }, []);
+
+            const handleToggleActive = async (usr) => {
+                setActionLoading(true);
+                try {
+                    const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'users', usr.id);
+                    const newStatus = usr.isActive === false ? true : false;
+                    await window.updateDoc(ref, { isActive: newStatus });
+                    popToast(newStatus ? `Akun "${usr.namaLengkap}" diaktifkan` : `Akun "${usr.namaLengkap}" dinonaktifkan`);
+                } catch { popToast('Gagal mengubah status', 'error'); }
+                setActionLoading(false);
+                setConfirmModal({ show: false, type: '', user: null });
+            };
+
+            const handleDeleteUser = async (usr) => {
+                setActionLoading(true);
+                try {
+                    await window.deleteDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'users', usr.id));
+                    try { await window.deleteDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'otp_reset', usr.id)); } catch {}
+                    popToast(`Akun "${usr.namaLengkap}" dihapus`);
+                } catch { popToast('Gagal menghapus akun', 'error'); }
+                setActionLoading(false);
+                setConfirmModal({ show: false, type: '', user: null });
+            };
+
+            // Jika sedang edit profil diri sendiri
+            if (editingUser && editingUser.id === authSession.id) {
+                return (
+                    <div className="fade-in max-w-2xl mx-auto w-full pt-4 md:pt-10 pb-20">
+                        <ProfilAkunView
+                            authSession={authSession}
+                            onUpdateSession={onUpdateSession}
+                            onBack={() => setEditingUser(null)}
+                        />
+                    </div>
+                );
+            }
+
+            const filteredUsers = users.filter(u => {
+                const matchSearch = search === '' || u.namaLengkap?.toLowerCase().includes(search.toLowerCase()) || u.username?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase());
+                const matchStatus = filterStatus === 'semua' || (filterStatus === 'aktif' && u.isActive !== false) || (filterStatus === 'nonaktif' && u.isActive === false);
+                return matchSearch && matchStatus;
+            });
+
+            const totalAktif = users.filter(u => u.isActive !== false).length;
+            const totalNonaktif = users.filter(u => u.isActive === false).length;
+
+            const getRoleLabel = (u) => {
+                if (isOwnerEmail(u.email)) return { label: 'Owner', color: 'bg-amber-100 text-amber-700 border-amber-200' };
+                return { label: u.role || 'Kasir', color: 'bg-sky-100 text-sky-700 border-sky-200' };
+            };
+
+            const getInitial = (name) => (name || 'U').charAt(0).toUpperCase();
+            const avatarColors = ['bg-sky-500', 'bg-violet-500', 'bg-emerald-500', 'bg-rose-500', 'bg-orange-500', 'bg-teal-500', 'bg-indigo-500', 'bg-pink-500'];
+            const getAvatarColor = (id) => avatarColors[(id || '').charCodeAt(0) % avatarColors.length];
+
+            return (
+                <div className="fade-in max-w-2xl mx-auto w-full pt-4 md:pt-10 pb-20">
+                    {/* Confirm Modal */}
+                    {confirmModal.show && (
+                        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setConfirmModal({ show: false, type: '', user: null })}>
+                            <div className="bg-white rounded-3xl shadow-2xl p-6 max-w-sm w-full fade-in" onClick={e => e.stopPropagation()}>
+                                <div className={`w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-2xl ${confirmModal.type === 'delete' ? 'bg-red-100 text-red-500' : 'bg-amber-100 text-amber-600'}`}>
+                                    <Icon name={confirmModal.type === 'delete' ? 'trash' : confirmModal.type === 'activate' ? 'circle-check' : 'circle-pause'} />
+                                </div>
+                                <p className="font-black text-slate-800 text-center text-base mb-1">
+                                    {confirmModal.type === 'delete' ? 'Hapus Akun?' : confirmModal.type === 'activate' ? 'Aktifkan Akun?' : 'Nonaktifkan Akun?'}
+                                </p>
+                                <p className="text-slate-500 text-center text-sm mb-5">
+                                    {confirmModal.type === 'delete' ? `Akun "${confirmModal.user?.namaLengkap}" akan dihapus permanen.` : confirmModal.type === 'activate' ? `Akun "${confirmModal.user?.namaLengkap}" akan diaktifkan kembali.` : `Akun "${confirmModal.user?.namaLengkap}" tidak bisa login sementara.`}
+                                </p>
+                                <div className="flex gap-3">
+                                    <button onClick={() => setConfirmModal({ show: false, type: '', user: null })} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 active:scale-95 transition-all">Batal</button>
+                                    <button
+                                        onClick={() => confirmModal.type === 'delete' ? handleDeleteUser(confirmModal.user) : handleToggleActive(confirmModal.user)}
+                                        disabled={actionLoading}
+                                        className={`flex-1 py-2.5 rounded-xl font-bold text-sm text-white active:scale-95 transition-all disabled:opacity-50 ${confirmModal.type === 'delete' ? 'bg-red-500 hover:bg-red-600' : confirmModal.type === 'activate' ? 'bg-green-500 hover:bg-green-600' : 'bg-amber-500 hover:bg-amber-600'}`}
+                                    >
+                                        {actionLoading ? '...' : 'Ya, Lanjutkan'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="bg-white/90 backdrop-blur-sm rounded-[30px] shadow-soft border border-white overflow-hidden">
+                        {/* Header */}
+                        <div className="p-6 pb-4 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-violet-50">
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center text-xl shadow-sm flex-shrink-0"><Icon name="users" /></div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-slate-800">Pengguna Akun</h2>
+                                    <p className="text-xs text-slate-400 mt-0.5">Daftar semua akun yang terdaftar di sistem</p>
+                                </div>
+                            </div>
+                            {/* Stats */}
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="bg-white rounded-2xl p-3 border border-indigo-100 text-center shadow-sm">
+                                    <p className="text-2xl font-black text-indigo-600">{users.length}</p>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">Total</p>
+                                </div>
+                                <div className="bg-white rounded-2xl p-3 border border-green-100 text-center shadow-sm">
+                                    <p className="text-2xl font-black text-green-600">{totalAktif}</p>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">Aktif</p>
+                                </div>
+                                <div className="bg-white rounded-2xl p-3 border border-red-100 text-center shadow-sm">
+                                    <p className="text-2xl font-black text-red-500">{totalNonaktif}</p>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">Nonaktif</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Toast */}
+                        {toast && (
+                            <div className={`mx-5 mt-4 px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 fade-in ${toast.type === 'error' ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-green-50 border border-green-200 text-green-700'}`}>
+                                <Icon name={toast.type === 'error' ? 'circle-xmark' : 'circle-check'} />{toast.msg}
+                            </div>
+                        )}
+
+                        <div className="p-5 space-y-4">
+                            {/* Search & Filter */}
+                            <div className="flex gap-2">
+                                <div className="relative flex-1">
+                                    <Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                                    <input className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400 bg-slate-50 font-medium" placeholder="Cari nama, username, email..." value={search} onChange={e => setSearch(e.target.value)} />
+                                </div>
+                                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-600 bg-slate-50 focus:outline-none focus:border-indigo-400">
+                                    <option value="semua">Semua</option>
+                                    <option value="aktif">Aktif</option>
+                                    <option value="nonaktif">Nonaktif</option>
+                                </select>
+                            </div>
+
+                            {/* Loading */}
+                            {loadingUsers && (
+                                <div className="py-12 flex flex-col items-center gap-3 text-slate-400">
+                                    <div className="w-8 h-8 border-3 border-indigo-200 border-t-indigo-500 rounded-full animate-spin"></div>
+                                    <p className="text-sm font-medium">Memuat data pengguna...</p>
+                                </div>
+                            )}
+
+                            {/* Empty */}
+                            {!loadingUsers && filteredUsers.length === 0 && (
+                                <div className="py-12 text-center">
+                                    <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3 text-3xl text-slate-300"><Icon name="users" /></div>
+                                    <p className="text-slate-500 font-semibold text-sm">Tidak ada pengguna ditemukan</p>
+                                    <p className="text-slate-400 text-xs mt-1">{search ? 'Coba kata kunci lain' : 'Belum ada akun terdaftar'}</p>
+                                </div>
+                            )}
+
+                            {/* User Cards */}
+                            {!loadingUsers && filteredUsers.map(usr => {
+                                const role = getRoleLabel(usr);
+                                const isSelf = usr.id === authSession.id;
+                                const isInactive = usr.isActive === false;
+                                return (
+                                    <div key={usr.id} className={`rounded-2xl border transition-all ${isInactive ? 'bg-slate-50 border-slate-200 opacity-80' : isSelf ? 'bg-gradient-to-r from-indigo-50 to-violet-50 border-indigo-200 shadow-sm' : 'bg-white border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200'}`}>
+                                        <div className="p-4">
+                                            <div className="flex items-start gap-3">
+                                                {/* Avatar */}
+                                                <div className="relative flex-shrink-0">
+                                                    <div className={`w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center border-2 ${isInactive ? 'border-slate-300' : isSelf ? 'border-indigo-300' : 'border-white shadow-sm'} ${usr.profilePhoto ? '' : getAvatarColor(usr.id)}`}>
+                                                        {usr.profilePhoto ? (
+                                                            <img src={usr.profilePhoto} alt={usr.namaLengkap} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <span className="text-white font-black text-lg">{getInitial(usr.namaLengkap)}</span>
+                                                        )}
+                                                    </div>
+                                                    {isSelf && <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-indigo-500 rounded-full border-2 border-white flex items-center justify-center"><Icon name="star" className="text-white text-[8px]" /></span>}
+                                                    {isInactive && <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-red-400 rounded-full border-2 border-white flex items-center justify-center"><Icon name="xmark" className="text-white text-[8px]" /></span>}
+                                                </div>
+                                                {/* Info */}
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <p className="font-bold text-slate-800 text-sm">{usr.namaLengkap}</p>
+                                                        {isSelf && <span className="text-[9px] font-black bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full border border-indigo-200">SAYA</span>}
+                                                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full border ${role.color}`}>{role.label}</span>
+                                                        {isInactive && <span className="text-[9px] font-black bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full border border-red-200">NONAKTIF</span>}
+                                                    </div>
+                                                    <p className="text-xs text-slate-500 mt-0.5">@{usr.username}</p>
+                                                    <div className="mt-2 space-y-1">
+                                                        <p className="text-[11px] text-slate-500 flex items-center gap-1.5 truncate"><Icon name="envelope" className="text-slate-400 flex-shrink-0" />{usr.email}</p>
+                                                        {usr.whatsapp && <p className="text-[11px] text-slate-500 flex items-center gap-1.5"><Icon name="whatsapp" type="brands" className="text-green-500 flex-shrink-0" />{usr.whatsapp}</p>}
+                                                        {usr.createdAt && <p className="text-[10px] text-slate-400 flex items-center gap-1.5"><Icon name="calendar" className="text-slate-300 flex-shrink-0" />Bergabung: {usr.createdAt?.toDate ? usr.createdAt.toDate().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</p>}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Action Buttons */}
+                                            <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+                                                {/* Edit Profil - hanya untuk akun diri sendiri */}
+                                                {isSelf && (
+                                                    <button onClick={() => setEditingUser(usr)} className="flex-1 py-2 rounded-xl text-xs font-bold bg-indigo-100 text-indigo-700 hover:bg-indigo-200 border border-indigo-200 flex items-center justify-center gap-1.5 transition-all active:scale-95">
+                                                        <Icon name="user-pen" /> Edit Profil Saya
+                                                    </button>
+                                                )}
+                                                {/* Owner actions - untuk akun selain diri sendiri dan bukan owner */}
+                                                {isOwner && !isSelf && !isOwnerEmail(usr.email) && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => setConfirmModal({ show: true, type: isInactive ? 'activate' : 'deactivate', user: usr })}
+                                                            disabled={actionLoading}
+                                                            className={`flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 border ${isInactive ? 'bg-green-100 text-green-700 hover:bg-green-200 border-green-200' : 'bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-200'}`}
+                                                        >
+                                                            <Icon name={isInactive ? 'circle-check' : 'circle-pause'} />
+                                                            {isInactive ? 'Aktifkan' : 'Nonaktifkan'}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setConfirmModal({ show: true, type: 'delete', user: usr })}
+                                                            disabled={actionLoading}
+                                                            className="py-2 px-3 rounded-xl text-xs font-bold bg-red-100 text-red-600 hover:bg-red-200 border border-red-200 flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                                                        >
+                                                            <Icon name="trash" />
+                                                        </button>
+                                                    </>
+                                                )}
+                                                {/* Non-owner lain: hanya tampil info */}
+                                                {!isSelf && (!isOwner || isOwnerEmail(usr.email)) && (
+                                                    <div className="flex-1 py-2 text-center text-[11px] text-slate-400 font-medium">
+                                                        {isOwnerEmail(usr.email) ? '👑 Akun Owner' : '— Hanya Owner yang dapat mengelola akun ini —'}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         const SettingsView = ({ settings, onSave, loading, authSession, inOwnerPanel, onUpdateSession }) => {
             const isOwner = isOwnerEmail(authSession?.email);
             const [localSettings, setLocalSettings] = useState(settings);
@@ -10274,6 +10530,7 @@
                 { id: 'rekam_medis', label: 'Rekam Medis',       icon: 'stethoscope',         enabled: isOwner || showMenu('showMenuRekamMedis', settingsData.showMenuRekamMedis), readOnly: !isOwner && !menuOn('enableRekamMedis', settingsData.enableRekamMedis) },
                 { id: 'jadwal_shift', label: 'Jadwal Shift',     icon: 'calendar-days',       enabled: isOwner || showMenu('showMenuJadwalShift', settingsData.showMenuJadwalShift), readOnly: !isOwner && !menuOn('enableJadwalShift', settingsData.enableJadwalShift) },
                 { id: 'transfer_barang', label: 'Transfer Barang', icon: 'right-left',         enabled: isOwner || showMenu('showMenuTransferBarang', settingsData.showMenuTransferBarang), readOnly: !isOwner && !menuOn('enableTransferBarang', settingsData.enableTransferBarang) },
+                { id: 'pengguna_akun', label: 'Pengguna Akun',   icon: 'users',               enabled: true, readOnly: false },
                 { id: 'settings',    label: 'Pengaturan',        icon: 'gears',               enabled: true, readOnly: false },
             ];
             const visibleMenuItems = menuItems.filter(m => m.enabled);
@@ -10590,6 +10847,7 @@
                         {activeTab === 'stock_opname' && (<StockOpnameView items={inventoryData} user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='stock_opname')?.readOnly} />)}
                         {activeTab === 'rekam_medis' && (<RekamMedisView user={user} showToast={showToast} readOnly={menuItems.find(m=>m.id==='rekam_medis')?.readOnly} />)}
                         {activeTab === 'settings' && (<SettingsView settings={settingsData} onSave={handleSaveSettings} loading={submitting} authSession={authSession} onUpdateSession={(newSession) => { setAuthSession(newSession); saveSession(newSession); }} />)}
+                        {activeTab === 'pengguna_akun' && (<PenggunaAkunView authSession={authSession} onUpdateSession={(newSession) => { setAuthSession(newSession); saveSession(newSession); }} showToast={showToast} />)}
                         {activeTab === 'catatan' && (<PapanCatatan user={user} readOnly={menuItems.find(m=>m.id==='catatan')?.readOnly} />)}
                         {activeTab === 'jadwal_shift' && (<JadwalShiftView user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='jadwal_shift')?.readOnly} />)}
                         {activeTab === 'transfer_barang' && (<TransferBarangView user={user} showToast={showToast} rawInventory={rawInventory} settings={settingsData} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='transfer_barang')?.readOnly} authSession={authSession} />)}
