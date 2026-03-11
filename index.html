@@ -1592,6 +1592,8 @@
             const [editingTier, setEditingTier] = React.useState(null); // index yang sedang diedit
             const [editTierValue, setEditTierValue] = React.useState('');
             const [savingTier, setSavingTier] = React.useState(false);
+            const [hideOwnerFromRank, setHideOwnerFromRank] = React.useState(false);
+            const [savingHideOwner, setSavingHideOwner] = React.useState(false);
 
             const DEFAULT_TIER_NAMES = [
                 { name: '🐣 Kasir Baru Netas',    emoji: '🐣' },
@@ -1693,10 +1695,23 @@
             React.useEffect(() => {
                 const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'config', 'tierNames');
                 const unsub = window.onSnapshot(ref, snap => {
-                    if (snap.exists()) setCustomTierNames(snap.data().names || {});
+                    if (snap.exists()) {
+                        setCustomTierNames(snap.data().names || {});
+                        setHideOwnerFromRank(snap.data().hideOwnerFromRank || false);
+                    }
                 });
                 return () => unsub();
             }, []);
+
+            const handleToggleHideOwner = async () => {
+                setSavingHideOwner(true);
+                try {
+                    const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'config', 'tierNames');
+                    await window.setDoc(ref, { hideOwnerFromRank: !hideOwnerFromRank }, { merge: true });
+                    popToast(!hideOwnerFromRank ? 'Owner disembunyikan dari peringkat 👻' : 'Owner ditampilkan kembali di peringkat 👑');
+                } catch { popToast('Gagal menyimpan', 'error'); }
+                setSavingHideOwner(false);
+            };
 
             const handleSaveTierName = async (idx) => {
                 const val = editTierValue.trim();
@@ -1896,7 +1911,10 @@
                             });
                             const revenueMap = {};
                             filteredTx.forEach(tx => { const n=tx.cashierName||'?'; revenueMap[n]=(revenueMap[n]||0)+(tx.total||0); });
-                            const leaderboard = users.map(u => ({...u, revenue: revenueMap[u.namaLengkap]||0, tier: getTierForRevenue(revenueMap[u.namaLengkap]||0)})).sort((a,b)=>b.revenue-a.revenue);
+                            const leaderboard = users
+                                .filter(u => !(hideOwnerFromRank && isOwnerEmail(u.email)))
+                                .map(u => ({...u, revenue: revenueMap[u.namaLengkap]||0, tier: getTierForRevenue(revenueMap[u.namaLengkap]||0)})).sort((a,b)=>b.revenue-a.revenue);
+                            const fullLeaderboard = users.map(u => ({...u, revenue: revenueMap[u.namaLengkap]||0, tier: getTierForRevenue(revenueMap[u.namaLengkap]||0)})).sort((a,b)=>b.revenue-a.revenue);
                             const myEntry = leaderboard.find(u=>u.id===authSession.id);
                             const myRank = leaderboard.findIndex(u=>u.id===authSession.id)+1;
                             return (
@@ -1915,6 +1933,25 @@
                                     {loadingTx && <div className="py-10 flex flex-col items-center gap-3 text-slate-400"><div className="w-8 h-8 border-2 border-amber-200 border-t-amber-500 rounded-full animate-spin"></div><p className="text-sm">Memuat transaksi...</p></div>}
                                     {!loadingTx && rankView==='papan' && (
                                         <div className="space-y-4 fade-in">
+                                            {/* Toggle sembunyikan owner - hanya owner yang lihat */}
+                                            {isOwner && (
+                                                <button
+                                                    onClick={handleToggleHideOwner}
+                                                    disabled={savingHideOwner}
+                                                    className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border text-xs font-bold transition-all active:scale-95 ${hideOwnerFromRank ? 'bg-slate-100 border-slate-300 text-slate-600' : 'bg-violet-50 border-violet-200 text-violet-700'}`}
+                                                >
+                                                    <div className="flex items-center gap-2.5">
+                                                        <span className="text-lg">{hideOwnerFromRank ? '👻' : '👑'}</span>
+                                                        <div className="text-left">
+                                                            <p className="font-black text-xs">{hideOwnerFromRank ? 'Owner Disembunyikan' : 'Sembunyikan Owner dari Papan'}</p>
+                                                            <p className="font-normal text-[10px] opacity-60 mt-0.5">{hideOwnerFromRank ? 'Klik untuk tampilkan kembali' : 'Karyawan tidak akan melihat owner di peringkat'}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className={`w-10 h-5 rounded-full transition-all flex-shrink-0 relative ${hideOwnerFromRank ? 'bg-slate-400' : 'bg-violet-500'}`}>
+                                                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${hideOwnerFromRank ? 'left-0.5' : 'left-5'}`}></div>
+                                                    </div>
+                                                </button>
+                                            )}
                                             {leaderboard.filter(u=>u.revenue>0).length>0 && (
                                                 <div className="bg-gradient-to-b from-amber-50 to-orange-50 rounded-2xl border border-amber-200 p-4">
                                                     <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest text-center mb-4">🏆 Top Kasir</p>
