@@ -1588,9 +1588,12 @@
             const [transactions, setTransactions] = React.useState([]);
             const [loadingTx, setLoadingTx] = React.useState(true);
             const [rankPeriod, setRankPeriod] = React.useState('semua'); // 'semua' | 'bulan' | 'minggu'
+            const [customTierNames, setCustomTierNames] = React.useState({}); // { idx: 'nama baru' }
+            const [editingTier, setEditingTier] = React.useState(null); // index yang sedang diedit
+            const [editTierValue, setEditTierValue] = React.useState('');
+            const [savingTier, setSavingTier] = React.useState(false);
 
-            // 50 Rank Tiers, setiap 1 juta = 1 tier
-            const TIER_NAMES = [
+            const DEFAULT_TIER_NAMES = [
                 { name: '🐣 Kasir Baru Netas',    emoji: '🐣' },
                 { name: '🥚 Telur Setengah Matang', emoji: '🥚' },
                 { name: '🍃 Daun Muda Bergetar',  emoji: '🍃' },
@@ -1642,6 +1645,8 @@
                 { name: '🥇 Dewa Struk & Omset',     emoji: '🥇' },
                 { name: '💸 GOAT — Sultan Sejuta Umat', emoji: '💸' },
             ];
+            // Merge default dengan custom dari Firestore
+            const TIER_NAMES = DEFAULT_TIER_NAMES.map((t, i) => customTierNames[i] ? { name: customTierNames[i], emoji: customTierNames[i].split(' ')[0] || t.emoji } : t);
             const RANK_TIERS = TIER_NAMES.map((t, i) => ({
                 tier: i + 1,
                 name: t.name,
@@ -1683,6 +1688,41 @@
                 });
                 return () => unsub();
             }, []);
+
+            // Load custom tier names dari Firestore
+            React.useEffect(() => {
+                const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'config', 'tierNames');
+                const unsub = window.onSnapshot(ref, snap => {
+                    if (snap.exists()) setCustomTierNames(snap.data().names || {});
+                });
+                return () => unsub();
+            }, []);
+
+            const handleSaveTierName = async (idx) => {
+                const val = editTierValue.trim();
+                if (!val) return;
+                setSavingTier(true);
+                try {
+                    const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'config', 'tierNames');
+                    await window.setDoc(ref, { names: { ...customTierNames, [idx]: val } }, { merge: true });
+                    popToast('Nama tier berhasil diubah! ✨');
+                    setEditingTier(null);
+                    setEditTierValue('');
+                } catch { popToast('Gagal menyimpan', 'error'); }
+                setSavingTier(false);
+            };
+
+            const handleResetTierName = async (idx) => {
+                setSavingTier(true);
+                try {
+                    const newNames = { ...customTierNames };
+                    delete newNames[idx];
+                    const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'config', 'tierNames');
+                    await window.setDoc(ref, { names: newNames });
+                    popToast('Nama tier direset ke default');
+                } catch { popToast('Gagal mereset', 'error'); }
+                setSavingTier(false);
+            };
 
             const handleToggleActive = async (usr) => {
                 setActionLoading(true);
@@ -1918,20 +1958,69 @@
                                                     <div key={i} className={`p-2 rounded-xl border text-center ${g.color}`}><Icon name={g.icon} className="text-sm mb-1"/><p className="text-[8px] font-black leading-tight">{g.label}</p><p className="text-[7px] opacity-70">{g.desc}</p></div>
                                                 ))}
                                             </div>
+                                            {isOwner && (
+                                                <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700 font-semibold">
+                                                    <Icon name="pen-to-square" className="flex-shrink-0 text-sm"/>
+                                                    <span>Owner bisa edit nama tier — klik ✏️ di samping kanan tier mana saja!</span>
+                                                </div>
+                                            )}
                                             <div className="space-y-1.5">
-                                                {RANK_TIERS.map(tier => {
+                                                {RANK_TIERS.map((tier, tIdx) => {
                                                     const tierUsers=leaderboard.filter(u=>u.tier?.tier===tier.tier);
                                                     const isMyTier=myEntry?.tier?.tier===tier.tier;
+                                                    const isEditing = editingTier === tIdx;
+                                                    const isCustom = !!customTierNames[tIdx];
                                                     return (
-                                                        <div key={tier.tier} className={`rounded-2xl border overflow-hidden ${isMyTier?'ring-2 ring-indigo-400 ring-offset-1':''} ${tierUsers.length===0?'opacity-40':''}`}>
+                                                        <div key={tier.tier} className={`rounded-2xl border overflow-hidden ${isMyTier?'ring-2 ring-indigo-400 ring-offset-1':''} ${tierUsers.length===0&&!isOwner?'opacity-40':''}`}>
                                                             <div className={`flex items-center gap-3 px-4 py-2.5 ${tier.bgClass}`}>
                                                                 <div className="w-7 text-center flex-shrink-0"><Icon name={tier.icon} className="text-sm"/></div>
                                                                 <div className="flex-1 min-w-0">
-                                                                    <div className="flex items-center gap-2"><span className="font-black text-xs">{tier.shortLabel}</span>{isMyTier&&<span className="text-[8px] font-black bg-indigo-500 text-white px-1.5 py-0.5 rounded-full">SAYA</span>}</div>
-                                                                    <p className="text-[10px] opacity-70 font-medium">{tier.tier===50?'≥ 49 Juta':`${tier.tier-1} Juta – ${tier.tier} Juta`}</p>
+                                                                    {isEditing ? (
+                                                                        <div className="flex items-center gap-1.5" onClick={e=>e.stopPropagation()}>
+                                                                            <input
+                                                                                autoFocus
+                                                                                value={editTierValue}
+                                                                                onChange={e=>setEditTierValue(e.target.value)}
+                                                                                onKeyDown={e=>{if(e.key==='Enter')handleSaveTierName(tIdx);if(e.key==='Escape'){setEditingTier(null);setEditTierValue('');}}}
+                                                                                className="flex-1 bg-white/80 border border-white rounded-lg px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none min-w-0"
+                                                                                placeholder="Nama tier baru..."
+                                                                                maxLength={40}
+                                                                            />
+                                                                            <button onClick={()=>handleSaveTierName(tIdx)} disabled={savingTier||!editTierValue.trim()} className="w-7 h-7 flex-shrink-0 flex items-center justify-center bg-green-500 text-white rounded-lg text-xs hover:bg-green-600 active:scale-95 transition-all disabled:opacity-50">
+                                                                                <Icon name="check"/>
+                                                                            </button>
+                                                                            <button onClick={()=>{setEditingTier(null);setEditTierValue('');}} className="w-7 h-7 flex-shrink-0 flex items-center justify-center bg-slate-400 text-white rounded-lg text-xs hover:bg-slate-500 active:scale-95 transition-all">
+                                                                                <Icon name="xmark"/>
+                                                                            </button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                                            <span className="font-black text-xs">{tier.shortLabel}</span>
+                                                                            {isMyTier&&<span className="text-[8px] font-black bg-indigo-500 text-white px-1.5 py-0.5 rounded-full">SAYA</span>}
+                                                                            {isCustom&&<span className="text-[8px] font-bold bg-white/60 text-slate-500 px-1 py-0.5 rounded-full border border-white/80">custom</span>}
+                                                                        </div>
+                                                                    )}
+                                                                    {!isEditing && <p className="text-[10px] opacity-70 font-medium">{tier.tier===50?'≥ 49 Juta':`${tier.tier-1} Juta – ${tier.tier} Juta`}</p>}
                                                                 </div>
-                                                                <div className="flex items-center flex-shrink-0">
-                                                                    {tierUsers.length>0?tierUsers.map(u=>(<div key={u.id} title={u.namaLengkap} className="w-6 h-6 rounded-full overflow-hidden border-2 border-white -ml-1 first:ml-0 flex items-center justify-center bg-indigo-500 shadow-sm">{u.profilePhoto?<img src={u.profilePhoto} className="w-full h-full object-cover" alt=""/>:<span className="text-white text-[8px] font-black">{getInitial(u.namaLengkap)}</span>}</div>)):<span className="text-[9px] opacity-50 pr-1">—</span>}
+                                                                <div className="flex items-center gap-1 flex-shrink-0">
+                                                                    {!isEditing && tierUsers.length>0 && tierUsers.map(u=>(<div key={u.id} title={u.namaLengkap} className="w-6 h-6 rounded-full overflow-hidden border-2 border-white -ml-1 first:ml-0 flex items-center justify-center bg-indigo-500 shadow-sm">{u.profilePhoto?<img src={u.profilePhoto} className="w-full h-full object-cover" alt=""/>:<span className="text-white text-[8px] font-black">{getInitial(u.namaLengkap)}</span>}</div>))}
+                                                                    {!isEditing && tierUsers.length===0 && <span className="text-[9px] opacity-50">—</span>}
+                                                                    {isOwner && !isEditing && (
+                                                                        <div className="flex items-center gap-1 ml-2">
+                                                                            <button
+                                                                                onClick={()=>{setEditingTier(tIdx);setEditTierValue(tier.shortLabel);}}
+                                                                                title="Edit nama tier"
+                                                                                className="w-6 h-6 flex items-center justify-center rounded-lg bg-white/50 hover:bg-white/80 text-slate-600 text-[10px] transition-all active:scale-90"
+                                                                            ><Icon name="pen"/></button>
+                                                                            {isCustom && (
+                                                                                <button
+                                                                                    onClick={()=>handleResetTierName(tIdx)}
+                                                                                    title="Reset ke default"
+                                                                                    className="w-6 h-6 flex items-center justify-center rounded-lg bg-white/50 hover:bg-red-100 text-slate-400 hover:text-red-500 text-[10px] transition-all active:scale-90"
+                                                                                ><Icon name="rotate-left"/></button>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </div>
