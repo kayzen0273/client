@@ -243,25 +243,21 @@
         }
         .auth-view-morph { animation: authViewMorphIn 0.42s cubic-bezier(0.34, 1.4, 0.64, 1) both; }
 
-        @keyframes authCardMorphOut {
-            0%   { opacity:1; transform: scale(1) translateY(0); filter: blur(0) brightness(1); border-radius: 24px; }
-            30%  { transform: scale(1.04); filter: blur(0) brightness(1.15); }
-            70%  { transform: scale(1.5); filter: blur(8px) brightness(1.5); opacity:0.4; }
-            100% { opacity:0; transform: scale(2.5); filter: blur(24px) brightness(2); }
+        /* Slide out to right (auth card exit) */
+        @keyframes authSlideRight {
+            0%   { transform: translateX(0) scale(1);    opacity: 1; filter: blur(0); }
+            30%  { transform: translateX(6px) scale(1.01); filter: blur(0); }
+            100% { transform: translateX(110vw) scale(0.95); opacity: 0.4; filter: blur(4px); }
         }
-        .auth-card-morph-out { animation: authCardMorphOut 0.55s cubic-bezier(0.4, 0, 0.8, 1) forwards !important; pointer-events:none; }
+        .auth-card-slide-out { animation: authSlideRight 0.52s cubic-bezier(0.55, 0, 1, 0.45) forwards !important; pointer-events:none; }
 
-        @keyframes authSuccessFlash {
-            0%   { opacity:0; }
-            20%  { opacity:0.6; }
-            100% { opacity:0; }
+        /* Main app slides in from left */
+        @keyframes appSlideInLeft {
+            0%   { transform: translateX(-80px) scale(0.97); opacity: 0; filter: blur(8px); }
+            60%  { filter: blur(0); }
+            100% { transform: translateX(0) scale(1); opacity: 1; filter: blur(0); }
         }
-        .auth-success-flash {
-            position: fixed; inset: 0; z-index: 9999;
-            background: radial-gradient(circle at 50% 50%, rgba(14,165,233,0.8) 0%, rgba(2,132,199,0.5) 40%, transparent 70%);
-            pointer-events: none;
-            animation: authSuccessFlash 0.55s ease-out forwards;
-        }
+        .app-slide-in { animation: appSlideInLeft 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.28s both; }
     </style>
 </head>
 <body class="islamic-pattern relative">
@@ -7970,9 +7966,8 @@
             const changeView = (v) => { setView(v); setMorphKey(k => k + 1); setError(''); setSuccess(''); };
 
             const handleAuthSuccess = (sessionData) => {
-                setShowSuccessFlash(true);
                 setMorphingOut(true);
-                setTimeout(() => onAuthSuccess(sessionData), 520);
+                setTimeout(() => onAuthSuccess(sessionData), 480);
             };
 
             const handleLogin = async () => {
@@ -8133,8 +8128,7 @@
                         }}><Icon name="star" /></div>
                     ))}
 
-                                        {showSuccessFlash && <div className="auth-success-flash" />}
-                    <div className={`auth-card auth-fade-in w-full max-w-md relative z-10 ${morphingOut ? "auth-card-morph-out" : ""}`}>
+                                        <div className={`auth-card auth-fade-in w-full max-w-md relative z-10 ${morphingOut ? "auth-card-slide-out" : ""}`}>
                         {/* Header */}
                         <div className="text-center py-8 px-8 border-b border-slate-100">
                             <div className="relative inline-flex pulse-ring mb-4">
@@ -9561,6 +9555,7 @@
             const [showStoreMenu, setShowStoreMenu] = useState(false);
             const [notifCounts, setNotifCounts] = useState({ pendingCarts: 0, activeCarts: 0 });
             const [authSession, setAuthSession] = useState(() => getStoredSession());
+            const [appJustEntered, setAppJustEntered] = useState(false);
             const [personalMenuAccess, setPersonalMenuAccess] = useState(null); // null = follow global
             const [showNotifPanel, setShowNotifPanel] = useState(false);
             const [readChangelogs, setReadChangelogs] = useState(() => {
@@ -10029,7 +10024,7 @@
 
             // Show auth screen if no session
             if (!authSession) {
-                return <AuthScreen onAuthSuccess={(sessionData) => { setAuthSession(sessionData); }} />;
+                return <AuthScreen onAuthSuccess={(sessionData) => { setAppJustEntered(true); setAuthSession(sessionData); }} />;
             }
             
             const isOwner = isOwnerEmail(authSession?.email);
@@ -10064,7 +10059,7 @@
             const visibleMenuItems = menuItems.filter(m => m.enabled);
 
             return (
-                <div className={`min-h-screen flex flex-col md:flex-row bg-sky-50/50 transition-colors duration-500 ${activeStoreId === 'all_stores' ? 'theme-all-stores' : ''}`}>
+                <div className={`min-h-screen flex flex-col md:flex-row bg-sky-50/50 transition-colors duration-500 ${appJustEntered ? 'app-slide-in' : ''} ${activeStoreId === 'all_stores' ? 'theme-all-stores' : ''}`}>
                     <RamadhanDecor /> <Toast show={toast.show} message={toast.message} type={toast.type} /> {isSidebarOpen && (<div className="fixed inset-0 bg-slate-900/50 z-40 md:hidden backdrop-blur-sm fade-in" onClick={() => setIsSidebarOpen(false)}></div>)}
                     
                     {/* HIDDEN RECEIPT CONTAINER (UPDATED FOR DYNAMIC STORE) */}
