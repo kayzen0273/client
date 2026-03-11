@@ -1644,7 +1644,7 @@
 
             const getRoleLabel = (u) => {
                 if (isOwnerEmail(u.email)) return { label: 'Owner', color: 'bg-amber-100 text-amber-700 border-amber-200' };
-                return { label: u.role || 'Kasir', color: 'bg-sky-100 text-sky-700 border-sky-200' };
+                return { label: u.role === 'kasir' || u.role === 'ttk' || !u.role ? 'TTK' : u.role, color: 'bg-sky-100 text-sky-700 border-sky-200' };
             };
 
             const getInitial = (name) => (name || 'U').charAt(0).toUpperCase();
@@ -8504,7 +8504,7 @@
                     if (!snapUname.empty) { setErrTimeout('Username sudah dipakai'); setLoading(false); return; }
 
                     const hashedPass = await hashPassword(password);
-                    const newUser = { namaLengkap, username: username.toLowerCase(), email: email.toLowerCase(), whatsapp, password: hashedPass, createdAt: window.serverTimestamp(), role: 'kasir' };
+                    const newUser = { namaLengkap, username: username.toLowerCase(), email: email.toLowerCase(), whatsapp, password: hashedPass, createdAt: window.serverTimestamp(), role: 'ttk' };
                     const docRef = await window.addDoc(usersRef, newUser);
 
                     const sessionData = { id: docRef.id, namaLengkap, username: username.toLowerCase(), email: email.toLowerCase(), whatsapp, loginAt: Date.now() };
