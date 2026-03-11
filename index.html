@@ -422,8 +422,6 @@
             // Fitur Daftar Barang
             enableCopyWA: true,
             enableExportExcel: true,
-            // Leaderboard
-            showOwnerInLeaderboard: false,
         };
 
         // --- BLUETOOTH PRINTER HELPERS ---
@@ -1187,25 +1185,6 @@
                                     </label>
                                 </div>
                             ))}
-
-                            {/* Leaderboard Section */}
-                            <div className="mt-4 pt-3 border-t border-slate-100">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">🏆 Papan Peringkat Kasir</p>
-                                <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-amber-200 hover:border-amber-300 transition-all">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0"><Icon name="crown" className="text-amber-500 text-xs" /></div>
-                                        <div>
-                                            <p className="font-bold text-slate-800 text-xs">Tampilkan Owner di Peringkat</p>
-                                            <p className="text-[10px] text-slate-400 leading-tight">Jika diaktifkan, Owner muncul di podium & urutan tier</p>
-                                        </div>
-                                    </div>
-                                    <label className="relative inline-flex items-center cursor-pointer flex-shrink-0 ml-2">
-                                        <input type="checkbox" className="sr-only peer" checked={localSettings.showOwnerInLeaderboard === true} onChange={e => handleChange('showOwnerInLeaderboard', e.target.checked)} />
-                                        <div className="w-10 h-[22px] bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-[18px] after:w-[18px] after:transition-all peer-checked:bg-amber-500"></div>
-                                    </label>
-                                </div>
-                            </div>
-
                             <button onClick={onSave} disabled={savingSettings} className="w-full mt-2 py-3.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
                                 {savingSettings ? <><span className="typing-dot bg-white"></span><span className="typing-dot bg-white"></span><span className="typing-dot bg-white"></span></> : <><Icon name="floppy-disk" /> Simpan Pengaturan Menu</>}
                             </button>
@@ -1594,7 +1573,7 @@
         };
 
         // ==================== PENGGUNA AKUN VIEW ====================
-        const PenggunaAkunView = ({ authSession, onUpdateSession, showToast, settings }) => {
+        const PenggunaAkunView = ({ authSession, onUpdateSession, showToast }) => {
             const isOwner = isOwnerEmail(authSession?.email);
             const [users, setUsers] = React.useState([]);
             const [loadingUsers, setLoadingUsers] = React.useState(true);
@@ -1613,6 +1592,8 @@
             const [editingTier, setEditingTier] = React.useState(null); // index yang sedang diedit
             const [editTierValue, setEditTierValue] = React.useState('');
             const [savingTier, setSavingTier] = React.useState(false);
+            const [hideOwnerFromRank, setHideOwnerFromRank] = React.useState(false);
+            const [savingHideOwner, setSavingHideOwner] = React.useState(false);
 
             const DEFAULT_TIER_NAMES = [
                 { name: '🐣 Kasir Baru Netas',    emoji: '🐣' },
@@ -1714,10 +1695,23 @@
             React.useEffect(() => {
                 const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'config', 'tierNames');
                 const unsub = window.onSnapshot(ref, snap => {
-                    if (snap.exists()) setCustomTierNames(snap.data().names || {});
+                    if (snap.exists()) {
+                        setCustomTierNames(snap.data().names || {});
+                        setHideOwnerFromRank(snap.data().hideOwnerFromRank || false);
+                    }
                 });
                 return () => unsub();
             }, []);
+
+            const handleToggleHideOwner = async () => {
+                setSavingHideOwner(true);
+                try {
+                    const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'config', 'tierNames');
+                    await window.setDoc(ref, { hideOwnerFromRank: !hideOwnerFromRank }, { merge: true });
+                    popToast(!hideOwnerFromRank ? 'Owner disembunyikan dari peringkat 👻' : 'Owner ditampilkan kembali di peringkat 👑');
+                } catch { popToast('Gagal menyimpan', 'error'); }
+                setSavingHideOwner(false);
+            };
 
             const handleSaveTierName = async (idx) => {
                 const val = editTierValue.trim();
@@ -1917,10 +1911,10 @@
                             });
                             const revenueMap = {};
                             filteredTx.forEach(tx => { const n=tx.cashierName||'?'; revenueMap[n]=(revenueMap[n]||0)+(tx.total||0); });
-                            const showOwnerInLB = settings?.showOwnerInLeaderboard === true;
                             const leaderboard = users
-                                .filter(u => showOwnerInLB || !isOwnerEmail(u.email))
+                                .filter(u => !(hideOwnerFromRank && isOwnerEmail(u.email)))
                                 .map(u => ({...u, revenue: revenueMap[u.namaLengkap]||0, tier: getTierForRevenue(revenueMap[u.namaLengkap]||0)})).sort((a,b)=>b.revenue-a.revenue);
+                            const fullLeaderboard = users.map(u => ({...u, revenue: revenueMap[u.namaLengkap]||0, tier: getTierForRevenue(revenueMap[u.namaLengkap]||0)})).sort((a,b)=>b.revenue-a.revenue);
                             const myEntry = leaderboard.find(u=>u.id===authSession.id);
                             const myRank = leaderboard.findIndex(u=>u.id===authSession.id)+1;
                             return (
@@ -1939,6 +1933,25 @@
                                     {loadingTx && <div className="py-10 flex flex-col items-center gap-3 text-slate-400"><div className="w-8 h-8 border-2 border-amber-200 border-t-amber-500 rounded-full animate-spin"></div><p className="text-sm">Memuat transaksi...</p></div>}
                                     {!loadingTx && rankView==='papan' && (
                                         <div className="space-y-4 fade-in">
+                                            {/* Toggle sembunyikan owner - hanya owner yang lihat */}
+                                            {isOwner && (
+                                                <button
+                                                    onClick={handleToggleHideOwner}
+                                                    disabled={savingHideOwner}
+                                                    className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border text-xs font-bold transition-all active:scale-95 ${hideOwnerFromRank ? 'bg-slate-100 border-slate-300 text-slate-600' : 'bg-violet-50 border-violet-200 text-violet-700'}`}
+                                                >
+                                                    <div className="flex items-center gap-2.5">
+                                                        <span className="text-lg">{hideOwnerFromRank ? '👻' : '👑'}</span>
+                                                        <div className="text-left">
+                                                            <p className="font-black text-xs">{hideOwnerFromRank ? 'Owner Disembunyikan' : 'Sembunyikan Owner dari Papan'}</p>
+                                                            <p className="font-normal text-[10px] opacity-60 mt-0.5">{hideOwnerFromRank ? 'Klik untuk tampilkan kembali' : 'Karyawan tidak akan melihat owner di peringkat'}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className={`w-10 h-5 rounded-full transition-all flex-shrink-0 relative ${hideOwnerFromRank ? 'bg-slate-400' : 'bg-violet-500'}`}>
+                                                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${hideOwnerFromRank ? 'left-0.5' : 'left-5'}`}></div>
+                                                    </div>
+                                                </button>
+                                            )}
                                             {leaderboard.filter(u=>u.revenue>0).length>0 && (
                                                 <div className="bg-gradient-to-b from-amber-50 to-orange-50 rounded-2xl border border-amber-200 p-4">
                                                     <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest text-center mb-4">🏆 Top Kasir</p>
@@ -11089,7 +11102,7 @@
                         {activeTab === 'stock_opname' && (<StockOpnameView items={inventoryData} user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='stock_opname')?.readOnly} />)}
                         {activeTab === 'rekam_medis' && (<RekamMedisView user={user} showToast={showToast} readOnly={menuItems.find(m=>m.id==='rekam_medis')?.readOnly} />)}
                         {activeTab === 'settings' && (<SettingsView settings={settingsData} onSave={handleSaveSettings} loading={submitting} authSession={authSession} onUpdateSession={(newSession) => { setAuthSession(newSession); saveSession(newSession); }} />)}
-                        {activeTab === 'pengguna_akun' && (<PenggunaAkunView authSession={authSession} onUpdateSession={(newSession) => { setAuthSession(newSession); saveSession(newSession); }} showToast={showToast} settings={settingsData} />)}
+                        {activeTab === 'pengguna_akun' && (<PenggunaAkunView authSession={authSession} onUpdateSession={(newSession) => { setAuthSession(newSession); saveSession(newSession); }} showToast={showToast} />)}
                         {activeTab === 'catatan' && (<PapanCatatan user={user} readOnly={menuItems.find(m=>m.id==='catatan')?.readOnly} />)}
                         {activeTab === 'jadwal_shift' && (<JadwalShiftView user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='jadwal_shift')?.readOnly} />)}
                         {activeTab === 'transfer_barang' && (<TransferBarangView user={user} showToast={showToast} rawInventory={rawInventory} settings={settingsData} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='transfer_barang')?.readOnly} authSession={authSession} />)}
