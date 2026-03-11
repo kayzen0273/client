@@ -1590,12 +1590,65 @@
             const [rankPeriod, setRankPeriod] = React.useState('semua'); // 'semua' | 'bulan' | 'minggu'
 
             // 50 Rank Tiers, setiap 1 juta = 1 tier
-            const RANK_TIERS = Array.from({ length: 50 }, (_, i) => ({
+            const TIER_NAMES = [
+                { name: '🐣 Kasir Baru Netas',    emoji: '🐣' },
+                { name: '🥚 Telur Setengah Matang', emoji: '🥚' },
+                { name: '🍃 Daun Muda Bergetar',  emoji: '🍃' },
+                { name: '🐌 Siput Semangat',       emoji: '🐌' },
+                { name: '🌱 Tunas Harapan',        emoji: '🌱' },
+                { name: '🫧 Gelembung Cita-cita',  emoji: '🫧' },
+                { name: '🪲 Kumbang Rajin',        emoji: '🪲' },
+                { name: '🐸 Katak Loncat Tipis',   emoji: '🐸' },
+                { name: '🌿 Ranting Baru',         emoji: '🌿' },
+                { name: '🐹 Hamster Gas Poll',     emoji: '🐹' },
+                { name: '⚡ Listrik Mulai Nyala',  emoji: '⚡' },
+                { name: '🌊 Ombak Kecil Bergoyang',emoji: '🌊' },
+                { name: '🎯 Bidikan Lumayan',      emoji: '🎯' },
+                { name: '🦊 Rubah Licin Berambisi',emoji: '🦊' },
+                { name: '🏹 Panah Mulai Terarah',  emoji: '🏹' },
+                { name: '🔥 Api Kecil Membara',    emoji: '🔥' },
+                { name: '🦅 Elang Muda Melayang',  emoji: '🦅' },
+                { name: '💎 Berlian Belum Diasah',  emoji: '💎' },
+                { name: '🌙 Bulan Sabit Bersinar',  emoji: '🌙' },
+                { name: '🚀 Roket Mulai Menanjak',  emoji: '🚀' },
+                { name: '🦁 Singa Lapar Bergerak',  emoji: '🦁' },
+                { name: '🌋 Gunung Api Panas',      emoji: '🌋' },
+                { name: '⚔️ Pejuang Kasir Sejati',  emoji: '⚔️' },
+                { name: '🏆 Piala Mulai Tercium',   emoji: '🏆' },
+                { name: '🐉 Naga Kecil Mengaum',    emoji: '🐉' },
+                { name: '🌟 Bintang Makin Terang',  emoji: '🌟' },
+                { name: '💥 Ledakan Omset Dahsyat', emoji: '💥' },
+                { name: '🔱 Trisula Kasir Sakti',   emoji: '🔱' },
+                { name: '🎖️ Medali Setengah Legenda',emoji: '🎖️' },
+                { name: '🦄 Unicorn Struk Panjang',  emoji: '🦄' },
+                { name: '👑 Mahkota Mulai Nempel',  emoji: '👑' },
+                { name: '🌠 Bintang Jatuh ke Kasir',emoji: '🌠' },
+                { name: '🏰 Sultan Meja Kasir',     emoji: '🏰' },
+                { name: '🎆 Kembang Api Omset',     emoji: '🎆' },
+                { name: '🦸 Superhero Struk',       emoji: '🦸' },
+                { name: '⚡👑 Petir Raja Kasir',    emoji: '⚡' },
+                { name: '🌞 Matahari Tak Terkalahkan',emoji:'🌞' },
+                { name: '🧿 Jimat Anti Sepi Pembeli',emoji: '🧿' },
+                { name: '🔮 Peramal Omset Maha Tahu',emoji: '🔮' },
+                { name: '🎰 Jackpot Kasir Nonstop',  emoji: '🎰' },
+                { name: '🛸 UFO Omset Dari Luar Angkasa', emoji: '🛸' },
+                { name: '🌌 Galaksi Pendapatan',     emoji: '🌌' },
+                { name: '🧠 Otak Bisnis Encer Banget',emoji: '🧠' },
+                { name: '🦋 Kupu-kupu Cuan Abadi',  emoji: '🦋' },
+                { name: '💫 Kilau Tak Tertandingi',  emoji: '💫' },
+                { name: '🌈 Pelangi Kekayaan',       emoji: '🌈' },
+                { name: '🏅 Legenda Mesin Kasir',    emoji: '🏅' },
+                { name: '👾 Boss Level Kasir',       emoji: '👾' },
+                { name: '🥇 Dewa Struk & Omset',     emoji: '🥇' },
+                { name: '💸 GOAT — Sultan Sejuta Umat', emoji: '💸' },
+            ];
+            const RANK_TIERS = TIER_NAMES.map((t, i) => ({
                 tier: i + 1,
+                name: t.name,
+                emoji: t.emoji,
                 minRp: i * 1_000_000,
                 maxRp: (i + 1) * 1_000_000,
-                label: i === 49 ? `Tier 50 — ≥ 49 Juta` : `Tier ${i + 1} — ${i} Juta s/d ${i + 1} Juta`,
-                shortLabel: `Tier ${i + 1}`,
+                shortLabel: t.name,
                 color: i < 10 ? '#94a3b8' : i < 20 ? '#60a5fa' : i < 30 ? '#34d399' : i < 40 ? '#f59e0b' : '#f97316',
                 bgClass: i < 10 ? 'bg-slate-100 text-slate-600 border-slate-200' : i < 20 ? 'bg-blue-100 text-blue-700 border-blue-200' : i < 30 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : i < 40 ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-orange-100 text-orange-700 border-orange-200',
                 icon: i < 10 ? 'seedling' : i < 20 ? 'star-half-stroke' : i < 30 ? 'star' : i < 40 ? 'fire' : 'crown',
@@ -1833,7 +1886,7 @@
                                                     </div>
                                                     {myEntry.revenue>0 && myEntry.tier && (
                                                         <div className="mt-3">
-                                                            <div className="flex justify-between text-[10px] mb-1 opacity-70"><span>{myEntry.tier.shortLabel}</span><span>{myEntry.tier.tier<50?`Next: Tier ${myEntry.tier.tier+1} (${formatRupiah(myEntry.tier.maxRp)})`:'Tier Tertinggi! 🔥'}</span></div>
+                                                            <div className="flex justify-between text-[10px] mb-1 opacity-70"><span>{myEntry.tier.shortLabel}</span><span>{myEntry.tier.tier<50?`Next: ${RANK_TIERS[myEntry.tier.tier].name} (${formatRupiah(myEntry.tier.maxRp)})`:'Tier Tertinggi! 🔥'}</span></div>
                                                             <div className="h-2 bg-white/20 rounded-full overflow-hidden"><div className="h-full bg-white rounded-full" style={{width:`${Math.min(100,((myEntry.revenue-myEntry.tier.minRp)/1000000)*100)}%`}}></div></div>
                                                         </div>
                                                     )}
