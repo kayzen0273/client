@@ -1324,179 +1324,242 @@
 
         // ==================== PHOTO CROP MODAL ====================
         const PhotoCropModal = ({ src, onConfirm, onCancel }) => {
-            const CROP_SIZE = Math.min(280, window.innerWidth - 48);
-            const OUTPUT_SIZE = 400;
-            const [imgLoaded, setImgLoaded] = React.useState(false);
-            const [naturalSize, setNaturalSize] = React.useState({ w: 1, h: 1 });
-            const [scale, setScale] = React.useState(1);
-            const [offset, setOffset] = React.useState({ x: 0, y: 0 });
-            const dragRef = React.useRef({ dragging: false, lastX: 0, lastY: 0 });
-            const pinchRef = React.useRef({ pinching: false, lastDist: 0, lastScale: 1 });
+            const CROP_SIZE = Math.min(300, window.innerWidth - 40);
+            const OUTPUT_SIZE = 600;
+
+            // Use refs for all transform state — no React re-render lag, no drift
+            const stateRef = React.useRef({ scale: 1, ox: 0, oy: 0, minScale: 1, nw: 1, nh: 1 });
+            const canvasRef = React.useRef(null);
+            const imgRef = React.useRef(null);
             const containerRef = React.useRef(null);
+            const dragRef = React.useRef({ active: false, lx: 0, ly: 0 });
+            const pinchRef = React.useRef({ active: false, lx: 0, ly: 0, ld: 0 });
+            const animRef = React.useRef(null);
+            const [ready, setReady] = React.useState(false);
 
-            const getMinScale = (nw, nh) => Math.max(CROP_SIZE / nw, CROP_SIZE / nh);
+            const draw = React.useCallback(() => {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const img = imgRef.current;
+                const { scale: s, ox, oy, nw, nh } = stateRef.current;
+                const iw = nw * s, ih = nh * s;
+                const imgL = CROP_SIZE / 2 - iw / 2 + ox;
+                const imgT = CROP_SIZE / 2 - ih / 2 + oy;
+                ctx.clearRect(0, 0, CROP_SIZE, CROP_SIZE);
+                if (img && img.complete) ctx.drawImage(img, imgL, imgT, iw, ih);
+            }, [CROP_SIZE]);
 
-            const clamp = (ox, oy, sc, nw, nh) => {
-                const iw = nw * sc, ih = nh * sc;
+            const clampOffset = (ox, oy, s, nw, nh) => {
+                const iw = nw * s, ih = nh * s;
                 const mx = Math.max(0, (iw - CROP_SIZE) / 2);
                 const my = Math.max(0, (ih - CROP_SIZE) / 2);
                 return { x: Math.min(mx, Math.max(-mx, ox)), y: Math.min(my, Math.max(-my, oy)) };
             };
 
+            const applyScale = (newScale, pivotX, pivotY) => {
+                // pivotX/Y: position in container coords that should stay fixed during zoom
+                const st = stateRef.current;
+                const clampedScale = Math.min(st.minScale * 10, Math.max(st.minScale, newScale));
+                // Current image origin
+                const curImgL = CROP_SIZE / 2 - st.nw * st.scale / 2 + st.ox;
+                const curImgT = CROP_SIZE / 2 - st.nh * st.scale / 2 + st.oy;
+                // Point in image space under pivot
+                const imgPx = (pivotX - curImgL) / st.scale;
+                const imgPy = (pivotY - curImgT) / st.scale;
+                // New image origin to keep that point under pivot
+                const newIW = st.nw * clampedScale;
+                const newIH = st.nh * clampedScale;
+                const newImgL = pivotX - imgPx * clampedScale;
+                const newImgT = pivotY - imgPy * clampedScale;
+                const newOx = newImgL - (CROP_SIZE / 2 - newIW / 2);
+                const newOy = newImgT - (CROP_SIZE / 2 - newIH / 2);
+                const clamped = clampOffset(newOx, newOy, clampedScale, st.nw, st.nh);
+                st.scale = clampedScale;
+                st.ox = clamped.x;
+                st.oy = clamped.y;
+                draw();
+            };
+
             React.useEffect(() => {
                 const img = new window.Image();
+                imgRef.current = img;
                 img.onload = () => {
                     const nw = img.naturalWidth, nh = img.naturalHeight;
-                    setNaturalSize({ w: nw, h: nh });
-                    const s = getMinScale(nw, nh);
-                    setScale(s);
-                    setOffset({ x: 0, y: 0 });
-                    setImgLoaded(true);
+                    const minS = Math.max(CROP_SIZE / nw, CROP_SIZE / nh);
+                    stateRef.current = { scale: minS, ox: 0, oy: 0, minScale: minS, nw, nh };
+                    setReady(true);
+                    requestAnimationFrame(draw);
                 };
                 img.src = src;
             }, [src]);
 
-            const onPointerDown = (e) => {
-                if (e.touches && e.touches.length >= 2) {
-                    dragRef.current.dragging = false; // stop drag when pinch starts
-                    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                    pinchRef.current = { pinching: true, lastDist: d, lastScale: scale };
-                    return;
-                }
-                const cx = e.touches ? e.touches[0].clientX : e.clientX;
-                const cy = e.touches ? e.touches[0].clientY : e.clientY;
-                dragRef.current = { dragging: true, lastX: cx, lastY: cy };
-            };
+            React.useEffect(() => {
+                if (!ready) return;
+                draw();
+            }, [ready, draw]);
 
-            const onPointerMove = React.useCallback((e) => {
-                if (e.touches && e.touches.length >= 2) {
-                    if (!pinchRef.current.pinching) return;
-                    e.preventDefault();
-                    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                    if (pinchRef.current.lastDist === 0) { pinchRef.current.lastDist = d; return; }
-                    const ratio = d / pinchRef.current.lastDist;
-                    pinchRef.current.lastDist = d;
-                    setScale(s => {
-                        const minS = getMinScale(naturalSize.w, naturalSize.h);
-                        const ns = Math.min(minS * 8, Math.max(minS, s * ratio));
-                        setOffset(o => clamp(o.x, o.y, ns, naturalSize.w, naturalSize.h));
-                        return ns;
-                    });
-                    return;
-                }
-                if (!dragRef.current.dragging) return;
-                const cx = e.touches ? e.touches[0].clientX : e.clientX;
-                const cy = e.touches ? e.touches[0].clientY : e.clientY;
-                const dx = cx - dragRef.current.lastX;
-                const dy = cy - dragRef.current.lastY;
-                dragRef.current.lastX = cx;
-                dragRef.current.lastY = cy;
-                setOffset(o => clamp(o.x + dx, o.y + dy, scale, naturalSize.w, naturalSize.h));
-            }, [scale, naturalSize]);
-
-            const onPointerUp = React.useCallback((e) => {
-                if (e && e.touches && e.touches.length > 0) return; // still fingers on screen
-                dragRef.current.dragging = false;
-                pinchRef.current.pinching = false;
-            }, []);
-
+            // Touch & mouse events
             React.useEffect(() => {
                 const el = containerRef.current;
                 if (!el) return;
-                el.addEventListener('touchstart', onPointerDown, { passive: false });
-                el.addEventListener('touchmove', onPointerMove, { passive: false });
-                el.addEventListener('touchend', onPointerUp);
-                window.addEventListener('mousemove', onPointerMove);
-                window.addEventListener('mouseup', onPointerUp);
-                return () => {
-                    el.removeEventListener('touchstart', onPointerDown);
-                    el.removeEventListener('touchmove', onPointerMove);
-                    el.removeEventListener('touchend', onPointerUp);
-                    window.removeEventListener('mousemove', onPointerMove);
-                    window.removeEventListener('mouseup', onPointerUp);
-                };
-            }, [onPointerMove, onPointerUp]);
 
-            const onWheel = (e) => {
-                e.preventDefault();
-                const factor = e.deltaY > 0 ? 0.92 : 1.08;
-                setScale(s => {
-                    const minS = getMinScale(naturalSize.w, naturalSize.h);
-                    const ns = Math.min(minS * 8, Math.max(minS, s * factor));
-                    setOffset(o => clamp(o.x, o.y, ns, naturalSize.w, naturalSize.h));
-                    return ns;
-                });
-            };
+                const onTouchStart = (e) => {
+                    e.preventDefault();
+                    if (e.touches.length === 2) {
+                        dragRef.current.active = false;
+                        const t1 = e.touches[0], t2 = e.touches[1];
+                        const d = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+                        const rect = el.getBoundingClientRect();
+                        const mx = (t1.clientX + t2.clientX) / 2 - rect.left;
+                        const my = (t1.clientY + t2.clientY) / 2 - rect.top;
+                        pinchRef.current = { active: true, ld: d, lx: mx, ly: my };
+                    } else if (e.touches.length === 1) {
+                        pinchRef.current.active = false;
+                        dragRef.current = { active: true, lx: e.touches[0].clientX, ly: e.touches[0].clientY };
+                    }
+                };
+
+                const onTouchMove = (e) => {
+                    e.preventDefault();
+                    if (e.touches.length === 2 && pinchRef.current.active) {
+                        const t1 = e.touches[0], t2 = e.touches[1];
+                        const d = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+                        const rect = el.getBoundingClientRect();
+                        const mx = (t1.clientX + t2.clientX) / 2 - rect.left;
+                        const my = (t1.clientY + t2.clientY) / 2 - rect.top;
+                        const ratio = d / pinchRef.current.ld;
+                        pinchRef.current.ld = d;
+                        // Also handle pan from pinch midpoint movement
+                        const dx = mx - pinchRef.current.lx;
+                        const dy = my - pinchRef.current.ly;
+                        pinchRef.current.lx = mx;
+                        pinchRef.current.ly = my;
+                        const st = stateRef.current;
+                        const c = clampOffset(st.ox + dx, st.oy + dy, st.scale, st.nw, st.nh);
+                        st.ox = c.x; st.oy = c.y;
+                        applyScale(st.scale * ratio, mx, my);
+                    } else if (e.touches.length === 1 && dragRef.current.active) {
+                        const dx = e.touches[0].clientX - dragRef.current.lx;
+                        const dy = e.touches[0].clientY - dragRef.current.ly;
+                        dragRef.current.lx = e.touches[0].clientX;
+                        dragRef.current.ly = e.touches[0].clientY;
+                        const st = stateRef.current;
+                        const c = clampOffset(st.ox + dx, st.oy + dy, st.scale, st.nw, st.nh);
+                        st.ox = c.x; st.oy = c.y;
+                        draw();
+                    }
+                };
+
+                const onTouchEnd = (e) => {
+                    if (e.touches.length < 2) pinchRef.current.active = false;
+                    if (e.touches.length === 0) dragRef.current.active = false;
+                };
+
+                const onMouseDown = (e) => {
+                    e.preventDefault();
+                    dragRef.current = { active: true, lx: e.clientX, ly: e.clientY };
+                };
+                const onMouseMove = (e) => {
+                    if (!dragRef.current.active) return;
+                    const dx = e.clientX - dragRef.current.lx;
+                    const dy = e.clientY - dragRef.current.ly;
+                    dragRef.current.lx = e.clientX;
+                    dragRef.current.ly = e.clientY;
+                    const st = stateRef.current;
+                    const c = clampOffset(st.ox + dx, st.oy + dy, st.scale, st.nw, st.nh);
+                    st.ox = c.x; st.oy = c.y;
+                    draw();
+                };
+                const onMouseUp = () => { dragRef.current.active = false; };
+
+                const onWheel = (e) => {
+                    e.preventDefault();
+                    const rect = el.getBoundingClientRect();
+                    const px = e.clientX - rect.left;
+                    const py = e.clientY - rect.top;
+                    const factor = e.deltaY > 0 ? 0.93 : 1.07;
+                    applyScale(stateRef.current.scale * factor, px, py);
+                };
+
+                el.addEventListener('touchstart', onTouchStart, { passive: false });
+                el.addEventListener('touchmove', onTouchMove, { passive: false });
+                el.addEventListener('touchend', onTouchEnd);
+                el.addEventListener('mousedown', onMouseDown);
+                el.addEventListener('wheel', onWheel, { passive: false });
+                window.addEventListener('mousemove', onMouseMove);
+                window.addEventListener('mouseup', onMouseUp);
+                return () => {
+                    el.removeEventListener('touchstart', onTouchStart);
+                    el.removeEventListener('touchmove', onTouchMove);
+                    el.removeEventListener('touchend', onTouchEnd);
+                    el.removeEventListener('mousedown', onMouseDown);
+                    el.removeEventListener('wheel', onWheel);
+                    window.removeEventListener('mousemove', onMouseMove);
+                    window.removeEventListener('mouseup', onMouseUp);
+                };
+            }, [ready, draw]);
 
             const handleConfirm = () => {
-                const canvas = document.createElement('canvas');
-                canvas.width = OUTPUT_SIZE; canvas.height = OUTPUT_SIZE;
-                const ctx = canvas.getContext('2d');
-                const img = new window.Image();
-                img.onload = () => {
-                    const iw = naturalSize.w * scale, ih = naturalSize.h * scale;
-                    const imgL = CROP_SIZE / 2 - iw / 2 + offset.x;
-                    const imgT = CROP_SIZE / 2 - ih / 2 + offset.y;
-                    const srcX = (0 - imgL) / scale;
-                    const srcY = (0 - imgT) / scale;
-                    const srcW = CROP_SIZE / scale;
-                    const srcH = CROP_SIZE / scale;
-                    ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
-                    onConfirm(canvas.toDataURL('image/jpeg', 0.88));
-                };
-                img.src = src;
+                const out = document.createElement('canvas');
+                out.width = OUTPUT_SIZE; out.height = OUTPUT_SIZE;
+                const ctx = out.getContext('2d');
+                const img = imgRef.current;
+                const { scale: s, ox, oy, nw, nh } = stateRef.current;
+                const iw = nw * s, ih = nh * s;
+                const imgL = CROP_SIZE / 2 - iw / 2 + ox;
+                const imgT = CROP_SIZE / 2 - ih / 2 + oy;
+                // Map from crop viewport to source image
+                const srcX = (0 - imgL) / s;
+                const srcY = (0 - imgT) / s;
+                const srcW = CROP_SIZE / s;
+                const srcH = CROP_SIZE / s;
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+                onConfirm(out.toDataURL('image/jpeg', 0.92));
             };
 
-            const minS = imgLoaded ? getMinScale(naturalSize.w, naturalSize.h) : 1;
-            const maxS = minS * 8;
-            const iw = naturalSize.w * scale, ih = naturalSize.h * scale;
-
             return (
-                <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.93)',zIndex:500,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'16px',touchAction:'none'}}>
-                    <p style={{color:'#fff',fontWeight:800,fontSize:'15px',marginBottom:'14px',opacity:0.95}}>✂️ Atur &amp; Potong Foto Profil</p>
+                <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.94)',zIndex:500,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'16px',touchAction:'none',overscrollBehavior:'none'}}>
+                    <p style={{color:'#fff',fontWeight:800,fontSize:'15px',marginBottom:'16px',opacity:0.95}}>✂️ Atur &amp; Potong Foto Profil</p>
 
-                    {/* Crop circle */}
-                    <div ref={containerRef}
-                        style={{position:'relative',width:`${CROP_SIZE}px`,height:`${CROP_SIZE}px`,borderRadius:'50%',overflow:'hidden',cursor:'grab',touchAction:'none',userSelect:'none',flexShrink:0,
-                            boxShadow:`0 0 0 9999px rgba(0,0,0,0.82), 0 0 0 3px rgba(255,255,255,0.55)`,background:'#222'}}
-                        onMouseDown={onPointerDown}
-                        onWheel={onWheel}
-                    >
-                        {imgLoaded && (
-                            <img src={src} alt="" draggable={false} style={{
-                                position:'absolute', width:`${iw}px`, height:`${ih}px`,
-                                left:`${CROP_SIZE/2 - iw/2 + offset.x}px`, top:`${CROP_SIZE/2 - ih/2 + offset.y}px`,
-                                pointerEvents:'none', userSelect:'none', display:'block'
-                            }} />
-                        )}
-                        {!imgLoaded && (
-                            <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',color:'#aaa',fontSize:'28px'}}>⏳</div>
-                        )}
+                    {/* Canvas crop area with circular mask */}
+                    <div style={{position:'relative',width:`${CROP_SIZE}px`,height:`${CROP_SIZE}px`,flexShrink:0}}>
+                        {/* Overlay with circular hole */}
+                        <canvas
+                            ref={el => { canvasRef.current = el; containerRef.current = el; }}
+                            width={CROP_SIZE} height={CROP_SIZE}
+                            style={{borderRadius:'50%',display:'block',cursor:'grab',touchAction:'none',userSelect:'none',
+                                boxShadow:`0 0 0 9999px rgba(0,0,0,0.82), 0 0 0 3px rgba(255,255,255,0.6)`,background:'#111'}}
+                        />
                     </div>
 
-                    {/* Hint */}
-                    <p style={{color:'rgba(255,255,255,0.45)',fontSize:'11px',marginTop:'12px',textAlign:'center',lineHeight:'1.5'}}>Seret untuk mengatur posisi<br/>Cubit / scroll untuk perbesar atau perkecil</p>
+                    <p style={{color:'rgba(255,255,255,0.45)',fontSize:'11px',marginTop:'14px',textAlign:'center',lineHeight:'1.6'}}>
+                        Seret untuk mengatur posisi · Cubit untuk zoom
+                    </p>
 
                     {/* Zoom slider */}
-                    {imgLoaded && (
+                    {ready && (
                         <div style={{display:'flex',alignItems:'center',gap:'10px',width:`${CROP_SIZE}px`,marginTop:'10px'}}>
-                            <span style={{fontSize:'13px',opacity:0.6}}>🔍</span>
-                            <input type="range" min={minS} max={maxS} step={minS * 0.005} value={scale}
+                            <span style={{fontSize:'12px',opacity:0.5}}>🔍</span>
+                            <input type="range"
+                                min={0} max={100} step={1} defaultValue={0}
                                 onChange={e => {
-                                    const ns = Number(e.target.value);
-                                    setScale(ns);
-                                    setOffset(o => clamp(o.x, o.y, ns, naturalSize.w, naturalSize.h));
+                                    const st = stateRef.current;
+                                    const pct = Number(e.target.value) / 100;
+                                    const ns = st.minScale * (1 + pct * 9);
+                                    applyScale(ns, CROP_SIZE / 2, CROP_SIZE / 2);
                                 }}
-                                style={{flex:1,accentColor:'#a855f7',cursor:'pointer',height:'4px'}}
+                                style={{flex:1,accentColor:'#a855f7',cursor:'pointer'}}
                             />
-                            <span style={{fontSize:'18px',opacity:0.6}}>🔍</span>
+                            <span style={{fontSize:'16px',opacity:0.5}}>🔍</span>
                         </div>
                     )}
 
-                    {/* Buttons */}
                     <div style={{display:'flex',gap:'12px',marginTop:'20px',width:`${CROP_SIZE}px`}}>
                         <button onClick={onCancel} style={{flex:1,padding:'12px',borderRadius:'14px',background:'rgba(255,255,255,0.1)',border:'1px solid rgba(255,255,255,0.2)',color:'#fff',fontWeight:700,fontSize:'13px',cursor:'pointer'}}>Batal</button>
-                        <button onClick={handleConfirm} disabled={!imgLoaded} style={{flex:2,padding:'12px',borderRadius:'14px',background:'#9333ea',border:'none',color:'#fff',fontWeight:800,fontSize:'13px',cursor:'pointer',boxShadow:'0 4px 16px rgba(147,51,234,0.55)',opacity:imgLoaded?1:0.5}}>✓ Gunakan Foto Ini</button>
+                        <button onClick={handleConfirm} disabled={!ready} style={{flex:2,padding:'12px',borderRadius:'14px',background:'#9333ea',border:'none',color:'#fff',fontWeight:800,fontSize:'13px',cursor:'pointer',boxShadow:'0 4px 16px rgba(147,51,234,0.5)',opacity:ready?1:0.5}}>✓ Gunakan Foto Ini</button>
                     </div>
                 </div>
             );
@@ -11324,3 +11387,4 @@
     </script>
 </body>
 </html>
+    
