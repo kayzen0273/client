@@ -1594,6 +1594,7 @@
             const [savingTier, setSavingTier] = React.useState(false);
             const [hideOwnerFromRank, setHideOwnerFromRank] = React.useState(false);
             const [savingHideOwner, setSavingHideOwner] = React.useState(false);
+            const [photoLightbox, setPhotoLightbox] = React.useState(null); // { src, name }
 
             const DEFAULT_TIER_NAMES = [
                 { name: '🐣 Kasir Baru Netas',    emoji: '🐣' },
@@ -1822,6 +1823,25 @@
                         </div>
                     )}
 
+                    {/* Photo Lightbox */}
+                    {photoLightbox && (
+                        <div
+                            onClick={() => setPhotoLightbox(null)}
+                            style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.88)',zIndex:200,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'20px'}}
+                        >
+                            <div style={{position:'relative',maxWidth:'92vw',maxHeight:'85vh'}} onClick={e=>e.stopPropagation()}>
+                                <img src={photoLightbox.src} alt={photoLightbox.name} style={{maxWidth:'88vw',maxHeight:'80vh',borderRadius:'20px',objectFit:'contain',boxShadow:'0 8px 40px rgba(0,0,0,0.6)',display:'block'}} />
+                                <button
+                                    onClick={() => setPhotoLightbox(null)}
+                                    style={{position:'absolute',top:'-12px',right:'-12px',width:'32px',height:'32px',background:'#ef4444',border:'none',borderRadius:'50%',color:'#fff',fontWeight:900,fontSize:'14px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 8px rgba(0,0,0,0.4)',zIndex:1}}
+                                >✕</button>
+                            </div>
+                            {photoLightbox.name && (
+                                <p style={{color:'#fff',fontWeight:700,fontSize:'14px',marginTop:'14px',textShadow:'0 1px 4px rgba(0,0,0,0.6)'}}>{photoLightbox.name}</p>
+                            )}
+                        </div>
+                    )}
+
                     <div className="bg-white/90 backdrop-blur-sm rounded-[30px] shadow-soft border border-white overflow-hidden">
                         <div className="p-6 pb-4 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-violet-50">
                             <div className="flex items-center gap-4 mb-4">
@@ -1868,7 +1888,7 @@
                                         <div className="p-4">
                                             <div className="flex items-start gap-3">
                                                 <div className="relative flex-shrink-0">
-                                                    <div className={`w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center border-2 ${isInactive?'border-slate-300':isSelf?'border-indigo-300':'border-white shadow-sm'} ${usr.profilePhoto?'':getAvatarColor(usr.id)}`}>{usr.profilePhoto?<img src={usr.profilePhoto} alt={usr.namaLengkap} className="w-full h-full object-cover"/>:<span className="text-white font-black text-lg">{getInitial(usr.namaLengkap)}</span>}</div>
+                                                    <div onClick={() => usr.profilePhoto && setPhotoLightbox({ src: usr.profilePhoto, name: usr.namaLengkap })} className={`w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center border-2 ${isInactive?'border-slate-300':isSelf?'border-indigo-300':'border-white shadow-sm'} ${usr.profilePhoto?'':getAvatarColor(usr.id)} ${usr.profilePhoto?'cursor-pointer hover:opacity-80 hover:scale-105 transition-all active:scale-95':''}`}>{usr.profilePhoto?<img src={usr.profilePhoto} alt={usr.namaLengkap} className="w-full h-full object-cover"/>:<span className="text-white font-black text-lg">{getInitial(usr.namaLengkap)}</span>}</div>
                                                     {isSelf && <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-indigo-500 rounded-full border-2 border-white flex items-center justify-center"><Icon name="star" className="text-white text-[8px]"/></span>}
                                                     {isInactive && <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-red-400 rounded-full border-2 border-white flex items-center justify-center"><Icon name="xmark" className="text-white text-[8px]"/></span>}
                                                 </div>
