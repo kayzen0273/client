@@ -1578,7 +1578,6 @@
             const [showNew, setShowNew] = React.useState(false);
             const photoRef = React.useRef(null);
             const [cropSrc, setCropSrc] = React.useState(null);
-            const [originalSrc, setOriginalSrc] = React.useState(authSession?.profilePhotoOriginal || null);
 
             const showMsg = (type, text) => { setMsg({ type, text }); setTimeout(() => setMsg({ type: '', text: '' }), 3500); };
 
@@ -1586,7 +1585,7 @@
                 const file = e.target.files?.[0];
                 if (!file) return;
                 const reader = new FileReader();
-                reader.onload = (ev) => { setOriginalSrc(ev.target.result); setCropSrc(ev.target.result); };
+                reader.onload = (ev) => { setCropSrc(ev.target.result); };
                 reader.readAsDataURL(file);
                 e.target.value = '';
             };
@@ -1619,14 +1618,13 @@
                     }
 
                     const updateData = { namaLengkap: form.namaLengkap.trim(), username: form.username.toLowerCase(), email: form.email.toLowerCase(), whatsapp: form.whatsapp.trim() };
-                    if (newPhotoData === 'REMOVE') { updateData.profilePhoto = ''; updateData.photoPosition = ''; updateData.profilePhotoOriginal = ''; }
-                    else if (newPhotoData) { updateData.profilePhoto = newPhotoData; if (originalSrc) updateData.profilePhotoOriginal = originalSrc; }
+                    if (newPhotoData === 'REMOVE') { updateData.profilePhoto = ''; updateData.photoPosition = ''; }
+                    else if (newPhotoData) { updateData.profilePhoto = newPhotoData; }
                     await window.updateDoc(ref, updateData);
 
                     const resolvedPhoto = newPhotoData === 'REMOVE' ? null : (newPhotoData || authSession.profilePhoto || null);
                     const resolvedPos = newPhotoData === 'REMOVE' ? null : (authSession.photoPosition || null);
-                    const resolvedOrig = newPhotoData === 'REMOVE' ? null : (originalSrc || authSession.profilePhotoOriginal || null);
-                    const newSession = { ...authSession, namaLengkap: form.namaLengkap.trim(), username: form.username.toLowerCase(), email: form.email.toLowerCase(), whatsapp: form.whatsapp.trim(), profilePhoto: resolvedPhoto, photoPosition: resolvedPos, profilePhotoOriginal: resolvedOrig };
+                    const newSession = { ...authSession, namaLengkap: form.namaLengkap.trim(), username: form.username.toLowerCase(), email: form.email.toLowerCase(), whatsapp: form.whatsapp.trim(), profilePhoto: resolvedPhoto, photoPosition: resolvedPos };
                     localStorage.setItem('husna_auth_session', JSON.stringify(newSession));
                     if (onUpdateSession) onUpdateSession(newSession);
                     showMsg('success', 'Profil berhasil disimpan!');
@@ -1721,11 +1719,7 @@
                                             <Icon name="trash" /> Hapus Foto
                                         </button>
                                     )}
-                                    {photoPreview && (
-                                        <button onClick={() => setCropSrc(originalSrc || photoPreview)} className="px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold hover:bg-indigo-200 transition-all flex items-center gap-1.5 active:scale-95">
-                                            ✂️ Crop Ulang
-                                        </button>
-                                    )}
+
                                 </div>
                                 <p className="text-[10px] text-slate-400">Tekan kamera atau tombol upload untuk pilih foto</p>
                             </div>
@@ -8998,7 +8992,7 @@
                     if (foundUser.password !== hashedPass) { setErrTimeout('Password salah'); setLoading(false); return; }
                     if (foundUser.isActive === false && !isOwnerEmail(foundUser.email)) { setErrTimeout('Akun kamu telah dinonaktifkan. Hubungi owner.'); setLoading(false); return; }
 
-                    const sessionData = { id: foundUser.id, namaLengkap: foundUser.namaLengkap, username: foundUser.username, email: foundUser.email, whatsapp: foundUser.whatsapp, profilePhoto: foundUser.profilePhoto || null, photoPosition: foundUser.photoPosition || null, profilePhotoOriginal: foundUser.profilePhotoOriginal || null, loginAt: Date.now() };
+                    const sessionData = { id: foundUser.id, namaLengkap: foundUser.namaLengkap, username: foundUser.username, email: foundUser.email, whatsapp: foundUser.whatsapp, profilePhoto: foundUser.profilePhoto || null, photoPosition: foundUser.photoPosition || null, loginAt: Date.now() };
                     saveSession(sessionData);
                     onAuthSuccess(sessionData);
                 } catch (e) { console.error(e); setErrTimeout('Terjadi kesalahan. Coba lagi.'); }
