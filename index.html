@@ -234,6 +234,34 @@
         .otp-input:focus { border-color: #0ea5e9; box-shadow: 0 0 0 4px rgba(14,165,233,0.1); background: white; }
         .auth-floating-star { position: absolute; pointer-events: none; animation: authStar 4s ease-in-out infinite; }
         @keyframes authStar { 0%,100% { opacity:0.3; transform: scale(0.8) rotate(0deg); } 50% { opacity:0.8; transform: scale(1.2) rotate(15deg); } }
+
+        /* === MORPH ANIMATIONS === */
+        @keyframes authViewMorphIn {
+            0%   { opacity:0; transform: scale(0.9) translateY(10px); filter: blur(6px); clip-path: inset(8% 8% 8% 8% round 24px); }
+            60%  { filter: blur(0); clip-path: inset(0% 0% 0% 0% round 4px); }
+            100% { opacity:1; transform: scale(1) translateY(0); filter: blur(0); clip-path: inset(0% 0% 0% 0% round 0px); }
+        }
+        .auth-view-morph { animation: authViewMorphIn 0.42s cubic-bezier(0.34, 1.4, 0.64, 1) both; }
+
+        @keyframes authCardMorphOut {
+            0%   { opacity:1; transform: scale(1) translateY(0); filter: blur(0) brightness(1); border-radius: 24px; }
+            30%  { transform: scale(1.04); filter: blur(0) brightness(1.15); }
+            70%  { transform: scale(1.5); filter: blur(8px) brightness(1.5); opacity:0.4; }
+            100% { opacity:0; transform: scale(2.5); filter: blur(24px) brightness(2); }
+        }
+        .auth-card-morph-out { animation: authCardMorphOut 0.55s cubic-bezier(0.4, 0, 0.8, 1) forwards !important; pointer-events:none; }
+
+        @keyframes authSuccessFlash {
+            0%   { opacity:0; }
+            20%  { opacity:0.6; }
+            100% { opacity:0; }
+        }
+        .auth-success-flash {
+            position: fixed; inset: 0; z-index: 9999;
+            background: radial-gradient(circle at 50% 50%, rgba(14,165,233,0.8) 0%, rgba(2,132,199,0.5) 40%, transparent 70%);
+            pointer-events: none;
+            animation: authSuccessFlash 0.55s ease-out forwards;
+        }
     </style>
 </head>
 <body class="islamic-pattern relative">
@@ -246,6 +274,24 @@
 
         // --- CHANGELOG / NOTIFIKASI UPDATE ---
         const CHANGELOG = [
+            {
+                id: 'v50_1',
+                version: 'v50.1',
+                date: '11 Mar 2025',
+                title: 'Transfer Barang Antar Toko',
+                tag: 'Fitur Baru',
+                tagColor: 'bg-green-100 text-green-700',
+                icon: 'right-left',
+                isNew: true,
+                items: [
+                    '🏪 Menu baru "Transfer Barang" di sidebar untuk pindah stok antar toko',
+                    '📦 Bisa transfer beberapa barang sekaligus dalam satu transaksi (sistem keranjang)',
+                    '🔢 Stok ditampilkan sesuai toko asal yang dipilih — tidak bisa transfer melebihi stok yang ada',
+                    '↩️ Owner bisa batalkan transfer: stok otomatis dikembalikan ke toko asal',
+                    '🗑️ Owner bisa hapus riwayat transfer satu per satu atau semua sekaligus',
+                    '📋 Riwayat transfer lengkap dengan nama pelaku, toko, dan waktu transfer',
+                ]
+            },
             {
                 id: 'v49_1',
                 version: 'v49.1',
@@ -7915,8 +7961,19 @@
             const [loginForm, setLoginForm] = useState({ emailOrUsername: '', password: '' });
             const [regForm, setRegForm] = useState({ namaLengkap: '', username: '', email: '', whatsapp: '', kodeUndangan: '', password: '', confirmPassword: '' });
             const [forgotEmail, setForgotEmail] = useState('');
+            const [morphKey, setMorphKey] = useState(0);
+            const [morphingOut, setMorphingOut] = useState(false);
+            const [showSuccessFlash, setShowSuccessFlash] = useState(false);
 
             const setErrTimeout = (msg) => { setError(msg); setTimeout(() => setError(''), 4000); };
+
+            const changeView = (v) => { setView(v); setMorphKey(k => k + 1); setError(''); setSuccess(''); };
+
+            const handleAuthSuccess = (sessionData) => {
+                setShowSuccessFlash(true);
+                setMorphingOut(true);
+                setTimeout(() => onAuthSuccess(sessionData), 520);
+            };
 
             const handleLogin = async () => {
                 if (!loginForm.emailOrUsername || !loginForm.password) { setErrTimeout('Isi semua field terlebih dahulu'); return; }
@@ -7943,7 +8000,7 @@
 
                     const sessionData = { id: foundUser.id, namaLengkap: foundUser.namaLengkap, username: foundUser.username, email: foundUser.email, whatsapp: foundUser.whatsapp, loginAt: Date.now() };
                     saveSession(sessionData);
-                    onAuthSuccess(sessionData);
+                    handleAuthSuccess(sessionData);
                 } catch (e) { console.error(e); setErrTimeout('Terjadi kesalahan. Coba lagi.'); }
                 setLoading(false);
             };
@@ -7979,7 +8036,7 @@
 
                     const sessionData = { id: docRef.id, namaLengkap, username: username.toLowerCase(), email: email.toLowerCase(), whatsapp, loginAt: Date.now() };
                     saveSession(sessionData);
-                    onAuthSuccess(sessionData);
+                    handleAuthSuccess(sessionData);
                 } catch (e) { console.error(e); setErrTimeout('Gagal mendaftar. Coba lagi.'); }
                 setLoading(false);
             };
@@ -8009,7 +8066,7 @@
                     setGeneratedOTP(otp);
                     setOtpEmail(forgotEmail.toLowerCase());
                     setSuccess(`Permintaan reset password berhasil! Hubungi owner di ${OWNER_EMAIL} atau WhatsApp owner untuk mendapatkan kode OTP 6 digit.`);
-                    setView('otp');
+                    changeView('otp');
                 } catch (e) { console.error(e); setErrTimeout('Gagal mengirim OTP. Coba lagi.'); }
                 setLoading(false);
             };
@@ -8036,7 +8093,6 @@
                 
                 setLoading(true); setError('');
                 try {
-                    const otpRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'otp_reset');
                     const usersRef = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'users');
                     const snap = await window.getDocs(window.query(usersRef, window.where('email', '==', otpEmail)));
                     if (snap.empty) { setErrTimeout('Terjadi kesalahan'); setLoading(false); return; }
@@ -8055,7 +8111,7 @@
                     await window.deleteDoc(otpDocRef);
                     
                     setSuccess('Password berhasil direset! Silakan login.');
-                    setTimeout(() => { setView('login'); setSuccess(''); setOtpValues(['','','','','','']); setNewPass(''); setConfirmNewPass(''); }, 2000);
+                    setTimeout(() => { changeView('login'); setOtpValues(['','','','','','']); setNewPass(''); setConfirmNewPass(''); }, 2000);
                 } catch (e) { console.error(e); setErrTimeout('Gagal verifikasi OTP.'); }
                 setLoading(false);
             };
@@ -8077,7 +8133,8 @@
                         }}><Icon name="star" /></div>
                     ))}
 
-                    <div className="auth-card auth-fade-in w-full max-w-md relative z-10">
+                                        {showSuccessFlash && <div className="auth-success-flash" />}
+                    <div className={`auth-card auth-fade-in w-full max-w-md relative z-10 ${morphingOut ? "auth-card-morph-out" : ""}`}>
                         {/* Header */}
                         <div className="text-center py-8 px-8 border-b border-slate-100">
                             <div className="relative inline-flex pulse-ring mb-4">
@@ -8089,12 +8146,12 @@
                             <p className="text-slate-500 text-sm font-medium mt-1">Sistem Kasir & Manajemen Stok</p>
                         </div>
 
-                        <div className="p-8">
+                        <div className="p-8"><div key={morphKey} className="auth-view-morph">
                             {/* Tab switcher (login/register only) */}
                             {(view === 'login' || view === 'register') && (
                                 <div className="flex gap-1 bg-slate-100 rounded-xl p-1 mb-6">
-                                    <button className={`auth-tab flex-1 ${view==='login'?'active':''}`} onClick={() => { setView('login'); setError(''); }}>Masuk</button>
-                                    <button className={`auth-tab flex-1 ${view==='register'?'active':''}`} onClick={() => { setView('register'); setError(''); }}>Daftar</button>
+                                    <button className={`auth-tab flex-1 ${view==='login'?'active':''}`} onClick={() => changeView('login')}>Masuk</button>
+                                    <button className={`auth-tab flex-1 ${view==='register'?'active':''}`} onClick={() => changeView('register')}>Daftar</button>
                                 </div>
                             )}
 
@@ -8117,7 +8174,7 @@
                                     <button className="auth-btn-primary" onClick={handleLogin} disabled={loading}>
                                         {loading ? <span className="flex items-center justify-center gap-2"><span className="typing-dot"></span><span className="typing-dot"></span><span className="typing-dot"></span></span> : <><Icon name="right-to-bracket" className="mr-2" />Masuk ke Sistem</>}
                                     </button>
-                                    <button className="w-full text-center text-sky-600 text-sm font-semibold hover:underline mt-2" onClick={()=>{setView('forgot');setError('');setSuccess('');}}>
+                                    <button className="w-full text-center text-sky-600 text-sm font-semibold hover:underline mt-2" onClick={()=>changeView('forgot')}>
                                         <Icon name="key" className="mr-1" /> Lupa Password?
                                     </button>
                                 </div>
@@ -8176,7 +8233,7 @@
                                     <button className="auth-btn-primary" onClick={handleForgotPassword} disabled={loading}>
                                         {loading ? <span className="flex items-center justify-center gap-2"><span className="typing-dot"></span><span className="typing-dot"></span><span className="typing-dot"></span></span> : <><Icon name="paper-plane" className="mr-2" />Kirim Kode OTP</>}
                                     </button>
-                                    <button className="w-full text-center text-slate-500 text-sm font-semibold hover:underline" onClick={()=>{setView('login');setError('');setSuccess('');}}>
+                                    <button className="w-full text-center text-slate-500 text-sm font-semibold hover:underline" onClick={()=>changeView('login')}>
                                         <Icon name="arrow-left" className="mr-1" /> Kembali ke Login
                                     </button>
                                 </div>
@@ -8210,12 +8267,13 @@
                                     <button className="auth-btn-primary" onClick={handleVerifyOTP} disabled={loading}>
                                         {loading ? <span className="flex items-center justify-center gap-2"><span className="typing-dot"></span><span className="typing-dot"></span><span className="typing-dot"></span></span> : <><Icon name="check" className="mr-2" />Reset Password</>}
                                     </button>
-                                    <button className="w-full text-center text-slate-500 text-sm font-semibold hover:underline" onClick={()=>{setView('forgot');setError('');setSuccess('');}}>
+                                    <button className="w-full text-center text-slate-500 text-sm font-semibold hover:underline" onClick={()=>changeView('forgot')}>
                                         <Icon name="arrow-left" className="mr-1" /> Minta OTP Ulang
                                     </button>
                                 </div>
                             )}
-                        </div>
+                        </div>{/* end auth-view-morph */}
+                        </div>{/* end p-8 */}
 
                         {/* Footer */}
                         <div className="px-8 pb-6 text-center">
