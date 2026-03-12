@@ -484,194 +484,68 @@
 
 
 
-        // --- DEKORASI IDUL FITRI MODERN (Tosca & Putih) ---
+        // --- DEKORASI IDUL FITRI ---
         const RamadhanDecor = () => (
             <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-
-                {/* === PARTIKEL MENGAMBANG === */}
+                {/* Partikel bintang melayang */}
                 <div className="absolute inset-0 z-0">
-                    {[...Array(12)].map((_, i) => (
+                    {[...Array(14)].map((_, i) => (
                         <div key={i} className="absolute rounded-full opacity-0 animate-float-up"
                              style={{
-                                 width: (i % 3 === 0 ? 5 : i % 3 === 1 ? 3 : 4) + 'px',
-                                 height: (i % 3 === 0 ? 5 : i % 3 === 1 ? 3 : 4) + 'px',
-                                 background: i % 2 === 0 ? 'rgba(20,184,166,0.7)' : 'rgba(255,255,255,0.8)',
-                                 left: (i * 8.5) + '%',
-                                 animationDelay: (i * 0.9) + 's',
-                                 animationDuration: (12 + i * 1.3) + 's'
+                                 background: i % 3 === 0 ? '#facc15' : i % 3 === 1 ? '#86efac' : '#fda4af',
+                                 width: Math.random() * 5 + 2 + 'px',
+                                 height: Math.random() * 5 + 2 + 'px',
+                                 left: Math.random() * 100 + '%',
+                                 animationDelay: Math.random() * 10 + 's',
+                                 animationDuration: Math.random() * 10 + 10 + 's'
                              }}></div>
                     ))}
                 </div>
 
-                {/* === BINTANG KERLAP-KERLIP === */}
-                <div className="absolute top-6 left-[8%] animate-twinkle" style={{animationDelay:'0s'}}>
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                        <polygon points="5,0 6.2,3.8 10,3.8 7,6.1 8.1,10 5,7.6 1.9,10 3,6.1 0,3.8 3.8,3.8" fill="rgba(20,184,166,0.7)"/>
-                    </svg>
-                </div>
-                <div className="absolute top-16 left-[38%] animate-twinkle" style={{animationDelay:'1.2s'}}>
-                    <svg width="7" height="7" viewBox="0 0 10 10" fill="none">
-                        <polygon points="5,0 6.2,3.8 10,3.8 7,6.1 8.1,10 5,7.6 1.9,10 3,6.1 0,3.8 3.8,3.8" fill="rgba(255,255,255,0.6)"/>
-                    </svg>
-                </div>
-                <div className="absolute top-4 right-[12%] animate-twinkle" style={{animationDelay:'0.6s'}}>
-                    <svg width="12" height="12" viewBox="0 0 10 10" fill="none">
-                        <polygon points="5,0 6.2,3.8 10,3.8 7,6.1 8.1,10 5,7.6 1.9,10 3,6.1 0,3.8 3.8,3.8" fill="rgba(20,184,166,0.6)"/>
-                    </svg>
-                </div>
-                <div className="absolute top-28 right-[35%] hidden md:block animate-twinkle" style={{animationDelay:'1.8s'}}>
-                    <svg width="6" height="6" viewBox="0 0 10 10" fill="none">
-                        <polygon points="5,0 6.2,3.8 10,3.8 7,6.1 8.1,10 5,7.6 1.9,10 3,6.1 0,3.8 3.8,3.8" fill="rgba(255,255,255,0.5)"/>
-                    </svg>
+                {/* Bintang-bintang kecil berkelip */}
+                <div className="absolute top-10 left-[10%] text-gold-400 text-[10px] animate-twinkle delay-100 opacity-60"><Icon name="star" /></div>
+                <div className="absolute top-32 left-[40%] text-gold-300 text-[8px] animate-twinkle delay-700 opacity-40"><Icon name="star" /></div>
+                <div className="absolute top-5 right-[15%] text-gold-500 text-[12px] animate-twinkle delay-300 opacity-70"><Icon name="star" /></div>
+                <div className="absolute top-16 right-[35%] text-yellow-300 text-[9px] animate-twinkle delay-500 opacity-50"><Icon name="star" /></div>
+                <div className="absolute -top-10 right-10 w-20 h-0.5 bg-gradient-to-l from-transparent to-white opacity-40 animate-falling-star"></div>
+
+                {/* Gantungan kiri: Bedug / Ketupat */}
+                <div className="absolute -top-6 left-2 md:left-8 z-0 animate-swing origin-top duration-[3500ms]">
+                    <div className="h-24 md:h-40 w-[1px] bg-gold-400/60 mx-auto"></div>
+                    <div className="text-gold-500 text-4xl md:text-6xl drop-shadow-glow relative z-10"><Icon name="gift" /></div>
                 </div>
 
-                {/* === GARIS TALI DEKORASI === */}
-                <svg className="absolute top-0 left-0 w-full" style={{height:'60px'}} viewBox="0 0 1200 60" preserveAspectRatio="none">
-                    <path d="M0,8 Q150,32 300,8 Q450,32 600,8 Q750,32 900,8 Q1050,32 1200,8"
-                          stroke="rgba(20,184,166,0.25)" strokeWidth="1.5" fill="none" strokeDasharray="4 3"/>
-                </svg>
-
-                {/* === ORNAMEN KIRI: FANOUS (LENTERA) === */}
-                <div className="absolute -top-4 left-3 md:left-10 z-0 animate-swing origin-top" style={{animationDuration:'4s'}}>
-                    <div className="h-20 md:h-32 w-px mx-auto" style={{background:'linear-gradient(to bottom, rgba(20,184,166,0.5), transparent)'}}></div>
-                    <div style={{
-                        width:'28px', height:'42px', margin:'0 auto',
-                        background:'linear-gradient(135deg,rgba(20,184,166,0.9),rgba(13,148,136,0.8))',
-                        borderRadius:'4px 4px 8px 8px',
-                        boxShadow:'0 0 14px rgba(20,184,166,0.5), inset 0 0 8px rgba(255,255,255,0.2)',
-                        position:'relative', display:'flex', alignItems:'center', justifyContent:'center'
-                    }}>
-                        <div style={{
-                            width:'14px', height:'22px',
-                            background:'rgba(255,255,255,0.25)',
-                            borderRadius:'2px 2px 5px 5px',
-                            border:'1px solid rgba(255,255,255,0.3)'
-                        }}></div>
-                        <div style={{
-                            position:'absolute', bottom:'-6px', left:'50%', transform:'translateX(-50%)',
-                            width:'10px', height:'6px',
-                            background:'rgba(20,184,166,0.7)',
-                            clipPath:'polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%)'
-                        }}></div>
-                    </div>
+                {/* Gantungan ketupat kiri dalam */}
+                <div className="absolute -top-10 left-20 md:left-32 z-0 animate-sway-slow origin-top duration-[5000ms]">
+                    <div className="h-32 md:h-48 w-[1px] bg-gold-400/40 mx-auto"></div>
+                    <div className="ketupat mx-auto shadow-lg"></div>
+                    <div className="h-4 w-[1px] bg-gold-400/40 mx-auto"></div>
+                    <div className="text-green-600 text-[10px] text-center"><Icon name="leaf" /></div>
                 </div>
 
-                {/* === ORNAMEN KIRI TENGAH: KETUPAT MODERN === */}
-                <div className="absolute -top-8 left-16 md:left-36 z-0 animate-sway-slow origin-top" style={{animationDuration:'5.5s'}}>
-                    <div className="h-24 md:h-40 w-px mx-auto" style={{background:'linear-gradient(to bottom, rgba(255,255,255,0.4), transparent)'}}></div>
-                    {/* Ketupat modern - rhombus dengan border tosca */}
-                    <div style={{
-                        width:'26px', height:'26px', margin:'0 auto',
-                        background:'linear-gradient(135deg,rgba(255,255,255,0.95),rgba(204,251,241,0.9))',
-                        transform:'rotate(45deg)',
-                        borderRadius:'3px',
-                        border:'2px solid rgba(20,184,166,0.8)',
-                        boxShadow:'0 4px 12px rgba(20,184,166,0.3)',
-                        position:'relative'
-                    }}>
-                        <div style={{
-                            position:'absolute', inset:'3px',
-                            borderTop:'1px solid rgba(20,184,166,0.4)',
-                            borderBottom:'1px solid rgba(20,184,166,0.4)'
-                        }}></div>
-                        <div style={{
-                            position:'absolute', inset:'3px',
-                            borderLeft:'1px solid rgba(20,184,166,0.4)',
-                            borderRight:'1px solid rgba(20,184,166,0.4)'
-                        }}></div>
-                    </div>
-                    <div className="h-3 w-px mx-auto" style={{background:'rgba(20,184,166,0.4)'}}></div>
-                    <div style={{
-                        width:'8px', height:'8px', margin:'0 auto',
-                        background:'rgba(20,184,166,0.6)', borderRadius:'50%'
-                    }}></div>
+                {/* Gantungan tengah: kembang api / bintang */}
+                <div className="absolute -top-12 left-[30%] hidden md:block z-0 animate-swing-slow origin-top duration-[4500ms]">
+                    <div className="h-20 w-[1px] bg-gold-400/40 mx-auto"></div>
+                    <div className="text-yellow-400 text-2xl drop-shadow-md animate-pulse"><Icon name="star" /></div>
                 </div>
 
-                {/* === ORNAMEN TENGAH: BULAN SABIT + BINTANG === */}
-                <div className="absolute -top-10 left-[28%] hidden md:block z-0 animate-sway origin-top" style={{animationDuration:'6s'}}>
-                    <div className="h-20 md:h-28 w-px mx-auto" style={{background:'linear-gradient(to bottom, rgba(20,184,166,0.4), transparent)'}}></div>
-                    <div style={{position:'relative', width:'36px', height:'36px', margin:'0 auto'}}>
-                        {/* Bulan sabit tosca */}
-                        <svg width="36" height="36" viewBox="0 0 36 36">
-                            <path d="M18,4 A14,14 0 1,1 8,30 A10,10 0 1,0 18,4Z"
-                                  fill="rgba(20,184,166,0.85)"
-                                  style={{filter:'drop-shadow(0 0 6px rgba(20,184,166,0.6))'}}/>
-                            <polygon points="26,8 27.2,12 31,12 28,14.3 29.1,18 26,15.6 22.9,18 24,14.3 21,12 24.8,12"
-                                     fill="rgba(255,255,255,0.9)" transform="scale(0.55) translate(22,0)"/>
-                        </svg>
-                    </div>
+                {/* Gantungan kanan: bintang emas besar */}
+                <div className="absolute -top-8 right-4 md:right-12 z-0 animate-swing origin-top duration-[4000ms]">
+                    <div className="h-20 md:h-32 w-[1px] bg-gold-400/60 mx-auto"></div>
+                    <div className="text-gold-500 text-4xl md:text-6xl drop-shadow-glow relative z-10"><Icon name="star" /></div>
                 </div>
 
-                {/* === ORNAMEN KANAN TENGAH: KETUPAT === */}
-                <div className="absolute -top-6 right-16 md:right-44 z-0 animate-swing-slow origin-top" style={{animationDuration:'5s'}}>
-                    <div className="h-28 md:h-36 w-px mx-auto" style={{background:'linear-gradient(to bottom, rgba(255,255,255,0.4), transparent)'}}></div>
-                    <div style={{
-                        width:'22px', height:'22px', margin:'0 auto',
-                        background:'linear-gradient(135deg,rgba(204,251,241,0.95),rgba(153,246,228,0.9))',
-                        transform:'rotate(45deg)',
-                        borderRadius:'3px',
-                        border:'2px solid rgba(13,148,136,0.9)',
-                        boxShadow:'0 4px 10px rgba(20,184,166,0.25)'
-                    }}>
-                        <div style={{position:'absolute',inset:'3px',borderTop:'1px solid rgba(13,148,136,0.4)',borderBottom:'1px solid rgba(13,148,136,0.4)'}}></div>
-                        <div style={{position:'absolute',inset:'3px',borderLeft:'1px solid rgba(13,148,136,0.4)',borderRight:'1px solid rgba(13,148,136,0.4)'}}></div>
-                    </div>
+                {/* Gantungan ketupat kanan */}
+                <div className="absolute -top-14 right-20 md:right-40 z-0 animate-sway origin-top duration-[5500ms]">
+                    <div className="h-28 md:h-44 w-[1px] bg-gold-400/40 mx-auto"></div>
+                    <div className="ketupat mx-auto shadow-lg bg-green-200 border-green-600"></div>
                 </div>
 
-                {/* === ORNAMEN KANAN: FANOUS PUTIH === */}
-                <div className="absolute -top-4 right-4 md:right-14 z-0 animate-swing origin-top" style={{animationDuration:'3.5s'}}>
-                    <div className="h-16 md:h-28 w-px mx-auto" style={{background:'linear-gradient(to bottom, rgba(255,255,255,0.5), transparent)'}}></div>
-                    <div style={{
-                        width:'24px', height:'36px', margin:'0 auto',
-                        background:'linear-gradient(135deg,rgba(255,255,255,0.92),rgba(204,251,241,0.85))',
-                        borderRadius:'4px 4px 8px 8px',
-                        boxShadow:'0 0 12px rgba(255,255,255,0.6), 0 0 20px rgba(20,184,166,0.2)',
-                        border:'1.5px solid rgba(20,184,166,0.4)',
-                        position:'relative', display:'flex', alignItems:'center', justifyContent:'center'
-                    }}>
-                        <div style={{
-                            width:'12px', height:'18px',
-                            background:'rgba(20,184,166,0.2)',
-                            borderRadius:'2px 2px 5px 5px',
-                            border:'1px solid rgba(20,184,166,0.3)'
-                        }}></div>
-                        <div style={{
-                            position:'absolute', bottom:'-5px', left:'50%', transform:'translateX(-50%)',
-                            width:'8px', height:'5px',
-                            background:'rgba(255,255,255,0.8)',
-                            clipPath:'polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%)'
-                        }}></div>
-                    </div>
-                </div>
-
-                {/* === SILUET MASJID BAWAH (tosca muda, halus) === */}
-                <div className="absolute bottom-0 left-0 right-0 pointer-events-none flex items-end justify-center overflow-hidden" style={{height:'80px', opacity:0.07}}>
-                    <svg viewBox="0 0 400 80" preserveAspectRatio="xMidYMax meet" style={{width:'100%', height:'100%'}}>
-                        {/* Masjid tengah */}
-                        <path d="M160,80 L160,45 Q160,30 175,25 L180,20 L185,25 Q200,30 200,45 L200,20 Q200,5 200,5 Q200,5 200,20 L215,25 Q230,30 230,45 L230,25 L235,20 L240,25 Q255,30 255,45 L255,80Z" fill="rgba(20,184,166,1)"/>
-                        {/* Kubah tengah */}
-                        <ellipse cx="207" cy="20" rx="8" ry="12" fill="rgba(20,184,166,1)"/>
-                        {/* Menara kiri */}
-                        <rect x="130" y="30" width="16" height="50" rx="2" fill="rgba(20,184,166,1)"/>
-                        <ellipse cx="138" cy="30" rx="5" ry="8" fill="rgba(20,184,166,1)"/>
-                        {/* Menara kanan */}
-                        <rect x="265" y="30" width="16" height="50" rx="2" fill="rgba(20,184,166,1)"/>
-                        <ellipse cx="273" cy="30" rx="5" ry="8" fill="rgba(20,184,166,1)"/>
-                        {/* Badan bawah masjid */}
-                        <rect x="145" y="50" width="125" height="30" rx="2" fill="rgba(20,184,166,1)"/>
-                    </svg>
-                </div>
-
-                {/* === TULISAN UCAPAN TIPIS DI BAWAH === */}
-                <div className="absolute bottom-6 left-0 right-0 flex justify-center pointer-events-none">
-                    <p style={{
-                        fontFamily:"'Amiri', serif",
-                        fontSize:'10px',
-                        color:'rgba(20,184,166,0.35)',
-                        letterSpacing:'3px',
-                        fontWeight:400,
-                        textTransform:'uppercase'
-                    }}>Minal Aidin Wal Faizin</p>
+                {/* Siluet masjid bawah — tema Idul Fitri tetap pakai masjid */}
+                <div className="absolute bottom-0 left-0 right-0 h-32 opacity-10 pointer-events-none flex items-end justify-center overflow-hidden">
+                    <div className="text-slate-800 text-[150px] md:text-[200px] leading-none -mb-10"><Icon name="mosque" /></div>
+                    <div className="text-slate-800 text-[100px] md:text-[140px] leading-none -mb-8 -ml-10"><Icon name="mosque" /></div>
+                    <div className="text-slate-800 text-[100px] md:text-[140px] leading-none -mb-8 -mr-10 order-first"><Icon name="mosque" /></div>
                 </div>
             </div>
         );
@@ -7494,8 +7368,8 @@
                     <div className="bg-gradient-to-r from-night-900 to-sky-900 rounded-3xl p-5 md:p-6 text-white relative overflow-hidden shadow-2xl border border-slate-700 group">
                         <div className="absolute right-0 top-0 w-48 h-48 bg-gold-400 opacity-10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
                         <div className="relative z-10 flex items-center justify-between">
-                            <div><h3 className="font-arab text-2xl md:text-3xl text-gold-400 mb-1">رمضان كريم</h3><p className="text-xs md:text-sm text-slate-300 font-medium opacity-90">Selamat Menunaikan Ibadah Puasa Ramadhan</p><div className="mt-3 inline-flex items-center gap-2 bg-green-500/20 px-3 py-1 rounded-full backdrop-blur-sm border border-green-500/30"><div className="w-2 h-2 rounded-full bg-green-50 animate-pulse"></div><span className="text-[10px] font-bold tracking-wide text-green-300">ONLINE (FIREBASE)</span></div></div>
-                            <div className="text-4xl text-gold-500/80 animate-pulse"><Icon name="mosque" /></div>
+                            <div><h3 className="font-arab text-2xl md:text-3xl text-gold-400 mb-1">عيد الفطر مبارك</h3><p className="text-xs md:text-sm text-slate-300 font-medium opacity-90">Selamat Hari Raya Idul Fitri — Minal Aidin Wal Faizin 🌙✨</p><div className="mt-3 inline-flex items-center gap-2 bg-green-500/20 px-3 py-1 rounded-full backdrop-blur-sm border border-green-500/30"><div className="w-2 h-2 rounded-full bg-green-50 animate-pulse"></div><span className="text-[10px] font-bold tracking-wide text-green-300">ONLINE (FIREBASE)</span></div></div>
+                            <div className="text-4xl text-gold-500/80 animate-pulse"><Icon name="star" /></div>
                         </div>
                     </div>
                     
