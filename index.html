@@ -234,6 +234,111 @@
         .otp-input:focus { border-color: #0ea5e9; box-shadow: 0 0 0 4px rgba(14,165,233,0.1); background: white; }
         .auth-floating-star { position: absolute; pointer-events: none; animation: authStar 4s ease-in-out infinite; }
         @keyframes authStar { 0%,100% { opacity:0.3; transform: scale(0.8) rotate(0deg); } 50% { opacity:0.8; transform: scale(1.2) rotate(15deg); } }
+
+        /* ======================================================
+           TIER FRAME EFFECTS — dari biasa sampai keren banget!
+           ====================================================== */
+
+        /* ── Tier 1-10: BIASA — border polos abu-abu tipis ── */
+        .tier-frame-1-outer {
+            border-radius: 16px;
+            border: 1.5px solid #e2e8f0;
+            background: transparent;
+        }
+        .tier-frame-1-inner { border-radius: 14px; overflow: hidden; }
+
+        /* ── Tier 11-20: AGAK KEREN — glow biru berdenyut ── */
+        .tier-frame-2-outer {
+            border-radius: 16px;
+            border: 2px solid #93c5fd;
+            animation: tf2Glow 2.5s ease-in-out infinite;
+        }
+        .tier-frame-2-inner { border-radius: 13px; overflow: hidden; }
+        @keyframes tf2Glow {
+            0%, 100% { box-shadow: 0 0 6px #60a5fa50, 0 0 12px #3b82f620; border-color: #93c5fd; }
+            50%       { box-shadow: 0 0 16px #60a5fa90, 0 0 30px #3b82f650; border-color: #60a5fa; }
+        }
+
+        /* ── Tier 21-30: KEREN — bingkai hijau emerald berputar ── */
+        .tier-frame-3-outer {
+            border-radius: 18px;
+            padding: 2px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 14px #10b98145;
+        }
+        .tier-frame-3-outer::before {
+            content: '';
+            position: absolute;
+            width: 200%; height: 200%;
+            top: -50%; left: -50%;
+            background: conic-gradient(
+                #10b981, #6ee7b7, #34d399, #a7f3d0,
+                #059669, #34d399, #6ee7b7, #10b981
+            );
+            animation: tf3Spin 3s linear infinite;
+            z-index: 0;
+        }
+        .tier-frame-3-inner { position: relative; z-index: 1; border-radius: 16px; overflow: hidden; }
+        @keyframes tf3Spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        /* ── Tier 31-40: SANGAT KEREN — api emas berkobar ── */
+        .tier-frame-4-outer {
+            border-radius: 18px;
+            padding: 2px;
+            position: relative;
+            overflow: hidden;
+            animation: tf4Glow 1.4s ease-in-out infinite;
+        }
+        .tier-frame-4-outer::before {
+            content: '';
+            position: absolute;
+            width: 200%; height: 200%;
+            top: -50%; left: -50%;
+            background: conic-gradient(
+                #f59e0b, #fcd34d, #fbbf24, #f97316,
+                #ef4444, #f97316, #fcd34d, #f59e0b
+            );
+            animation: tf4Spin 1.4s linear infinite;
+            z-index: 0;
+        }
+        .tier-frame-4-inner { position: relative; z-index: 1; border-radius: 16px; overflow: hidden; }
+        @keyframes tf4Spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes tf4Glow {
+            0%, 100% { box-shadow: 0 0 12px #f59e0b70, 0 0 28px #f9731640; }
+            50%       { box-shadow: 0 0 24px #f97316A0, 0 0 55px #ef444455; }
+        }
+
+        /* ── Tier 41-50: KEREN BANGET — pelangi holografik epik ── */
+        .tier-frame-5-outer {
+            border-radius: 20px;
+            padding: 3px;
+            position: relative;
+            overflow: hidden;
+            animation: tf5Glow 0.9s ease-in-out infinite;
+        }
+        .tier-frame-5-outer::before {
+            content: '';
+            position: absolute;
+            width: 220%; height: 220%;
+            top: -60%; left: -60%;
+            background: conic-gradient(
+                #f97316, #eab308, #22c55e, #06b6d4,
+                #3b82f6, #a855f7, #ec4899, #f43f5e,
+                #f97316
+            );
+            animation: tf5Spin 1.2s linear infinite;
+            z-index: 0;
+        }
+        .tier-frame-5-inner { position: relative; z-index: 1; border-radius: 17px; overflow: hidden; }
+        @keyframes tf5Spin  { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes tf5Glow {
+            0%   { box-shadow: 0 0 20px #f9731660, 0 0 45px #a855f735, 0 0 80px #3b82f615; }
+            25%  { box-shadow: 0 0 20px #22c55e60, 0 0 45px #06b6d435, 0 0 80px #eab30815; }
+            50%  { box-shadow: 0 0 20px #a855f760, 0 0 45px #ec489935, 0 0 80px #f4375e15; }
+            75%  { box-shadow: 0 0 20px #3b82f660, 0 0 45px #eab30835, 0 0 80px #22c55e15; }
+            100% { box-shadow: 0 0 20px #f9731660, 0 0 45px #a855f735, 0 0 80px #3b82f615; }
+        }
     </style>
 </head>
 <body class="islamic-pattern relative">
@@ -2282,8 +2387,10 @@
                                                     const isMyTier=myEntry?.tier?.tier===tier.tier;
                                                     const isEditing = editingTier === tIdx;
                                                     const isCustom = !!customTierNames[tIdx];
+                                                    const tGrp = tIdx < 10 ? 1 : tIdx < 20 ? 2 : tIdx < 30 ? 3 : tIdx < 40 ? 4 : 5;
                                                     return (
-                                                        <div key={tier.tier} className={`rounded-2xl border overflow-hidden ${isMyTier?'ring-2 ring-indigo-400 ring-offset-1':''} ${tierUsers.length===0&&!isOwner?'opacity-40':''}`}>
+                                                        <div key={tier.tier} className={`tier-frame-${tGrp}-outer ${isMyTier?'ring-2 ring-indigo-400 ring-offset-2':''} ${tierUsers.length===0&&!isOwner?'opacity-40':''}`}>
+                                                          <div className={`tier-frame-${tGrp}-inner`}>
                                                             <div className={`flex items-center gap-3 px-4 py-2.5 ${tier.bgClass}`}>
                                                                 <div className="w-7 text-center flex-shrink-0"><Icon name={tier.icon} className="text-sm"/></div>
                                                                 <div className="flex-1 min-w-0">
@@ -2335,6 +2442,7 @@
                                                                     )}
                                                                 </div>
                                                             </div>
+                                                          </div>
                                                         </div>
                                                     );
                                                 })}
