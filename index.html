@@ -235,123 +235,127 @@
         .auth-floating-star { position: absolute; pointer-events: none; animation: authStar 4s ease-in-out infinite; }
         @keyframes authStar { 0%,100% { opacity:0.3; transform: scale(0.8) rotate(0deg); } 50% { opacity:0.8; transform: scale(1.2) rotate(15deg); } }
 
-        /* ═══════════════════════════════════════════════
-           TIER FRAME EFFECTS (Tier 1–10 → 41–50)
-           Makin tinggi tier, makin epic bingkainya!
-        ═══════════════════════════════════════════════ */
+        /* ============================================================
+           🎨 BINGKAI TIER — dari lucu biasa sampai keren banget
+           ============================================================ */
 
-        /* Tier 1–10 · Biasa · Slate clean border */
-        .tier-frame-t1 {
-            border: 1.5px solid #e2e8f0;
-        }
-
-        /* Tier 11–20 · Lumayan · Blue pulse glow */
-        .tier-frame-t2 {
-            border: 2px solid #93c5fd;
-            animation: tfBlue 2.8s ease-in-out infinite;
-        }
-        @keyframes tfBlue {
-            0%,100% { box-shadow: 0 0 5px rgba(147,197,253,0.35); }
-            50%      { box-shadow: 0 0 14px rgba(59,130,246,0.55), 0 0 4px rgba(59,130,246,0.2) inset; }
-        }
-
-        /* Tier 21–30 · Keren · Emerald glow + inner shimmer */
-        .tier-frame-t3 {
-            border: 2px solid #6ee7b7;
-            animation: tfGreen 2.2s ease-in-out infinite;
+        /* 🐣 Tier 1–10 | "Bingkai Titik-Titik Imut" (biasa & cute) */
+        .tier-frame-1 {
             position: relative;
-            overflow: hidden;
+            border: 2.5px dotted #94a3b8 !important;
+            border-radius: 18px !important;
+            padding: 2px;
         }
-        .tier-frame-t3::after {
+
+        /* ⚡ Tier 11–20 | "Bingkai Garis Putus Biru" (agak keren) */
+        .tier-frame-2 {
+            position: relative;
+            border: 2px dashed #60a5fa !important;
+            border-radius: 18px !important;
+            padding: 2px;
+            box-shadow: 0 0 0 4px rgba(96,165,250,0.12) !important;
+        }
+        /* Sudut kecil biru di bingkai tier-2 */
+        .tier-frame-2::before, .tier-frame-2::after {
             content: '';
             position: absolute;
-            top: 0; left: -100%;
-            width: 40%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(52,211,153,0.18), transparent);
-            animation: tfShimmerPass 3.5s ease-in-out infinite;
+            width: 10px; height: 10px;
+            border-color: #60a5fa;
+            border-style: solid;
             pointer-events: none;
-            z-index: 1;
+            z-index: 2;
         }
-        @keyframes tfGreen {
-            0%,100% { box-shadow: 0 0 7px rgba(52,211,153,0.4); }
-            50%      { box-shadow: 0 0 18px rgba(16,185,129,0.65), 0 0 6px rgba(16,185,129,0.15) inset; }
-        }
-        @keyframes tfShimmerPass {
-            0%   { left: -100%; opacity: 0; }
-            20%  { opacity: 1; }
-            80%  { opacity: 1; }
-            100% { left: 200%; opacity: 0; }
-        }
+        .tier-frame-2::before { top: -2px; left: -2px; border-width: 2px 0 0 2px; border-radius: 4px 0 0 0; }
+        .tier-frame-2::after  { bottom: -2px; right: -2px; border-width: 0 2px 2px 0; border-radius: 0 0 4px 0; }
 
-        /* Tier 31–40 · Keren Banget · Gold shimmer + warm glow */
-        .tier-frame-t4 {
-            border: 2.5px solid #fbbf24;
-            animation: tfGold 1.8s ease-in-out infinite;
+        /* 🔥 Tier 21–30 | "Bingkai Kembar Zamrud" (keren) */
+        .tier-frame-3 {
             position: relative;
-            overflow: hidden;
+            border: 3px double #34d399 !important;
+            border-radius: 18px !important;
+            padding: 1px;
         }
-        .tier-frame-t4::before {
+        /* Empat sudut-bracket zamrud */
+        .tier-frame-3::before {
             content: '';
             position: absolute;
-            top: -50%; left: -60%;
-            width: 40%; height: 200%;
-            background: linear-gradient(90deg, transparent, rgba(250,204,21,0.35), rgba(253,224,71,0.5), rgba(250,204,21,0.35), transparent);
-            transform: skewX(-15deg);
-            animation: tfGoldShimmer 2.2s ease-in-out infinite;
+            inset: -5px;
+            border: 1.5px solid rgba(52,211,153,0.3);
+            border-radius: 22px;
             pointer-events: none;
-            z-index: 1;
+            z-index: 2;
         }
-        @keyframes tfGold {
-            0%,100% { box-shadow: 0 0 10px rgba(234,179,8,0.45), 0 0 22px rgba(234,179,8,0.15); }
-            50%      { box-shadow: 0 0 20px rgba(234,179,8,0.75), 0 0 40px rgba(234,179,8,0.3), 0 0 4px rgba(253,224,71,0.4) inset; }
-        }
-        @keyframes tfGoldShimmer {
-            0%   { left: -60%; opacity: 0; }
-            15%  { opacity: 1; }
-            85%  { opacity: 1; }
-            100% { left: 160%; opacity: 0; }
+        .tier-frame-3::after {
+            content: '✿';
+            position: absolute;
+            top: 50%; right: -9px;
+            transform: translateY(-50%);
+            color: #34d399;
+            font-size: 8px;
+            line-height: 1;
+            z-index: 3;
         }
 
-        /* Tier 41–50 · EPIC · Rainbow spinning border + color-cycling glow */
-        .tier-frame-t5 {
-            border: 3px solid transparent;
-            background-image:
-                linear-gradient(white, white),
-                linear-gradient(90deg, #f97316, #ef4444, #eab308, #22c55e, #3b82f6, #a855f7, #ec4899, #f97316);
-            background-origin: border-box;
-            background-clip: padding-box, border-box;
-            background-size: 300% 100%;
-            animation: tfRainbow 2.5s linear infinite, tfEpicGlow 2.5s ease-in-out infinite;
+        /* 🏆 Tier 31–40 | "Bingkai Ukir Emas" (sangat keren) */
+        .tier-frame-4 {
             position: relative;
-            overflow: hidden;
+            border: 4px ridge #f59e0b !important;
+            border-radius: 18px !important;
+            padding: 1px;
+            box-shadow: 0 4px 16px rgba(245,158,11,0.28) !important;
         }
-        .tier-frame-t5::before {
+        /* Diamond emas di kiri & kanan */
+        .tier-frame-4::before, .tier-frame-4::after {
+            content: '◆';
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #f59e0b;
+            font-size: 9px;
+            line-height: 1;
+            z-index: 3;
+            text-shadow: 0 1px 3px rgba(245,158,11,0.5);
+        }
+        .tier-frame-4::before { left: -8px; }
+        .tier-frame-4::after  { right: -8px; }
+
+        /* 👑 Tier 41–50 | "Bingkai Mahkota Raja" (keren banget!) */
+        .tier-frame-5 {
+            position: relative;
+            border: 3px solid #ea580c !important;
+            border-radius: 18px !important;
+            padding: 2px;
+            box-shadow:
+                0 0 0 2px #fff7ed,
+                0 0 0 5px #ea580c,
+                0 6px 22px rgba(234,88,12,0.35),
+                inset 0 0 0 1px rgba(255,237,213,0.4) !important;
+        }
+        /* Lingkaran dalam tipis */
+        .tier-frame-5::after {
             content: '';
             position: absolute;
-            top: -50%; left: -60%;
-            width: 35%; height: 200%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-            transform: skewX(-10deg);
-            animation: tfEpicShine 3s ease-in-out infinite;
+            inset: 4px;
+            border: 1px solid rgba(234,88,12,0.3);
+            border-radius: 13px;
             pointer-events: none;
-            z-index: 1;
+            z-index: 0;
         }
-        @keyframes tfRainbow {
-            0%   { background-position: 0% 50%; }
-            100% { background-position: -200% 50%; }
-        }
-        @keyframes tfEpicGlow {
-            0%   { box-shadow: 0 0 14px rgba(249,115,22,0.65), 0 0 30px rgba(249,115,22,0.2); }
-            25%  { box-shadow: 0 0 14px rgba(239,68,68,0.65),  0 0 30px rgba(239,68,68,0.2); }
-            50%  { box-shadow: 0 0 14px rgba(234,179,8,0.65),  0 0 30px rgba(234,179,8,0.2); }
-            75%  { box-shadow: 0 0 14px rgba(59,130,246,0.65), 0 0 30px rgba(59,130,246,0.2); }
-            100% { box-shadow: 0 0 14px rgba(249,115,22,0.65), 0 0 30px rgba(249,115,22,0.2); }
-        }
-        @keyframes tfEpicShine {
-            0%   { left: -60%; opacity: 0; }
-            20%  { opacity: 1; }
-            80%  { opacity: 1; }
-            100% { left: 160%; opacity: 0; }
+        /* Bintang ✦✦✦ di atas bingkai tier-5 */
+        .tier-frame-5::before {
+            content: '✦ ✦ ✦';
+            position: absolute;
+            top: -9px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ea580c;
+            font-size: 7px;
+            letter-spacing: 2px;
+            background: white;
+            padding: 0 6px;
+            line-height: 1;
+            white-space: nowrap;
+            z-index: 4;
         }
     </style>
 </head>
@@ -2015,42 +2019,17 @@
             ];
             // Merge default dengan custom dari Firestore
             const TIER_NAMES = DEFAULT_TIER_NAMES.map((t, i) => customTierNames[i] ? { name: customTierNames[i], emoji: customTierNames[i].split(' ')[0] || t.emoji } : t);
-
-            // Tier frame config — makin tinggi makin epic!
-            const TIER_FRAME_CFG = [
-                // Tier 1–10: Plain slate (biasa)
-                { frameClass: 'tier-frame-t1', frameStyle: {} },
-                // Tier 11–20: Blue pulse glow (lumayan)
-                { frameClass: 'tier-frame-t2', frameStyle: {} },
-                // Tier 21–30: Emerald shimmer glow (keren)
-                { frameClass: 'tier-frame-t3', frameStyle: {} },
-                // Tier 31–40: Gold shimmer + warm glow (keren banget)
-                { frameClass: 'tier-frame-t4', frameStyle: {} },
-                // Tier 41–50: Rainbow spinning border + epic glow (KEREN BANGET BANGET)
-                { frameClass: 'tier-frame-t5', frameStyle: {
-                    backgroundImage: 'linear-gradient(white, white), linear-gradient(90deg, #f97316, #ef4444, #eab308, #22c55e, #3b82f6, #a855f7, #ec4899, #f97316)',
-                    backgroundOrigin: 'border-box',
-                    backgroundClip: 'padding-box, border-box',
-                    backgroundSize: '300% 100%',
-                }},
-            ];
-
-            const RANK_TIERS = TIER_NAMES.map((t, i) => {
-                const fg = TIER_FRAME_CFG[i < 10 ? 0 : i < 20 ? 1 : i < 30 ? 2 : i < 40 ? 3 : 4];
-                return {
-                    tier: i + 1,
-                    name: t.name,
-                    emoji: t.emoji,
-                    minRp: i * 1_000_000,
-                    maxRp: (i + 1) * 1_000_000,
-                    shortLabel: t.name,
-                    color: i < 10 ? '#94a3b8' : i < 20 ? '#60a5fa' : i < 30 ? '#34d399' : i < 40 ? '#f59e0b' : '#f97316',
-                    bgClass: i < 10 ? 'bg-slate-100 text-slate-600 border-slate-200' : i < 20 ? 'bg-blue-100 text-blue-700 border-blue-200' : i < 30 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : i < 40 ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-orange-100 text-orange-700 border-orange-200',
-                    icon: i < 10 ? 'seedling' : i < 20 ? 'star-half-stroke' : i < 30 ? 'star' : i < 40 ? 'fire' : 'crown',
-                    frameClass: fg.frameClass,
-                    frameStyle: fg.frameStyle,
-                };
-            });
+            const RANK_TIERS = TIER_NAMES.map((t, i) => ({
+                tier: i + 1,
+                name: t.name,
+                emoji: t.emoji,
+                minRp: i * 1_000_000,
+                maxRp: (i + 1) * 1_000_000,
+                shortLabel: t.name,
+                color: i < 10 ? '#94a3b8' : i < 20 ? '#60a5fa' : i < 30 ? '#34d399' : i < 40 ? '#f59e0b' : '#f97316',
+                bgClass: i < 10 ? 'bg-slate-100 text-slate-600 border-slate-200' : i < 20 ? 'bg-blue-100 text-blue-700 border-blue-200' : i < 30 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : i < 40 ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-orange-100 text-orange-700 border-orange-200',
+                icon: i < 10 ? 'seedling' : i < 20 ? 'star-half-stroke' : i < 30 ? 'star' : i < 40 ? 'fire' : 'crown',
+            }));
 
             const getTierForRevenue = (rev) => {
                 if (rev <= 0) return null;
@@ -2420,14 +2399,16 @@
                                                     <span>Owner bisa edit nama tier — klik ✏️ di samping kanan tier mana saja!</span>
                                                 </div>
                                             )}
-                                            <div className="space-y-1.5">
+                                            <div className="space-y-3 px-1">
                                                 {RANK_TIERS.map((tier, tIdx) => {
                                                     const tierUsers=leaderboard.filter(u=>u.tier?.tier===tier.tier);
                                                     const isMyTier=myEntry?.tier?.tier===tier.tier;
                                                     const isEditing = editingTier === tIdx;
                                                     const isCustom = !!customTierNames[tIdx];
+                                                    const tierFrameClass = tIdx < 10 ? 'tier-frame-1' : tIdx < 20 ? 'tier-frame-2' : tIdx < 30 ? 'tier-frame-3' : tIdx < 40 ? 'tier-frame-4' : 'tier-frame-5';
                                                     return (
-                                                        <div key={tier.tier} className={`rounded-2xl overflow-hidden ${tier.frameClass} ${isMyTier?'ring-2 ring-indigo-400 ring-offset-1':''} ${tierUsers.length===0&&!isOwner?'opacity-40':''}`} style={tier.frameStyle}>
+                                                        <div key={tier.tier} className={`${tierFrameClass} ${isMyTier?'ring-2 ring-indigo-400 ring-offset-2':''} ${tierUsers.length===0&&!isOwner?'opacity-40':''}`}>
+                                                          <div className="rounded-2xl overflow-hidden">
                                                             <div className={`flex items-center gap-3 px-4 py-2.5 ${tier.bgClass}`}>
                                                                 <div className="w-7 text-center flex-shrink-0"><Icon name={tier.icon} className="text-sm"/></div>
                                                                 <div className="flex-1 min-w-0">
@@ -2479,6 +2460,7 @@
                                                                     )}
                                                                 </div>
                                                             </div>
+                                                          </div>
                                                         </div>
                                                     );
                                                 })}
