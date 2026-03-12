@@ -1841,9 +1841,6 @@
             const [hideOwnerFromRank, setHideOwnerFromRank] = React.useState(false);
             const [savingHideOwner, setSavingHideOwner] = React.useState(false);
             const [photoLightbox, setPhotoLightbox] = React.useState(null); // { src, name }
-            const [tierFrames, setTierFrames] = React.useState({}); // { idx: base64 PNG }
-            const [savingFrame, setSavingFrame] = React.useState(false);
-            const [framePreviewModal, setFramePreviewModal] = React.useState(null); // { idx, src }
 
             const DEFAULT_TIER_NAMES = [
                 { name: '🐣 Kasir Baru Netas',    emoji: '🐣' },
@@ -1952,58 +1949,6 @@
                 });
                 return () => unsub();
             }, []);
-
-            // Load bingkai foto tier dari Firestore
-            React.useEffect(() => {
-                const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'config', 'tierFrames');
-                const unsub = window.onSnapshot(ref, snap => {
-                    if (snap.exists()) setTierFrames(snap.data().frames || {});
-                    else setTierFrames({});
-                });
-                return () => unsub();
-            }, []);
-
-            // Kompres PNG frame ke ukuran 256x256
-            const compressFramePng = (file) => new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = 256; canvas.height = 256;
-                        const ctx = canvas.getContext('2d');
-                        ctx.clearRect(0, 0, 256, 256);
-                        ctx.drawImage(img, 0, 0, 256, 256);
-                        resolve(canvas.toDataURL('image/png'));
-                    };
-                    img.onerror = reject;
-                    img.src = e.target.result;
-                };
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
-
-            const handleSaveTierFrame = async (idx, base64) => {
-                setSavingFrame(true);
-                try {
-                    const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'config', 'tierFrames');
-                    await window.setDoc(ref, { frames: { ...tierFrames, [idx]: base64 } }, { merge: true });
-                    popToast('Bingkai tier berhasil diupload! 🖼️');
-                } catch (err) { popToast('Gagal menyimpan bingkai: ' + (err?.message||'error'), 'error'); }
-                setSavingFrame(false);
-            };
-
-            const handleDeleteTierFrame = async (idx) => {
-                setSavingFrame(true);
-                try {
-                    const newFrames = { ...tierFrames };
-                    delete newFrames[idx];
-                    const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'config', 'tierFrames');
-                    await window.setDoc(ref, { frames: newFrames });
-                    popToast('Bingkai tier dihapus');
-                } catch { popToast('Gagal menghapus bingkai', 'error'); }
-                setSavingFrame(false);
-            };
 
             const handleToggleHideOwner = async () => {
                 setSavingHideOwner(true);
@@ -2143,47 +2088,6 @@
                         </div>
                     )}
 
-                    {/* Frame preview modal */}
-                    {framePreviewModal && (
-                        <div
-                            onClick={() => setFramePreviewModal(null)}
-                            style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:200,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'20px'}}
-                        >
-                            <div style={{background:'white',borderRadius:'24px',padding:'24px',maxWidth:'320px',width:'100%',boxShadow:'0 20px 60px rgba(0,0,0,0.5)'}} onClick={e=>e.stopPropagation()}>
-                                <p style={{fontWeight:900,fontSize:'14px',color:'#1e293b',marginBottom:'4px',textAlign:'center'}}>🖼️ Bingkai Tier {framePreviewModal.idx+1}</p>
-                                <p style={{fontSize:'11px',color:'#94a3b8',textAlign:'center',marginBottom:'16px'}}>Preview tampilan di foto profil</p>
-                                {/* Demo: foto profil + frame overlay */}
-                                <div style={{display:'flex',justifyContent:'center',gap:'20px',marginBottom:'16px'}}>
-                                    <div style={{textAlign:'center'}}>
-                                        <p style={{fontSize:'10px',color:'#64748b',fontWeight:700,marginBottom:'6px'}}>Tanpa Bingkai</p>
-                                        <div style={{width:'80px',height:'80px',borderRadius:'16px',background:'linear-gradient(135deg,#6366f1,#8b5cf6)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto'}}>
-                                            <span style={{color:'white',fontWeight:900,fontSize:'28px'}}>K</span>
-                                        </div>
-                                    </div>
-                                    <div style={{textAlign:'center'}}>
-                                        <p style={{fontSize:'10px',color:'#64748b',fontWeight:700,marginBottom:'6px'}}>Dengan Bingkai</p>
-                                        <div style={{width:'80px',height:'80px',borderRadius:'16px',background:'linear-gradient(135deg,#6366f1,#8b5cf6)',display:'flex',alignItems:'center',justifyContent:'center',position:'relative',margin:'0 auto'}}>
-                                            <span style={{color:'white',fontWeight:900,fontSize:'28px'}}>K</span>
-                                            <img src={framePreviewModal.src} style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',pointerEvents:'none',borderRadius:'16px'}} alt="frame"/>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div style={{display:'flex',gap:'8px'}}>
-                                    {isOwner && (
-                                        <button
-                                            onClick={() => { handleDeleteTierFrame(framePreviewModal.idx); setFramePreviewModal(null); }}
-                                            style={{flex:1,padding:'10px',background:'#fee2e2',color:'#dc2626',border:'none',borderRadius:'12px',fontWeight:700,fontSize:'13px',cursor:'pointer'}}
-                                        >🗑️ Hapus Bingkai</button>
-                                    )}
-                                    <button
-                                        onClick={() => setFramePreviewModal(null)}
-                                        style={{flex:1,padding:'10px',background:'#f1f5f9',color:'#475569',border:'none',borderRadius:'12px',fontWeight:700,fontSize:'13px',cursor:'pointer'}}
-                                    >Tutup</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                     <div className="bg-white/90 backdrop-blur-sm rounded-[30px] shadow-soft border border-white overflow-hidden">
                         <div className="p-6 pb-4 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-violet-50">
                             <div className="flex items-center gap-4 mb-4">
@@ -2318,9 +2222,9 @@
                                                 <div className="bg-gradient-to-b from-amber-50 to-orange-50 rounded-2xl border border-amber-200 p-4">
                                                     <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest text-center mb-4">🏆 Top Kasir</p>
                                                     <div className="flex items-end justify-center gap-3">
-                                                        {leaderboard[1]?.revenue>0 && <div className="flex flex-col items-center gap-1 flex-1"><div className="relative"><div className="w-14 h-14 rounded-2xl overflow-hidden bg-slate-400 flex items-center justify-center border-2 border-slate-300 shadow-md">{leaderboard[1].profilePhoto?<img src={leaderboard[1].profilePhoto} className="w-full h-full object-cover" style={{objectPosition:leaderboard[1].photoPosition||'50% 50%'}} alt=""/>:<span className="text-white font-black text-xl">{getInitial(leaderboard[1].namaLengkap)}</span>}</div>{leaderboard[1].tier&&tierFrames[leaderboard[1].tier.tier-1]&&<img src={tierFrames[leaderboard[1].tier.tier-1]} style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',pointerEvents:'none'}} alt=""/>}<span className="absolute -top-2 -right-2 text-base">🥈</span></div><p className="text-[10px] font-black text-slate-700 text-center truncate w-full">{leaderboard[1].namaLengkap}</p><p className="text-[9px] text-slate-500 font-bold">{formatRupiah(leaderboard[1].revenue)}</p><div className="w-full h-12 bg-slate-300 rounded-t-xl"></div></div>}
-                                                        {leaderboard[0]?.revenue>0 && <div className="flex flex-col items-center gap-1 flex-1"><div className="relative"><div className="w-16 h-16 rounded-2xl overflow-hidden bg-amber-400 flex items-center justify-center border-2 border-amber-300 shadow-lg">{leaderboard[0].profilePhoto?<img src={leaderboard[0].profilePhoto} className="w-full h-full object-cover" style={{objectPosition:leaderboard[0].photoPosition||'50% 50%'}} alt=""/>:<span className="text-white font-black text-2xl">{getInitial(leaderboard[0].namaLengkap)}</span>}</div>{leaderboard[0].tier&&tierFrames[leaderboard[0].tier.tier-1]&&<img src={tierFrames[leaderboard[0].tier.tier-1]} style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',pointerEvents:'none'}} alt=""/>}<span className="absolute -top-3 -right-2 text-xl">🥇</span></div><p className="text-[10px] font-black text-amber-800 text-center truncate w-full">{leaderboard[0].namaLengkap}</p><p className="text-[9px] text-amber-700 font-bold">{formatRupiah(leaderboard[0].revenue)}</p><div className="w-full h-20 bg-amber-400 rounded-t-xl"></div></div>}
-                                                        {leaderboard[2]?.revenue>0 && <div className="flex flex-col items-center gap-1 flex-1"><div className="relative"><div className="w-14 h-14 rounded-2xl overflow-hidden bg-orange-400 flex items-center justify-center border-2 border-orange-300 shadow-md">{leaderboard[2].profilePhoto?<img src={leaderboard[2].profilePhoto} className="w-full h-full object-cover" style={{objectPosition:leaderboard[2].photoPosition||'50% 50%'}} alt=""/>:<span className="text-white font-black text-xl">{getInitial(leaderboard[2].namaLengkap)}</span>}</div>{leaderboard[2].tier&&tierFrames[leaderboard[2].tier.tier-1]&&<img src={tierFrames[leaderboard[2].tier.tier-1]} style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',pointerEvents:'none'}} alt=""/>}<span className="absolute -top-2 -right-2 text-base">🥉</span></div><p className="text-[10px] font-black text-slate-700 text-center truncate w-full">{leaderboard[2].namaLengkap}</p><p className="text-[9px] text-slate-500 font-bold">{formatRupiah(leaderboard[2].revenue)}</p><div className="w-full h-8 bg-orange-300 rounded-t-xl"></div></div>}
+                                                        {leaderboard[1]?.revenue>0 && <div className="flex flex-col items-center gap-1 flex-1"><div className="relative"><div className="w-14 h-14 rounded-2xl overflow-hidden bg-slate-400 flex items-center justify-center border-2 border-slate-300 shadow-md">{leaderboard[1].profilePhoto?<img src={leaderboard[1].profilePhoto} className="w-full h-full object-cover" style={{objectPosition:leaderboard[1].photoPosition||'50% 50%'}} alt=""/>:<span className="text-white font-black text-xl">{getInitial(leaderboard[1].namaLengkap)}</span>}</div><span className="absolute -top-2 -right-2 text-base">🥈</span></div><p className="text-[10px] font-black text-slate-700 text-center truncate w-full">{leaderboard[1].namaLengkap}</p><p className="text-[9px] text-slate-500 font-bold">{formatRupiah(leaderboard[1].revenue)}</p><div className="w-full h-12 bg-slate-300 rounded-t-xl"></div></div>}
+                                                        {leaderboard[0]?.revenue>0 && <div className="flex flex-col items-center gap-1 flex-1"><div className="relative"><div className="w-16 h-16 rounded-2xl overflow-hidden bg-amber-400 flex items-center justify-center border-2 border-amber-300 shadow-lg">{leaderboard[0].profilePhoto?<img src={leaderboard[0].profilePhoto} className="w-full h-full object-cover" style={{objectPosition:leaderboard[0].photoPosition||'50% 50%'}} alt=""/>:<span className="text-white font-black text-2xl">{getInitial(leaderboard[0].namaLengkap)}</span>}</div><span className="absolute -top-3 -right-2 text-xl">🥇</span></div><p className="text-[10px] font-black text-amber-800 text-center truncate w-full">{leaderboard[0].namaLengkap}</p><p className="text-[9px] text-amber-700 font-bold">{formatRupiah(leaderboard[0].revenue)}</p><div className="w-full h-20 bg-amber-400 rounded-t-xl"></div></div>}
+                                                        {leaderboard[2]?.revenue>0 && <div className="flex flex-col items-center gap-1 flex-1"><div className="relative"><div className="w-14 h-14 rounded-2xl overflow-hidden bg-orange-400 flex items-center justify-center border-2 border-orange-300 shadow-md">{leaderboard[2].profilePhoto?<img src={leaderboard[2].profilePhoto} className="w-full h-full object-cover" style={{objectPosition:leaderboard[2].photoPosition||'50% 50%'}} alt=""/>:<span className="text-white font-black text-xl">{getInitial(leaderboard[2].namaLengkap)}</span>}</div><span className="absolute -top-2 -right-2 text-base">🥉</span></div><p className="text-[10px] font-black text-slate-700 text-center truncate w-full">{leaderboard[2].namaLengkap}</p><p className="text-[9px] text-slate-500 font-bold">{formatRupiah(leaderboard[2].revenue)}</p><div className="w-full h-8 bg-orange-300 rounded-t-xl"></div></div>}
                                                     </div>
                                                 </div>
                                             )}
@@ -2328,7 +2232,7 @@
                                                 <div className="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-2xl p-4 text-white shadow-lg">
                                                     <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-2">Posisi Kamu</p>
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-xl overflow-hidden bg-white/20 flex items-center justify-center flex-shrink-0 relative">{myEntry.profilePhoto?<img src={myEntry.profilePhoto} className="w-full h-full object-cover" style={{objectPosition:myEntry.photoPosition||'50% 50%'}} alt=""/>:<span className="font-black text-lg">{getInitial(myEntry.namaLengkap)}</span>}{myEntry.tier&&tierFrames[myEntry.tier.tier-1]&&<img src={tierFrames[myEntry.tier.tier-1]} style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',pointerEvents:'none'}} alt=""/>}</div>
+                                                        <div className="w-10 h-10 rounded-xl overflow-hidden bg-white/20 flex items-center justify-center flex-shrink-0">{myEntry.profilePhoto?<img src={myEntry.profilePhoto} className="w-full h-full object-cover" style={{objectPosition:myEntry.photoPosition||'50% 50%'}} alt=""/>:<span className="font-black text-lg">{getInitial(myEntry.namaLengkap)}</span>}</div>
                                                         <div className="flex-1 min-w-0"><p className="font-black text-sm">{myEntry.namaLengkap}</p><p className="text-white/70 text-[10px]">{myEntry.tier?myEntry.tier.shortLabel:'Belum ada transaksi'}</p></div>
                                                         <div className="text-right flex-shrink-0"><p className="text-2xl font-black leading-none">#{myRank}</p><p className="text-white/70 text-[10px]">{formatRupiah(myEntry.revenue)}</p></div>
                                                     </div>
@@ -2347,7 +2251,7 @@
                                                     return (
                                                         <div key={u.id} className={`flex items-center gap-3 p-3 rounded-2xl border ${isSelf?'bg-indigo-50 border-indigo-200':'bg-white border-slate-100'}`}>
                                                             <div className="w-7 text-center flex-shrink-0">{medal?<span className="text-lg">{medal}</span>:<span className="text-xs font-black text-slate-400">#{idx+1}</span>}</div>
-                                                            <div className={`relative w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0 ${u.profilePhoto?'':getAvatarColor(u.id)}`}>{u.profilePhoto?<img src={u.profilePhoto} className="w-full h-full object-cover" style={{objectPosition:u.photoPosition||'50% 50%'}} alt=""/>:<span className="text-white font-black text-sm">{getInitial(u.namaLengkap)}</span>}{u.tier&&tierFrames[u.tier.tier-1]&&<img src={tierFrames[u.tier.tier-1]} style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',pointerEvents:'none'}} alt=""/>}</div>
+                                                            <div className={`w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0 ${u.profilePhoto?'':getAvatarColor(u.id)}`}>{u.profilePhoto?<img src={u.profilePhoto} className="w-full h-full object-cover" style={{objectPosition:u.photoPosition||'50% 50%'}} alt=""/>:<span className="text-white font-black text-sm">{getInitial(u.namaLengkap)}</span>}</div>
                                                             <div className="flex-1 min-w-0">
                                                                 <div className="flex items-center gap-1.5"><p className="font-bold text-slate-800 text-xs truncate">{u.namaLengkap}</p>{isSelf&&<span className="text-[8px] font-black bg-indigo-100 text-indigo-600 px-1 py-0.5 rounded-full flex-shrink-0">SAYA</span>}</div>
                                                                 {u.tier?(<div className="flex items-center gap-1.5 mt-0.5"><span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full border ${u.tier.bgClass}`}>{u.tier.shortLabel}</span><div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden max-w-20"><div className="h-full rounded-full" style={{width:`${Math.min(100,((u.revenue-u.tier.minRp)/1000000)*100)}%`,backgroundColor:u.tier.color}}></div></div></div>):<p className="text-[9px] text-slate-400 mt-0.5">Belum ada transaksi</p>}
@@ -2369,7 +2273,7 @@
                                             {isOwner && (
                                                 <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700 font-semibold">
                                                     <Icon name="pen-to-square" className="flex-shrink-0 text-sm"/>
-                                                    <span>Owner bisa edit nama tier (✏️) dan upload bingkai foto PNG (🖼️) per tier!</span>
+                                                    <span>Owner bisa edit nama tier — klik ✏️ di samping kanan tier mana saja!</span>
                                                 </div>
                                             )}
                                             <div className="space-y-1.5">
@@ -2411,18 +2315,8 @@
                                                                     {!isEditing && <p className="text-[10px] opacity-70 font-medium">{tier.tier===50?'≥ 49 Juta':`${tier.tier-1} Juta – ${tier.tier} Juta`}</p>}
                                                                 </div>
                                                                 <div className="flex items-center gap-1 flex-shrink-0">
-                                                                    {!isEditing && tierUsers.length>0 && tierUsers.map(u=>(<div key={u.id} title={u.namaLengkap} className="relative w-6 h-6 rounded-full overflow-hidden border-2 border-white -ml-1 first:ml-0 flex items-center justify-center bg-indigo-500 shadow-sm">{u.profilePhoto?<img src={u.profilePhoto} className="w-full h-full object-cover" alt=""/>:<span className="text-white text-[8px] font-black">{getInitial(u.namaLengkap)}</span>}{tierFrames[tIdx]&&<img src={tierFrames[tIdx]} style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',pointerEvents:'none'}} alt=""/>}</div>))}
+                                                                    {!isEditing && tierUsers.length>0 && tierUsers.map(u=>(<div key={u.id} title={u.namaLengkap} className="w-6 h-6 rounded-full overflow-hidden border-2 border-white -ml-1 first:ml-0 flex items-center justify-center bg-indigo-500 shadow-sm">{u.profilePhoto?<img src={u.profilePhoto} className="w-full h-full object-cover" alt=""/>:<span className="text-white text-[8px] font-black">{getInitial(u.namaLengkap)}</span>}</div>))}
                                                                     {!isEditing && tierUsers.length===0 && <span className="text-[9px] opacity-50">—</span>}
-                                                                    {/* Thumbnail bingkai jika ada */}
-                                                                    {!isEditing && tierFrames[tIdx] && (
-                                                                        <button
-                                                                            onClick={() => setFramePreviewModal({ idx: tIdx, src: tierFrames[tIdx] })}
-                                                                            title="Lihat bingkai"
-                                                                            className="relative w-6 h-6 rounded-full overflow-hidden border-2 border-dashed border-white/80 bg-white/30 flex-shrink-0 ml-0.5 hover:scale-110 transition-transform"
-                                                                        >
-                                                                            <img src={tierFrames[tIdx]} className="w-full h-full object-cover" alt="frame preview"/>
-                                                                        </button>
-                                                                    )}
                                                                     {isOwner && !isEditing && (
                                                                         <div className="flex items-center gap-1 ml-2">
                                                                             <button
@@ -2436,34 +2330,6 @@
                                                                                     title="Reset ke default"
                                                                                     className="w-6 h-6 flex items-center justify-center rounded-lg bg-white/50 hover:bg-red-100 text-slate-400 hover:text-red-500 text-[10px] transition-all active:scale-90"
                                                                                 ><Icon name="rotate-left"/></button>
-                                                                            )}
-                                                                            {/* Upload bingkai frame */}
-                                                                            <label
-                                                                                htmlFor={`tierFrameInput_${tIdx}`}
-                                                                                title="Upload bingkai foto PNG"
-                                                                                className="w-6 h-6 flex items-center justify-center rounded-lg bg-white/50 hover:bg-violet-100 text-slate-500 hover:text-violet-600 text-[10px] transition-all active:scale-90 cursor-pointer"
-                                                                            >🖼️</label>
-                                                                            <input
-                                                                                id={`tierFrameInput_${tIdx}`}
-                                                                                type="file"
-                                                                                accept="image/png"
-                                                                                style={{display:'none'}}
-                                                                                onChange={async (e) => {
-                                                                                    const file = e.target.files?.[0];
-                                                                                    if (!file) return;
-                                                                                    try {
-                                                                                        const compressed = await compressFramePng(file);
-                                                                                        await handleSaveTierFrame(tIdx, compressed);
-                                                                                    } catch { popToast('Gagal memproses gambar', 'error'); }
-                                                                                    e.target.value = '';
-                                                                                }}
-                                                                            />
-                                                                            {tierFrames[tIdx] && (
-                                                                                <button
-                                                                                    onClick={()=>handleDeleteTierFrame(tIdx)}
-                                                                                    title="Hapus bingkai"
-                                                                                    className="w-6 h-6 flex items-center justify-center rounded-lg bg-white/50 hover:bg-red-100 text-slate-400 hover:text-red-500 text-[10px] transition-all active:scale-90"
-                                                                                ><Icon name="image-slash" /></button>
                                                                             )}
                                                                         </div>
                                                                     )}
@@ -5364,6 +5230,54 @@
                 }
             };
 
+            const playPaymentSound = () => {
+                try {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioContext) return;
+                    const ctx = new AudioContext();
+
+                    const playTone = (freq, startTime, duration, type = 'sine', gain = 0.4) => {
+                        const osc = ctx.createOscillator();
+                        const gainNode = ctx.createGain();
+                        osc.connect(gainNode);
+                        gainNode.connect(ctx.destination);
+                        osc.type = type;
+                        osc.frequency.setValueAtTime(freq, startTime);
+                        gainNode.gain.setValueAtTime(0, startTime);
+                        gainNode.gain.linearRampToValueAtTime(gain, startTime + 0.01);
+                        gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+                        osc.start(startTime);
+                        osc.stop(startTime + duration);
+                    };
+
+                    // Suara "cha-ching" kasir: 3 nada manis naik
+                    const t = ctx.currentTime;
+                    playTone(880,  t + 0.00, 0.18, 'triangle', 0.35);
+                    playTone(1100, t + 0.12, 0.18, 'triangle', 0.35);
+                    playTone(1320, t + 0.24, 0.30, 'triangle', 0.40);
+
+                    // Ting! logam halus di akhir
+                    playTone(2637, t + 0.26, 0.50, 'sine', 0.20);
+
+                    // Suara "klik" mekanis singkat di awal
+                    const bufSize = ctx.sampleRate * 0.04;
+                    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+                    const data = buf.getChannelData(0);
+                    for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufSize);
+                    const noise = ctx.createBufferSource();
+                    noise.buffer = buf;
+                    const noiseGain = ctx.createGain();
+                    noiseGain.gain.setValueAtTime(0.12, t);
+                    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+                    noise.connect(noiseGain);
+                    noiseGain.connect(ctx.destination);
+                    noise.start(t);
+                    noise.stop(t + 0.04);
+
+                    setTimeout(() => ctx.close(), 1500);
+                } catch(e) { console.warn('Sound error:', e); }
+            };
+
             const handleCheckout = async () => {
                 if (!user) return;
                 if (cart.length === 0) return;
@@ -5420,6 +5334,7 @@
                     
                     setReceiptData({ ...newTransaction, id: docRef.id, date: new Date() }); 
                     setPaymentSuccess(true); showToast("Transaksi Berhasil!");
+                    playPaymentSound();
                 } catch (error) { console.error(error); showToast("Transaksi Gagal", "error"); } finally { setIsProcessing(false); }
             };
 
