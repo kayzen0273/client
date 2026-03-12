@@ -486,7 +486,7 @@
 
         // --- DEKORASI IDUL FITRI ---
         const RamadhanDecor = () => (
-            <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+            <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{zIndex: -1}}>
                 {/* Partikel bintang melayang */}
                 <div className="absolute inset-0 z-0">
                     {[...Array(14)].map((_, i) => (
@@ -509,15 +509,15 @@
                 <div className="absolute top-16 right-[35%] text-yellow-300 text-[9px] animate-twinkle delay-500 opacity-50"><Icon name="star" /></div>
                 <div className="absolute -top-10 right-10 w-20 h-0.5 bg-gradient-to-l from-transparent to-white opacity-40 animate-falling-star"></div>
 
-                {/* Gantungan kiri: Bedug / Ketupat */}
-                <div className="absolute -top-6 left-2 md:left-8 z-0 animate-swing origin-top duration-[3500ms]">
-                    <div className="h-24 md:h-40 w-[1px] bg-gold-400/60 mx-auto"></div>
+                {/* Gantungan kiri: Icon Kado — sejajar dengan bintang kanan */}
+                <div className="absolute -top-8 left-2 md:left-12 z-0 animate-swing origin-top duration-[4000ms]">
+                    <div className="h-20 md:h-32 w-[1px] bg-gold-400/60 mx-auto"></div>
                     <div className="text-gold-500 text-4xl md:text-6xl drop-shadow-glow relative z-10"><Icon name="gift" /></div>
                 </div>
 
-                {/* Gantungan ketupat kiri dalam */}
-                <div className="absolute -top-10 left-20 md:left-32 z-0 animate-sway-slow origin-top duration-[5000ms]">
-                    <div className="h-32 md:h-48 w-[1px] bg-gold-400/40 mx-auto"></div>
+                {/* Gantungan ketupat kiri — sejajar dengan ketupat kanan */}
+                <div className="absolute -top-14 left-20 md:left-40 z-0 animate-sway origin-top duration-[5500ms]">
+                    <div className="h-28 md:h-44 w-[1px] bg-gold-400/40 mx-auto"></div>
                     <div className="ketupat mx-auto shadow-lg"></div>
                     <div className="h-4 w-[1px] bg-gold-400/40 mx-auto"></div>
                     <div className="text-green-600 text-[10px] text-center"><Icon name="leaf" /></div>
