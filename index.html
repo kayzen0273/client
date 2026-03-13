@@ -147,130 +147,86 @@
         .ketupat::before { width: 100%; height: 50%; top: 0; left: 0; border-bottom: 1px solid #15803d; }
         .ketupat::after { width: 50%; height: 100%; top: 0; left: 0; border-right: 1px solid #15803d; }
 
-        /* ===================================================
-           EID MUBARAK — Modern Dark Elegant Edition
-           Palette: midnight navy · emerald · gold · white
-           =================================================== */
+        /* ═══════════════════════════════════════════════════════
+           EID MUBARAK — CINEMATIC NIGHT SKY
+           Deep indigo · Nebula · Gold dust · Mandala · Masjid
+           ═══════════════════════════════════════════════════════ */
 
-        /* — Gradient mesh background — */
-        @keyframes mesh-shift {
-            0%,100% { transform: scale(1) rotate(0deg);   opacity: 1; }
-            50%      { transform: scale(1.08) rotate(4deg); opacity: 0.8; }
+        /* Nebula drift */
+        @keyframes nebula-drift {
+            0%   { transform: translate(0,0) scale(1) rotate(0deg); }
+            33%  { transform: translate(20px,-15px) scale(1.06) rotate(3deg); }
+            66%  { transform: translate(-15px,10px) scale(0.97) rotate(-2deg); }
+            100% { transform: translate(0,0) scale(1) rotate(0deg); }
         }
-
-        /* — Particle drift — */
-        @keyframes p-drift {
-            0%   { transform: translateY(0) translateX(0) scale(0.8); opacity: 0; }
-            8%   { opacity: var(--op, 0.7); }
-            50%  { transform: translateY(var(--ty,-55px)) translateX(var(--tx,15px)) scale(1); }
-            92%  { opacity: var(--op, 0.5); }
-            100% { transform: translateY(var(--ty2,-110px)) translateX(var(--tx2,-8px)) scale(0.6); opacity: 0; }
+        /* Star twinkle */
+        @keyframes st {
+            0%,100% { opacity: var(--dim,.15); transform: scale(.7); }
+            50%      { opacity: var(--bright,.95); transform: scale(1.3); }
         }
-
-        /* — Glow pulse — */
-        @keyframes glow-pulse {
-            0%,100% { opacity: 0.5; transform: scale(1); }
-            50%      { opacity: 1;   transform: scale(1.12); }
+        /* Shooting star */
+        @keyframes shoot {
+            0%   { transform: translateX(0) translateY(0); opacity:0; }
+            5%   { opacity:1; }
+            100% { transform: translateX(-350px) translateY(200px); opacity:0; }
         }
-
-        /* — Line draw — */
-        @keyframes line-draw {
-            0%   { stroke-dashoffset: 600; opacity: 0; }
-            20%  { opacity: 1; }
-            100% { stroke-dashoffset: 0;   opacity: 0.6; }
+        /* Gold dust rise */
+        @keyframes dust {
+            0%   { transform: translateY(0) translateX(0) scale(.5); opacity:0; }
+            10%  { opacity: var(--op,.8); }
+            85%  { opacity: var(--op,.6); }
+            100% { transform: translateY(-110vh) translateX(var(--dx,20px)) scale(1.2); opacity:0; }
         }
-        @keyframes line-undraw {
-            0%   { stroke-dashoffset: 0;   opacity: 0.5; }
-            80%  { opacity: 0.5; }
-            100% { stroke-dashoffset: -600; opacity: 0; }
+        /* Mandala rotate */
+        @keyframes man-cw  { to { transform: rotate(360deg); } }
+        @keyframes man-ccw { to { transform: rotate(-360deg); } }
+        /* Moon float */
+        @keyframes moon-bob {
+            0%,100% { transform: translateY(0px) rotate(-5deg); }
+            50%      { transform: translateY(-12px) rotate(-5deg); }
         }
-
-        /* — Float gentle — */
-        @keyframes gentle-float {
-            0%,100% { transform: translateY(0px); }
-            50%      { transform: translateY(-10px); }
+        /* Moon halo pulse */
+        @keyframes halo {
+            0%,100% { transform: scale(1);   opacity:.18; }
+            50%      { transform: scale(1.15); opacity:.3; }
         }
-
-        /* — Crescent reveal — */
-        @keyframes crescent-reveal {
-            0%   { opacity:0; transform: translateY(-20px) scale(0.85); }
-            100% { opacity:1; transform: translateY(0)     scale(1); }
+        /* Banner shimmer */
+        @keyframes banner-shine {
+            0%   { background-position: -300% center; }
+            100% { background-position: 300% center; }
         }
-
-        /* — Shimmer sweep — */
-        @keyframes shimmer-sweep {
-            0%   { background-position: -200% center; }
-            100% { background-position: 200% center; }
+        /* Lantern swing */
+        @keyframes lswing {
+            0%   { transform: rotate(-14deg); }
+            100% { transform: rotate(14deg); }
         }
-
-        /* — Rotate slow — */
-        @keyframes rot-slow {
-            0%   { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        /* Lantern glow */
+        @keyframes lglow {
+            0%,100% { filter: drop-shadow(0 0 8px var(--lg,rgba(251,191,36,.9))); }
+            50%      { filter: drop-shadow(0 0 22px var(--lg,rgba(251,191,36,1))); }
         }
-        @keyframes rot-slow-rev {
-            0%   { transform: rotate(0deg); }
-            100% { transform: rotate(-360deg); }
+        /* Uplight */
+        @keyframes uplight {
+            0%,100% { opacity:.35; }
+            50%      { opacity:.55; }
         }
-
-        /* — Mosque — */
-        .mosque-silhouette { color: #0f172a; }
-        @keyframes mosque-rise {
-            0%,100% { opacity: 0.18; }
-            50%      { opacity: 0.26; }
+        /* Text glow */
+        @keyframes text-glow {
+            0%,100% { text-shadow: 0 0 12px rgba(250,204,21,.6), 0 0 30px rgba(250,204,21,.2); }
+            50%      { text-shadow: 0 0 24px rgba(255,230,80,1), 0 0 60px rgba(250,204,21,.4), 0 0 90px rgba(250,204,21,.15); }
         }
-        .mosque-silhouette { animation: mosque-rise 8s ease-in-out infinite; }
-
-        /* — Emerald bar — */
-        .eid-top-bar {
-            position: absolute; top: 0; left: 0; right: 0; height: 3px;
-            background: linear-gradient(90deg,
-                transparent 0%,
-                #065f46 5%,
-                #059669 20%,
-                #34d399 40%,
-                #fde68a 50%,
-                #34d399 60%,
-                #059669 80%,
-                #065f46 95%,
-                transparent 100%
-            );
-            background-size: 200% 100%;
-            animation: shimmer-sweep 4s linear infinite;
-            z-index: 5;
-        }
-        .eid-bottom-bar {
-            position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
-            background: linear-gradient(90deg,
-                transparent 0%,
-                #1e1b4b 5%,
-                #4338ca 20%,
-                #818cf8 40%,
-                #fde68a 50%,
-                #818cf8 60%,
-                #4338ca 80%,
-                #1e1b4b 95%,
-                transparent 100%
-            );
-            background-size: 200% 100%;
-            animation: shimmer-sweep 6s linear infinite reverse;
-            z-index: 5;
+        /* Fade in up */
+        @keyframes fadeInUp {
+            from { opacity:0; transform:translateY(20px); }
+            to   { opacity:1; transform:translateY(0); }
         }
 
-        /* — Geometric ring — */
-        .geo-ring {
-            position: absolute;
-            border-radius: 50%;
-            border: 1px solid var(--ring-color, rgba(52,211,153,0.3));
-            animation: rot-slow var(--dur, 30s) linear infinite;
+        /* Mosque */
+        .mosque-silhouette { color:#0f172a; }
+        @keyframes mosque-breathe {
+            0%,100% { opacity:.85; } 50% { opacity:1; }
         }
-        .geo-ring-rev {
-            position: absolute;
-            border-radius: 50%;
-            border: 1px solid var(--ring-color, rgba(250,204,21,0.2));
-            border-style: dashed;
-            animation: rot-slow-rev var(--dur, 40s) linear infinite;
-        }
+        .mosque-silhouette { animation: mosque-breathe 6s ease-in-out infinite; }
 
         /* FIREWORKS STYLE */
         .firework-particle { position: fixed; pointer-events: none; border-radius: 50%; z-index: 9999; animation: firework-fade 0.8s ease-out forwards; }
@@ -609,257 +565,227 @@
 
 
 
-        // ── EID MUBARAK — Modern Dark Elegant ──────────────────
+        // ══════════════════════════════════════════════════════
+        //  EID MUBARAK — CINEMATIC NIGHT SKY 🌙✨
+        // ══════════════════════════════════════════════════════
         const RamadhanDecor = () => {
 
-            const particles = [
-                {l:'4%',  b:'8%',  s:4, c:'#34d399',op:.6,ty:'-60px',tx:'12px', ty2:'-120px',tx2:'-6px', dur:12,delay:0},
-                {l:'11%', b:'20%', s:3, c:'#fde68a',op:.5,ty:'-45px',tx:'-10px',ty2:'-90px', tx2:'5px',  dur:15,delay:2.5},
-                {l:'19%', b:'5%',  s:5, c:'#818cf8',op:.6,ty:'-70px',tx:'8px',  ty2:'-130px',tx2:'-12px',dur:11,delay:0.8},
-                {l:'28%', b:'15%', s:3, c:'#34d399',op:.5,ty:'-50px',tx:'-15px',ty2:'-95px', tx2:'8px',  dur:14,delay:4},
-                {l:'38%', b:'10%', s:4, c:'#fde68a',op:.7,ty:'-65px',tx:'18px', ty2:'-125px',tx2:'-9px', dur:10,delay:1.5},
-                {l:'48%', b:'22%', s:3, c:'#a5f3fc',op:.5,ty:'-40px',tx:'-8px', ty2:'-80px', tx2:'4px',  dur:16,delay:3.2},
-                {l:'57%', b:'7%',  s:5, c:'#fde68a',op:.65,ty:'-72px',tx:'14px',ty2:'-130px',tx2:'-10px',dur:12,delay:0.3},
-                {l:'66%', b:'18%', s:3, c:'#34d399',op:.5,ty:'-48px',tx:'-12px',ty2:'-92px', tx2:'6px',  dur:13,delay:2},
-                {l:'74%', b:'6%',  s:4, c:'#818cf8',op:.6,ty:'-62px',tx:'10px', ty2:'-118px',tx2:'-7px', dur:11,delay:4.5},
-                {l:'83%', b:'16%', s:3, c:'#fde68a',op:.5,ty:'-44px',tx:'-9px', ty2:'-85px', tx2:'5px',  dur:15,delay:1.2},
-                {l:'91%', b:'9%',  s:5, c:'#34d399',op:.7,ty:'-68px',tx:'16px', ty2:'-128px',tx2:'-11px',dur:10,delay:3.8},
-                {l:'97%', b:'25%', s:3, c:'#a5f3fc',op:.45,ty:'-35px',tx:'-6px',ty2:'-70px', tx2:'3px',  dur:18,delay:5},
+            const stars = [
+                {t:'4%', l:'3%',  s:3,bright:.95,dim:.2, dur:2.1,delay:0  },
+                {t:'7%', l:'9%',  s:2,bright:.7, dim:.1, dur:3.4,delay:.6 },
+                {t:'3%', l:'17%', s:4,bright:.9, dim:.25,dur:2.6,delay:1.1},
+                {t:'9%', l:'24%', s:2,bright:.6, dim:.1, dur:4.0,delay:.3 },
+                {t:'5%', l:'31%', s:3,bright:.85,dim:.2, dur:2.9,delay:1.8},
+                {t:'2%', l:'38%', s:2,bright:.7, dim:.15,dur:3.5,delay:.9 },
+                {t:'8%', l:'45%', s:3,bright:.9, dim:.2, dur:2.2,delay:2.0},
+                {t:'4%', l:'53%', s:4,bright:.95,dim:.3, dur:2.8,delay:.5 },
+                {t:'6%', l:'60%', s:2,bright:.65,dim:.1, dur:3.8,delay:1.4},
+                {t:'3%', l:'67%', s:3,bright:.8, dim:.2, dur:2.5,delay:.2 },
+                {t:'7%', l:'74%', s:2,bright:.7, dim:.1, dur:4.2,delay:2.3},
+                {t:'4%', l:'80%', s:4,bright:.9, dim:.25,dur:2.3,delay:.8 },
+                {t:'8%', l:'87%', s:2,bright:.6, dim:.1, dur:3.6,delay:1.6},
+                {t:'5%', l:'93%', s:3,bright:.85,dim:.2, dur:2.7,delay:.4 },
+                {t:'12%',l:'6%',  s:2,bright:.6, dim:.1, dur:4.5,delay:3.0},
+                {t:'14%',l:'21%', s:3,bright:.75,dim:.15,dur:3.1,delay:1.2},
+                {t:'11%',l:'49%', s:2,bright:.65,dim:.1, dur:3.9,delay:.7 },
+                {t:'15%',l:'71%', s:3,bright:.8, dim:.2, dur:2.4,delay:2.1},
+                {t:'13%',l:'89%', s:2,bright:.7, dim:.1, dur:4.1,delay:.1 },
+                {t:'18%',l:'35%', s:2,bright:.55,dim:.08,dur:5.0,delay:3.5},
             ];
-
-            const glowOrbs = [
-                {top:'8%',  left:'6%',   w:180, h:180, color:'rgba(52,211,153,0.07)',  dur:8,  delay:0},
-                {top:'5%',  right:'8%',  w:220, h:220, color:'rgba(250,204,21,0.06)',  dur:10, delay:2},
-                {top:'40%', left:'1%',   w:150, h:150, color:'rgba(129,140,248,0.07)', dur:12, delay:4},
-                {top:'40%', right:'1%',  w:160, h:160, color:'rgba(52,211,153,0.06)',  dur:9,  delay:1},
-                {top:'70%', left:'10%',  w:200, h:200, color:'rgba(250,204,21,0.05)',  dur:11, delay:3},
-                {top:'70%', right:'10%', w:190, h:190, color:'rgba(129,140,248,0.06)', dur:14, delay:0.5},
+            const shoots = [
+                {t:'6%',  r:'8%',  dur:'5s',  delay:'0s'  },
+                {t:'11%', r:'35%', dur:'7s',  delay:'3.5s'},
+                {t:'4%',  r:'60%', dur:'9s',  delay:'7s'  },
+                {t:'8%',  r:'15%', dur:'6s',  delay:'11s' },
             ];
+            const dust = [
+                {l:'5%',  s:3,c:'#fde68a',op:.7, dx:'18px', dur:14,delay:0  },
+                {l:'12%', s:2,c:'#f0abfc',op:.5, dx:'-12px',dur:17,delay:2  },
+                {l:'20%', s:4,c:'#fde68a',op:.8, dx:'22px', dur:12,delay:.8 },
+                {l:'28%', s:2,c:'#a5f3fc',op:.55,dx:'-8px', dur:19,delay:4  },
+                {l:'36%', s:3,c:'#fde68a',op:.7, dx:'15px', dur:13,delay:1.5},
+                {l:'44%', s:2,c:'#bbf7d0',op:.5, dx:'-18px',dur:16,delay:3.2},
+                {l:'52%', s:4,c:'#fde68a',op:.75,dx:'20px', dur:11,delay:.3 },
+                {l:'60%', s:2,c:'#f0abfc',op:.5, dx:'-10px',dur:18,delay:5  },
+                {l:'68%', s:3,c:'#fde68a',op:.7, dx:'16px', dur:14,delay:2.5},
+                {l:'75%', s:2,c:'#a5f3fc',op:.55,dx:'-14px',dur:15,delay:.6 },
+                {l:'82%', s:4,c:'#fde68a',op:.8, dx:'24px', dur:12,delay:3.8},
+                {l:'89%', s:2,c:'#bbf7d0',op:.5, dx:'-9px', dur:20,delay:1.2},
+                {l:'95%', s:3,c:'#fde68a',op:.65,dx:'12px', dur:16,delay:6  },
+            ];
+            const Lantern = ({w=44,body='#facc15',accent='#ca8a04',inner='rgba(255,240,100,0.7)',lg='rgba(250,204,21,0.9)',sd=4.5,sa=0,h=90,l,r}) => (
+                <div style={{position:'absolute',top:0,...(l?{left:l}:{right:r}),display:'flex',flexDirection:'column',alignItems:'center',transformOrigin:'top center',animation:`lswing ${sd}s ease-in-out infinite alternate`,animationDelay:`${sa}s`}}>
+                    <div style={{width:1.5,height:h,background:'linear-gradient(to bottom,rgba(180,130,30,0.7),rgba(180,130,30,0.15))'}}/>
+                    <div style={{animation:`lglow 3s ease-in-out infinite`,'--lg':lg}}>
+                        <svg width={w} height={w*1.5} viewBox="0 0 44 66" fill="none">
+                            <rect x="17" y="0" width="10" height="6" rx="3" fill={accent}/>
+                            <line x1="22" y1="6" x2="22" y2="12" stroke={accent} strokeWidth="2"/>
+                            <ellipse cx="22" cy="14" rx="9" ry="4" fill={accent}/>
+                            <path d="M5 16 C2 24 1 34 1 42 C1 55 10 62 22 62 C34 62 43 55 43 42 C43 34 42 24 39 16Z" fill={body} opacity=".9"/>
+                            <path d="M10 18 L10 56 Q22 62 34 56 L34 18 Q22 12 10 18Z" fill="none" stroke={accent} strokeWidth=".8" opacity=".5"/>
+                            <ellipse cx="22" cy="38" rx="8" ry="12" fill={inner}/>
+                            <polygon points="22,30 24,36 30,36 25.5,40 27.5,46 22,42 16.5,46 18.5,40 14,36 20,36" fill="white" opacity=".85"/>
+                            <ellipse cx="22" cy="60" rx="9" ry="3.5" fill={accent}/>
+                        </svg>
+                    </div>
+                </div>
+            );
+            const manAngles12 = [0,30,60,90,120,150,180,210,240,270,300,330];
+            const manAngles8  = [0,45,90,135,180,225,270,315];
 
             return (
                 <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{zIndex:-1}}>
 
-                    {/* ── Shimmer bars ── */}
-                    <div className="eid-top-bar"/>
-                    <div className="eid-bottom-bar"/>
+                    {/* Night sky vignette */}
+                    <div style={{position:'absolute',inset:0,background:'linear-gradient(180deg,rgba(3,7,30,0.52) 0%,rgba(7,18,58,0.35) 35%,rgba(10,25,70,0.18) 65%,transparent 100%)'}}/>
 
-                    {/* ── Soft radial glow orbs ── */}
-                    {glowOrbs.map((o,i)=>(
-                        <div key={i} style={{
-                            position:'absolute',
-                            top: o.top,
-                            ...(o.left ? {left:o.left} : {right:o.right}),
-                            width: o.w, height: o.h,
-                            borderRadius:'50%',
-                            background: `radial-gradient(circle, ${o.color} 0%, transparent 70%)`,
-                            animation:`glow-pulse ${o.dur}s ease-in-out infinite`,
-                            animationDelay:`${o.delay}s`,
-                        }}/>
+                    {/* Nebula clouds */}
+                    {[
+                        {t:'0%', l:'-12%',w:440,h:250,c:'rgba(99,102,241,0.10)',dur:20,d:0},
+                        {t:'4%', r:'-8%', w:360,h:200,c:'rgba(16,185,129,0.09)',dur:24,d:4},
+                        {t:'10%',l:'22%', w:480,h:190,c:'rgba(250,204,21,0.055)',dur:16,d:2},
+                        {t:'0%', l:'38%', w:320,h:280,c:'rgba(236,72,153,0.065)',dur:28,d:7},
+                    ].map((n,i)=>(
+                        <div key={i} style={{position:'absolute',top:n.t,...(n.l?{left:n.l}:{right:n.r}),width:n.w,height:n.h,borderRadius:'50%',background:`radial-gradient(ellipse,${n.c} 0%,transparent 70%)`,animation:`nebula-drift ${n.dur}s ease-in-out infinite`,animationDelay:`${n.d}s`,filter:'blur(2px)'}}/>
                     ))}
 
-                    {/* ── Geometric rings kiri ── */}
-                    <div style={{position:'absolute', top:'5%', left:'-30px'}}>
-                        <div className="geo-ring" style={{
-                            width:140,height:140,
-                            '--ring-color':'rgba(52,211,153,0.25)',
-                            '--dur':'28s',
-                        }}/>
-                        <div className="geo-ring-rev" style={{
-                            position:'absolute', top:20, left:20,
-                            width:100, height:100,
-                            '--ring-color':'rgba(250,204,21,0.18)',
-                            '--dur':'18s',
-                        }}/>
-                        <div style={{
-                            position:'absolute', top:55, left:55,
-                            width:30, height:30,
-                            borderRadius:'50%',
-                            background:'radial-gradient(circle, rgba(52,211,153,0.5) 0%, transparent 70%)',
-                            animation:'glow-pulse 3s ease-in-out infinite',
-                        }}/>
-                    </div>
+                    {/* Stars */}
+                    {stars.map((s,i)=>(
+                        <div key={i} style={{position:'absolute',top:s.t,left:s.l,width:s.s,height:s.s,borderRadius:'50%',background:'#fff',boxShadow:`0 0 ${s.s+2}px rgba(255,255,255,0.8)`,animation:`st ${s.dur}s ease-in-out infinite`,animationDelay:`${s.delay}s`,'--bright':s.bright,'--dim':s.dim}}/>
+                    ))}
 
-                    {/* ── Geometric rings kanan ── */}
-                    <div style={{position:'absolute', top:'5%', right:'-30px'}}>
-                        <div className="geo-ring" style={{
-                            width:140,height:140,
-                            '--ring-color':'rgba(250,204,21,0.22)',
-                            '--dur':'22s',
-                        }}/>
-                        <div className="geo-ring-rev" style={{
-                            position:'absolute', top:20, left:20,
-                            width:100, height:100,
-                            '--ring-color':'rgba(129,140,248,0.2)',
-                            '--dur':'15s',
-                        }}/>
-                        <div style={{
-                            position:'absolute', top:55, left:55,
-                            width:30, height:30,
-                            borderRadius:'50%',
-                            background:'radial-gradient(circle, rgba(250,204,21,0.5) 0%, transparent 70%)',
-                            animation:'glow-pulse 4s ease-in-out infinite 1s',
-                        }}/>
-                    </div>
+                    {/* Shooting stars */}
+                    {shoots.map((s,i)=>(
+                        <div key={i} style={{position:'absolute',top:s.t,...(s.r?{right:s.r}:{left:s.l}),width:90,height:2,background:'linear-gradient(to right,rgba(255,255,255,0),rgba(255,255,255,0.9) 50%,rgba(255,255,200,0.6))',borderRadius:4,animation:`shoot ${s.dur} linear infinite`,animationDelay:s.delay,boxShadow:'0 0 6px rgba(255,255,200,0.8)'}}/>
+                    ))}
 
-                    {/* ── Crescent + star centred ── */}
-                    <div style={{
-                        position:'absolute', top:'3%', left:'50%', transform:'translateX(-50%)',
-                        animation:'crescent-reveal 1.2s cubic-bezier(0.34,1.56,0.64,1) forwards, gentle-float 7s ease-in-out 1.2s infinite',
-                        zIndex:4,
-                    }}>
-                        <svg width="130" height="90" viewBox="0 0 130 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    {/* ── Moon + Crescent centred ── */}
+                    <div style={{position:'absolute',top:'2%',left:'50%',transform:'translateX(-50%)',zIndex:4,animation:'moon-bob 8s ease-in-out infinite, fadeInUp .8s ease-out both'}}>
+                        {[160,120,80].map((r,i)=>(
+                            <div key={i} style={{position:'absolute',top:'50%',left:'50%',width:r,height:r,marginTop:-r/2,marginLeft:-r/2,borderRadius:'50%',border:`1px solid rgba(250,204,21,${0.06+i*0.04})`,animation:`halo ${5+i*2}s ease-in-out infinite`,animationDelay:`${i*.8}s`}}/>
+                        ))}
+                        <svg width="150" height="100" viewBox="0 0 150 100" fill="none">
                             <defs>
-                                <radialGradient id="moonHalo" cx="50%" cy="50%" r="50%">
-                                    <stop offset="0%" stopColor="rgba(250,204,21,0.12)"/>
-                                    <stop offset="100%" stopColor="transparent"/>
-                                </radialGradient>
-                                <linearGradient id="moonFill" x1="0" y1="0" x2="1" y2="1">
-                                    <stop offset="0%" stopColor="#fef9c3"/>
-                                    <stop offset="50%" stopColor="#facc15"/>
-                                    <stop offset="100%" stopColor="#92400e"/>
-                                </linearGradient>
-                                <filter id="moonGlowF">
-                                    <feGaussianBlur stdDeviation="3" result="blur"/>
-                                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                                </filter>
+                                <radialGradient id="haloRad" cx="35%" cy="45%" r="55%"><stop offset="0%" stopColor="rgba(250,204,21,0.18)"/><stop offset="100%" stopColor="transparent"/></radialGradient>
+                                <linearGradient id="moonGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#fefce8"/><stop offset="40%" stopColor="#fde047"/><stop offset="100%" stopColor="#92400e"/></linearGradient>
+                                <filter id="mf" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                                <filter id="sf" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
                             </defs>
-                            {/* Halo */}
-                            <ellipse cx="45" cy="48" rx="42" ry="42" fill="url(#moonHalo)"/>
-                            {/* Bulan sabit */}
-                            <path filter="url(#moonGlowF)"
-                                d="M65 46C65 63 53 76 37 76C27 76 18 71 12 63C18 65 25 66 32 66C50 66 65 51 65 33C65 24 62 16 56 10C61 17 65 31 65 46Z"
-                                fill="url(#moonFill)"/>
-                            {/* Highlight */}
-                            <path d="M56 18C60 25 62 33 62 41C62 56 53 68 40 72C50 68 58 56 58 43C58 34 55 26 50 21Z"
-                                fill="rgba(255,255,255,0.18)"/>
-                            {/* Star utama */}
-                            <g filter="url(#moonGlowF)">
-                                <polygon points="100,10 103,20 114,20 105.5,26 108.5,36 100,30 91.5,36 94.5,26 86,20 97,20"
-                                    fill="#fde68a"/>
+                            <ellipse cx="47" cy="52" rx="44" ry="44" fill="url(#haloRad)"/>
+                            <path filter="url(#mf)" d="M70 50C70 68 57 81 40 81C29 81 20 76 14 67C21 70 29 71.5 37 71.5C57 71.5 73 55.5 73 35.5C73 25.5 70 17 64 10C68 18 70 34 70 50Z" fill="url(#moonGrad)"/>
+                            <path d="M61 17C66 25 68 34 68 43C68 59 58 72 43 76C54 72 62 59 62 45C62 35 59 26 54 20Z" fill="rgba(255,255,220,0.22)"/>
+                            <g filter="url(#sf)">
+                                <polygon points="115,10 118.5,21.5 131,21.5 121,28 124.5,39.5 115,33 105.5,39.5 109,28 99,21.5 111.5,21.5" fill="#fef08a"/>
+                                <polygon points="115,10 118.5,21.5 131,21.5 121,28 124.5,39.5 115,33 105.5,39.5 109,28 99,21.5 111.5,21.5" fill="rgba(255,255,150,0.35)" transform="scale(1.15) translate(-9,-3)"/>
                             </g>
-                            {/* Stars kecil */}
-                            <circle cx="18" cy="16" r="2.5" fill="#fde68a" opacity="0.75"/>
-                            <circle cx="118" cy="52" r="2"   fill="#a5f3fc" opacity="0.8"/>
-                            <circle cx="78"  cy="6"  r="1.8" fill="#fde68a" opacity="0.7"/>
-                            <circle cx="10"  cy="42" r="1.5" fill="#34d399" opacity="0.65"/>
+                            <circle cx="20" cy="18" r="2.5" fill="#fef08a" opacity=".8"/>
+                            <circle cx="88"  cy="8"  r="2"   fill="#a5f3fc" opacity=".7"/>
+                            <circle cx="135" cy="55" r="2"   fill="#fde68a" opacity=".75"/>
+                            <circle cx="10"  cy="50" r="1.5" fill="#bbf7d0" opacity=".65"/>
+                            <circle cx="75"  cy="5"  r="1.5" fill="#fde68a" opacity=".6"/>
                         </svg>
                     </div>
 
-                    {/* ── Geometric ornament sisi kiri tengah ── */}
-                    <div style={{position:'absolute', top:'35%', left:'0', opacity:0.22, animation:'gentle-float 9s ease-in-out infinite 1s'}}>
-                        <svg width="50" height="200" viewBox="0 0 50 200" fill="none">
-                            <defs>
-                                <linearGradient id="leftLineG" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
-                                    <stop offset="0" stopColor="#34d399" stopOpacity="0"/>
-                                    <stop offset="0.3" stopColor="#34d399" stopOpacity="1"/>
-                                    <stop offset="0.7" stopColor="#fde68a" stopOpacity="1"/>
-                                    <stop offset="1" stopColor="#fde68a" stopOpacity="0"/>
-                                </linearGradient>
-                            </defs>
-                            <line x1="25" y1="0" x2="25" y2="200" stroke="url(#leftLineG)" strokeWidth="1.5"/>
-                            {[30,65,100,135,170].map((y,i)=>(
-                                <g key={i} transform={`translate(25,${y})`}>
-                                    <polygon points="0,-9 5.2,4.5 -5.2,4.5" fill={i%2===0?'#34d399':'#fde68a'} opacity="0.9" transform={i%2===0?'':'rotate(180)'}/>
-                                    <circle r="3" fill="white" opacity="0.5"/>
-                                </g>
-                            ))}
+                    {/* ── Mandala kiri ── */}
+                    <div style={{position:'absolute',top:'8%',left:'-55px',opacity:.20,width:160,height:160}}>
+                        <svg viewBox="0 0 160 160" style={{width:'100%',height:'100%'}}>
+                            <g transform="translate(80,80)" style={{animation:'man-ccw 60s linear infinite',transformOrigin:'0 0'}}>
+                                {manAngles12.map((a,i)=>(
+                                    <g key={i} transform={`rotate(${a})`}>
+                                        <line x1="0" y1="20" x2="0" y2="68" stroke="#fde68a" strokeWidth="1"/>
+                                        <circle cx="0" cy="68" r="3" fill="#fde68a"/>
+                                        <ellipse cx="0" cy="44" rx="4" ry="8" fill="rgba(250,204,21,0.5)"/>
+                                    </g>
+                                ))}
+                            </g>
+                            <g transform="translate(80,80)" style={{animation:'man-cw 40s linear infinite',transformOrigin:'0 0'}}>
+                                {manAngles8.map((a,i)=>(
+                                    <g key={i} transform={`rotate(${a})`}>
+                                        <polygon points="0,-30 5,-20 -5,-20" fill="#34d399" opacity=".8"/>
+                                        <polygon points="0,-52 4,-44 -4,-44" fill="#34d399" opacity=".5"/>
+                                    </g>
+                                ))}
+                            </g>
+                            <circle cx="80" cy="80" r="16" fill="none" stroke="#fde68a" strokeWidth="1" opacity=".6"/>
+                            <circle cx="80" cy="80" r="6" fill="#fde68a" opacity=".7"/>
                         </svg>
                     </div>
 
-                    {/* ── Geometric ornament sisi kanan tengah ── */}
-                    <div style={{position:'absolute', top:'35%', right:'0', opacity:0.22, animation:'gentle-float 11s ease-in-out infinite 2s'}}>
-                        <svg width="50" height="200" viewBox="0 0 50 200" fill="none">
-                            <defs>
-                                <linearGradient id="rightLineG" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
-                                    <stop offset="0" stopColor="#818cf8" stopOpacity="0"/>
-                                    <stop offset="0.3" stopColor="#818cf8" stopOpacity="1"/>
-                                    <stop offset="0.7" stopColor="#fde68a" stopOpacity="1"/>
-                                    <stop offset="1" stopColor="#fde68a" stopOpacity="0"/>
-                                </linearGradient>
-                            </defs>
-                            <line x1="25" y1="0" x2="25" y2="200" stroke="url(#rightLineG)" strokeWidth="1.5"/>
-                            {[30,65,100,135,170].map((y,i)=>(
-                                <g key={i} transform={`translate(25,${y})`}>
-                                    <rect x="-7" y="-7" width="14" height="14" rx="2" fill={i%2===0?'#818cf8':'#fde68a'} opacity="0.85" transform={`rotate(${45*(i+1)})`}/>
-                                    <circle r="2.5" fill="white" opacity="0.5"/>
-                                </g>
-                            ))}
+                    {/* ── Mandala kanan ── */}
+                    <div style={{position:'absolute',top:'8%',right:'-55px',opacity:.20,width:160,height:160}}>
+                        <svg viewBox="0 0 160 160" style={{width:'100%',height:'100%'}}>
+                            <g transform="translate(80,80)" style={{animation:'man-cw 55s linear infinite',transformOrigin:'0 0'}}>
+                                {manAngles12.map((a,i)=>(
+                                    <g key={i} transform={`rotate(${a})`}>
+                                        <line x1="0" y1="20" x2="0" y2="68" stroke="#818cf8" strokeWidth="1"/>
+                                        <circle cx="0" cy="68" r="3" fill="#818cf8"/>
+                                        <ellipse cx="0" cy="44" rx="4" ry="8" fill="rgba(129,140,248,0.5)"/>
+                                    </g>
+                                ))}
+                            </g>
+                            <g transform="translate(80,80)" style={{animation:'man-ccw 38s linear infinite',transformOrigin:'0 0'}}>
+                                {manAngles8.map((a,i)=>(
+                                    <g key={i} transform={`rotate(${a})`}>
+                                        <polygon points="0,-30 5,-20 -5,-20" fill="#fde68a" opacity=".8"/>
+                                        <polygon points="0,-52 4,-44 -4,-44" fill="#fde68a" opacity=".5"/>
+                                    </g>
+                                ))}
+                            </g>
+                            <circle cx="80" cy="80" r="16" fill="none" stroke="#818cf8" strokeWidth="1" opacity=".6"/>
+                            <circle cx="80" cy="80" r="6" fill="#818cf8" opacity=".7"/>
                         </svg>
                     </div>
 
-                    {/* ── Floating particles ── */}
-                    {particles.map((p,i)=>(
-                        <div key={i} style={{
-                            position:'absolute',
-                            left:p.l, bottom:p.b,
-                            width:p.s, height:p.s,
-                            borderRadius:'50%',
-                            background:p.c,
-                            boxShadow:`0 0 ${p.s*2}px ${p.c}`,
-                            animation:`p-drift ${p.dur}s ease-in-out infinite`,
-                            animationDelay:`${p.delay}s`,
-                            '--op':p.op,
-                            '--ty':p.ty, '--tx':p.tx,
-                            '--ty2':p.ty2, '--tx2':p.tx2,
-                        }}/>
+                    {/* ── Lanterns ── */}
+                    <Lantern l="4%"  h={80}  body="#f59e0b" accent="#92400e" inner="rgba(255,220,60,0.7)"  lg="rgba(245,158,11,0.9)" sd={4.5} sa={0}/>
+                    <Lantern l="14%" h={110} body="#dc2626" accent="#7f1d1d" inner="rgba(255,100,100,0.65)" lg="rgba(220,38,38,0.9)"  sd={5}   sa={1.2}/>
+                    <Lantern r="4%"  h={80}  body="#7c3aed" accent="#3b0764" inner="rgba(200,150,255,0.65)" lg="rgba(124,58,237,0.9)" sd={4}   sa={.5}/>
+                    <Lantern r="14%" h={100} body="#059669" accent="#064e3b" inner="rgba(100,240,180,0.65)" lg="rgba(5,150,105,0.9)"  sd={5.5} sa={2}/>
+
+                    {/* ── Eid Mubarak banner ── */}
+                    <div style={{position:'absolute',top:'15px',left:'50%',transform:'translateX(-50%)',zIndex:5,whiteSpace:'nowrap',fontFamily:'"Dancing Script","Amiri",serif',fontSize:'clamp(12px,2vw,19px)',fontWeight:700,letterSpacing:'0.12em',background:'linear-gradient(90deg,#ca8a04,#fde68a,#fff8dc,#facc15,#fde68a,#ca8a04)',backgroundSize:'300% auto',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text',animation:'banner-shine 3s linear infinite, fadeInUp .6s .4s ease-out both'}}>
+                        ✦ Selamat Idul Fitri 1446 H — Minal Aidin Wal Faizin ✦
+                    </div>
+
+                    {/* ── Gold dust ── */}
+                    {dust.map((d,i)=>(
+                        <div key={i} style={{position:'absolute',left:d.l,bottom:'-8px',width:d.s,height:d.s,borderRadius:'50%',background:d.c,boxShadow:`0 0 ${d.s*3}px ${d.c}`,animation:`dust ${d.dur}s ease-in-out infinite`,animationDelay:`${d.delay}s`,'--op':d.op,'--dx':d.dx}}/>
                     ))}
 
-                    {/* ── Horizontal accent lines ── */}
-                    <svg style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',pointerEvents:'none'}} preserveAspectRatio="none">
-                        <defs>
-                            <linearGradient id="hlineG1" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%"   stopColor="transparent"/>
-                                <stop offset="20%"  stopColor="rgba(52,211,153,0.4)"/>
-                                <stop offset="50%"  stopColor="rgba(250,204,21,0.5)"/>
-                                <stop offset="80%"  stopColor="rgba(52,211,153,0.4)"/>
-                                <stop offset="100%" stopColor="transparent"/>
-                            </linearGradient>
-                            <linearGradient id="hlineG2" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%"   stopColor="transparent"/>
-                                <stop offset="15%"  stopColor="rgba(129,140,248,0.3)"/>
-                                <stop offset="50%"  stopColor="rgba(250,204,21,0.35)"/>
-                                <stop offset="85%"  stopColor="rgba(129,140,248,0.3)"/>
-                                <stop offset="100%" stopColor="transparent"/>
-                            </linearGradient>
-                        </defs>
-                        {/* Top accent line */}
-                        <line x1="0" y1="18" x2="10000" y2="18" stroke="url(#hlineG1)" strokeWidth="0.8" opacity="0.7"/>
-                        {/* Bottom accent line */}
-                        <line x1="0" y1="99%" x2="10000" y2="99%" stroke="url(#hlineG2)" strokeWidth="0.8" opacity="0.6" transform="translate(0,-18)"/>
-                    </svg>
-
-                    {/* ── Masjid silhouette ── */}
-                    <div className="mosque-silhouette absolute bottom-0 left-0 right-0 pointer-events-none" style={{height:'100px'}}>
-                        <svg viewBox="0 0 1200 100" xmlns="http://www.w3.org/2000/svg"
-                            style={{width:'100%',height:'100%',display:'block'}}
-                            preserveAspectRatio="xMidYMax slice">
-                            {/* Gradient overlay atas masjid */}
-                            <defs>
-                                <linearGradient id="mosqueGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0" stopColor="currentColor" stopOpacity="0"/>
-                                    <stop offset="0.4" stopColor="currentColor" stopOpacity="1"/>
-                                    <stop offset="1" stopColor="currentColor" stopOpacity="1"/>
-                                </linearGradient>
-                            </defs>
-                            {/* Siluet masjid */}
-                            <rect x="450" y="45" width="300" height="55" fill="url(#mosqueGrad)"/>
-                            <ellipse cx="600" cy="45" rx="90" ry="56" fill="url(#mosqueGrad)"/>
-                            <ellipse cx="450" cy="62" rx="55" ry="42" fill="url(#mosqueGrad)"/>
-                            <rect x="395" y="62" width="110" height="38" fill="url(#mosqueGrad)"/>
-                            <ellipse cx="750" cy="62" rx="55" ry="42" fill="url(#mosqueGrad)"/>
-                            <rect x="695" y="62" width="110" height="38" fill="url(#mosqueGrad)"/>
-                            <rect x="305" y="22" width="18" height="78" fill="url(#mosqueGrad)"/>
-                            <ellipse cx="314" cy="22" rx="9" ry="20" fill="url(#mosqueGrad)"/>
-                            <rect x="311" y="2" width="6" height="22" fill="url(#mosqueGrad)"/>
-                            <rect x="877" y="22" width="18" height="78" fill="url(#mosqueGrad)"/>
-                            <ellipse cx="886" cy="22" rx="9" ry="20" fill="url(#mosqueGrad)"/>
-                            <rect x="883" y="2" width="6" height="22" fill="url(#mosqueGrad)"/>
-                            <rect x="185" y="42" width="13" height="58" fill="url(#mosqueGrad)"/>
-                            <ellipse cx="191" cy="42" rx="6.5" ry="14" fill="url(#mosqueGrad)"/>
-                            <rect x="1002" y="42" width="13" height="58" fill="url(#mosqueGrad)"/>
-                            <ellipse cx="1009" cy="42" rx="6.5" ry="14" fill="url(#mosqueGrad)"/>
-                            <rect x="0" y="97" width="1200" height="3" fill="currentColor" opacity="0.3"/>
-                        </svg>
+                    {/* ── Mosque silhouette + uplight ── */}
+                    <div style={{position:'absolute',bottom:0,left:0,right:0,height:130,pointerEvents:'none'}}>
+                        <div style={{position:'absolute',bottom:0,left:'15%',right:'15%',height:70,background:'radial-gradient(ellipse at 50% 100%,rgba(250,204,21,0.18) 0%,transparent 70%)',animation:'uplight 5s ease-in-out infinite'}}/>
+                        <div className="mosque-silhouette" style={{width:'100%',height:'100%'}}>
+                            <svg viewBox="0 0 1400 130" xmlns="http://www.w3.org/2000/svg" style={{width:'100%',height:'100%',display:'block'}} preserveAspectRatio="xMidYMax slice">
+                                <defs>
+                                    <linearGradient id="mGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="currentColor" stopOpacity="0"/><stop offset="35%" stopColor="currentColor" stopOpacity="1"/><stop offset="100%" stopColor="currentColor" stopOpacity="1"/></linearGradient>
+                                    <linearGradient id="goldEdge" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#fde68a" stopOpacity=".45"/><stop offset="100%" stopColor="#fde68a" stopOpacity="0"/></linearGradient>
+                                </defs>
+                                <ellipse cx="700" cy="42" rx="110" ry="80" fill="url(#mGrad)"/>
+                                <rect x="590" y="55" width="220" height="75" fill="currentColor"/>
+                                <ellipse cx="520" cy="65" rx="70" ry="55" fill="url(#mGrad)"/>
+                                <rect x="450" y="72" width="140" height="58" fill="currentColor"/>
+                                <ellipse cx="880" cy="65" rx="70" ry="55" fill="url(#mGrad)"/>
+                                <rect x="810" y="72" width="140" height="58" fill="currentColor"/>
+                                <rect x="370" y="18" width="22" height="112" fill="currentColor"/>
+                                <ellipse cx="381" cy="18" rx="11" ry="28" fill="currentColor"/>
+                                <rect x="378" y="-10" width="7" height="30" fill="currentColor"/>
+                                <ellipse cx="381" cy="-10" rx="4" ry="7" fill="currentColor"/>
+                                <rect x="1008" y="18" width="22" height="112" fill="currentColor"/>
+                                <ellipse cx="1019" cy="18" rx="11" ry="28" fill="currentColor"/>
+                                <rect x="1016" y="-10" width="7" height="30" fill="currentColor"/>
+                                <ellipse cx="1019" cy="-10" rx="4" ry="7" fill="currentColor"/>
+                                <rect x="230" y="40" width="15" height="90" fill="currentColor"/>
+                                <ellipse cx="237" cy="40" rx="7.5" ry="18" fill="currentColor"/>
+                                <rect x="234" y="22" width="5" height="20" fill="currentColor"/>
+                                <rect x="1155" y="40" width="15" height="90" fill="currentColor"/>
+                                <ellipse cx="1162" cy="40" rx="7.5" ry="18" fill="currentColor"/>
+                                <rect x="1159" y="22" width="5" height="20" fill="currentColor"/>
+                                <path d="M655,130 L655,100 Q700,80 745,100 L745,130Z" fill="rgba(0,0,0,0.3)"/>
+                                <ellipse cx="700" cy="0" rx="110" ry="30" fill="url(#goldEdge)" opacity=".4"/>
+                                <rect x="0" y="127" width="1400" height="3" fill="currentColor" opacity=".4"/>
+                            </svg>
+                        </div>
                     </div>
 
                 </div>
