@@ -3449,7 +3449,7 @@
             const filteredPurchases = storePurchases.filter(p => {
                 const q = purchaseSearch.toLowerCase();
                 const matchItems = (p.items || []).some(i => (i.name || '').toLowerCase().includes(q) || (i.batchNo || '').toLowerCase().includes(q));
-                const matchText = !q || (p.supplier || '').toLowerCase().includes(q) || (p.invoiceNumber || '').toLowerCase().includes(q) || (p.paymentMethod || '').toLowerCase().includes(q) || matchItems;
+                const matchText = !q || (p.invoiceNumber || '').toLowerCase().includes(q) || (p.paymentMethod || '').toLowerCase().includes(q) || matchItems;
                 const matchStatus = purchaseFilterStatus === 'all' ? true : purchaseFilterStatus === 'paid' ? p.isPaid : purchaseFilterStatus === 'unpaid' ? !p.isPaid : purchaseFilterStatus === 'overdue' ? (!p.isPaid && p.dueDate && new Date(p.dueDate) < new Date()) : purchaseFilterStatus === 'consignment' ? p.isConsignment : true;
                 const matchSupplier = purchaseFilterSupplier === 'all' || (p.supplier || '') === purchaseFilterSupplier;
                 const matchPayment = purchaseFilterPayment === 'all' || (p.paymentMethod || 'Tunai') === purchaseFilterPayment;
@@ -3495,7 +3495,7 @@
                     <div className="flex gap-2 mb-4">
                         <div className="relative flex-1">
                             <Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
-                            <input type="text" className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium outline-none focus:ring-2 focus:ring-teal-400 bg-white shadow-sm" placeholder="Cari supplier, no. faktur, nama barang, no. batch..." value={purchaseSearch} onChange={e => setPurchaseSearch(e.target.value)} />
+                            <input type="text" className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium outline-none focus:ring-2 focus:ring-teal-400 bg-white shadow-sm" placeholder="Cari no. faktur, nama barang, no. batch..." value={purchaseSearch} onChange={e => setPurchaseSearch(e.target.value)} />
                             {purchaseSearch && <button onClick={() => setPurchaseSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"><Icon name="xmark" /></button>}
                         </div>
                         <button onClick={openFilterModal} className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all shadow-sm ${activeFilterCount > 0 ? 'bg-teal-600 border-teal-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
@@ -3505,18 +3505,12 @@
                         </button>
                     </div>
                     {/* Filter active chips */}
-                    {(purchaseFilterStatus !== 'all' || purchaseFilterSupplier !== 'all' || purchaseFilterPayment !== 'all' || purchaseFilterDateFrom || purchaseFilterDateTo || purchaseFilterDueDateFrom || purchaseFilterDueDateTo) && (
+                    {(purchaseFilterStatus !== 'all' || purchaseFilterPayment !== 'all' || purchaseFilterDateFrom || purchaseFilterDateTo || purchaseFilterDueDateFrom || purchaseFilterDueDateTo) && (
                         <div className="flex flex-wrap gap-2 mb-3">
                             {purchaseFilterStatus !== 'all' && (
                                 <span className="inline-flex items-center gap-1 bg-teal-50 border border-teal-200 text-teal-700 text-[11px] font-bold px-2.5 py-1 rounded-full">
                                     Status: {statusLabel[purchaseFilterStatus]}
                                     <button onClick={() => setPurchaseFilterStatus('all')} className="ml-0.5 text-teal-400 hover:text-teal-700 leading-none">✕</button>
-                                </span>
-                            )}
-                            {purchaseFilterSupplier !== 'all' && (
-                                <span className="inline-flex items-center gap-1 bg-teal-50 border border-teal-200 text-teal-700 text-[11px] font-bold px-2.5 py-1 rounded-full">
-                                    {purchaseFilterSupplier}
-                                    <button onClick={() => setPurchaseFilterSupplier('all')} className="ml-0.5 text-teal-400 hover:text-teal-700 leading-none">✕</button>
                                 </span>
                             )}
                             {purchaseFilterPayment !== 'all' && (
@@ -3568,29 +3562,6 @@
                                                     <button key={val} onClick={() => { setTempFilterStatus(val); setFilterActiveSection(null); }}
                                                         className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${tempFilterStatus === val ? 'bg-teal-600 border-teal-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                                                         {label}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                    {/* Supplier */}
-                                    <div className="border-b border-slate-100">
-                                        <button onClick={() => setFilterActiveSection(filterActiveSection === 'supplier' ? null : 'supplier')} className="w-full flex items-center justify-between py-4 text-left">
-                                            <span className="font-bold text-slate-800 text-sm">Supplier</span>
-                                            <span className={`flex items-center gap-1.5 text-xs font-bold border rounded-lg px-3 py-1.5 transition-all ${tempFilterSupplier !== 'all' ? 'border-teal-500 text-teal-600 bg-teal-50' : 'border-slate-200 text-teal-600'}`}>
-                                                <Icon name="pen" className="text-[10px]" /> {tempFilterSupplier !== 'all' ? tempFilterSupplier : 'Ubah'}
-                                            </span>
-                                        </button>
-                                        {filterActiveSection === 'supplier' && (
-                                            <div className="pb-4 flex flex-col gap-1 max-h-48 overflow-y-auto">
-                                                <button onClick={() => { setTempFilterSupplier('all'); setFilterActiveSection(null); }}
-                                                    className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold border transition-all ${tempFilterSupplier === 'all' ? 'bg-teal-600 border-teal-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
-                                                    Semua Supplier
-                                                </button>
-                                                {uniqueSupplierNames.map(name => (
-                                                    <button key={name} onClick={() => { setTempFilterSupplier(name); setFilterActiveSection(null); }}
-                                                        className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold border transition-all ${tempFilterSupplier === name ? 'bg-teal-600 border-teal-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
-                                                        {name}
                                                     </button>
                                                 ))}
                                             </div>
