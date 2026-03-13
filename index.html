@@ -31,22 +31,6 @@
                         'type-reveal': 'typeReveal 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards',
                         'pop-in': 'popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
                         'falling-star': 'fallingStar 4s linear infinite',
-                        'spin-slow': 'spinSlow 8s linear infinite',
-                        'spin-rev': 'spinRev 10s linear infinite',
-                        'bounce-cute': 'bounceCute 2.5s ease-in-out infinite',
-                        'wiggle': 'wiggle 1.5s ease-in-out infinite',
-                        'rainbow-hue': 'rainbowHue 6s linear infinite',
-                        'aurora': 'aurora 9s ease-in-out infinite',
-                        'confetti-a': 'confettiA 9s linear infinite',
-                        'confetti-b': 'confettiB 11s linear infinite',
-                        'heart-beat': 'heartBeat 1.8s ease-in-out infinite',
-                        'glitter': 'glitter 3s ease-in-out infinite',
-                        'bubble-up': 'bubbleUp 12s ease-in-out infinite',
-                        'orb-pulse': 'orbPulse 5s ease-in-out infinite',
-                        'flag-wave': 'flagWave 2.5s ease-in-out infinite',
-                        'diamond-spin': 'diamondSpin 4s ease-in-out infinite',
-                        'pop-jelly': 'popJelly 3s ease-in-out infinite',
-                        'ribbon-wave': 'ribbonWave 3s ease-in-out infinite alternate',
                     },
                     keyframes: {
                         sway: { from: { transform: 'rotate(-5deg)' }, to: { transform: 'rotate(5deg)' } },
@@ -54,23 +38,7 @@
                         typeReveal: { '0%': { width: '0%', opacity: '0' }, '100%': { width: '100%', opacity: '1' } },
                         popIn: { '0%': { opacity: '0', transform: 'scale(0.5)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
                         fallingStar: { '0%': { transform: 'translate(0, 0) rotate(35deg)', opacity: 0 }, '20%': { opacity: 1 }, '100%': { transform: 'translate(-200px, 200px) rotate(35deg)', opacity: 0 } },
-                        floatUp: { '0%': { transform: 'translateY(100vh) scale(0.5)', opacity: 0 }, '20%': { opacity: 0.6 }, '80%': { opacity: 0.6 }, '100%': { transform: 'translateY(-10vh) scale(1)', opacity: 0 } },
-                        spinSlow: { from: { transform: 'rotate(0deg)' }, to: { transform: 'rotate(360deg)' } },
-                        spinRev: { from: { transform: 'rotate(360deg)' }, to: { transform: 'rotate(0deg)' } },
-                        bounceCute: { '0%,100%': { transform: 'translateY(0) scale(1)' }, '40%': { transform: 'translateY(-22px) scale(1.08)' }, '60%': { transform: 'translateY(-18px) scale(1.04)' } },
-                        wiggle: { '0%,100%': { transform: 'rotate(-12deg) scale(1)' }, '50%': { transform: 'rotate(12deg) scale(1.1)' } },
-                        rainbowHue: { '0%': { filter: 'hue-rotate(0deg) brightness(1)' }, '50%': { filter: 'hue-rotate(180deg) brightness(1.1)' }, '100%': { filter: 'hue-rotate(360deg) brightness(1)' } },
-                        aurora: { '0%,100%': { transform: 'translateX(-8%) scaleX(1.1)', opacity: '0.45' }, '50%': { transform: 'translateX(8%) scaleX(1)', opacity: '0.75' } },
-                        confettiA: { '0%': { transform: 'translateY(-8vh) rotate(0deg)', opacity: '1' }, '100%': { transform: 'translateY(108vh) rotate(800deg)', opacity: '0.2' } },
-                        confettiB: { '0%': { transform: 'translateY(-8vh) rotate(45deg) translateX(0px)', opacity: '1' }, '33%': { transform: 'translateY(33vh) rotate(300deg) translateX(25px)' }, '66%': { transform: 'translateY(66vh) rotate(600deg) translateX(-25px)' }, '100%': { transform: 'translateY(108vh) rotate(900deg) translateX(10px)', opacity: '0.2' } },
-                        heartBeat: { '0%,100%': { transform: 'scale(1)' }, '20%': { transform: 'scale(1.35)' }, '40%': { transform: 'scale(1.1)' }, '60%': { transform: 'scale(1.28)' } },
-                        glitter: { '0%,100%': { opacity: '0.1', transform: 'scale(0.6) rotate(0deg)' }, '50%': { opacity: '1', transform: 'scale(1.4) rotate(180deg)' } },
-                        bubbleUp: { '0%': { transform: 'translateY(100vh) scale(0.4)', opacity: '0' }, '15%': { opacity: '0.7' }, '85%': { opacity: '0.5' }, '100%': { transform: 'translateY(-5vh) scale(1.3)', opacity: '0' } },
-                        orbPulse: { '0%,100%': { transform: 'scale(1)', opacity: '0.3' }, '50%': { transform: 'scale(1.4)', opacity: '0.6' } },
-                        flagWave: { '0%,100%': { transform: 'skewX(-2deg) scaleY(1)' }, '50%': { transform: 'skewX(2deg) scaleY(1.04)' } },
-                        diamondSpin: { '0%,100%': { transform: 'rotate(45deg) scale(1)' }, '50%': { transform: 'rotate(225deg) scale(1.2)' } },
-                        popJelly: { '0%,100%': { transform: 'scale(1) rotate(0deg)' }, '25%': { transform: 'scale(1.15) rotate(-5deg)' }, '75%': { transform: 'scale(0.9) rotate(5deg)' } },
-                        ribbonWave: { from: { transform: 'scaleX(0.97) skewX(-1deg)' }, to: { transform: 'scaleX(1.03) skewX(1deg)' } },
+                        floatUp: { '0%': { transform: 'translateY(100vh) scale(0.5)', opacity: 0 }, '20%': { opacity: 0.6 }, '80%': { opacity: 0.6 }, '100%': { transform: 'translateY(-10vh) scale(1)', opacity: 0 } }
                     }
                 }
             }
@@ -162,117 +130,63 @@
         @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
         .card-hover:hover { transform: translateY(-2px); box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05); }
         
-        /* Ramadhan Decorations Animations */
-        @keyframes twinkle { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
-        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-        
-        .islamic-pattern {
-            background-color: #f0f9ff;
-            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%230ea5e9' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        /* ✨ PREMIUM CUTE DECOR ANIMATIONS ✨ */
+        @keyframes twinkle { 0%, 100% { opacity: 0.2; transform: scale(0.7) rotate(-10deg); } 50% { opacity: 1; transform: scale(1.4) rotate(10deg); } }
+        @keyframes float { 0%, 100% { transform: translateY(0px) rotate(-2deg); } 33% { transform: translateY(-18px) rotate(4deg); } 66% { transform: translateY(-9px) rotate(-3deg); } }
+        @keyframes cuteSwing { 0% { transform: rotate(-14deg); } 100% { transform: rotate(14deg); } }
+        @keyframes bounceChar { 0%, 100% { transform: translateY(0) scale(1) rotate(-3deg); } 50% { transform: translateY(-14px) scale(1.15) rotate(3deg); } }
+        @keyframes spinStar { 0% { transform: rotate(0deg) scale(1); } 50% { transform: rotate(180deg) scale(1.2); } 100% { transform: rotate(360deg) scale(1); } }
+        @keyframes floatParticle {
+            0%   { transform: translateY(110vh) rotate(0deg) scale(0.4); opacity: 0; }
+            8%   { opacity: 0.9; }
+            90%  { opacity: 0.6; }
+            100% { transform: translateY(-10vh) rotate(540deg) scale(1.1); opacity: 0; }
         }
-        
+        @keyframes rainbowShift {
+            0%   { background-position: 0% 50%; }
+            50%  { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        @keyframes shimmerSlide {
+            0%   { transform: translateX(-150%) skewX(-20deg); opacity: 0; }
+            40%  { opacity: 0.5; }
+            100% { transform: translateX(150%) skewX(-20deg); opacity: 0; }
+        }
+        @keyframes glowPulse {
+            0%, 100% { box-shadow: 0 0 8px 2px rgba(167,139,250,0.3), 0 0 20px 4px rgba(236,72,153,0.15); }
+            50%       { box-shadow: 0 0 20px 6px rgba(167,139,250,0.5), 0 0 40px 10px rgba(236,72,153,0.25); }
+        }
+        @keyframes orbitRing {
+            0%   { transform: rotate(0deg) translateX(22px) rotate(0deg); }
+            100% { transform: rotate(360deg) translateX(22px) rotate(-360deg); }
+        }
+        @keyframes bubbleUp {
+            0%   { transform: translateY(0) scale(1); opacity: 0.6; }
+            100% { transform: translateY(-60px) scale(0.5); opacity: 0; }
+        }
+        @keyframes morphBlob {
+            0%,100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+            50%      { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+        }
+        @keyframes popWiggle {
+            0%,100% { transform: scale(1) rotate(0deg); }
+            20% { transform: scale(1.2) rotate(-8deg); }
+            40% { transform: scale(1.2) rotate(8deg); }
+            60% { transform: scale(1.1) rotate(-4deg); }
+            80% { transform: scale(1.1) rotate(4deg); }
+        }
+
         .font-arab { font-family: 'Amiri', serif; }
 
-        /* Ketupat Style */
-        .ketupat { width: 30px; height: 30px; background-color: #86efac; border: 2px solid #15803d; transform: rotate(45deg); position: relative; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .ketupat::before, .ketupat::after { content: ''; position: absolute; background-color: #22c55e; opacity: 0.3; }
-        .ketupat::before { width: 100%; height: 50%; top: 0; left: 0; border-bottom: 1px solid #15803d; }
-        .ketupat::after { width: 50%; height: 100%; top: 0; left: 0; border-right: 1px solid #15803d; }
-
-        /* PREMIUM CUTE DECORATION STYLES */
-        .prem-bubble {
-            position: absolute;
-            border-radius: 50%;
-            pointer-events: none;
-            animation: bubbleUp var(--dur, 12s) var(--delay, 0s) ease-in-out infinite;
-        }
-        .prem-confetti {
-            position: absolute;
-            pointer-events: none;
-            border-radius: 2px;
-        }
-        .prem-confetti.shape-a { animation: confettiA var(--dur, 9s) var(--delay, 0s) linear infinite; }
-        .prem-confetti.shape-b { animation: confettiB var(--dur, 11s) var(--delay, 0s) linear infinite; border-radius: 50%; }
-        .prem-confetti.shape-c { animation: confettiA var(--dur, 7s) var(--delay, 0s) linear infinite; width: 6px; height: 14px; }
-        .prem-glitter {
-            position: absolute;
-            pointer-events: none;
-            font-size: 10px;
-            animation: glitter var(--dur, 3s) var(--delay, 0s) ease-in-out infinite;
-        }
-        .prem-orb {
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(60px);
-            pointer-events: none;
-            animation: orbPulse var(--dur, 5s) var(--delay, 0s) ease-in-out infinite;
-        }
-        .orn-string {
-            width: 1px;
-            background: linear-gradient(to bottom, rgba(255,200,50,0.7), rgba(255,200,50,0.1));
-            margin: 0 auto;
-        }
-        .orn-ball {
-            border-radius: 50%;
-            margin: 0 auto;
-            position: relative;
-            overflow: hidden;
-        }
-        .orn-ball::after {
-            content: '';
-            position: absolute;
-            top: 15%;
-            left: 20%;
-            width: 30%;
-            height: 20%;
-            background: rgba(255,255,255,0.45);
-            border-radius: 50%;
-            transform: rotate(-30deg);
-        }
-        .prem-aurora {
-            position: absolute;
-            top: 0; left: -10%; right: -10%;
-            height: 180px;
-            pointer-events: none;
-            animation: aurora 9s ease-in-out infinite;
-            border-radius: 0 0 60% 60%;
-        }
-        .banner-flag {
-            display: inline-block;
-            clip-path: polygon(0 0, 100% 0, 100% 80%, 50% 100%, 0 80%);
-            animation: flagWave 2.5s ease-in-out infinite;
-        }
-        .prem-heart {
-            display: inline-block;
-            animation: heartBeat var(--dur, 1.8s) var(--delay, 0s) ease-in-out infinite;
-            pointer-events: none;
-        }
-        .prem-star-spin {
-            display: inline-block;
-            animation: spinSlow var(--dur, 8s) linear infinite;
-        }
-        .prem-bounce {
-            display: inline-block;
-            animation: bounceCute var(--dur, 2.5s) var(--delay, 0s) ease-in-out infinite;
-        }
-        .prem-wiggle {
-            display: inline-block;
-            animation: wiggle var(--dur, 1.5s) var(--delay, 0s) ease-in-out infinite;
-        }
-        .rainbow-text {
-            background: linear-gradient(90deg, #ff6b9d, #ffd93d, #6bcb77, #4d96ff, #c77dff, #ff9f43);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            animation: rainbowHue 6s linear infinite;
-        }
-        .prem-diamond {
-            animation: diamondSpin var(--dur, 4s) var(--delay, 0s) ease-in-out infinite;
-            display: inline-block;
-        }
-        .prem-pop {
-            animation: popJelly var(--dur, 3s) var(--delay, 0s) ease-in-out infinite;
-            display: inline-block;
+        /* Premium Cute Hanging String */
+        .cute-string { width: 1px; background: linear-gradient(to bottom, rgba(251,191,36,0.9), rgba(167,139,250,0.4), transparent); margin: 0 auto; }
+        
+        /* Candy stripe pattern for background */
+        .premium-pattern {
+            background-color: #f0f9ff;
+            background-image: radial-gradient(circle at 25px 25px, rgba(167,139,250,0.06) 2px, transparent 0),
+                              radial-gradient(circle at 75px 75px, rgba(236,72,153,0.05) 2px, transparent 0);
+            background-size: 100px 100px;
         }
 
         /* FIREWORKS STYLE */
@@ -364,7 +278,7 @@
         @keyframes authStar { 0%,100% { opacity:0.3; transform: scale(0.8) rotate(0deg); } 50% { opacity:0.8; transform: scale(1.2) rotate(15deg); } }
     </style>
 </head>
-<body class="islamic-pattern relative">
+<body class="premium-pattern relative">
     <div id="root" class="relative z-10"></div>
 
     <!-- React App (Babel) -->
@@ -612,236 +526,86 @@
 
 
 
-        // --- DEKORASI PREMIUM CUTE ---
-        const RamadhanDecor = () => {
-            // Pre-defined static data (no Math.random in render for stability)
-            const confettiData = [
-                {l:'2%',  delay:'0s',   dur:'9s',  color:'#ff6b9d', w:10, h:10, shape:'shape-a'},
-                {l:'7%',  delay:'1.5s', dur:'11s', color:'#ffd93d', w:8,  h:8,  shape:'shape-b'},
-                {l:'13%', delay:'3s',   dur:'8s',  color:'#6bcb77', w:12, h:12, shape:'shape-a'},
-                {l:'19%', delay:'0.5s', dur:'10s', color:'#4d96ff', w:7,  h:14, shape:'shape-c'},
-                {l:'25%', delay:'2s',   dur:'9s',  color:'#c77dff', w:10, h:10, shape:'shape-b'},
-                {l:'31%', delay:'4s',   dur:'12s', color:'#ff9f43', w:8,  h:8,  shape:'shape-a'},
-                {l:'37%', delay:'1s',   dur:'8s',  color:'#ff6b9d', w:11, h:11, shape:'shape-b'},
-                {l:'43%', delay:'5s',   dur:'10s', color:'#ffd93d', w:9,  h:9,  shape:'shape-a'},
-                {l:'50%', delay:'2.5s', dur:'9s',  color:'#6bcb77', w:6,  h:14, shape:'shape-c'},
-                {l:'56%', delay:'0.8s', dur:'11s', color:'#4d96ff', w:12, h:12, shape:'shape-b'},
-                {l:'62%', delay:'3.5s', dur:'8s',  color:'#c77dff', w:8,  h:8,  shape:'shape-a'},
-                {l:'68%', delay:'1.2s', dur:'10s', color:'#ff9f43', w:10, h:10, shape:'shape-b'},
-                {l:'74%', delay:'4.5s', dur:'9s',  color:'#ff6b9d', w:7,  h:7,  shape:'shape-a'},
-                {l:'80%', delay:'0.3s', dur:'12s', color:'#ffd93d', w:9,  h:9,  shape:'shape-c'},
-                {l:'86%', delay:'2.2s', dur:'8s',  color:'#6bcb77', w:11, h:11, shape:'shape-b'},
-                {l:'92%', delay:'3.8s', dur:'10s', color:'#c77dff', w:8,  h:8,  shape:'shape-a'},
-                {l:'96%', delay:'1.7s', dur:'9s',  color:'#ff9f43', w:10, h:10, shape:'shape-b'},
-                {l:'10%', delay:'6s',   dur:'11s', color:'#54a0ff', w:6,  h:6,  shape:'shape-a'},
-                {l:'47%', delay:'7s',   dur:'9s',  color:'#ff6b6b', w:8,  h:8,  shape:'shape-b'},
-                {l:'78%', delay:'5.5s', dur:'10s', color:'#feca57', w:7,  h:14, shape:'shape-c'},
+        // --- DEKORASI PREMIUM CUTE ✨ ---
+        const PremiumDecor = () => {
+            const particles = [
+                {e:'⭐',l:'4%',d:'0s',t:'8.5s'},{e:'💫',l:'10%',d:'1.8s',t:'11s'},{e:'✨',l:'17%',d:'3.2s',t:'9s'},
+                {e:'💎',l:'24%',d:'0.6s',t:'12s'},{e:'🌟',l:'31%',d:'2.4s',t:'10.5s'},{e:'💜',l:'38%',d:'4.1s',t:'8s'},
+                {e:'🔮',l:'46%',d:'1.1s',t:'13s'},{e:'⭐',l:'54%',d:'2.7s',t:'9.5s'},{e:'✨',l:'61%',d:'0.9s',t:'11.5s'},
+                {e:'💫',l:'68%',d:'3.6s',t:'10s'},{e:'🌟',l:'75%',d:'1.4s',t:'8.5s'},{e:'💖',l:'82%',d:'2.1s',t:'12.5s'},
+                {e:'💎',l:'89%',d:'0.3s',t:'9s'},{e:'✨',l:'95%',d:'3.0s',t:'11s'},
             ];
-
-            const bubblesData = [
-                {l:'5%',  delay:'0s',   dur:'14s', size:28, op:0.12},
-                {l:'15%', delay:'3s',   dur:'11s', size:18, op:0.15},
-                {l:'28%', delay:'1.5s', dur:'16s', size:36, op:0.10},
-                {l:'42%', delay:'5s',   dur:'13s', size:22, op:0.13},
-                {l:'58%', delay:'2s',   dur:'15s', size:30, op:0.11},
-                {l:'70%', delay:'4s',   dur:'12s', size:16, op:0.14},
-                {l:'83%', delay:'0.5s', dur:'14s', size:24, op:0.12},
-                {l:'93%', delay:'6s',   dur:'11s', size:20, op:0.15},
+            const hangings = [
+                {e:'👑',lH:'72px',l:'1%', d:'0s', dur:'3.2s', c:'#fbbf24'},
+                {e:'🦋',lH:'105px',l:'11%',d:'0.4s',dur:'4.1s', c:'#a78bfa'},
+                {e:'🌈',lH:'88px',l:'22%',d:'0.2s',dur:'3.6s', c:'#f472b6'},
+                {e:'🎀',lH:'68px',l:'33%',d:'0.9s',dur:'4.5s', c:'#fb923c'},
+                {e:'⭐',lH:'95px',l:'44%',d:'0.1s',dur:'3.3s', c:'#facc15'},
+                {e:'🦄',lH:'82px',l:'55%',d:'0.7s',dur:'4.0s', c:'#818cf8'},
+                {e:'🎠',lH:'100px',l:'66%',d:'0.3s',dur:'3.8s', c:'#34d399'},
+                {e:'💎',lH:'73px',l:'77%',d:'0.5s',dur:'3.5s', c:'#38bdf8'},
+                {e:'🌸',lH:'90px',l:'88%',d:'1.2s',dur:'4.2s', c:'#f9a8d4'},
+                {e:'🎪',lH:'80px',l:'97%',d:'0.0s',dur:'3.0s', c:'#fbbf24'},
             ];
-
-            const glitterData = [
-                {l:'5%',  t:'12%', delay:'0s',   dur:'2.5s', icon:'✦', color:'#ffd93d', size:14},
-                {l:'12%', t:'35%', delay:'1s',   dur:'3.5s', icon:'✧', color:'#ff6b9d', size:11},
-                {l:'22%', t:'18%', delay:'2s',   dur:'2s',   icon:'⋆', color:'#c77dff', size:16},
-                {l:'33%', t:'55%', delay:'0.5s', dur:'4s',   icon:'✦', color:'#6bcb77', size:12},
-                {l:'45%', t:'25%', delay:'1.5s', dur:'2.8s', icon:'✧', color:'#4d96ff', size:14},
-                {l:'55%', t:'42%', delay:'3s',   dur:'3.2s', icon:'⋆', color:'#ff9f43', size:10},
-                {l:'66%', t:'15%', delay:'0.8s', dur:'2.5s', icon:'✦', color:'#ff6b9d', size:15},
-                {l:'75%', t:'60%', delay:'2.5s', dur:'3.8s', icon:'✧', color:'#ffd93d', size:12},
-                {l:'85%', t:'30%', delay:'1.2s', dur:'2.2s', icon:'⋆', color:'#c77dff', size:16},
-                {l:'92%', t:'48%', delay:'0.3s', dur:'3s',   icon:'✦', color:'#6bcb77', size:11},
-                {l:'8%',  t:'70%', delay:'4s',   dur:'2.8s', icon:'✧', color:'#54a0ff', size:13},
-                {l:'50%', t:'75%', delay:'1.8s', dur:'3.5s', icon:'⋆', color:'#ff6b6b', size:10},
-                {l:'38%', t:'80%', delay:'3.5s', dur:'2.5s', icon:'✦', color:'#feca57', size:14},
-                {l:'78%', t:'72%', delay:'0.6s', dur:'4s',   icon:'✧', color:'#48dbfb', size:12},
+            const twinklers = [
+                {e:'✨',t:'55px',l:'3%',d:'0s',s:'18px'},{e:'⭐',t:'80px',l:'8%',d:'0.6s',s:'13px'},
+                {e:'💫',t:'45px',l:'16%',d:'1.1s',s:'15px'},{e:'✨',t:'70px',l:'25%',d:'0.3s',s:'12px'},
+                {e:'🌟',t:'58px',l:'50%',d:'0.8s',s:'17px'},{e:'✨',t:'72px',l:'75%',d:'0.4s',s:'14px'},
+                {e:'💫',t:'48px',l:'84%',d:'1.5s',s:'16px'},{e:'⭐',t:'65px',l:'92%',d:'0.2s',s:'13px'},
             ];
-
-            // Hanging ornament configs
-            const ornaments = [
-                {pos:'left-1 md:left-6',    delay:'0s',   dur:'3.8s',  stringH:'h-20 md:h-28',  ballSize:22, ballColor:'linear-gradient(135deg,#ff6b9d,#c77dff)', capColor:'#c77dff', label:'🎀'},
-                {pos:'left-16 md:left-32',   delay:'0.7s', dur:'4.5s',  stringH:'h-28 md:h-36',  ballSize:18, ballColor:'linear-gradient(135deg,#ffd93d,#ff9f43)', capColor:'#ff9f43', label:'⭐'},
-                {pos:'left-[28%]',           delay:'1.2s', dur:'5s',    stringH:'h-16 md:h-24',  ballSize:20, ballColor:'linear-gradient(135deg,#6bcb77,#0ea5e9)', capColor:'#0ea5e9', label:'🌟'},
-                {pos:'left-[42%]',           delay:'0.3s', dur:'3.5s',  stringH:'h-24 md:h-32',  ballSize:16, ballColor:'linear-gradient(135deg,#4d96ff,#c77dff)', capColor:'#4d96ff', label:'💎'},
-                {pos:'left-[56%]',           delay:'1.8s', dur:'4.2s',  stringH:'h-20 md:h-28',  ballSize:22, ballColor:'linear-gradient(135deg,#ff9f43,#ffd93d)', capColor:'#ff9f43', label:'🎊'},
-                {pos:'right-[28%]',          delay:'0.9s', dur:'4.8s',  stringH:'h-16 md:h-24',  ballSize:18, ballColor:'linear-gradient(135deg,#ff6b9d,#ffd93d)', capColor:'#ff6b9d', label:'🌺'},
-                {pos:'right-16 md:right-32', delay:'0.4s', dur:'3.9s',  stringH:'h-28 md:h-36',  ballSize:20, ballColor:'linear-gradient(135deg,#c77dff,#4d96ff)', capColor:'#c77dff', label:'💜'},
-                {pos:'right-1 md:right-6',   delay:'1.4s', dur:'4.4s',  stringH:'h-20 md:h-28',  ballSize:24, ballColor:'linear-gradient(135deg,#6bcb77,#ffd93d)', capColor:'#6bcb77', label:'🌈'},
-            ];
-
-            const floatingIcons = [
-                {l:'4%',  t:'22%', icon:'🦋', delay:'0s',   dur:'3.2s', size:'text-xl'},
-                {l:'18%', t:'45%', icon:'🌸', delay:'1s',   dur:'2.8s', size:'text-lg'},
-                {l:'30%', t:'30%', icon:'⭐', delay:'2s',   dur:'3.5s', size:'text-xl'},
-                {l:'65%', t:'38%', icon:'🌺', delay:'0.5s', dur:'2.5s', size:'text-lg'},
-                {l:'78%', t:'55%', icon:'💫', delay:'1.5s', dur:'3.8s', size:'text-xl'},
-                {l:'90%', t:'28%', icon:'🎀', delay:'0.8s', dur:'2.2s', size:'text-2xl'},
-                {l:'48%', t:'60%', icon:'🌟', delay:'2.5s', dur:'3s',   size:'text-lg'},
-                {l:'8%',  t:'65%', icon:'💎', delay:'1.2s', dur:'4s',   size:'text-base'},
-                {l:'88%', t:'70%', icon:'🦄', delay:'3s',   dur:'2.8s', size:'text-lg'},
-            ];
-
             return (
-                <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{zIndex: -1}}>
+                <div style={{position:'fixed',inset:0,pointerEvents:'none',overflow:'hidden',zIndex:-1}}>
+                    {/* Soft gradient ambient blobs */}
+                    <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at 15% 8%, rgba(167,139,250,0.10) 0%,transparent 45%),radial-gradient(ellipse at 85% 12%, rgba(236,72,153,0.08) 0%,transparent 45%),radial-gradient(ellipse at 50% 3%, rgba(251,191,36,0.07) 0%,transparent 40%)'}}></div>
 
-                    {/* ── LAYER 1: Aurora gradient blob at top ── */}
-                    <div className="prem-aurora opacity-50" style={{background:'linear-gradient(90deg,rgba(255,107,157,0.55),rgba(255,217,61,0.5),rgba(107,203,119,0.5),rgba(77,150,255,0.55),rgba(199,125,255,0.5))'}}></div>
-                    <div className="prem-aurora opacity-30" style={{background:'linear-gradient(90deg,rgba(77,150,255,0.4),rgba(199,125,255,0.5),rgba(255,107,157,0.4),rgba(255,159,67,0.45))', animationDelay:'3s', animationDirection:'reverse', height:'120px', borderRadius:'0 0 80% 80%'}}></div>
+                    {/* Animated morphing blobs */}
+                    <div style={{position:'absolute',width:'240px',height:'220px',top:'8%',left:'-4%',background:'radial-gradient(circle, rgba(167,139,250,0.13), transparent 70%)',animationName:'morphBlob',animationDuration:'8s',animationTimingFunction:'ease-in-out',animationIterationCount:'infinite',animationDirection:'alternate'}}></div>
+                    <div style={{position:'absolute',width:'180px',height:'200px',top:'4%',right:'-3%',background:'radial-gradient(circle, rgba(236,72,153,0.11), transparent 70%)',animationName:'morphBlob',animationDuration:'10s',animationDelay:'2s',animationTimingFunction:'ease-in-out',animationIterationCount:'infinite'}}></div>
 
-                    {/* ── LAYER 2: Soft glowing orbs in background ── */}
-                    <div className="prem-orb" style={{width:320,height:320,background:'radial-gradient(circle,rgba(255,107,157,0.18),transparent 70%)',top:'5%',left:'-5%','--delay':'0s','--dur':'6s'}}></div>
-                    <div className="prem-orb" style={{width:280,height:280,background:'radial-gradient(circle,rgba(77,150,255,0.15),transparent 70%)',top:'10%',right:'-3%','--delay':'2s','--dur':'7s'}}></div>
-                    <div className="prem-orb" style={{width:200,height:200,background:'radial-gradient(circle,rgba(199,125,255,0.13),transparent 70%)',top:'40%',left:'40%','--delay':'3.5s','--dur':'5s'}}></div>
-                    <div className="prem-orb" style={{width:250,height:250,background:'radial-gradient(circle,rgba(107,203,119,0.12),transparent 70%)',bottom:'15%',left:'8%','--delay':'1s','--dur':'8s'}}></div>
-                    <div className="prem-orb" style={{width:220,height:220,background:'radial-gradient(circle,rgba(255,217,61,0.12),transparent 70%)',bottom:'20%',right:'5%','--delay':'4s','--dur':'6.5s'}}></div>
-
-                    {/* ── LAYER 3: Rainbow top bunting/banner strings ── */}
-                    <div style={{position:'absolute',top:0,left:0,right:0,display:'flex',alignItems:'flex-start',justifyContent:'center',gap:0,overflow:'hidden'}}>
-                        {['#ff6b9d','#ff9f43','#ffd93d','#6bcb77','#4d96ff','#c77dff','#ff6b9d','#ff9f43','#ffd93d','#6bcb77','#4d96ff','#c77dff','#ff6b9d','#ff9f43','#ffd93d'].map((c,i) => (
-                            <div key={i} className="banner-flag flex-shrink-0" style={{
-                                width:40, height:36, background:c,
-                                marginLeft: i === 0 ? 0 : -2,
-                                opacity:0.85,
-                                animationDelay: `${i * 0.15}s`
-                            }}></div>
-                        ))}
+                    {/* Rainbow bar at very top */}
+                    <div style={{position:'absolute',top:0,left:0,right:0,height:'4px',background:'linear-gradient(90deg,#f43f5e,#f97316,#facc15,#22c55e,#06b6d4,#8b5cf6,#ec4899,#f43f5e)',backgroundSize:'200% 100%',animationName:'rainbowShift',animationDuration:'4s',animationTimingFunction:'linear',animationIterationCount:'infinite'}}></div>
+                    {/* Shimmer over rainbow bar */}
+                    <div style={{position:'absolute',top:0,left:0,right:0,height:'4px',overflow:'hidden'}}>
+                        <div style={{position:'absolute',top:0,bottom:0,width:'60px',background:'rgba(255,255,255,0.7)',animationName:'shimmerSlide',animationDuration:'2.5s',animationTimingFunction:'ease-in-out',animationIterationCount:'infinite'}}></div>
                     </div>
 
-                    {/* ── LAYER 4: Hanging ornament balls ── */}
-                    {ornaments.map((o, i) => (
-                        <div key={i} className={`absolute -top-4 ${o.pos} z-0 origin-top`}
-                             style={{animation:`swing ${o.dur} ${o.delay} ease-in-out infinite alternate`}}>
-                            {/* Cap */}
-                            <div style={{width:8,height:10,background:o.capColor,borderRadius:'3px 3px 0 0',margin:'0 auto',boxShadow:`0 0 6px ${o.capColor}55`}}></div>
-                            {/* String */}
-                            <div className={`orn-string ${o.stringH}`}></div>
-                            {/* Ball */}
-                            <div className="orn-ball" style={{
-                                width:o.ballSize, height:o.ballSize,
-                                background:o.ballColor,
-                                boxShadow:`0 4px 16px rgba(0,0,0,0.18), 0 0 12px ${o.capColor}55`
-                            }}></div>
-                            {/* Emoji tag */}
-                            <div style={{textAlign:'center',fontSize:10,marginTop:2,lineHeight:1}}>{o.label}</div>
+                    {/* Hanging cute elements */}
+                    {hangings.map((h,i) => (
+                        <div key={i} style={{position:'absolute',top:'-16px',left:h.l,display:'flex',flexDirection:'column',alignItems:'center',animationName:'cuteSwing',animationDuration:h.dur,animationDelay:h.d,animationTimingFunction:'ease-in-out',animationIterationCount:'infinite',animationDirection:i%2===0?'alternate':'alternate-reverse',transformOrigin:'top center'}}>
+                            <div style={{width:'1.5px',height:h.lH,background:`linear-gradient(to bottom, ${h.c}cc, ${h.c}44, transparent)`}}></div>
+                            <div style={{fontSize:'26px',filter:`drop-shadow(0 2px 6px ${h.c}88)`,animationName:'bounceChar',animationDuration:'2.2s',animationDelay:h.d,animationTimingFunction:'ease-in-out',animationIterationCount:'infinite',display:'block',lineHeight:1}}>{h.e}</div>
+                            {/* Mini sparkle below */}
+                            <div style={{fontSize:'10px',marginTop:'3px',animationName:'twinkle',animationDuration:'1.8s',animationDelay:h.d,animationTimingFunction:'ease-in-out',animationIterationCount:'infinite'}}>✨</div>
                         </div>
                     ))}
 
-                    {/* ── LAYER 5: Confetti rain ── */}
-                    {confettiData.map((c, i) => (
-                        <div key={i} className={`prem-confetti ${c.shape}`}
-                             style={{
-                                 left:c.l,
-                                 top: `-${c.h + 10}px`,
-                                 width:c.w, height:c.h,
-                                 background:c.color,
-                                 '--delay':c.delay,
-                                 '--dur':c.dur,
-                                 boxShadow:`0 0 4px ${c.color}66`,
-                                 borderRadius: c.shape === 'shape-b' ? '50%' : '2px'
-                             }}>
-                        </div>
+                    {/* Floating particles rising from bottom */}
+                    {particles.map((p,i) => (
+                        <div key={i} style={{position:'absolute',left:p.l,bottom:'-30px',fontSize:'18px',animationName:'floatParticle',animationDuration:p.t,animationDelay:p.d,animationTimingFunction:'linear',animationIterationCount:'infinite',opacity:0,lineHeight:1}}>{p.e}</div>
                     ))}
 
-                    {/* ── LAYER 6: Glitter sparkles ── */}
-                    {glitterData.map((g, i) => (
-                        <div key={i} className="prem-glitter"
-                             style={{left:g.l,top:g.t,color:g.color,fontSize:g.size,'--delay':g.delay,'--dur':g.dur,
-                                     textShadow:`0 0 8px ${g.color}, 0 0 16px ${g.color}88`}}>
-                            {g.icon}
-                        </div>
+                    {/* Mid-air twinklers */}
+                    {twinklers.map((t,i) => (
+                        <div key={i} style={{position:'absolute',top:t.t,left:t.l,fontSize:t.s,animationName:'twinkle',animationDuration:'2.5s',animationDelay:t.d,animationTimingFunction:'ease-in-out',animationIterationCount:'infinite',lineHeight:1}}>{t.e}</div>
                     ))}
 
-                    {/* ── LAYER 7: Floating cute emoji icons ── */}
-                    {floatingIcons.map((f, i) => (
-                        <div key={i} className={`prem-bounce absolute ${f.size}`}
-                             style={{left:f.l, top:f.t, '--delay':f.delay, '--dur':f.dur, lineHeight:1, opacity:0.55}}>
-                            {f.icon}
-                        </div>
+                    {/* Spinning stars on corners */}
+                    <div style={{position:'absolute',top:'110px',left:'2%',fontSize:'22px',animationName:'spinStar',animationDuration:'6s',animationTimingFunction:'linear',animationIterationCount:'infinite'}}>🌟</div>
+                    <div style={{position:'absolute',top:'120px',right:'2%',fontSize:'20px',animationName:'spinStar',animationDuration:'8s',animationDelay:'1s',animationTimingFunction:'linear',animationIterationCount:'infinite'}}>💫</div>
+
+                    {/* Cute bubble chain left */}
+                    {[0,1,2].map(i => (
+                        <div key={i} style={{position:'absolute',left:'1.5%',bottom:`${80+i*35}px`,width:`${10+i*4}px`,height:`${10+i*4}px`,borderRadius:'50%',border:'1.5px solid rgba(167,139,250,0.5)',background:'rgba(167,139,250,0.08)',animationName:'bubbleUp',animationDuration:`${2+i*0.5}s`,animationDelay:`${i*0.6}s`,animationTimingFunction:'ease-in-out',animationIterationCount:'infinite'}}></div>
+                    ))}
+                    {/* Cute bubble chain right */}
+                    {[0,1,2].map(i => (
+                        <div key={i} style={{position:'absolute',right:'1.5%',bottom:`${70+i*40}px`,width:`${8+i*5}px`,height:`${8+i*5}px`,borderRadius:'50%',border:'1.5px solid rgba(236,72,153,0.5)',background:'rgba(236,72,153,0.07)',animationName:'bubbleUp',animationDuration:`${1.8+i*0.4}s`,animationDelay:`${i*0.7+0.3}s`,animationTimingFunction:'ease-in-out',animationIterationCount:'infinite'}}></div>
                     ))}
 
-                    {/* ── LAYER 8: Transparent rising bubbles ── */}
-                    {bubblesData.map((b, i) => (
-                        <div key={i} className="prem-bubble"
-                             style={{
-                                 left:b.l, bottom:'-60px',
-                                 width:b.size, height:b.size,
-                                 border:`1.5px solid rgba(255,255,255,${b.op * 3})`,
-                                 background:`radial-gradient(circle at 35% 35%, rgba(255,255,255,${b.op * 2}), rgba(200,220,255,${b.op}))`,
-                                 boxShadow:`inset 0 0 8px rgba(255,255,255,0.3)`,
-                                 '--delay': `${i * 1.2}s`,
-                                 '--dur': `${b.dur}`
-                             }}>
-                        </div>
-                    ))}
-
-                    {/* ── LAYER 9: Left side vertical cute strip ── */}
-                    <div style={{position:'absolute',left:0,top:'15%',bottom:'15%',width:22,display:'flex',flexDirection:'column',alignItems:'center',gap:12,opacity:0.5}}>
-                        {['🌸','⭐','💜','🌺','💫','🎀','✨','💎','🦋'].map((em,i)=>(
-                            <div key={i} className="prem-pop" style={{fontSize:13,'--delay':`${i*0.3}s`,'--dur':`${2.5+i*0.2}s`}}>{em}</div>
-                        ))}
+                    {/* Bottom flower strip */}
+                    <div style={{position:'absolute',bottom:0,left:0,right:0,height:'42px',opacity:0.07,display:'flex',alignItems:'flex-end',justifyContent:'center',overflow:'hidden',fontSize:'70px',lineHeight:'0.9',gap:'0px',letterSpacing:'-2px'}}>
+                        <span>🌸🌺🌸🌺🌸🌺🌸🌺🌸🌺🌸🌺🌸🌺🌸🌺🌸</span>
                     </div>
-
-                    {/* ── LAYER 10: Right side vertical cute strip ── */}
-                    <div style={{position:'absolute',right:0,top:'15%',bottom:'15%',width:22,display:'flex',flexDirection:'column',alignItems:'center',gap:12,opacity:0.5}}>
-                        {['💎','🌟','🎊','🦄','🌈','💕','⭐','🌸','💫'].map((em,i)=>(
-                            <div key={i} className="prem-wiggle" style={{fontSize:13,'--delay':`${i*0.25}s`,'--dur':`${1.5+i*0.15}s`}}>{em}</div>
-                        ))}
-                    </div>
-
-                    {/* ── LAYER 11: Bottom cute wave decoration ── */}
-                    <div style={{position:'absolute',bottom:0,left:0,right:0,height:70,overflow:'hidden',pointerEvents:'none'}}>
-                        {/* Wave 1 */}
-                        <svg viewBox="0 0 1440 70" preserveAspectRatio="none" style={{position:'absolute',bottom:0,left:0,right:0,width:'100%',height:'100%'}}>
-                            <defs>
-                                <linearGradient id="waveGrad1" x1="0" y1="0" x2="1" y2="0">
-                                    <stop offset="0%" stopColor="#ff6b9d" stopOpacity="0.12"/>
-                                    <stop offset="25%" stopColor="#ffd93d" stopOpacity="0.12"/>
-                                    <stop offset="50%" stopColor="#6bcb77" stopOpacity="0.12"/>
-                                    <stop offset="75%" stopColor="#4d96ff" stopOpacity="0.12"/>
-                                    <stop offset="100%" stopColor="#c77dff" stopOpacity="0.12"/>
-                                </linearGradient>
-                                <linearGradient id="waveGrad2" x1="0" y1="0" x2="1" y2="0">
-                                    <stop offset="0%" stopColor="#c77dff" stopOpacity="0.1"/>
-                                    <stop offset="50%" stopColor="#ff9f43" stopOpacity="0.1"/>
-                                    <stop offset="100%" stopColor="#6bcb77" stopOpacity="0.1"/>
-                                </linearGradient>
-                            </defs>
-                            <path d="M0,35 C180,10 360,60 540,35 C720,10 900,60 1080,35 C1260,10 1350,50 1440,35 L1440,70 L0,70 Z" fill="url(#waveGrad1)"/>
-                            <path d="M0,50 C200,25 400,65 600,45 C800,25 1000,65 1200,45 C1300,35 1380,55 1440,45 L1440,70 L0,70 Z" fill="url(#waveGrad2)"/>
-                        </svg>
-                        {/* Mini stars at bottom */}
-                        {['3%','12%','22%','33%','45%','55%','65%','76%','86%','94%'].map((l,i)=>(
-                            <div key={i} style={{position:'absolute',bottom:8+((i%3)*6),left:l,fontSize:8+((i%3)*3),opacity:0.25,animation:`glitter ${2+i*0.3}s ${i*0.4}s ease-in-out infinite`}}>
-                                {['✦','✧','⋆','✦','✧'][i%5]}
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* ── LAYER 12: Corner accent gems ── */}
-                    {/* Top-left corner */}
-                    <div style={{position:'absolute',top:40,left:8,opacity:0.4}}>
-                        <div className="prem-diamond" style={{fontSize:20,color:'#ff6b9d','--delay':'0s','--dur':'4s'}}>💎</div>
-                    </div>
-                    {/* Top-right corner */}
-                    <div style={{position:'absolute',top:40,right:8,opacity:0.4}}>
-                        <div className="prem-diamond" style={{fontSize:20,color:'#ffd93d','--delay':'1s','--dur':'4.5s'}}>⭐</div>
-                    </div>
-                    {/* Center top sparkle cluster */}
-                    <div style={{position:'absolute',top:44,left:'50%',transform:'translateX(-50%)',display:'flex',gap:10,opacity:0.5}}>
-                        <div className="prem-glitter" style={{position:'relative',color:'#ff6b9d',fontSize:12,'--delay':'0s','--dur':'2s'}}>✦</div>
-                        <div className="prem-glitter" style={{position:'relative',color:'#ffd93d',fontSize:18,'--delay':'0.5s','--dur':'1.8s'}}>✦</div>
-                        <div className="prem-glitter" style={{position:'relative',color:'#6bcb77',fontSize:12,'--delay':'1s','--dur':'2.2s'}}>✦</div>
-                    </div>
-
                 </div>
             );
         };
@@ -7880,11 +7644,40 @@
 
             return (
                 <div className="space-y-6 fade-in pb-24 md:pb-0">
-                    <div className="bg-gradient-to-r from-night-900 to-sky-900 rounded-3xl p-5 md:p-6 text-white relative overflow-hidden shadow-2xl border border-slate-700 group">
-                        <div className="absolute right-0 top-0 w-48 h-48 bg-gold-400 opacity-10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="rounded-3xl p-5 md:p-6 text-white relative overflow-hidden shadow-2xl border border-purple-900/30 group" style={{background:'linear-gradient(135deg, #1e1b4b 0%, #312e81 30%, #4c1d95 60%, #1e1b4b 100%)'}}>
+                        {/* Animated shimmer overlay */}
+                        <div style={{position:'absolute',inset:0,overflow:'hidden',borderRadius:'inherit'}}>
+                            <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'linear-gradient(90deg,transparent,rgba(255,255,255,0.06),transparent)',animationName:'shimmerSlide',animationDuration:'3s',animationTimingFunction:'ease-in-out',animationIterationCount:'infinite'}}></div>
+                        </div>
+                        {/* Glow orbs */}
+                        <div style={{position:'absolute',width:'180px',height:'180px',background:'radial-gradient(circle, rgba(167,139,250,0.25), transparent)',top:'-40px',right:'-20px',animationName:'morphBlob',animationDuration:'6s',animationTimingFunction:'ease-in-out',animationIterationCount:'infinite'}}></div>
+                        <div style={{position:'absolute',width:'120px',height:'120px',background:'radial-gradient(circle, rgba(236,72,153,0.2), transparent)',bottom:'-30px',left:'10%',animationName:'morphBlob',animationDuration:'8s',animationDelay:'1s',animationTimingFunction:'ease-in-out',animationIterationCount:'infinite'}}></div>
+                        {/* Rainbow top line */}
+                        <div style={{position:'absolute',top:0,left:0,right:0,height:'3px',background:'linear-gradient(90deg,#f43f5e,#f97316,#facc15,#22c55e,#06b6d4,#8b5cf6,#ec4899)',backgroundSize:'200% 100%',animationName:'rainbowShift',animationDuration:'4s',animationTimingFunction:'linear',animationIterationCount:'infinite'}}></div>
+
                         <div className="relative z-10 flex items-center justify-between">
-                            <div><h3 className="font-arab text-2xl md:text-3xl text-gold-400 mb-1">عيد الفطر مبارك</h3><p className="text-xs md:text-sm text-slate-300 font-medium opacity-90">Selamat Hari Raya Idul Fitri — Minal Aidin Wal Faizin 🌙✨</p><div className="mt-3 inline-flex items-center gap-2 bg-green-500/20 px-3 py-1 rounded-full backdrop-blur-sm border border-green-500/30"><div className="w-2 h-2 rounded-full bg-green-50 animate-pulse"></div><span className="text-[10px] font-bold tracking-wide text-green-300">ONLINE (FIREBASE)</span></div></div>
-                            <div className="text-4xl text-gold-500/80 animate-pulse"><Icon name="star" /></div>
+                            <div>
+                                {/* Premium cute title */}
+                                <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px'}}>
+                                    <span style={{fontSize:'22px',animationName:'spinStar',animationDuration:'5s',animationTimingFunction:'linear',animationIterationCount:'infinite',display:'inline-block'}}>✨</span>
+                                    <h3 style={{fontFamily:'Fredoka One, sans-serif',fontSize:'clamp(18px, 4vw, 26px)',background:'linear-gradient(90deg, #fbbf24, #f472b6, #a78bfa, #38bdf8)',backgroundClip:'text',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundSize:'200% 100%',animationName:'rainbowShift',animationDuration:'3s',animationTimingFunction:'linear',animationIterationCount:'infinite'}}>Toko Husna ✦ Premium</h3>
+                                    <span style={{fontSize:'22px',animationName:'spinStar',animationDuration:'5s',animationDelay:'2.5s',animationTimingFunction:'linear',animationIterationCount:'infinite',display:'inline-block'}}>✨</span>
+                                </div>
+                                <p style={{fontSize:'11px',color:'rgba(196,181,253,0.95)',fontWeight:600,letterSpacing:'0.02em'}}>💎 Sistem Kasir Canggih &amp; Keren — Siap Melayani 🚀</p>
+                                <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full backdrop-blur-sm" style={{background:'rgba(34,197,94,0.15)',border:'1px solid rgba(34,197,94,0.3)'}}>
+                                    <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                                    <span className="text-[10px] font-bold tracking-wide text-green-300">ONLINE (FIREBASE)</span>
+                                </div>
+                            </div>
+                            {/* Animated icon cluster */}
+                            <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'4px',flexShrink:0}}>
+                                <div style={{fontSize:'36px',animationName:'bounceChar',animationDuration:'2.5s',animationTimingFunction:'ease-in-out',animationIterationCount:'infinite',display:'block',lineHeight:1,filter:'drop-shadow(0 0 8px rgba(251,191,36,0.6))'}}>👑</div>
+                                <div style={{display:'flex',gap:'6px'}}>
+                                    <span style={{fontSize:'14px',animationName:'twinkle',animationDuration:'1.5s',animationTimingFunction:'ease-in-out',animationIterationCount:'infinite'}}>⭐</span>
+                                    <span style={{fontSize:'14px',animationName:'twinkle',animationDuration:'2s',animationDelay:'0.5s',animationTimingFunction:'ease-in-out',animationIterationCount:'infinite'}}>💫</span>
+                                    <span style={{fontSize:'14px',animationName:'twinkle',animationDuration:'1.8s',animationDelay:'0.3s',animationTimingFunction:'ease-in-out',animationIterationCount:'infinite'}}>⭐</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
@@ -11584,7 +11377,7 @@
 
             return (
                 <div className={`min-h-screen flex flex-col md:flex-row bg-sky-50/50 transition-colors duration-500 ${activeStoreId === 'all_stores' ? 'theme-all-stores' : ''}`}>
-                    <RamadhanDecor /> <Toast show={toast.show} message={toast.message} type={toast.type} /> {isSidebarOpen && (<div className="fixed inset-0 bg-slate-900/50 z-40 md:hidden backdrop-blur-sm fade-in" onClick={() => setIsSidebarOpen(false)}></div>)}
+                    <PremiumDecor /> <Toast show={toast.show} message={toast.message} type={toast.type} /> {isSidebarOpen && (<div className="fixed inset-0 bg-slate-900/50 z-40 md:hidden backdrop-blur-sm fade-in" onClick={() => setIsSidebarOpen(false)}></div>)}
                     
                     {/* HIDDEN RECEIPT CONTAINER (UPDATED FOR DYNAMIC STORE) */}
                     {receiptToPrint && ( <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', zIndex: -1 }}> 
