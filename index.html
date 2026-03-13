@@ -148,87 +148,61 @@
         .ketupat::after { width: 50%; height: 100%; top: 0; left: 0; border-right: 1px solid #15803d; }
 
         /* ═══════════════════════════════════════════════════════
-           EID MUBARAK — CINEMATIC NIGHT SKY
-           Deep indigo · Nebula · Gold dust · Mandala · Masjid
+           DUBAI NEON ZELLIGE — Electric Islamic Geometry
+           Vivid teal · Electric magenta · Hot gold · Deep violet
            ═══════════════════════════════════════════════════════ */
 
-        /* Nebula drift */
-        @keyframes nebula-drift {
-            0%   { transform: translate(0,0) scale(1) rotate(0deg); }
-            33%  { transform: translate(20px,-15px) scale(1.06) rotate(3deg); }
-            66%  { transform: translate(-15px,10px) scale(0.97) rotate(-2deg); }
-            100% { transform: translate(0,0) scale(1) rotate(0deg); }
+        /* Ripple pulse from center */
+        @keyframes ripple-out {
+            0%   { transform: translate(-50%,-50%) scale(0);   opacity: .7; }
+            100% { transform: translate(-50%,-50%) scale(4.5); opacity: 0; }
         }
-        /* Star twinkle */
-        @keyframes st {
-            0%,100% { opacity: var(--dim,.15); transform: scale(.7); }
-            50%      { opacity: var(--bright,.95); transform: scale(1.3); }
+        /* Neon arch glow */
+        @keyframes arch-neon {
+            0%,100% { filter: drop-shadow(0 0 6px var(--nc)) drop-shadow(0 0 16px var(--nc)); opacity:.7; }
+            50%      { filter: drop-shadow(0 0 14px var(--nc)) drop-shadow(0 0 40px var(--nc)) drop-shadow(0 0 70px var(--nc)); opacity:1; }
         }
-        /* Shooting star */
-        @keyframes shoot {
-            0%   { transform: translateX(0) translateY(0); opacity:0; }
-            5%   { opacity:1; }
-            100% { transform: translateX(-350px) translateY(200px); opacity:0; }
+        /* Diamond float */
+        @keyframes dia-float {
+            0%   { transform: translateY(110vh) rotate(var(--r0,0deg)) scale(.5); opacity:0; }
+            8%   { opacity: var(--op,.8); }
+            92%  { opacity: var(--op,.6); }
+            100% { transform: translateY(-8vh) rotate(var(--r1,360deg)) scale(1.1); opacity:0; }
         }
-        /* Gold dust rise */
-        @keyframes dust {
-            0%   { transform: translateY(0) translateX(0) scale(.5); opacity:0; }
-            10%  { opacity: var(--op,.8); }
-            85%  { opacity: var(--op,.6); }
-            100% { transform: translateY(-110vh) translateX(var(--dx,20px)) scale(1.2); opacity:0; }
+        /* Tile pulse */
+        @keyframes tile-pulse {
+            0%,100% { opacity: var(--dim,.06); }
+            50%      { opacity: var(--bright,.16); }
         }
-        /* Mandala rotate */
-        @keyframes man-cw  { to { transform: rotate(360deg); } }
-        @keyframes man-ccw { to { transform: rotate(-360deg); } }
-        /* Moon float */
-        @keyframes moon-bob {
-            0%,100% { transform: translateY(0px) rotate(-5deg); }
-            50%      { transform: translateY(-12px) rotate(-5deg); }
+        /* Neon text shimmer */
+        @keyframes neon-text {
+            0%,100% { text-shadow: 0 0 8px #0ff, 0 0 20px #0ff, 0 0 40px #0284c7; color:#e0f9ff; }
+            33%      { text-shadow: 0 0 8px #f0f, 0 0 20px #f0f, 0 0 50px #9333ea; color:#fdf4ff; }
+            66%      { text-shadow: 0 0 8px #ff0, 0 0 22px #fbbf24, 0 0 45px #d97706; color:#fffbeb; }
         }
-        /* Moon halo pulse */
-        @keyframes halo {
-            0%,100% { transform: scale(1);   opacity:.18; }
-            50%      { transform: scale(1.15); opacity:.3; }
+        /* Ketupat spin-float */
+        @keyframes ket-drift {
+            0%   { transform: translateY(0) rotate(45deg) scale(1); }
+            50%  { transform: translateY(-12px) rotate(55deg) scale(1.08); }
+            100% { transform: translateY(0) rotate(45deg) scale(1); }
         }
-        /* Banner shimmer */
-        @keyframes banner-shine {
-            0%   { background-position: -300% center; }
-            100% { background-position: 300% center; }
+        /* Orb orbit */
+        @keyframes orbit {
+            from { transform: rotate(0deg) translateX(var(--r,60px)) rotate(0deg); }
+            to   { transform: rotate(360deg) translateX(var(--r,60px)) rotate(-360deg); }
         }
-        /* Lantern swing */
-        @keyframes lswing {
-            0%   { transform: rotate(-14deg); }
-            100% { transform: rotate(14deg); }
-        }
-        /* Lantern glow */
-        @keyframes lglow {
-            0%,100% { filter: drop-shadow(0 0 8px var(--lg,rgba(251,191,36,.9))); }
-            50%      { filter: drop-shadow(0 0 22px var(--lg,rgba(251,191,36,1))); }
-        }
-        /* Uplight */
-        @keyframes uplight {
-            0%,100% { opacity:.35; }
-            50%      { opacity:.55; }
-        }
-        /* Text glow */
-        @keyframes text-glow {
-            0%,100% { text-shadow: 0 0 12px rgba(250,204,21,.6), 0 0 30px rgba(250,204,21,.2); }
-            50%      { text-shadow: 0 0 24px rgba(255,230,80,1), 0 0 60px rgba(250,204,21,.4), 0 0 90px rgba(250,204,21,.15); }
-        }
-        /* Fade in up */
+        /* Fade in */
         @keyframes fadeInUp {
-            from { opacity:0; transform:translateY(20px); }
+            from { opacity:0; transform:translateY(16px); }
             to   { opacity:1; transform:translateY(0); }
         }
-
-        /* Mosque */
-        .mosque-silhouette { color:#0f172a; }
-        @keyframes mosque-breathe {
-            0%,100% { opacity:.85; } 50% { opacity:1; }
-        }
-        .mosque-silhouette { animation: mosque-breathe 6s ease-in-out infinite; }
+        /* mosque */
+        .mosque-silhouette { color: #0c1a3a; }
+        @keyframes mosque-glow { 0%,100%{opacity:.22;} 50%{opacity:.32;} }
+        .mosque-silhouette { animation: mosque-glow 6s ease-in-out infinite; }
 
         /* FIREWORKS STYLE */
+                /* FIREWORKS STYLE */
         .firework-particle { position: fixed; pointer-events: none; border-radius: 50%; z-index: 9999; animation: firework-fade 0.8s ease-out forwards; }
         @keyframes firework-fade { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(0); opacity: 0; } }
         .type-effect-wrapper { display: inline-block; overflow: hidden; white-space: nowrap; vertical-align: bottom; max-width: 0; animation: revealText 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
@@ -566,226 +540,287 @@
 
 
         // ══════════════════════════════════════════════════════
-        //  EID MUBARAK — CINEMATIC NIGHT SKY 🌙✨
+        //  DUBAI NEON ZELLIGE — Electric Islamic Geometry 🌙⚡
         // ══════════════════════════════════════════════════════
         const RamadhanDecor = () => {
 
-            const stars = [
-                {t:'4%', l:'3%',  s:3,bright:.95,dim:.2, dur:2.1,delay:0  },
-                {t:'7%', l:'9%',  s:2,bright:.7, dim:.1, dur:3.4,delay:.6 },
-                {t:'3%', l:'17%', s:4,bright:.9, dim:.25,dur:2.6,delay:1.1},
-                {t:'9%', l:'24%', s:2,bright:.6, dim:.1, dur:4.0,delay:.3 },
-                {t:'5%', l:'31%', s:3,bright:.85,dim:.2, dur:2.9,delay:1.8},
-                {t:'2%', l:'38%', s:2,bright:.7, dim:.15,dur:3.5,delay:.9 },
-                {t:'8%', l:'45%', s:3,bright:.9, dim:.2, dur:2.2,delay:2.0},
-                {t:'4%', l:'53%', s:4,bright:.95,dim:.3, dur:2.8,delay:.5 },
-                {t:'6%', l:'60%', s:2,bright:.65,dim:.1, dur:3.8,delay:1.4},
-                {t:'3%', l:'67%', s:3,bright:.8, dim:.2, dur:2.5,delay:.2 },
-                {t:'7%', l:'74%', s:2,bright:.7, dim:.1, dur:4.2,delay:2.3},
-                {t:'4%', l:'80%', s:4,bright:.9, dim:.25,dur:2.3,delay:.8 },
-                {t:'8%', l:'87%', s:2,bright:.6, dim:.1, dur:3.6,delay:1.6},
-                {t:'5%', l:'93%', s:3,bright:.85,dim:.2, dur:2.7,delay:.4 },
-                {t:'12%',l:'6%',  s:2,bright:.6, dim:.1, dur:4.5,delay:3.0},
-                {t:'14%',l:'21%', s:3,bright:.75,dim:.15,dur:3.1,delay:1.2},
-                {t:'11%',l:'49%', s:2,bright:.65,dim:.1, dur:3.9,delay:.7 },
-                {t:'15%',l:'71%', s:3,bright:.8, dim:.2, dur:2.4,delay:2.1},
-                {t:'13%',l:'89%', s:2,bright:.7, dim:.1, dur:4.1,delay:.1 },
-                {t:'18%',l:'35%', s:2,bright:.55,dim:.08,dur:5.0,delay:3.5},
+            /* Zellige tile grid config */
+            const tileRows = 5, tileCols = 10;
+            const tileColors = [
+                ['rgba(6,182,212,.10)','rgba(168,85,247,.08)','rgba(251,191,36,.09)','rgba(236,72,153,.08)','rgba(20,184,166,.10)'],
+                ['rgba(251,191,36,.08)','rgba(6,182,212,.09)','rgba(168,85,247,.10)','rgba(20,184,166,.08)','rgba(236,72,153,.09)'],
+                ['rgba(168,85,247,.09)','rgba(251,191,36,.10)','rgba(6,182,212,.08)','rgba(236,72,153,.10)','rgba(251,191,36,.08)'],
+                ['rgba(20,184,166,.10)','rgba(236,72,153,.08)','rgba(251,191,36,.09)','rgba(6,182,212,.10)','rgba(168,85,247,.09)'],
+                ['rgba(236,72,153,.08)','rgba(20,184,166,.10)','rgba(168,85,247,.08)','rgba(251,191,36,.10)','rgba(6,182,212,.09)'],
             ];
-            const shoots = [
-                {t:'6%',  r:'8%',  dur:'5s',  delay:'0s'  },
-                {t:'11%', r:'35%', dur:'7s',  delay:'3.5s'},
-                {t:'4%',  r:'60%', dur:'9s',  delay:'7s'  },
-                {t:'8%',  r:'15%', dur:'6s',  delay:'11s' },
+            const dimVals  = [.05,.06,.07,.05,.08,.06,.07,.05,.06,.07,.06,.05,.08,.06,.07,.05,.06,.07,.05,.06,.07,.08,.05,.06,.07,.08,.05,.06,.07,.08,.05,.06,.07,.05,.06,.07,.05,.06,.07,.08,.05,.06,.07,.08,.05,.06,.07,.08,.05,.06];
+            const briVals  = [.14,.18,.12,.16,.20,.13,.17,.14,.16,.18,.15,.12,.20,.14,.18,.13,.16,.19,.14,.17,.15,.20,.12,.16,.18,.20,.13,.15,.18,.20,.12,.16,.18,.13,.15,.18,.13,.16,.18,.20,.12,.15,.18,.20,.12,.15,.18,.20,.12,.15];
+            const durVals  = [3.2,4.1,2.8,3.7,5.0,3.5,2.6,4.3,3.1,2.9,4.7,3.4,2.5,4.0,3.8,2.7,4.5,3.0,3.9,2.6,4.2,3.3,5.1,2.8,3.6,4.8,3.2,2.7,4.0,3.5,2.9,4.4,3.1,2.6,3.8,4.6,3.0,2.8,4.1,3.7,2.5,4.3,3.4,2.9,4.6,3.0,2.7,4.2,3.5,2.9];
+            const delayVals= [0,.5,1.1,.3,1.8,.7,2.2,.2,1.4,.8,2.5,.4,1.6,.9,0.1,2.0,.6,1.2,.4,1.9,.3,2.4,.8,1.5,.2,2.8,.7,1.3,.5,2.1,.9,.1,1.7,.4,2.6,.6,1.0,.3,2.3,.7,1.4,.2,2.9,.8,1.6,.1,2.2,.5,1.1,.4];
+
+            /* Ripple rings */
+            const ripples = [
+                {c:'rgba(6,182,212,0.35)',  dur:'4s',  delay:'0s'  },
+                {c:'rgba(168,85,247,0.28)', dur:'4s',  delay:'1.3s'},
+                {c:'rgba(251,191,36,0.32)', dur:'4s',  delay:'2.6s'},
+                {c:'rgba(236,72,153,0.25)', dur:'4s',  delay:'0.7s'},
+                {c:'rgba(20,184,166,0.3)',  dur:'4s',  delay:'3.5s'},
             ];
-            const dust = [
-                {l:'5%',  s:3,c:'#fde68a',op:.7, dx:'18px', dur:14,delay:0  },
-                {l:'12%', s:2,c:'#f0abfc',op:.5, dx:'-12px',dur:17,delay:2  },
-                {l:'20%', s:4,c:'#fde68a',op:.8, dx:'22px', dur:12,delay:.8 },
-                {l:'28%', s:2,c:'#a5f3fc',op:.55,dx:'-8px', dur:19,delay:4  },
-                {l:'36%', s:3,c:'#fde68a',op:.7, dx:'15px', dur:13,delay:1.5},
-                {l:'44%', s:2,c:'#bbf7d0',op:.5, dx:'-18px',dur:16,delay:3.2},
-                {l:'52%', s:4,c:'#fde68a',op:.75,dx:'20px', dur:11,delay:.3 },
-                {l:'60%', s:2,c:'#f0abfc',op:.5, dx:'-10px',dur:18,delay:5  },
-                {l:'68%', s:3,c:'#fde68a',op:.7, dx:'16px', dur:14,delay:2.5},
-                {l:'75%', s:2,c:'#a5f3fc',op:.55,dx:'-14px',dur:15,delay:.6 },
-                {l:'82%', s:4,c:'#fde68a',op:.8, dx:'24px', dur:12,delay:3.8},
-                {l:'89%', s:2,c:'#bbf7d0',op:.5, dx:'-9px', dur:20,delay:1.2},
-                {l:'95%', s:3,c:'#fde68a',op:.65,dx:'12px', dur:16,delay:6  },
+
+            /* Floating diamonds */
+            const diamonds = [
+                {l:'3%',  s:16, c:'#06b6d4', bc:'rgba(6,182,212,0.3)',  op:.75, dur:12, delay:0,   r0:'-20deg', r1:'300deg'},
+                {l:'9%',  s:10, c:'#a855f7', bc:'rgba(168,85,247,0.25)',op:.6,  dur:16, delay:2,   r0:'10deg',  r1:'-280deg'},
+                {l:'16%', s:20, c:'#fbbf24', bc:'rgba(251,191,36,0.3)',  op:.8,  dur:11, delay:.8,  r0:'30deg',  r1:'340deg'},
+                {l:'23%', s:12, c:'#ec4899', bc:'rgba(236,72,153,0.25)',op:.65, dur:14, delay:3.5, r0:'-15deg', r1:'270deg'},
+                {l:'31%', s:18, c:'#14b8a6', bc:'rgba(20,184,166,0.3)',  op:.75, dur:13, delay:1.2, r0:'20deg',  r1:'-310deg'},
+                {l:'40%', s:10, c:'#fbbf24', bc:'rgba(251,191,36,0.25)',op:.6,  dur:17, delay:4.8, r0:'-25deg', r1:'250deg'},
+                {l:'50%', s:22, c:'#06b6d4', bc:'rgba(6,182,212,0.35)',  op:.85, dur:10, delay:.3,  r0:'0deg',   r1:'360deg'},
+                {l:'59%', s:12, c:'#a855f7', bc:'rgba(168,85,247,0.3)',  op:.65, dur:15, delay:2.8, r0:'15deg',  r1:'-290deg'},
+                {l:'67%', s:18, c:'#ec4899', bc:'rgba(236,72,153,0.3)',  op:.75, dur:12, delay:1.6, r0:'-30deg', r1:'320deg'},
+                {l:'75%', s:10, c:'#fbbf24', bc:'rgba(251,191,36,0.25)',op:.6,  dur:18, delay:5.5, r0:'25deg',  r1:'-260deg'},
+                {l:'83%', s:20, c:'#14b8a6', bc:'rgba(20,184,166,0.35)',op:.8,  dur:11, delay:.6,  r0:'-10deg', r1:'330deg'},
+                {l:'90%', s:14, c:'#a855f7', bc:'rgba(168,85,247,0.25)',op:.65, dur:14, delay:3.2, r0:'20deg',  r1:'-280deg'},
+                {l:'96%', s:16, c:'#06b6d4', bc:'rgba(6,182,212,0.3)',  op:.7,  dur:13, delay:1.9, r0:'-5deg',  r1:'300deg'},
             ];
-            const Lantern = ({w=44,body='#facc15',accent='#ca8a04',inner='rgba(255,240,100,0.7)',lg='rgba(250,204,21,0.9)',sd=4.5,sa=0,h=90,l,r}) => (
-                <div style={{position:'absolute',top:0,...(l?{left:l}:{right:r}),display:'flex',flexDirection:'column',alignItems:'center',transformOrigin:'top center',animation:`lswing ${sd}s ease-in-out infinite alternate`,animationDelay:`${sa}s`}}>
-                    <div style={{width:1.5,height:h,background:'linear-gradient(to bottom,rgba(180,130,30,0.7),rgba(180,130,30,0.15))'}}/>
-                    <div style={{animation:`lglow 3s ease-in-out infinite`,'--lg':lg}}>
-                        <svg width={w} height={w*1.5} viewBox="0 0 44 66" fill="none">
-                            <rect x="17" y="0" width="10" height="6" rx="3" fill={accent}/>
-                            <line x1="22" y1="6" x2="22" y2="12" stroke={accent} strokeWidth="2"/>
-                            <ellipse cx="22" cy="14" rx="9" ry="4" fill={accent}/>
-                            <path d="M5 16 C2 24 1 34 1 42 C1 55 10 62 22 62 C34 62 43 55 43 42 C43 34 42 24 39 16Z" fill={body} opacity=".9"/>
-                            <path d="M10 18 L10 56 Q22 62 34 56 L34 18 Q22 12 10 18Z" fill="none" stroke={accent} strokeWidth=".8" opacity=".5"/>
-                            <ellipse cx="22" cy="38" rx="8" ry="12" fill={inner}/>
-                            <polygon points="22,30 24,36 30,36 25.5,40 27.5,46 22,42 16.5,46 18.5,40 14,36 20,36" fill="white" opacity=".85"/>
-                            <ellipse cx="22" cy="60" rx="9" ry="3.5" fill={accent}/>
-                        </svg>
-                    </div>
-                </div>
-            );
-            const manAngles12 = [0,30,60,90,120,150,180,210,240,270,300,330];
-            const manAngles8  = [0,45,90,135,180,225,270,315];
+
+            /* Orbiting orbs around center moon */
+            const orbits = [
+                {c:'#06b6d4',s:5,r:92, dur:'12s',delay:'0s'  },
+                {c:'#fbbf24',s:4,r:110,dur:'18s',delay:'4s'  },
+                {c:'#a855f7',s:6,r:78, dur:'9s', delay:'2s'  },
+                {c:'#ec4899',s:3,r:125,dur:'22s',delay:'7s'  },
+                {c:'#14b8a6',s:5,r:60, dur:'7s', delay:'1s'  },
+            ];
+
+            /* Neon arch colors */
+            const archColors = [
+                {c:'#06b6d4', gc:'rgba(6,182,212,0.6)',  gc2:'rgba(6,182,212,0)',  w:'78%', t:0,   dur:'3.5s'},
+                {c:'#a855f7', gc:'rgba(168,85,247,0.5)', gc2:'rgba(168,85,247,0)', w:'62%', t:14,  dur:'4.2s'},
+                {c:'#fbbf24', gc:'rgba(251,191,36,0.6)', gc2:'rgba(251,191,36,0)', w:'45%', t:28,  dur:'3.0s'},
+                {c:'#ec4899', gc:'rgba(236,72,153,0.5)', gc2:'rgba(236,72,153,0)', w:'30%', t:42,  dur:'5.0s'},
+            ];
 
             return (
                 <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{zIndex:-1}}>
 
-                    {/* Night sky vignette */}
-                    <div style={{position:'absolute',inset:0,background:'linear-gradient(180deg,rgba(3,7,30,0.52) 0%,rgba(7,18,58,0.35) 35%,rgba(10,25,70,0.18) 65%,transparent 100%)'}}/>
+                    {/* ══ BG: subtle dark gradient ══ */}
+                    <div style={{position:'absolute',inset:0,background:'linear-gradient(160deg,rgba(2,6,23,.45) 0%,rgba(5,12,42,.35) 40%,rgba(2,8,30,.25) 75%,transparent 100%)'}}/>
 
-                    {/* Nebula clouds */}
-                    {[
-                        {t:'0%', l:'-12%',w:440,h:250,c:'rgba(99,102,241,0.10)',dur:20,d:0},
-                        {t:'4%', r:'-8%', w:360,h:200,c:'rgba(16,185,129,0.09)',dur:24,d:4},
-                        {t:'10%',l:'22%', w:480,h:190,c:'rgba(250,204,21,0.055)',dur:16,d:2},
-                        {t:'0%', l:'38%', w:320,h:280,c:'rgba(236,72,153,0.065)',dur:28,d:7},
-                    ].map((n,i)=>(
-                        <div key={i} style={{position:'absolute',top:n.t,...(n.l?{left:n.l}:{right:n.r}),width:n.w,height:n.h,borderRadius:'50%',background:`radial-gradient(ellipse,${n.c} 0%,transparent 70%)`,animation:`nebula-drift ${n.dur}s ease-in-out infinite`,animationDelay:`${n.d}s`,filter:'blur(2px)'}}/>
-                    ))}
-
-                    {/* Stars */}
-                    {stars.map((s,i)=>(
-                        <div key={i} style={{position:'absolute',top:s.t,left:s.l,width:s.s,height:s.s,borderRadius:'50%',background:'#fff',boxShadow:`0 0 ${s.s+2}px rgba(255,255,255,0.8)`,animation:`st ${s.dur}s ease-in-out infinite`,animationDelay:`${s.delay}s`,'--bright':s.bright,'--dim':s.dim}}/>
-                    ))}
-
-                    {/* Shooting stars */}
-                    {shoots.map((s,i)=>(
-                        <div key={i} style={{position:'absolute',top:s.t,...(s.r?{right:s.r}:{left:s.l}),width:90,height:2,background:'linear-gradient(to right,rgba(255,255,255,0),rgba(255,255,255,0.9) 50%,rgba(255,255,200,0.6))',borderRadius:4,animation:`shoot ${s.dur} linear infinite`,animationDelay:s.delay,boxShadow:'0 0 6px rgba(255,255,200,0.8)'}}/>
-                    ))}
-
-                    {/* ── Moon + Crescent centred ── */}
-                    <div style={{position:'absolute',top:'2%',left:'50%',transform:'translateX(-50%)',zIndex:4,animation:'moon-bob 8s ease-in-out infinite, fadeInUp .8s ease-out both'}}>
-                        {[160,120,80].map((r,i)=>(
-                            <div key={i} style={{position:'absolute',top:'50%',left:'50%',width:r,height:r,marginTop:-r/2,marginLeft:-r/2,borderRadius:'50%',border:`1px solid rgba(250,204,21,${0.06+i*0.04})`,animation:`halo ${5+i*2}s ease-in-out infinite`,animationDelay:`${i*.8}s`}}/>
-                        ))}
-                        <svg width="150" height="100" viewBox="0 0 150 100" fill="none">
-                            <defs>
-                                <radialGradient id="haloRad" cx="35%" cy="45%" r="55%"><stop offset="0%" stopColor="rgba(250,204,21,0.18)"/><stop offset="100%" stopColor="transparent"/></radialGradient>
-                                <linearGradient id="moonGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#fefce8"/><stop offset="40%" stopColor="#fde047"/><stop offset="100%" stopColor="#92400e"/></linearGradient>
-                                <filter id="mf" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-                                <filter id="sf" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-                            </defs>
-                            <ellipse cx="47" cy="52" rx="44" ry="44" fill="url(#haloRad)"/>
-                            <path filter="url(#mf)" d="M70 50C70 68 57 81 40 81C29 81 20 76 14 67C21 70 29 71.5 37 71.5C57 71.5 73 55.5 73 35.5C73 25.5 70 17 64 10C68 18 70 34 70 50Z" fill="url(#moonGrad)"/>
-                            <path d="M61 17C66 25 68 34 68 43C68 59 58 72 43 76C54 72 62 59 62 45C62 35 59 26 54 20Z" fill="rgba(255,255,220,0.22)"/>
-                            <g filter="url(#sf)">
-                                <polygon points="115,10 118.5,21.5 131,21.5 121,28 124.5,39.5 115,33 105.5,39.5 109,28 99,21.5 111.5,21.5" fill="#fef08a"/>
-                                <polygon points="115,10 118.5,21.5 131,21.5 121,28 124.5,39.5 115,33 105.5,39.5 109,28 99,21.5 111.5,21.5" fill="rgba(255,255,150,0.35)" transform="scale(1.15) translate(-9,-3)"/>
-                            </g>
-                            <circle cx="20" cy="18" r="2.5" fill="#fef08a" opacity=".8"/>
-                            <circle cx="88"  cy="8"  r="2"   fill="#a5f3fc" opacity=".7"/>
-                            <circle cx="135" cy="55" r="2"   fill="#fde68a" opacity=".75"/>
-                            <circle cx="10"  cy="50" r="1.5" fill="#bbf7d0" opacity=".65"/>
-                            <circle cx="75"  cy="5"  r="1.5" fill="#fde68a" opacity=".6"/>
-                        </svg>
+                    {/* ══ ZELLIGE TILE GRID ══ */}
+                    <div style={{position:'absolute',top:0,left:0,right:0,height:'38%',display:'grid',gridTemplateColumns:`repeat(${tileCols},1fr)`,gridTemplateRows:`repeat(${tileRows},1fr)`,pointerEvents:'none'}}>
+                        {Array.from({length:tileRows*tileCols}).map((_,i)=>{
+                            const row = Math.floor(i/tileCols), col = i%tileCols;
+                            const colorIdx = (row*3+col*2)%5;
+                            return (
+                                <div key={i} style={{
+                                    background:tileColors[row%5][colorIdx],
+                                    clipPath:'polygon(50% 0%,100% 50%,50% 100%,0% 50%)',
+                                    animation:`tile-pulse ${durVals[i%50]}s ease-in-out infinite`,
+                                    animationDelay:`${delayVals[i%50]}s`,
+                                    '--dim':dimVals[i%50],
+                                    '--bright':briVals[i%50],
+                                    margin:2,
+                                    borderRadius:2,
+                                }}/>
+                            );
+                        })}
                     </div>
 
-                    {/* ── Mandala kiri ── */}
-                    <div style={{position:'absolute',top:'8%',left:'-55px',opacity:.20,width:160,height:160}}>
-                        <svg viewBox="0 0 160 160" style={{width:'100%',height:'100%'}}>
-                            <g transform="translate(80,80)" style={{animation:'man-ccw 60s linear infinite',transformOrigin:'0 0'}}>
-                                {manAngles12.map((a,i)=>(
-                                    <g key={i} transform={`rotate(${a})`}>
-                                        <line x1="0" y1="20" x2="0" y2="68" stroke="#fde68a" strokeWidth="1"/>
-                                        <circle cx="0" cy="68" r="3" fill="#fde68a"/>
-                                        <ellipse cx="0" cy="44" rx="4" ry="8" fill="rgba(250,204,21,0.5)"/>
-                                    </g>
-                                ))}
-                            </g>
-                            <g transform="translate(80,80)" style={{animation:'man-cw 40s linear infinite',transformOrigin:'0 0'}}>
-                                {manAngles8.map((a,i)=>(
-                                    <g key={i} transform={`rotate(${a})`}>
-                                        <polygon points="0,-30 5,-20 -5,-20" fill="#34d399" opacity=".8"/>
-                                        <polygon points="0,-52 4,-44 -4,-44" fill="#34d399" opacity=".5"/>
-                                    </g>
-                                ))}
-                            </g>
-                            <circle cx="80" cy="80" r="16" fill="none" stroke="#fde68a" strokeWidth="1" opacity=".6"/>
-                            <circle cx="80" cy="80" r="6" fill="#fde68a" opacity=".7"/>
-                        </svg>
-                    </div>
-
-                    {/* ── Mandala kanan ── */}
-                    <div style={{position:'absolute',top:'8%',right:'-55px',opacity:.20,width:160,height:160}}>
-                        <svg viewBox="0 0 160 160" style={{width:'100%',height:'100%'}}>
-                            <g transform="translate(80,80)" style={{animation:'man-cw 55s linear infinite',transformOrigin:'0 0'}}>
-                                {manAngles12.map((a,i)=>(
-                                    <g key={i} transform={`rotate(${a})`}>
-                                        <line x1="0" y1="20" x2="0" y2="68" stroke="#818cf8" strokeWidth="1"/>
-                                        <circle cx="0" cy="68" r="3" fill="#818cf8"/>
-                                        <ellipse cx="0" cy="44" rx="4" ry="8" fill="rgba(129,140,248,0.5)"/>
-                                    </g>
-                                ))}
-                            </g>
-                            <g transform="translate(80,80)" style={{animation:'man-ccw 38s linear infinite',transformOrigin:'0 0'}}>
-                                {manAngles8.map((a,i)=>(
-                                    <g key={i} transform={`rotate(${a})`}>
-                                        <polygon points="0,-30 5,-20 -5,-20" fill="#fde68a" opacity=".8"/>
-                                        <polygon points="0,-52 4,-44 -4,-44" fill="#fde68a" opacity=".5"/>
-                                    </g>
-                                ))}
-                            </g>
-                            <circle cx="80" cy="80" r="16" fill="none" stroke="#818cf8" strokeWidth="1" opacity=".6"/>
-                            <circle cx="80" cy="80" r="6" fill="#818cf8" opacity=".7"/>
-                        </svg>
-                    </div>
-
-                    {/* ── Lanterns ── */}
-                    <Lantern l="4%"  h={80}  body="#f59e0b" accent="#92400e" inner="rgba(255,220,60,0.7)"  lg="rgba(245,158,11,0.9)" sd={4.5} sa={0}/>
-                    <Lantern l="14%" h={110} body="#dc2626" accent="#7f1d1d" inner="rgba(255,100,100,0.65)" lg="rgba(220,38,38,0.9)"  sd={5}   sa={1.2}/>
-                    <Lantern r="4%"  h={80}  body="#7c3aed" accent="#3b0764" inner="rgba(200,150,255,0.65)" lg="rgba(124,58,237,0.9)" sd={4}   sa={.5}/>
-                    <Lantern r="14%" h={100} body="#059669" accent="#064e3b" inner="rgba(100,240,180,0.65)" lg="rgba(5,150,105,0.9)"  sd={5.5} sa={2}/>
-
-                    {/* ── Eid Mubarak banner ── */}
-                    <div style={{position:'absolute',top:'15px',left:'50%',transform:'translateX(-50%)',zIndex:5,whiteSpace:'nowrap',fontFamily:'"Dancing Script","Amiri",serif',fontSize:'clamp(12px,2vw,19px)',fontWeight:700,letterSpacing:'0.12em',background:'linear-gradient(90deg,#ca8a04,#fde68a,#fff8dc,#facc15,#fde68a,#ca8a04)',backgroundSize:'300% auto',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text',animation:'banner-shine 3s linear infinite, fadeInUp .6s .4s ease-out both'}}>
-                        ✦ Selamat Idul Fitri 1446 H — Minal Aidin Wal Faizin ✦
-                    </div>
-
-                    {/* ── Gold dust ── */}
-                    {dust.map((d,i)=>(
-                        <div key={i} style={{position:'absolute',left:d.l,bottom:'-8px',width:d.s,height:d.s,borderRadius:'50%',background:d.c,boxShadow:`0 0 ${d.s*3}px ${d.c}`,animation:`dust ${d.dur}s ease-in-out infinite`,animationDelay:`${d.delay}s`,'--op':d.op,'--dx':d.dx}}/>
-                    ))}
-
-                    {/* ── Mosque silhouette + uplight ── */}
-                    <div style={{position:'absolute',bottom:0,left:0,right:0,height:130,pointerEvents:'none'}}>
-                        <div style={{position:'absolute',bottom:0,left:'15%',right:'15%',height:70,background:'radial-gradient(ellipse at 50% 100%,rgba(250,204,21,0.18) 0%,transparent 70%)',animation:'uplight 5s ease-in-out infinite'}}/>
-                        <div className="mosque-silhouette" style={{width:'100%',height:'100%'}}>
-                            <svg viewBox="0 0 1400 130" xmlns="http://www.w3.org/2000/svg" style={{width:'100%',height:'100%',display:'block'}} preserveAspectRatio="xMidYMax slice">
+                    {/* ══ NEON ARCHES (top corners) ══ */}
+                    <div style={{position:'absolute',top:0,left:0,right:0,height:'55%',pointerEvents:'none'}}>
+                        {archColors.map((a,i)=>(
+                            <svg key={i} style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',overflow:'visible'}} preserveAspectRatio="none">
                                 <defs>
-                                    <linearGradient id="mGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="currentColor" stopOpacity="0"/><stop offset="35%" stopColor="currentColor" stopOpacity="1"/><stop offset="100%" stopColor="currentColor" stopOpacity="1"/></linearGradient>
-                                    <linearGradient id="goldEdge" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#fde68a" stopOpacity=".45"/><stop offset="100%" stopColor="#fde68a" stopOpacity="0"/></linearGradient>
+                                    <linearGradient id={`ag${i}`} x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" stopColor={a.gc2}/>
+                                        <stop offset="50%" stopColor={a.gc}/>
+                                        <stop offset="100%" stopColor={a.gc2}/>
+                                    </linearGradient>
                                 </defs>
-                                <ellipse cx="700" cy="42" rx="110" ry="80" fill="url(#mGrad)"/>
-                                <rect x="590" y="55" width="220" height="75" fill="currentColor"/>
-                                <ellipse cx="520" cy="65" rx="70" ry="55" fill="url(#mGrad)"/>
-                                <rect x="450" y="72" width="140" height="58" fill="currentColor"/>
-                                <ellipse cx="880" cy="65" rx="70" ry="55" fill="url(#mGrad)"/>
-                                <rect x="810" y="72" width="140" height="58" fill="currentColor"/>
-                                <rect x="370" y="18" width="22" height="112" fill="currentColor"/>
-                                <ellipse cx="381" cy="18" rx="11" ry="28" fill="currentColor"/>
-                                <rect x="378" y="-10" width="7" height="30" fill="currentColor"/>
-                                <ellipse cx="381" cy="-10" rx="4" ry="7" fill="currentColor"/>
-                                <rect x="1008" y="18" width="22" height="112" fill="currentColor"/>
-                                <ellipse cx="1019" cy="18" rx="11" ry="28" fill="currentColor"/>
-                                <rect x="1016" y="-10" width="7" height="30" fill="currentColor"/>
-                                <ellipse cx="1019" cy="-10" rx="4" ry="7" fill="currentColor"/>
-                                <rect x="230" y="40" width="15" height="90" fill="currentColor"/>
-                                <ellipse cx="237" cy="40" rx="7.5" ry="18" fill="currentColor"/>
-                                <rect x="234" y="22" width="5" height="20" fill="currentColor"/>
-                                <rect x="1155" y="40" width="15" height="90" fill="currentColor"/>
-                                <ellipse cx="1162" cy="40" rx="7.5" ry="18" fill="currentColor"/>
-                                <rect x="1159" y="22" width="5" height="20" fill="currentColor"/>
-                                <path d="M655,130 L655,100 Q700,80 745,100 L745,130Z" fill="rgba(0,0,0,0.3)"/>
-                                <ellipse cx="700" cy="0" rx="110" ry="30" fill="url(#goldEdge)" opacity=".4"/>
-                                <rect x="0" y="127" width="1400" height="3" fill="currentColor" opacity=".4"/>
+                                <path
+                                    d={`M ${(100-parseFloat(a.w))/2}% ${a.t+4}% Q 50% ${a.t-12+i*2}% ${(100+parseFloat(a.w))/2}% ${a.t+4}%`}
+                                    fill="none"
+                                    stroke={`url(#ag${i})`}
+                                    strokeWidth={2.5-i*0.4}
+                                    style={{animation:`arch-neon ${a.dur} ease-in-out infinite`,'--nc':a.c}}
+                                />
                             </svg>
-                        </div>
+                        ))}
+                    </div>
+
+                    {/* ══ RIPPLE RINGS from center ══ */}
+                    <div style={{position:'absolute',top:'12%',left:'50%',width:160,height:160,pointerEvents:'none'}}>
+                        {ripples.map((rp,i)=>(
+                            <div key={i} style={{
+                                position:'absolute',top:'50%',left:'50%',
+                                width:160,height:160,
+                                border:`1.5px solid ${rp.c}`,
+                                borderRadius:'50%',
+                                animation:`ripple-out ${rp.dur} ease-out infinite`,
+                                animationDelay:rp.delay,
+                            }}/>
+                        ))}
+                    </div>
+
+                    {/* ══ MOON + ORBITING ORBS ══ */}
+                    <div style={{position:'absolute',top:'2.5%',left:'50%',transform:'translateX(-50%)',zIndex:4,animation:'fadeInUp .8s ease-out both'}}>
+                        {/* Orbiting orbs */}
+                        {orbits.map((o,i)=>(
+                            <div key={i} style={{
+                                position:'absolute',top:'50%',left:'50%',
+                                marginTop:-o.s/2,marginLeft:-o.s/2,
+                                width:o.s,height:o.s,borderRadius:'50%',
+                                background:o.c,
+                                boxShadow:`0 0 ${o.s*2}px ${o.c}, 0 0 ${o.s*4}px ${o.c}55`,
+                                animation:`orbit ${o.dur} linear infinite`,
+                                animationDelay:o.delay,
+                                '--r':`${o.r}px`,
+                            }}/>
+                        ))}
+                        <svg width="140" height="95" viewBox="0 0 140 95" fill="none">
+                            <defs>
+                                <radialGradient id="mhalo" cx="38%" cy="48%" r="52%">
+                                    <stop offset="0%" stopColor="rgba(251,191,36,0.2)"/>
+                                    <stop offset="100%" stopColor="transparent"/>
+                                </radialGradient>
+                                <linearGradient id="moonG2" x1="0%" y1="0%" x2="110%" y2="110%">
+                                    <stop offset="0%" stopColor="#fefce8"/>
+                                    <stop offset="45%" stopColor="#fde047"/>
+                                    <stop offset="100%" stopColor="#b45309"/>
+                                </linearGradient>
+                                <filter id="mf2" x="-25%" y="-25%" width="150%" height="150%">
+                                    <feGaussianBlur stdDeviation="2.5" result="b"/>
+                                    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                                </filter>
+                                <filter id="sf2" x="-40%" y="-40%" width="180%" height="180%">
+                                    <feGaussianBlur stdDeviation="1.8" result="b"/>
+                                    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                                </filter>
+                            </defs>
+                            <ellipse cx="44" cy="50" rx="40" ry="40" fill="url(#mhalo)"/>
+                            <path filter="url(#mf2)" d="M65 47C65 64 53 77 37 77C27 77 18 72 12 64C19 67 27 68 34 68C53 68 68 53 68 33C68 23 65 15 59 8C63 16 65 31 65 47Z" fill="url(#moonG2)"/>
+                            <path d="M57 14C62 22 64 31 64 40C64 56 54 69 39 73C50 69 58 56 58 42C58 32 55 23 50 17Z" fill="rgba(255,255,220,0.2)"/>
+                            <g filter="url(#sf2)">
+                                <polygon points="108,8 111.5,19 123.5,19 114,25.5 117.5,36.5 108,30 98.5,36.5 102,25.5 92.5,19 104.5,19" fill="#fef08a"/>
+                            </g>
+                            {/* Neon accent dots around crescent */}
+                            <circle cx="18" cy="14" r="3" fill="#06b6d4" style={{filter:'drop-shadow(0 0 4px #06b6d4)'}}/>
+                            <circle cx="82"  cy="7"  r="2.5" fill="#a855f7" style={{filter:'drop-shadow(0 0 4px #a855f7)'}}/>
+                            <circle cx="128" cy="50" r="2.5" fill="#ec4899" style={{filter:'drop-shadow(0 0 4px #ec4899)'}}/>
+                            <circle cx="8"   cy="46" r="2"   fill="#14b8a6" style={{filter:'drop-shadow(0 0 4px #14b8a6)'}}/>
+                            <circle cx="70"  cy="3"  r="2"   fill="#fbbf24" style={{filter:'drop-shadow(0 0 4px #fbbf24)'}}/>
+                        </svg>
+                    </div>
+
+                    {/* ══ NEON TEXT BANNER ══ */}
+                    <div style={{
+                        position:'absolute',top:'14px',left:'50%',transform:'translateX(-50%)',
+                        zIndex:5,whiteSpace:'nowrap',
+                        fontFamily:'"Dancing Script","Pacifico",cursive',
+                        fontSize:'clamp(11px,1.9vw,18px)',
+                        fontWeight:700,letterSpacing:'.14em',
+                        animation:'neon-text 3s ease-in-out infinite, fadeInUp .6s .3s ease-out both',
+                    }}>
+                        ✦ Selamat Idul Fitri 1446 H · Minal Aidin Wal Faizin ✦
+                    </div>
+
+                    {/* ══ FLOATING DIAMONDS (ketupat) ══ */}
+                    {diamonds.map((d,i)=>(
+                        <div key={i} style={{
+                            position:'absolute',left:d.l,bottom:'-30px',
+                            width:d.s,height:d.s,
+                            background:`linear-gradient(135deg,${d.c},${d.c}88)`,
+                            boxShadow:`0 0 ${d.s}px ${d.bc}, 0 0 ${d.s*2}px ${d.bc}`,
+                            borderRadius:3,
+                            animation:`dia-float ${d.dur}s ease-in-out infinite`,
+                            animationDelay:`${d.delay}s`,
+                            '--op':d.op,'--r0':d.r0,'--r1':d.r1,
+                            opacity:0,
+                        }}/>
+                    ))}
+
+                    {/* ══ NEON SIDE COLUMNS ══ */}
+                    {/* Kiri */}
+                    <svg style={{position:'absolute',top:0,left:0,width:52,height:'100%',pointerEvents:'none'}} preserveAspectRatio="xMidYMid meet">
+                        <defs>
+                            <linearGradient id="lcolG" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+                                <stop offset="0" stopColor="#06b6d4" stopOpacity="0"/>
+                                <stop offset="0.15" stopColor="#06b6d4" stopOpacity=".6"/>
+                                <stop offset="0.5"  stopColor="#a855f7" stopOpacity=".5"/>
+                                <stop offset="0.85" stopColor="#fbbf24" stopOpacity=".6"/>
+                                <stop offset="1"    stopColor="#fbbf24" stopOpacity="0"/>
+                            </linearGradient>
+                        </defs>
+                        <line x1="26" y1="0" x2="26" y2="10000" stroke="url(#lcolG)" strokeWidth="1.2"/>
+                        {[80,160,240,320,400,480,560,640,720,800].map((y,i)=>(
+                            <g key={i} transform={`translate(26,${y})`}>
+                                <polygon points={i%3===0?"0,-11 6,0 0,11 -6,0":i%3===1?"0,-9 9,-9 9,9 -9,9 -9,-9 0,9":"0,-10 10,0 0,10 -10,0"}
+                                    fill={['#06b6d4','#a855f7','#fbbf24','#ec4899','#14b8a6'][i%5]}
+                                    style={{filter:`drop-shadow(0 0 4px ${['#06b6d4','#a855f7','#fbbf24','#ec4899','#14b8a6'][i%5]})`}}
+                                    opacity=".7" transform={`scale(.6) rotate(${i*36})`}/>
+                            </g>
+                        ))}
+                    </svg>
+                    {/* Kanan */}
+                    <svg style={{position:'absolute',top:0,right:0,width:52,height:'100%',pointerEvents:'none'}} preserveAspectRatio="xMidYMid meet">
+                        <defs>
+                            <linearGradient id="rcolG" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+                                <stop offset="0" stopColor="#ec4899" stopOpacity="0"/>
+                                <stop offset="0.15" stopColor="#ec4899" stopOpacity=".6"/>
+                                <stop offset="0.5"  stopColor="#fbbf24" stopOpacity=".5"/>
+                                <stop offset="0.85" stopColor="#14b8a6" stopOpacity=".6"/>
+                                <stop offset="1"    stopColor="#14b8a6" stopOpacity="0"/>
+                            </linearGradient>
+                        </defs>
+                        <line x1="26" y1="0" x2="26" y2="10000" stroke="url(#rcolG)" strokeWidth="1.2"/>
+                        {[80,160,240,320,400,480,560,640,720,800].map((y,i)=>(
+                            <g key={i} transform={`translate(26,${y})`}>
+                                <polygon points={i%3===0?"0,-10 10,0 0,10 -10,0":i%3===1?"0,-11 6,0 0,11 -6,0":"0,-9 9,-9 9,9 -9,9 -9,-9 0,9"}
+                                    fill={['#ec4899','#fbbf24','#14b8a6','#06b6d4','#a855f7'][i%5]}
+                                    style={{filter:`drop-shadow(0 0 4px ${['#ec4899','#fbbf24','#14b8a6','#06b6d4','#a855f7'][i%5]})`}}
+                                    opacity=".7" transform={`scale(.6) rotate(${-i*36})`}/>
+                            </g>
+                        ))}
+                    </svg>
+
+                    {/* ══ MOSQUE silhouette neon tinted ══ */}
+                    <div className="mosque-silhouette absolute bottom-0 left-0 right-0 pointer-events-none" style={{height:120}}>
+                        {/* Uplight */}
+                        <div style={{position:'absolute',bottom:0,left:'10%',right:'10%',height:60,background:'radial-gradient(ellipse at 50% 100%,rgba(6,182,212,0.15) 0%,rgba(168,85,247,0.1) 40%,transparent 70%)'}}/>
+                        <svg viewBox="0 0 1400 120" style={{width:'100%',height:'100%',display:'block'}} preserveAspectRatio="xMidYMax slice">
+                            <defs>
+                                <linearGradient id="mqG" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="currentColor" stopOpacity="0"/>
+                                    <stop offset="40%" stopColor="currentColor" stopOpacity="1"/>
+                                    <stop offset="100%" stopColor="currentColor" stopOpacity="1"/>
+                                </linearGradient>
+                                <linearGradient id="neonEdge" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#06b6d4" stopOpacity=".6"/>
+                                    <stop offset="100%" stopColor="#06b6d4" stopOpacity="0"/>
+                                </linearGradient>
+                            </defs>
+                            <ellipse cx="700" cy="40" rx="108" ry="76" fill="url(#mqG)"/>
+                            <rect x="592" y="52" width="216" height="68" fill="currentColor"/>
+                            <ellipse cx="520" cy="62" rx="68" ry="52" fill="url(#mqG)"/>
+                            <rect x="452" y="70" width="136" height="50" fill="currentColor"/>
+                            <ellipse cx="880" cy="62" rx="68" ry="52" fill="url(#mqG)"/>
+                            <rect x="812" y="70" width="136" height="50" fill="currentColor"/>
+                            <rect x="372" y="16" width="20" height="104" fill="currentColor"/>
+                            <ellipse cx="382" cy="16" rx="10" ry="26" fill="currentColor"/>
+                            <rect x="379" y="-8" width="6" height="26" fill="currentColor"/>
+                            <rect x="1008" y="16" width="20" height="104" fill="currentColor"/>
+                            <ellipse cx="1018" cy="16" rx="10" ry="26" fill="currentColor"/>
+                            <rect x="1015" y="-8" width="6" height="26" fill="currentColor"/>
+                            <rect x="232" y="38" width="14" height="82" fill="currentColor"/>
+                            <ellipse cx="239" cy="38" rx="7" ry="17" fill="currentColor"/>
+                            <rect x="1154" y="38" width="14" height="82" fill="currentColor"/>
+                            <ellipse cx="1161" cy="38" rx="7" ry="17" fill="currentColor"/>
+                            <path d="M657,120 L657,98 Q700,78 743,98 L743,120Z" fill="rgba(0,0,0,0.35)"/>
+                            {/* Neon edge on top of kubah */}
+                            <ellipse cx="700" cy="0" rx="108" ry="28" fill="url(#neonEdge)" opacity=".5"/>
+                            <rect x="0" y="117" width="1400" height="3" fill="currentColor" opacity=".35"/>
+                        </svg>
                     </div>
 
                 </div>
