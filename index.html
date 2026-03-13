@@ -147,6 +147,174 @@
         .ketupat::before { width: 100%; height: 50%; top: 0; left: 0; border-bottom: 1px solid #15803d; }
         .ketupat::after { width: 50%; height: 100%; top: 0; left: 0; border-right: 1px solid #15803d; }
 
+        /* ===== IDUL FITRI PREMIUM DECORATIONS ===== */
+
+        /* String Lights */
+        @keyframes bulb-flicker {
+            0%, 100% { opacity: 1; filter: brightness(1) drop-shadow(0 0 6px currentColor); }
+            25% { opacity: 0.85; filter: brightness(0.9) drop-shadow(0 0 3px currentColor); }
+            50% { opacity: 1; filter: brightness(1.1) drop-shadow(0 0 10px currentColor); }
+            75% { opacity: 0.9; filter: brightness(0.95) drop-shadow(0 0 5px currentColor); }
+        }
+        @keyframes wire-sag {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(3px); }
+        }
+        .string-light-wire {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, rgba(80,40,10,0.5) 5%, rgba(80,40,10,0.6) 50%, rgba(80,40,10,0.5) 95%, transparent);
+            z-index: 2;
+        }
+        .string-light-wire::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: repeating-linear-gradient(90deg, transparent, transparent 59px, rgba(80,40,10,0.3) 60px);
+            animation: wire-sag 4s ease-in-out infinite;
+        }
+        .light-bulb {
+            position: absolute;
+            top: 2px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            animation: bulb-flicker var(--dur, 3s) ease-in-out infinite;
+            animation-delay: var(--delay, 0s);
+        }
+        .light-bulb .bulb-cap {
+            width: 8px; height: 5px;
+            background: rgba(80,40,10,0.7);
+            border-radius: 2px 2px 0 0;
+        }
+        .light-bulb .bulb-body {
+            width: 14px; height: 18px;
+            background: var(--color, #facc15);
+            border-radius: 50% 50% 40% 40%;
+            box-shadow: 0 0 8px 3px var(--glow, rgba(250,204,21,0.6));
+            position: relative;
+        }
+        .light-bulb .bulb-body::after {
+            content: '';
+            position: absolute;
+            top: 3px; left: 3px;
+            width: 4px; height: 6px;
+            background: rgba(255,255,255,0.4);
+            border-radius: 50%;
+        }
+        .light-bulb .bulb-tip {
+            width: 8px; height: 4px;
+            background: var(--color, #facc15);
+            border-radius: 0 0 4px 4px;
+        }
+
+        /* Fanoos (Islamic Lantern) */
+        @keyframes lantern-swing {
+            0% { transform: rotate(-12deg); }
+            100% { transform: rotate(12deg); }
+        }
+        @keyframes lantern-glow {
+            0%, 100% { filter: drop-shadow(0 0 8px rgba(250,204,21,0.8)) brightness(1); }
+            50% { filter: drop-shadow(0 0 20px rgba(250,180,0,1)) brightness(1.15); }
+        }
+        .fanoos-container {
+            position: absolute;
+            top: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transform-origin: top center;
+            animation: lantern-swing var(--swing-dur, 4s) ease-in-out infinite alternate;
+        }
+        .fanoos-string { width: 1.5px; background: linear-gradient(to bottom, rgba(180,130,30,0.8), rgba(180,130,30,0.3)); }
+        .fanoos-body {
+            animation: lantern-glow 3s ease-in-out infinite;
+        }
+        .fanoos-svg { filter: drop-shadow(0 4px 12px rgba(250,170,0,0.5)); }
+
+        /* Crescent Moon */
+        @keyframes moon-glow {
+            0%, 100% { filter: drop-shadow(0 0 15px rgba(250,204,21,0.7)) drop-shadow(0 0 30px rgba(250,204,21,0.3)); }
+            50% { filter: drop-shadow(0 0 25px rgba(255,220,50,1)) drop-shadow(0 0 50px rgba(250,204,21,0.5)); }
+        }
+        @keyframes moon-float {
+            0%, 100% { transform: translateY(0px) rotate(-10deg); }
+            50% { transform: translateY(-8px) rotate(-10deg); }
+        }
+        .crescent-moon {
+            animation: moon-glow 4s ease-in-out infinite, moon-float 6s ease-in-out infinite;
+        }
+
+        /* Sparkle Particles */
+        @keyframes sparkle-pop {
+            0% { transform: scale(0) rotate(0deg); opacity: 0; }
+            50% { transform: scale(1.2) rotate(180deg); opacity: 1; }
+            100% { transform: scale(0) rotate(360deg); opacity: 0; }
+        }
+        @keyframes drift-up {
+            0% { transform: translateY(0px) translateX(0px); opacity: 0; }
+            15% { opacity: 0.8; }
+            85% { opacity: 0.6; }
+            100% { transform: translateY(-100vh) translateX(var(--drift-x, 20px)); opacity: 0; }
+        }
+        .sparkle-star {
+            position: absolute;
+            animation: sparkle-pop var(--dur, 2s) ease-in-out infinite;
+            animation-delay: var(--delay, 0s);
+            color: var(--color, #facc15);
+            font-size: var(--size, 12px);
+        }
+        .drift-particle {
+            position: absolute;
+            border-radius: 50%;
+            animation: drift-up var(--dur, 12s) ease-in-out infinite;
+            animation-delay: var(--delay, 0s);
+        }
+
+        /* Mosque Silhouette */
+        @keyframes mosque-shimmer {
+            0%, 100% { opacity: 0.12; }
+            50% { opacity: 0.18; }
+        }
+        .mosque-silhouette {
+            animation: mosque-shimmer 5s ease-in-out infinite;
+            color: #1e3a5f;
+        }
+
+        /* Shooting star */
+        @keyframes shoot {
+            0% { transform: translateX(0) translateY(0) rotate(-30deg); opacity: 0; }
+            10% { opacity: 1; }
+            100% { transform: translateX(-300px) translateY(150px) rotate(-30deg); opacity: 0; }
+        }
+        .shooting-star {
+            position: absolute;
+            width: 80px; height: 2px;
+            background: linear-gradient(to left, rgba(255,255,255,0), #facc15);
+            border-radius: 100%;
+            animation: shoot var(--dur, 5s) linear infinite;
+            animation-delay: var(--delay, 0s);
+        }
+
+        /* Ketupat premium */
+        @keyframes ketupat-spin {
+            0% { transform: rotate(45deg) scale(1); }
+            50% { transform: rotate(45deg) scale(1.05); }
+            100% { transform: rotate(45deg) scale(1); }
+        }
+        .ketupat-premium {
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, #86efac, #4ade80);
+            border: 2px solid #15803d;
+            transform: rotate(45deg);
+            position: relative;
+            box-shadow: 0 4px 12px rgba(21,128,61,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
+            animation: ketupat-spin 3s ease-in-out infinite;
+        }
+        .ketupat-premium::before { content: ''; position: absolute; width: 100%; height: 50%; top: 0; left: 0; border-bottom: 1.5px solid rgba(21,128,61,0.6); background: rgba(255,255,255,0.1); }
+        .ketupat-premium::after { content: ''; position: absolute; width: 50%; height: 100%; top: 0; left: 0; border-right: 1.5px solid rgba(21,128,61,0.6); background: rgba(255,255,255,0.05); }
+
         /* FIREWORKS STYLE */
         .firework-particle { position: fixed; pointer-events: none; border-radius: 50%; z-index: 9999; animation: firework-fade 0.8s ease-out forwards; }
         @keyframes firework-fade { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(0); opacity: 0; } }
@@ -484,71 +652,219 @@
 
 
 
-        // --- DEKORASI IDUL FITRI ---
-        const RamadhanDecor = () => (
-            <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{zIndex: -1}}>
-                {/* Partikel bintang melayang */}
-                <div className="absolute inset-0 z-0">
-                    {[...Array(14)].map((_, i) => (
-                        <div key={i} className="absolute rounded-full opacity-0 animate-float-up"
-                             style={{
-                                 background: i % 3 === 0 ? '#facc15' : i % 3 === 1 ? '#86efac' : '#fda4af',
-                                 width: Math.random() * 5 + 2 + 'px',
-                                 height: Math.random() * 5 + 2 + 'px',
-                                 left: Math.random() * 100 + '%',
-                                 animationDelay: Math.random() * 10 + 's',
-                                 animationDuration: Math.random() * 10 + 10 + 's'
-                             }}></div>
+        // --- DEKORASI IDUL FITRI PREMIUM ---
+        const RamadhanDecor = () => {
+            // Deterministik: tidak pakai Math.random() di render
+            const driftParticles = [
+                { left:'5%',  color:'#facc15', size:5, dur:14, delay:0,   driftX:30 },
+                { left:'12%', color:'#86efac', size:3, dur:11, delay:2,   driftX:-20 },
+                { left:'22%', color:'#fda4af', size:4, dur:16, delay:4,   driftX:40 },
+                { left:'35%', color:'#facc15', size:6, dur:13, delay:1,   driftX:-30 },
+                { left:'48%', color:'#c4b5fd', size:3, dur:15, delay:6,   driftX:25 },
+                { left:'58%', color:'#86efac', size:5, dur:12, delay:3,   driftX:-15 },
+                { left:'70%', color:'#facc15', size:4, dur:17, delay:5,   driftX:35 },
+                { left:'80%', color:'#fda4af', size:3, dur:10, delay:2,   driftX:-40 },
+                { left:'90%', color:'#facc15', size:6, dur:14, delay:7,   driftX:20 },
+                { left:'95%', color:'#c4b5fd', size:3, dur:18, delay:1,   driftX:-25 },
+            ];
+            const sparkleStars = [
+                { top:'8%',  left:'8%',  color:'#facc15', size:14, dur:'2.1s', delay:'0s' },
+                { top:'15%', left:'22%', color:'#86efac', size:10, dur:'3s',   delay:'0.7s' },
+                { top:'6%',  left:'45%', color:'#facc15', size:18, dur:'2.5s', delay:'1.2s' },
+                { top:'20%', left:'65%', color:'#fda4af', size:11, dur:'1.9s', delay:'0.4s' },
+                { top:'10%', left:'78%', color:'#facc15', size:16, dur:'2.8s', delay:'0.9s' },
+                { top:'25%', left:'90%', color:'#c4b5fd', size:10, dur:'3.2s', delay:'1.5s' },
+                { top:'35%', left:'3%',  color:'#facc15', size:12, dur:'2.3s', delay:'0.2s' },
+                { top:'40%', left:'50%', color:'#86efac', size:8,  dur:'4s',   delay:'2s' },
+            ];
+            const lightColors = [
+                { color:'#ef4444', glow:'rgba(239,68,68,0.7)' },
+                { color:'#facc15', glow:'rgba(250,204,21,0.7)' },
+                { color:'#22c55e', glow:'rgba(34,197,94,0.7)' },
+                { color:'#3b82f6', glow:'rgba(59,130,246,0.7)' },
+                { color:'#f97316', glow:'rgba(249,115,22,0.7)' },
+                { color:'#a855f7', glow:'rgba(168,85,247,0.7)' },
+                { color:'#ec4899', glow:'rgba(236,72,153,0.7)' },
+                { color:'#facc15', glow:'rgba(250,204,21,0.7)' },
+                { color:'#14b8a6', glow:'rgba(20,184,166,0.7)' },
+                { color:'#ef4444', glow:'rgba(239,68,68,0.7)' },
+                { color:'#22c55e', glow:'rgba(34,197,94,0.7)' },
+                { color:'#f97316', glow:'rgba(249,115,22,0.7)' },
+                { color:'#3b82f6', glow:'rgba(59,130,246,0.7)' },
+                { color:'#facc15', glow:'rgba(250,204,21,0.7)' },
+                { color:'#a855f7', glow:'rgba(168,85,247,0.7)' },
+            ];
+            const shootingStars = [
+                { top:'8%',  right:'5%',  dur:'6s',  delay:'0s' },
+                { top:'15%', right:'30%', dur:'8s',  delay:'3s' },
+                { top:'5%',  right:'55%', dur:'10s', delay:'6s' },
+            ];
+
+            return (
+                <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{zIndex: -1}}>
+
+                    {/* ── Bintang jatuh ── */}
+                    {shootingStars.map((s, i) => (
+                        <div key={i} className="shooting-star" style={{ top: s.top, right: s.right, '--dur': s.dur, '--delay': s.delay }} />
                     ))}
-                </div>
 
-                {/* Bintang-bintang kecil berkelip */}
-                <div className="absolute top-10 left-[10%] text-gold-400 text-[10px] animate-twinkle delay-100 opacity-60"><Icon name="star" /></div>
-                <div className="absolute top-32 left-[40%] text-gold-300 text-[8px] animate-twinkle delay-700 opacity-40"><Icon name="star" /></div>
-                <div className="absolute top-5 right-[15%] text-gold-500 text-[12px] animate-twinkle delay-300 opacity-70"><Icon name="star" /></div>
-                <div className="absolute top-16 right-[35%] text-yellow-300 text-[9px] animate-twinkle delay-500 opacity-50"><Icon name="star" /></div>
-                <div className="absolute -top-10 right-10 w-20 h-0.5 bg-gradient-to-l from-transparent to-white opacity-40 animate-falling-star"></div>
+                    {/* ── Bulan sabit + bintang (pojok kanan atas) ── */}
+                    <div className="crescent-moon absolute" style={{ top: '6%', right: '4%', zIndex: 1 }}>
+                        <svg width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            {/* Bulan sabit */}
+                            <path d="M52 36C52 49.255 41.255 60 28 60C21.8 60 16.16 57.57 12 53.56C15.14 54.49 18.51 55 22 55C37.464 55 50 42.464 50 27C50 20.76 47.94 15.02 44.44 10.44C49.16 14.7 52 20.98 52 36Z" fill="#facc15" />
+                            <path d="M52 36C52 49.255 41.255 60 28 60C21.8 60 16.16 57.57 12 53.56C15.14 54.49 18.51 55 22 55C37.464 55 50 42.464 50 27C50 20.76 47.94 15.02 44.44 10.44C49.16 14.7 52 20.98 52 36Z" fill="url(#moonGrad)" />
+                            <defs>
+                                <linearGradient id="moonGrad" x1="12" y1="10" x2="52" y2="60" gradientUnits="userSpaceOnUse">
+                                    <stop stopColor="#fef08a" />
+                                    <stop offset="1" stopColor="#ca8a04" />
+                                </linearGradient>
+                            </defs>
+                            {/* Bintang kecil di samping bulan */}
+                            <polygon points="60,12 62,18 68,18 63.5,22 65.5,28 60,24 54.5,28 56.5,22 52,18 58,18" fill="#facc15" opacity="0.95" />
+                        </svg>
+                    </div>
 
-                {/* Gantungan kiri: Icon Kado — sejajar dengan bintang kanan */}
-                <div className="absolute -top-8 left-2 md:left-12 z-0 animate-swing origin-top duration-[4000ms]">
-                    <div className="h-20 md:h-32 w-[1px] bg-gold-400/60 mx-auto"></div>
-                    <div className="text-gold-500 text-4xl md:text-6xl drop-shadow-glow relative z-10"><Icon name="gift" /></div>
-                </div>
+                    {/* ── Bintang berkelip ── */}
+                    {sparkleStars.map((s, i) => (
+                        <div key={i} className="sparkle-star" style={{ top: s.top, left: s.left, '--color': s.color, '--size': s.size+'px', '--dur': s.dur, '--delay': s.delay }}>
+                            <i className="fa-solid fa-star" style={{ fontSize: s.size, color: s.color, filter: `drop-shadow(0 0 4px ${s.color})` }} />
+                        </div>
+                    ))}
 
-                {/* Gantungan ketupat kiri — sejajar dengan ketupat kanan */}
-                <div className="absolute -top-14 left-20 md:left-40 z-0 animate-sway origin-top duration-[5500ms]">
-                    <div className="h-28 md:h-44 w-[1px] bg-gold-400/40 mx-auto"></div>
-                    <div className="ketupat mx-auto shadow-lg"></div>
-                    <div className="h-4 w-[1px] bg-gold-400/40 mx-auto"></div>
-                    <div className="text-green-600 text-[10px] text-center"><Icon name="leaf" /></div>
-                </div>
+                    {/* ── Lampu gantung warna-warni (string lights) ── */}
+                    <div style={{ position:'absolute', top:0, left:0, right:0, height:'50px', zIndex:3 }}>
+                        <div className="string-light-wire" />
+                        {lightColors.map((lc, i) => (
+                            <div key={i} className="light-bulb" style={{
+                                left: `${(i / (lightColors.length - 1)) * 96 + 2}%`,
+                                '--color': lc.color,
+                                '--glow': lc.glow,
+                                '--dur': `${2 + (i % 5) * 0.4}s`,
+                                '--delay': `${(i * 0.22).toFixed(2)}s`,
+                            }}>
+                                <div className="bulb-cap" />
+                                <div className="bulb-body" />
+                                <div className="bulb-tip" />
+                            </div>
+                        ))}
+                    </div>
 
-                {/* Gantungan tengah: kembang api / bintang */}
-                <div className="absolute -top-12 left-[30%] hidden md:block z-0 animate-swing-slow origin-top duration-[4500ms]">
-                    <div className="h-20 w-[1px] bg-gold-400/40 mx-auto"></div>
-                    <div className="text-yellow-400 text-2xl drop-shadow-md animate-pulse"><Icon name="star" /></div>
-                </div>
+                    {/* ── Fanoos kiri (lentera islami) ── */}
+                    <div className="fanoos-container" style={{ left:'3%', '--swing-dur':'4.5s' }}>
+                        <div className="fanoos-string" style={{ height:'80px' }} />
+                        <div className="fanoos-body">
+                            <svg className="fanoos-svg" width="48" height="70" viewBox="0 0 48 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="18" y="0" width="12" height="6" rx="3" fill="#ca8a04"/>
+                                <line x1="24" y1="6" x2="24" y2="12" stroke="#ca8a04" strokeWidth="2"/>
+                                <ellipse cx="24" cy="14" rx="8" ry="4" fill="#a16207"/>
+                                <path d="M8 16 C4 22 2 32 2 40 C2 55 12 64 24 64 C36 64 46 55 46 40 C46 32 44 22 40 16 Z" fill="url(#fanoosGrad)"/>
+                                <path d="M8 16 C4 22 2 32 2 40 C2 55 12 64 24 64 C36 64 46 55 46 40 C46 32 44 22 40 16 Z" fill="rgba(255,220,50,0.15)"/>
+                                {/* Panel dekoratif */}
+                                <path d="M12 20 L12 58 Q24 64 36 58 L36 20 Q24 14 12 20Z" fill="none" stroke="rgba(202,138,4,0.5)" strokeWidth="1"/>
+                                <path d="M16 24 L16 54 Q24 60 32 54 L32 24 Q24 18 16 24Z" fill="rgba(254,240,138,0.2)"/>
+                                {/* Pola bintang tengah */}
+                                <polygon points="24,32 25.5,37 30.5,37 26.5,40 28,45 24,42 20,45 21.5,40 17.5,37 22.5,37" fill="#facc15" opacity="0.9"/>
+                                {/* Hiasan atas bawah */}
+                                <ellipse cx="24" cy="16" rx="8" ry="3" fill="none" stroke="#ca8a04" strokeWidth="1.5"/>
+                                <ellipse cx="24" cy="62" rx="8" ry="3" fill="#a16207"/>
+                                <line x1="24" y1="64" x2="24" y2="70" stroke="#ca8a04" strokeWidth="2"/>
+                                <defs>
+                                    <linearGradient id="fanoosGrad" x1="24" y1="16" x2="24" y2="64" gradientUnits="userSpaceOnUse">
+                                        <stop stopColor="#fef08a" stopOpacity="0.95"/>
+                                        <stop offset="0.5" stopColor="#fbbf24" stopOpacity="0.9"/>
+                                        <stop offset="1" stopColor="#d97706" stopOpacity="0.95"/>
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                        </div>
+                    </div>
 
-                {/* Gantungan kanan: bintang emas besar */}
-                <div className="absolute -top-8 right-4 md:right-12 z-0 animate-swing origin-top duration-[4000ms]">
-                    <div className="h-20 md:h-32 w-[1px] bg-gold-400/60 mx-auto"></div>
-                    <div className="text-gold-500 text-4xl md:text-6xl drop-shadow-glow relative z-10"><Icon name="star" /></div>
-                </div>
+                    {/* ── Fanoos kanan (lentera islami - lebih besar) ── */}
+                    <div className="fanoos-container" style={{ right:'3%', '--swing-dur':'3.8s', animationDirection:'alternate-reverse' }}>
+                        <div className="fanoos-string" style={{ height:'70px' }} />
+                        <div className="fanoos-body">
+                            <svg className="fanoos-svg" width="56" height="82" viewBox="0 0 56 82" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="21" y="0" width="14" height="7" rx="3.5" fill="#9f1239"/>
+                                <line x1="28" y1="7" x2="28" y2="14" stroke="#9f1239" strokeWidth="2.5"/>
+                                <ellipse cx="28" cy="16" rx="10" ry="5" fill="#be123c"/>
+                                <path d="M8 18 C4 26 2 38 2 48 C2 65 14 76 28 76 C42 76 54 65 54 48 C54 38 52 26 48 18 Z" fill="url(#fanoosGrad2)"/>
+                                <path d="M14 22 L14 68 Q28 76 42 68 L42 22 Q28 14 14 22Z" fill="none" stroke="rgba(159,18,57,0.4)" strokeWidth="1.5"/>
+                                <path d="M20 28 L20 62 Q28 68 36 62 L36 28 Q28 22 20 28Z" fill="rgba(255,200,200,0.15)"/>
+                                <polygon points="28,36 30,43 37,43 31.5,47 33.5,54 28,50 22.5,54 24.5,47 19,43 26,43" fill="#fef08a" opacity="0.95"/>
+                                <circle cx="28" cy="44" r="3" fill="rgba(255,255,255,0.3)"/>
+                                <ellipse cx="28" cy="18" rx="10" ry="4" fill="none" stroke="#be123c" strokeWidth="2"/>
+                                <ellipse cx="28" cy="74" rx="10" ry="4" fill="#be123c"/>
+                                <line x1="28" y1="76" x2="28" y2="82" stroke="#9f1239" strokeWidth="2.5"/>
+                                <defs>
+                                    <linearGradient id="fanoosGrad2" x1="28" y1="18" x2="28" y2="76" gradientUnits="userSpaceOnUse">
+                                        <stop stopColor="#fda4af" stopOpacity="0.95"/>
+                                        <stop offset="0.5" stopColor="#f43f5e" stopOpacity="0.85"/>
+                                        <stop offset="1" stopColor="#9f1239" stopOpacity="0.95"/>
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                        </div>
+                    </div>
 
-                {/* Gantungan ketupat kanan */}
-                <div className="absolute -top-14 right-20 md:right-40 z-0 animate-sway origin-top duration-[5500ms]">
-                    <div className="h-28 md:h-44 w-[1px] bg-gold-400/40 mx-auto"></div>
-                    <div className="ketupat mx-auto shadow-lg bg-green-200 border-green-600"></div>
-                </div>
+                    {/* ── Ketupat gantung kiri ── */}
+                    <div className="absolute z-0 animate-sway" style={{ top:0, left:'18%', transformOrigin:'top center', animationDuration:'5s' }}>
+                        <div style={{ width:'1.5px', height:'100px', background:'linear-gradient(to bottom, rgba(180,130,30,0.7), transparent)', margin:'0 auto' }} />
+                        <div className="ketupat-premium" style={{ margin:'0 auto' }} />
+                        <div style={{ width:'1.5px', height:'16px', background:'rgba(21,128,61,0.5)', margin:'0 auto', marginTop:'18px' }} />
+                        <div style={{ textAlign:'center', marginTop:'2px', fontSize:'10px', color:'#15803d', filter:'drop-shadow(0 1px 2px rgba(21,128,61,0.4))' }}>🍃</div>
+                    </div>
 
-                {/* Siluet masjid bawah — tema Idul Fitri tetap pakai masjid */}
-                <div className="absolute bottom-0 left-0 right-0 h-32 opacity-10 pointer-events-none flex items-end justify-center overflow-hidden">
-                    <div className="text-slate-800 text-[150px] md:text-[200px] leading-none -mb-10"><Icon name="mosque" /></div>
-                    <div className="text-slate-800 text-[100px] md:text-[140px] leading-none -mb-8 -ml-10"><Icon name="mosque" /></div>
-                    <div className="text-slate-800 text-[100px] md:text-[140px] leading-none -mb-8 -mr-10 order-first"><Icon name="mosque" /></div>
+                    {/* ── Ketupat gantung kanan ── */}
+                    <div className="absolute z-0 animate-sway" style={{ top:0, right:'18%', transformOrigin:'top center', animationDuration:'6.5s', animationDirection:'alternate-reverse' }}>
+                        <div style={{ width:'1.5px', height:'110px', background:'linear-gradient(to bottom, rgba(180,130,30,0.7), transparent)', margin:'0 auto' }} />
+                        <div className="ketupat-premium" style={{ margin:'0 auto', background:'linear-gradient(135deg, #fde68a, #fbbf24)', borderColor:'#ca8a04' }} />
+                        <div style={{ width:'1.5px', height:'14px', background:'rgba(202,138,4,0.5)', margin:'0 auto', marginTop:'18px' }} />
+                        <div style={{ textAlign:'center', marginTop:'2px', fontSize:'10px', filter:'drop-shadow(0 1px 2px rgba(202,138,4,0.4))' }}>⭐</div>
+                    </div>
+
+                    {/* ── Partikel melayang ── */}
+                    {driftParticles.map((p, i) => (
+                        <div key={i} className="drift-particle" style={{
+                            left: p.left,
+                            bottom: '-20px',
+                            width: p.size + 'px',
+                            height: p.size + 'px',
+                            background: p.color,
+                            boxShadow: `0 0 6px ${p.color}`,
+                            '--dur': p.dur + 's',
+                            '--delay': p.delay + 's',
+                            '--drift-x': p.driftX + 'px',
+                        }} />
+                    ))}
+
+                    {/* ── Siluet Masjid bawah ── */}
+                    <div className="mosque-silhouette absolute bottom-0 left-0 right-0 pointer-events-none flex items-end justify-center overflow-hidden" style={{ height:'140px' }}>
+                        <svg viewBox="0 0 800 140" xmlns="http://www.w3.org/2000/svg" style={{ width:'100%', height:'100%', display:'block' }} preserveAspectRatio="xMidYMax slice">
+                            {/* Masjid tengah besar */}
+                            <path d="M320 140 L320 90 L310 90 L310 70 Q320 45 340 40 L340 30 Q340 15 350 10 Q360 5 370 10 Q380 15 380 30 L380 40 Q400 45 410 70 L410 90 L400 90 L400 140 Z" fill="currentColor"/>
+                            <path d="M300 140 L300 100 L295 100 L295 85 Q305 75 320 72 L330 72 L330 140 Z" fill="currentColor"/>
+                            <path d="M410 140 L410 72 L420 72 Q435 75 445 85 L445 100 L440 100 L440 140 Z" fill="currentColor"/>
+                            {/* Kubah kiri */}
+                            <path d="M230 140 L230 100 L222 100 Q222 78 240 70 Q258 62 265 70 Q282 78 282 100 L274 100 L274 140 Z" fill="currentColor"/>
+                            {/* Menara kiri */}
+                            <rect x="200" y="55" width="18" height="85" fill="currentColor"/>
+                            <path d="M198 55 L209 35 L220 55 Z" fill="currentColor"/>
+                            <rect x="205" y="30" width="8" height="8" fill="currentColor"/>
+                            {/* Kubah kanan */}
+                            <path d="M516 140 L516 100 L508 100 Q508 78 526 70 Q544 62 551 70 Q568 78 568 100 L560 100 L560 140 Z" fill="currentColor"/>
+                            {/* Menara kanan */}
+                            <rect x="580" y="55" width="18" height="85" fill="currentColor"/>
+                            <path d="M578 55 L589 35 L600 55 Z" fill="currentColor"/>
+                            <rect x="585" y="30" width="8" height="8" fill="currentColor"/>
+                            {/* Tanah */}
+                            <rect x="0" y="135" width="800" height="5" fill="currentColor"/>
+                        </svg>
+                    </div>
+
                 </div>
-            </div>
-        );
+            );
+        };
 
         // --- UTILS ---
         const safeNumber = (val) => { if (!val) return 0; const num = parseFloat(val); return isNaN(num) ? 0 : num; };
