@@ -147,162 +147,113 @@
         .ketupat::before { width: 100%; height: 50%; top: 0; left: 0; border-bottom: 1px solid #15803d; }
         .ketupat::after { width: 50%; height: 100%; top: 0; left: 0; border-right: 1px solid #15803d; }
 
-        /* ===== IDUL FITRI PREMIUM DECORATIONS ===== */
+        /* ===== IDUL FITRI EDITION 2 — BUNTING & FLOATING LANTERNS ===== */
 
-        /* String Lights */
-        @keyframes bulb-flicker {
-            0%, 100% { opacity: 1; filter: brightness(1) drop-shadow(0 0 6px currentColor); }
-            25% { opacity: 0.85; filter: brightness(0.9) drop-shadow(0 0 3px currentColor); }
-            50% { opacity: 1; filter: brightness(1.1) drop-shadow(0 0 10px currentColor); }
-            75% { opacity: 0.9; filter: brightness(0.95) drop-shadow(0 0 5px currentColor); }
+        /* Confetti rain */
+        @keyframes confetti-fall {
+            0%   { transform: translateY(-20px) rotate(0deg) translateX(0); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(var(--rot,720deg)) translateX(var(--dx,30px)); opacity: 0; }
         }
-        @keyframes wire-sag {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(3px); }
+        .confetti-piece {
+            position: absolute;
+            top: -20px;
+            width: var(--w, 8px);
+            height: var(--h, 12px);
+            background: var(--color, #facc15);
+            border-radius: var(--radius, 2px);
+            animation: confetti-fall var(--dur, 6s) linear infinite;
+            animation-delay: var(--delay, 0s);
+            opacity: 0.85;
         }
-        .string-light-wire {
+
+        /* Bunting / pennant flags */
+        @keyframes bunting-wave {
+            0%, 100% { transform: translateY(0px) scaleY(1); }
+            50%       { transform: translateY(4px) scaleY(0.97); }
+        }
+        .bunting-row {
             position: absolute;
             top: 0; left: 0; right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, transparent, rgba(80,40,10,0.5) 5%, rgba(80,40,10,0.6) 50%, rgba(80,40,10,0.5) 95%, transparent);
-            z-index: 2;
-        }
-        .string-light-wire::after {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: repeating-linear-gradient(90deg, transparent, transparent 59px, rgba(80,40,10,0.3) 60px);
-            animation: wire-sag 4s ease-in-out infinite;
-        }
-        .light-bulb {
-            position: absolute;
-            top: 2px;
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            animation: bulb-flicker var(--dur, 3s) ease-in-out infinite;
-            animation-delay: var(--delay, 0s);
+            align-items: flex-start;
+            justify-content: space-around;
+            pointer-events: none;
         }
-        .light-bulb .bulb-cap {
-            width: 8px; height: 5px;
-            background: rgba(80,40,10,0.7);
-            border-radius: 2px 2px 0 0;
-        }
-        .light-bulb .bulb-body {
-            width: 14px; height: 18px;
-            background: var(--color, #facc15);
-            border-radius: 50% 50% 40% 40%;
-            box-shadow: 0 0 8px 3px var(--glow, rgba(250,204,21,0.6));
+        .bunting-flag {
+            width: 0;
+            height: 0;
+            border-left:  18px solid transparent;
+            border-right: 18px solid transparent;
+            border-top:   28px solid var(--flag-color, #ef4444);
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.18));
+            animation: bunting-wave var(--wave-dur, 3s) ease-in-out infinite;
+            animation-delay: var(--wave-delay, 0s);
             position: relative;
         }
-        .light-bulb .bulb-body::after {
-            content: '';
-            position: absolute;
-            top: 3px; left: 3px;
-            width: 4px; height: 6px;
-            background: rgba(255,255,255,0.4);
-            border-radius: 50%;
-        }
-        .light-bulb .bulb-tip {
-            width: 8px; height: 4px;
-            background: var(--color, #facc15);
-            border-radius: 0 0 4px 4px;
-        }
 
-        /* Fanoos (Islamic Lantern) */
-        @keyframes lantern-swing {
-            0% { transform: rotate(-12deg); }
-            100% { transform: rotate(12deg); }
+        /* Floating paper lanterns (rise from bottom) */
+        @keyframes lantern-rise {
+            0%   { transform: translateY(0) translateX(0) rotate(0deg);   opacity: 0; }
+            8%   { opacity: 0.9; }
+            50%  { transform: translateY(-50vh) translateX(var(--sway,20px)) rotate(3deg); opacity: 0.85; }
+            92%  { opacity: 0.7; }
+            100% { transform: translateY(-105vh) translateX(var(--sway2,-10px)) rotate(-2deg); opacity: 0; }
         }
-        @keyframes lantern-glow {
-            0%, 100% { filter: drop-shadow(0 0 8px rgba(250,204,21,0.8)) brightness(1); }
-            50% { filter: drop-shadow(0 0 20px rgba(250,180,0,1)) brightness(1.15); }
+        @keyframes lantern-glow2 {
+            0%, 100% { filter: drop-shadow(0 0 8px var(--glow-color, rgba(251,191,36,0.8))); }
+            50%       { filter: drop-shadow(0 0 18px var(--glow-color, rgba(251,191,36,1))); }
         }
-        .fanoos-container {
+        .sky-lantern {
             position: absolute;
-            top: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
-            transform-origin: top center;
-            animation: lantern-swing var(--swing-dur, 4s) ease-in-out infinite alternate;
-        }
-        .fanoos-string { width: 1.5px; background: linear-gradient(to bottom, rgba(180,130,30,0.8), rgba(180,130,30,0.3)); }
-        .fanoos-body {
-            animation: lantern-glow 3s ease-in-out infinite;
-        }
-        .fanoos-svg { filter: drop-shadow(0 4px 12px rgba(250,170,0,0.5)); }
-
-        /* Crescent Moon */
-        @keyframes moon-glow {
-            0%, 100% { filter: drop-shadow(0 0 15px rgba(250,204,21,0.7)) drop-shadow(0 0 30px rgba(250,204,21,0.3)); }
-            50% { filter: drop-shadow(0 0 25px rgba(255,220,50,1)) drop-shadow(0 0 50px rgba(250,204,21,0.5)); }
-        }
-        @keyframes moon-float {
-            0%, 100% { transform: translateY(0px) rotate(-10deg); }
-            50% { transform: translateY(-8px) rotate(-10deg); }
-        }
-        .crescent-moon {
-            animation: moon-glow 4s ease-in-out infinite, moon-float 6s ease-in-out infinite;
-        }
-
-        /* Sparkle Particles */
-        @keyframes sparkle-pop {
-            0% { transform: scale(0) rotate(0deg); opacity: 0; }
-            50% { transform: scale(1.2) rotate(180deg); opacity: 1; }
-            100% { transform: scale(0) rotate(360deg); opacity: 0; }
-        }
-        @keyframes drift-up {
-            0% { transform: translateY(0px) translateX(0px); opacity: 0; }
-            15% { opacity: 0.8; }
-            85% { opacity: 0.6; }
-            100% { transform: translateY(-100vh) translateX(var(--drift-x, 20px)); opacity: 0; }
-        }
-        .sparkle-star {
-            position: absolute;
-            animation: sparkle-pop var(--dur, 2s) ease-in-out infinite;
-            animation-delay: var(--delay, 0s);
-            color: var(--color, #facc15);
-            font-size: var(--size, 12px);
-        }
-        .drift-particle {
-            position: absolute;
-            border-radius: 50%;
-            animation: drift-up var(--dur, 12s) ease-in-out infinite;
+            animation:
+                lantern-rise var(--rise-dur, 14s) ease-in-out infinite,
+                lantern-glow2 2.5s ease-in-out infinite;
             animation-delay: var(--delay, 0s);
         }
 
-        /* Mosque Silhouette */
+        /* Arabesque border strip */
+        .arabesque-strip {
+            position: absolute;
+            left: 0; right: 0;
+            height: 6px;
+            background: repeating-linear-gradient(
+                90deg,
+                #10b981 0px, #10b981 10px,
+                #facc15 10px, #facc15 20px,
+                #f43f5e 20px, #f43f5e 30px,
+                #818cf8 30px, #818cf8 40px,
+                #fb923c 40px, #fb923c 50px,
+                #facc15 50px, #facc15 60px
+            );
+            opacity: 0.85;
+        }
+
+        /* Side ornamental arcs */
+        @keyframes arc-pulse {
+            0%, 100% { opacity: 0.18; transform: scaleX(1); }
+            50%       { opacity: 0.28; transform: scaleX(1.04); }
+        }
+        .side-arc {
+            position: absolute;
+            top: 0; bottom: 0;
+            width: 80px;
+            animation: arc-pulse 5s ease-in-out infinite;
+        }
+
+        /* Mosque shimmer */
         @keyframes mosque-shimmer {
-            0%, 100% { opacity: 0.12; }
-            50% { opacity: 0.18; }
+            0%, 100% { opacity: 0.10; }
+            50%       { opacity: 0.17; }
         }
         .mosque-silhouette {
-            animation: mosque-shimmer 5s ease-in-out infinite;
-            color: #1e3a5f;
+            animation: mosque-shimmer 6s ease-in-out infinite;
+            color: #134e4a;
         }
 
-        /* Shooting star */
-        @keyframes shoot {
-            0% { transform: translateX(0) translateY(0) rotate(-30deg); opacity: 0; }
-            10% { opacity: 1; }
-            100% { transform: translateX(-300px) translateY(150px) rotate(-30deg); opacity: 0; }
-        }
-        .shooting-star {
-            position: absolute;
-            width: 80px; height: 2px;
-            background: linear-gradient(to left, rgba(255,255,255,0), #facc15);
-            border-radius: 100%;
-            animation: shoot var(--dur, 5s) linear infinite;
-            animation-delay: var(--delay, 0s);
-        }
-
-        /* Ketupat premium */
-        @keyframes ketupat-spin {
-            0% { transform: rotate(45deg) scale(1); }
-            50% { transform: rotate(45deg) scale(1.05); }
-            100% { transform: rotate(45deg) scale(1); }
-        }
+        /* Ketupat premium (keep for possible other use) */
         .ketupat-premium {
             width: 36px; height: 36px;
             background: linear-gradient(135deg, #86efac, #4ade80);
@@ -310,10 +261,9 @@
             transform: rotate(45deg);
             position: relative;
             box-shadow: 0 4px 12px rgba(21,128,61,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
-            animation: ketupat-spin 3s ease-in-out infinite;
         }
-        .ketupat-premium::before { content: ''; position: absolute; width: 100%; height: 50%; top: 0; left: 0; border-bottom: 1.5px solid rgba(21,128,61,0.6); background: rgba(255,255,255,0.1); }
-        .ketupat-premium::after { content: ''; position: absolute; width: 50%; height: 100%; top: 0; left: 0; border-right: 1.5px solid rgba(21,128,61,0.6); background: rgba(255,255,255,0.05); }
+        .ketupat-premium::before { content: ''; position: absolute; width: 100%; height: 50%; top: 0; left: 0; border-bottom: 1.5px solid rgba(21,128,61,0.6); }
+        .ketupat-premium::after  { content: ''; position: absolute; width: 50%; height: 100%; top: 0; left: 0; border-right: 1.5px solid rgba(21,128,61,0.6); }
 
         /* FIREWORKS STYLE */
         .firework-particle { position: fixed; pointer-events: none; border-radius: 50%; z-index: 9999; animation: firework-fade 0.8s ease-out forwards; }
@@ -652,213 +602,165 @@
 
 
 
-        // --- DEKORASI IDUL FITRI PREMIUM ---
+        // --- DEKORASI IDUL FITRI — BUNTING & SKY LANTERNS ---
         const RamadhanDecor = () => {
-            // Deterministik: tidak pakai Math.random() di render
-            const driftParticles = [
-                { left:'5%',  color:'#facc15', size:5, dur:14, delay:0,   driftX:30 },
-                { left:'12%', color:'#86efac', size:3, dur:11, delay:2,   driftX:-20 },
-                { left:'22%', color:'#fda4af', size:4, dur:16, delay:4,   driftX:40 },
-                { left:'35%', color:'#facc15', size:6, dur:13, delay:1,   driftX:-30 },
-                { left:'48%', color:'#c4b5fd', size:3, dur:15, delay:6,   driftX:25 },
-                { left:'58%', color:'#86efac', size:5, dur:12, delay:3,   driftX:-15 },
-                { left:'70%', color:'#facc15', size:4, dur:17, delay:5,   driftX:35 },
-                { left:'80%', color:'#fda4af', size:3, dur:10, delay:2,   driftX:-40 },
-                { left:'90%', color:'#facc15', size:6, dur:14, delay:7,   driftX:20 },
-                { left:'95%', color:'#c4b5fd', size:3, dur:18, delay:1,   driftX:-25 },
+            const flagColors = [
+                '#ef4444','#f97316','#facc15','#10b981','#3b82f6','#8b5cf6',
+                '#ec4899','#facc15','#10b981','#f97316','#ef4444','#8b5cf6',
+                '#3b82f6','#facc15','#10b981','#ec4899','#f97316','#ef4444',
             ];
-            const sparkleStars = [
-                { top:'8%',  left:'8%',  color:'#facc15', size:14, dur:'2.1s', delay:'0s' },
-                { top:'15%', left:'22%', color:'#86efac', size:10, dur:'3s',   delay:'0.7s' },
-                { top:'6%',  left:'45%', color:'#facc15', size:18, dur:'2.5s', delay:'1.2s' },
-                { top:'20%', left:'65%', color:'#fda4af', size:11, dur:'1.9s', delay:'0.4s' },
-                { top:'10%', left:'78%', color:'#facc15', size:16, dur:'2.8s', delay:'0.9s' },
-                { top:'25%', left:'90%', color:'#c4b5fd', size:10, dur:'3.2s', delay:'1.5s' },
-                { top:'35%', left:'3%',  color:'#facc15', size:12, dur:'2.3s', delay:'0.2s' },
-                { top:'40%', left:'50%', color:'#86efac', size:8,  dur:'4s',   delay:'2s' },
+            const confettiData = [
+                { left:'4%',   color:'#ef4444', w:7,  h:14, radius:'2px',  dur:5.5, delay:0,   rot:'540deg',  dx:'25px' },
+                { left:'9%',   color:'#facc15', w:10, h:10, radius:'50%',  dur:6.2, delay:0.8, rot:'360deg',  dx:'-15px' },
+                { left:'15%',  color:'#10b981', w:6,  h:16, radius:'1px',  dur:7.0, delay:1.5, rot:'720deg',  dx:'35px' },
+                { left:'22%',  color:'#8b5cf6', w:9,  h:9,  radius:'50%',  dur:5.8, delay:2.2, rot:'-360deg', dx:'-20px' },
+                { left:'29%',  color:'#f97316', w:7,  h:13, radius:'2px',  dur:6.5, delay:0.4, rot:'480deg',  dx:'18px' },
+                { left:'36%',  color:'#ec4899', w:11, h:11, radius:'50%',  dur:7.5, delay:1.2, rot:'360deg',  dx:'-30px' },
+                { left:'44%',  color:'#facc15', w:6,  h:15, radius:'2px',  dur:5.2, delay:2.8, rot:'600deg',  dx:'22px' },
+                { left:'51%',  color:'#3b82f6', w:8,  h:8,  radius:'50%',  dur:6.8, delay:0.6, rot:'-480deg', dx:'-12px' },
+                { left:'58%',  color:'#10b981', w:7,  h:14, radius:'2px',  dur:7.2, delay:1.9, rot:'720deg',  dx:'28px' },
+                { left:'65%',  color:'#ef4444', w:10, h:10, radius:'50%',  dur:5.6, delay:3.1, rot:'360deg',  dx:'-25px' },
+                { left:'72%',  color:'#facc15', w:6,  h:17, radius:'2px',  dur:6.3, delay:0.2, rot:'-540deg', dx:'15px' },
+                { left:'79%',  color:'#8b5cf6', w:9,  h:9,  radius:'50%',  dur:7.8, delay:2.5, rot:'480deg',  dx:'-18px' },
+                { left:'86%',  color:'#f97316', w:7,  h:13, radius:'2px',  dur:5.9, delay:1.0, rot:'360deg',  dx:'32px' },
+                { left:'92%',  color:'#ec4899', w:11, h:11, radius:'50%',  dur:6.6, delay:3.5, rot:'-360deg', dx:'-22px' },
+                { left:'97%',  color:'#10b981', w:6,  h:14, radius:'2px',  dur:7.4, delay:0.7, rot:'600deg',  dx:'10px' },
             ];
-            const lightColors = [
-                { color:'#ef4444', glow:'rgba(239,68,68,0.7)' },
-                { color:'#facc15', glow:'rgba(250,204,21,0.7)' },
-                { color:'#22c55e', glow:'rgba(34,197,94,0.7)' },
-                { color:'#3b82f6', glow:'rgba(59,130,246,0.7)' },
-                { color:'#f97316', glow:'rgba(249,115,22,0.7)' },
-                { color:'#a855f7', glow:'rgba(168,85,247,0.7)' },
-                { color:'#ec4899', glow:'rgba(236,72,153,0.7)' },
-                { color:'#facc15', glow:'rgba(250,204,21,0.7)' },
-                { color:'#14b8a6', glow:'rgba(20,184,166,0.7)' },
-                { color:'#ef4444', glow:'rgba(239,68,68,0.7)' },
-                { color:'#22c55e', glow:'rgba(34,197,94,0.7)' },
-                { color:'#f97316', glow:'rgba(249,115,22,0.7)' },
-                { color:'#3b82f6', glow:'rgba(59,130,246,0.7)' },
-                { color:'#facc15', glow:'rgba(250,204,21,0.7)' },
-                { color:'#a855f7', glow:'rgba(168,85,247,0.7)' },
+            const skyLanterns = [
+                { left:'8%',   color:'#fef08a', bodyColor:'#facc15', glowColor:'rgba(250,204,21,0.9)',  riseDur:16, delay:0,   sway:'15px',  sway2:'-8px'  },
+                { left:'24%',  color:'#fda4af', bodyColor:'#f43f5e', glowColor:'rgba(244,63,94,0.8)',   riseDur:19, delay:4,   sway:'-20px', sway2:'10px'  },
+                { left:'42%',  color:'#bbf7d0', bodyColor:'#10b981', glowColor:'rgba(16,185,129,0.8)',  riseDur:14, delay:8,   sway:'18px',  sway2:'-12px' },
+                { left:'60%',  color:'#fef08a', bodyColor:'#f97316', glowColor:'rgba(249,115,22,0.85)', riseDur:17, delay:2,   sway:'-14px', sway2:'8px'   },
+                { left:'76%',  color:'#ddd6fe', bodyColor:'#8b5cf6', glowColor:'rgba(139,92,246,0.8)',  riseDur:20, delay:6,   sway:'22px',  sway2:'-15px' },
+                { left:'90%',  color:'#fef08a', bodyColor:'#facc15', glowColor:'rgba(250,204,21,0.9)',  riseDur:15, delay:11,  sway:'-10px', sway2:'6px'   },
             ];
-            const shootingStars = [
-                { top:'8%',  right:'5%',  dur:'6s',  delay:'0s' },
-                { top:'15%', right:'30%', dur:'8s',  delay:'3s' },
-                { top:'5%',  right:'55%', dur:'10s', delay:'6s' },
-            ];
+
+            const SkyLanternSVG = ({ bodyColor, innerColor }) => (
+                <svg width="36" height="50" viewBox="0 0 36 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    {/* Tali atas */}
+                    <rect x="15" y="0" width="6" height="6" rx="3" fill="rgba(0,0,0,0.25)"/>
+                    {/* Badan bulat */}
+                    <ellipse cx="18" cy="28" rx="16" ry="20" fill={bodyColor} opacity="0.92"/>
+                    {/* Kilauan dalam */}
+                    <ellipse cx="18" cy="28" rx="10" ry="14" fill={innerColor} opacity="0.55"/>
+                    <ellipse cx="14" cy="22" rx="4" ry="6" fill="rgba(255,255,255,0.35)" />
+                    {/* Lingkaran bawah */}
+                    <ellipse cx="18" cy="46" rx="10" ry="4" fill="rgba(0,0,0,0.18)"/>
+                    {/* Api kecil */}
+                    <ellipse cx="18" cy="47" rx="4" ry="2.5" fill="#fbbf24" opacity="0.9"/>
+                    <ellipse cx="18" cy="46" rx="2" ry="1.5" fill="#fff" opacity="0.6"/>
+                </svg>
+            );
 
             return (
-                <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{zIndex: -1}}>
+                <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{zIndex:-1}}>
 
-                    {/* ── Bintang jatuh ── */}
-                    {shootingStars.map((s, i) => (
-                        <div key={i} className="shooting-star" style={{ top: s.top, right: s.right, '--dur': s.dur, '--delay': s.delay }} />
-                    ))}
+                    {/* ── Strip warna atas & bawah ── */}
+                    <div className="arabesque-strip" style={{ top:0 }} />
+                    <div className="arabesque-strip" style={{ bottom:0, opacity:0.5 }} />
 
-                    {/* ── Bulan sabit + bintang (pojok kanan atas) ── */}
-                    <div className="crescent-moon absolute" style={{ top: '6%', right: '4%', zIndex: 1 }}>
-                        <svg width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            {/* Bulan sabit */}
-                            <path d="M52 36C52 49.255 41.255 60 28 60C21.8 60 16.16 57.57 12 53.56C15.14 54.49 18.51 55 22 55C37.464 55 50 42.464 50 27C50 20.76 47.94 15.02 44.44 10.44C49.16 14.7 52 20.98 52 36Z" fill="#facc15" />
-                            <path d="M52 36C52 49.255 41.255 60 28 60C21.8 60 16.16 57.57 12 53.56C15.14 54.49 18.51 55 22 55C37.464 55 50 42.464 50 27C50 20.76 47.94 15.02 44.44 10.44C49.16 14.7 52 20.98 52 36Z" fill="url(#moonGrad)" />
-                            <defs>
-                                <linearGradient id="moonGrad" x1="12" y1="10" x2="52" y2="60" gradientUnits="userSpaceOnUse">
-                                    <stop stopColor="#fef08a" />
-                                    <stop offset="1" stopColor="#ca8a04" />
-                                </linearGradient>
-                            </defs>
-                            {/* Bintang kecil di samping bulan */}
-                            <polygon points="60,12 62,18 68,18 63.5,22 65.5,28 60,24 54.5,28 56.5,22 52,18 58,18" fill="#facc15" opacity="0.95" />
+                    {/* ── Bunting flags ── */}
+                    <div className="bunting-row" style={{ top:6 }}>
+                        {/* Tali kiri */}
+                        <svg style={{position:'absolute',top:0,left:0,right:0,width:'100%',height:'50px',overflow:'visible'}} preserveAspectRatio="none">
+                            <path d={`M0,0 Q${window?.innerWidth/4||200},30 ${window?.innerWidth/2||400},0 Q${window?.innerWidth*3/4||600},30 ${window?.innerWidth||800},0`}
+                                fill="none" stroke="rgba(120,60,10,0.45)" strokeWidth="1.5"/>
                         </svg>
-                    </div>
-
-                    {/* ── Bintang berkelip ── */}
-                    {sparkleStars.map((s, i) => (
-                        <div key={i} className="sparkle-star" style={{ top: s.top, left: s.left, '--color': s.color, '--size': s.size+'px', '--dur': s.dur, '--delay': s.delay }}>
-                            <i className="fa-solid fa-star" style={{ fontSize: s.size, color: s.color, filter: `drop-shadow(0 0 4px ${s.color})` }} />
-                        </div>
-                    ))}
-
-                    {/* ── Lampu gantung warna-warni (string lights) ── */}
-                    <div style={{ position:'absolute', top:0, left:0, right:0, height:'50px', zIndex:3 }}>
-                        <div className="string-light-wire" />
-                        {lightColors.map((lc, i) => (
-                            <div key={i} className="light-bulb" style={{
-                                left: `${(i / (lightColors.length - 1)) * 96 + 2}%`,
-                                '--color': lc.color,
-                                '--glow': lc.glow,
-                                '--dur': `${2 + (i % 5) * 0.4}s`,
-                                '--delay': `${(i * 0.22).toFixed(2)}s`,
-                            }}>
-                                <div className="bulb-cap" />
-                                <div className="bulb-body" />
-                                <div className="bulb-tip" />
-                            </div>
+                        {flagColors.map((color, i) => (
+                            <div key={i} className="bunting-flag" style={{
+                                '--flag-color': color,
+                                '--wave-dur': `${2.5 + (i % 4) * 0.5}s`,
+                                '--wave-delay': `${(i * 0.18).toFixed(2)}s`,
+                                marginTop: i % 2 === 0 ? '0px' : '4px',
+                            }} />
                         ))}
                     </div>
 
-                    {/* ── Fanoos kiri (lentera islami) ── */}
-                    <div className="fanoos-container" style={{ left:'3%', '--swing-dur':'4.5s' }}>
-                        <div className="fanoos-string" style={{ height:'80px' }} />
-                        <div className="fanoos-body">
-                            <svg className="fanoos-svg" width="48" height="70" viewBox="0 0 48 70" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <rect x="18" y="0" width="12" height="6" rx="3" fill="#ca8a04"/>
-                                <line x1="24" y1="6" x2="24" y2="12" stroke="#ca8a04" strokeWidth="2"/>
-                                <ellipse cx="24" cy="14" rx="8" ry="4" fill="#a16207"/>
-                                <path d="M8 16 C4 22 2 32 2 40 C2 55 12 64 24 64 C36 64 46 55 46 40 C46 32 44 22 40 16 Z" fill="url(#fanoosGrad)"/>
-                                <path d="M8 16 C4 22 2 32 2 40 C2 55 12 64 24 64 C36 64 46 55 46 40 C46 32 44 22 40 16 Z" fill="rgba(255,220,50,0.15)"/>
-                                {/* Panel dekoratif */}
-                                <path d="M12 20 L12 58 Q24 64 36 58 L36 20 Q24 14 12 20Z" fill="none" stroke="rgba(202,138,4,0.5)" strokeWidth="1"/>
-                                <path d="M16 24 L16 54 Q24 60 32 54 L32 24 Q24 18 16 24Z" fill="rgba(254,240,138,0.2)"/>
-                                {/* Pola bintang tengah */}
-                                <polygon points="24,32 25.5,37 30.5,37 26.5,40 28,45 24,42 20,45 21.5,40 17.5,37 22.5,37" fill="#facc15" opacity="0.9"/>
-                                {/* Hiasan atas bawah */}
-                                <ellipse cx="24" cy="16" rx="8" ry="3" fill="none" stroke="#ca8a04" strokeWidth="1.5"/>
-                                <ellipse cx="24" cy="62" rx="8" ry="3" fill="#a16207"/>
-                                <line x1="24" y1="64" x2="24" y2="70" stroke="#ca8a04" strokeWidth="2"/>
-                                <defs>
-                                    <linearGradient id="fanoosGrad" x1="24" y1="16" x2="24" y2="64" gradientUnits="userSpaceOnUse">
-                                        <stop stopColor="#fef08a" stopOpacity="0.95"/>
-                                        <stop offset="0.5" stopColor="#fbbf24" stopOpacity="0.9"/>
-                                        <stop offset="1" stopColor="#d97706" stopOpacity="0.95"/>
-                                    </linearGradient>
-                                </defs>
-                            </svg>
-                        </div>
-                    </div>
-
-                    {/* ── Fanoos kanan (lentera islami - lebih besar) ── */}
-                    <div className="fanoos-container" style={{ right:'3%', '--swing-dur':'3.8s', animationDirection:'alternate-reverse' }}>
-                        <div className="fanoos-string" style={{ height:'70px' }} />
-                        <div className="fanoos-body">
-                            <svg className="fanoos-svg" width="56" height="82" viewBox="0 0 56 82" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <rect x="21" y="0" width="14" height="7" rx="3.5" fill="#9f1239"/>
-                                <line x1="28" y1="7" x2="28" y2="14" stroke="#9f1239" strokeWidth="2.5"/>
-                                <ellipse cx="28" cy="16" rx="10" ry="5" fill="#be123c"/>
-                                <path d="M8 18 C4 26 2 38 2 48 C2 65 14 76 28 76 C42 76 54 65 54 48 C54 38 52 26 48 18 Z" fill="url(#fanoosGrad2)"/>
-                                <path d="M14 22 L14 68 Q28 76 42 68 L42 22 Q28 14 14 22Z" fill="none" stroke="rgba(159,18,57,0.4)" strokeWidth="1.5"/>
-                                <path d="M20 28 L20 62 Q28 68 36 62 L36 28 Q28 22 20 28Z" fill="rgba(255,200,200,0.15)"/>
-                                <polygon points="28,36 30,43 37,43 31.5,47 33.5,54 28,50 22.5,54 24.5,47 19,43 26,43" fill="#fef08a" opacity="0.95"/>
-                                <circle cx="28" cy="44" r="3" fill="rgba(255,255,255,0.3)"/>
-                                <ellipse cx="28" cy="18" rx="10" ry="4" fill="none" stroke="#be123c" strokeWidth="2"/>
-                                <ellipse cx="28" cy="74" rx="10" ry="4" fill="#be123c"/>
-                                <line x1="28" y1="76" x2="28" y2="82" stroke="#9f1239" strokeWidth="2.5"/>
-                                <defs>
-                                    <linearGradient id="fanoosGrad2" x1="28" y1="18" x2="28" y2="76" gradientUnits="userSpaceOnUse">
-                                        <stop stopColor="#fda4af" stopOpacity="0.95"/>
-                                        <stop offset="0.5" stopColor="#f43f5e" stopOpacity="0.85"/>
-                                        <stop offset="1" stopColor="#9f1239" stopOpacity="0.95"/>
-                                    </linearGradient>
-                                </defs>
-                            </svg>
-                        </div>
-                    </div>
-
-                    {/* ── Ketupat gantung kiri ── */}
-                    <div className="absolute z-0 animate-sway" style={{ top:0, left:'18%', transformOrigin:'top center', animationDuration:'5s' }}>
-                        <div style={{ width:'1.5px', height:'100px', background:'linear-gradient(to bottom, rgba(180,130,30,0.7), transparent)', margin:'0 auto' }} />
-                        <div className="ketupat-premium" style={{ margin:'0 auto' }} />
-                        <div style={{ width:'1.5px', height:'16px', background:'rgba(21,128,61,0.5)', margin:'0 auto', marginTop:'18px' }} />
-                        <div style={{ textAlign:'center', marginTop:'2px', fontSize:'10px', color:'#15803d', filter:'drop-shadow(0 1px 2px rgba(21,128,61,0.4))' }}>🍃</div>
-                    </div>
-
-                    {/* ── Ketupat gantung kanan ── */}
-                    <div className="absolute z-0 animate-sway" style={{ top:0, right:'18%', transformOrigin:'top center', animationDuration:'6.5s', animationDirection:'alternate-reverse' }}>
-                        <div style={{ width:'1.5px', height:'110px', background:'linear-gradient(to bottom, rgba(180,130,30,0.7), transparent)', margin:'0 auto' }} />
-                        <div className="ketupat-premium" style={{ margin:'0 auto', background:'linear-gradient(135deg, #fde68a, #fbbf24)', borderColor:'#ca8a04' }} />
-                        <div style={{ width:'1.5px', height:'14px', background:'rgba(202,138,4,0.5)', margin:'0 auto', marginTop:'18px' }} />
-                        <div style={{ textAlign:'center', marginTop:'2px', fontSize:'10px', filter:'drop-shadow(0 1px 2px rgba(202,138,4,0.4))' }}>⭐</div>
-                    </div>
-
-                    {/* ── Partikel melayang ── */}
-                    {driftParticles.map((p, i) => (
-                        <div key={i} className="drift-particle" style={{
-                            left: p.left,
-                            bottom: '-20px',
-                            width: p.size + 'px',
-                            height: p.size + 'px',
-                            background: p.color,
-                            boxShadow: `0 0 6px ${p.color}`,
-                            '--dur': p.dur + 's',
-                            '--delay': p.delay + 's',
-                            '--drift-x': p.driftX + 'px',
+                    {/* ── Confetti hujan ── */}
+                    {confettiData.map((c, i) => (
+                        <div key={i} className="confetti-piece" style={{
+                            left: c.left,
+                            '--color':  c.color,
+                            '--w':      c.w  + 'px',
+                            '--h':      c.h  + 'px',
+                            '--radius': c.radius,
+                            '--dur':    c.dur + 's',
+                            '--delay':  c.delay + 's',
+                            '--rot':    c.rot,
+                            '--dx':     c.dx,
+                            width:  c.w  + 'px',
+                            height: c.h  + 'px',
+                            borderRadius: c.radius,
                         }} />
                     ))}
 
-                    {/* ── Siluet Masjid bawah ── */}
-                    <div className="mosque-silhouette absolute bottom-0 left-0 right-0 pointer-events-none flex items-end justify-center overflow-hidden" style={{ height:'140px' }}>
-                        <svg viewBox="0 0 800 140" xmlns="http://www.w3.org/2000/svg" style={{ width:'100%', height:'100%', display:'block' }} preserveAspectRatio="xMidYMax slice">
-                            {/* Masjid tengah besar */}
-                            <path d="M320 140 L320 90 L310 90 L310 70 Q320 45 340 40 L340 30 Q340 15 350 10 Q360 5 370 10 Q380 15 380 30 L380 40 Q400 45 410 70 L410 90 L400 90 L400 140 Z" fill="currentColor"/>
-                            <path d="M300 140 L300 100 L295 100 L295 85 Q305 75 320 72 L330 72 L330 140 Z" fill="currentColor"/>
-                            <path d="M410 140 L410 72 L420 72 Q435 75 445 85 L445 100 L440 100 L440 140 Z" fill="currentColor"/>
+                    {/* ── Sky Lanterns melayang ke atas ── */}
+                    {skyLanterns.map((l, i) => (
+                        <div key={i} className="sky-lantern" style={{
+                            left:  l.left,
+                            bottom: '-60px',
+                            '--rise-dur':   l.riseDur + 's',
+                            '--delay':      l.delay + 's',
+                            '--sway':       l.sway,
+                            '--sway2':      l.sway2,
+                            '--glow-color': l.glowColor,
+                        }}>
+                            <SkyLanternSVG bodyColor={l.bodyColor} innerColor={l.color} />
+                        </div>
+                    ))}
+
+                    {/* ── Ornamen sisi kiri ── */}
+                    <div className="side-arc" style={{ left:0 }}>
+                        <svg width="80" height="100%" viewBox="0 0 80 600" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                            {[0,80,160,240,320,400,480].map((y,i) => (
+                                <g key={i}>
+                                    <path d={`M0,${y+10} Q50,${y+40} 0,${y+70}`} fill="none" stroke="#10b981" strokeWidth="1.5" opacity="0.5"/>
+                                    <circle cx="50" cy={y+40} r="4" fill="#facc15" opacity="0.6"/>
+                                </g>
+                            ))}
+                        </svg>
+                    </div>
+
+                    {/* ── Ornamen sisi kanan ── */}
+                    <div className="side-arc" style={{ right:0 }}>
+                        <svg width="80" height="100%" viewBox="0 0 80 600" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                            {[0,80,160,240,320,400,480].map((y,i) => (
+                                <g key={i}>
+                                    <path d={`M80,${y+10} Q30,${y+40} 80,${y+70}`} fill="none" stroke="#10b981" strokeWidth="1.5" opacity="0.5"/>
+                                    <circle cx="30" cy={y+40} r="4" fill="#facc15" opacity="0.6"/>
+                                </g>
+                            ))}
+                        </svg>
+                    </div>
+
+                    {/* ── Siluet masjid bawah ── */}
+                    <div className="mosque-silhouette absolute bottom-0 left-0 right-0 pointer-events-none flex items-end justify-center overflow-hidden" style={{ height:'130px' }}>
+                        <svg viewBox="0 0 900 130" xmlns="http://www.w3.org/2000/svg" style={{width:'100%',height:'100%',display:'block'}} preserveAspectRatio="xMidYMax slice">
+                            {/* Kubah utama */}
+                            <ellipse cx="450" cy="50" rx="55" ry="50" fill="currentColor"/>
+                            <rect x="395" y="50" width="110" height="80" fill="currentColor"/>
+                            {/* Menara kiri besar */}
+                            <rect x="290" y="20" width="22" height="110" fill="currentColor"/>
+                            <ellipse cx="301" cy="20" rx="11" ry="18" fill="currentColor"/>
+                            <rect x="297" y="2" width="8" height="20" fill="currentColor"/>
+                            {/* Menara kanan besar */}
+                            <rect x="588" y="20" width="22" height="110" fill="currentColor"/>
+                            <ellipse cx="599" cy="20" rx="11" ry="18" fill="currentColor"/>
+                            <rect x="595" y="2" width="8" height="20" fill="currentColor"/>
                             {/* Kubah kiri */}
-                            <path d="M230 140 L230 100 L222 100 Q222 78 240 70 Q258 62 265 70 Q282 78 282 100 L274 100 L274 140 Z" fill="currentColor"/>
-                            {/* Menara kiri */}
-                            <rect x="200" y="55" width="18" height="85" fill="currentColor"/>
-                            <path d="M198 55 L209 35 L220 55 Z" fill="currentColor"/>
-                            <rect x="205" y="30" width="8" height="8" fill="currentColor"/>
+                            <ellipse cx="340" cy="70" rx="35" ry="32" fill="currentColor"/>
+                            <rect x="305" y="70" width="70" height="60" fill="currentColor"/>
                             {/* Kubah kanan */}
-                            <path d="M516 140 L516 100 L508 100 Q508 78 526 70 Q544 62 551 70 Q568 78 568 100 L560 100 L560 140 Z" fill="currentColor"/>
-                            {/* Menara kanan */}
-                            <rect x="580" y="55" width="18" height="85" fill="currentColor"/>
-                            <path d="M578 55 L589 35 L600 55 Z" fill="currentColor"/>
-                            <rect x="585" y="30" width="8" height="8" fill="currentColor"/>
+                            <ellipse cx="560" cy="70" rx="35" ry="32" fill="currentColor"/>
+                            <rect x="525" y="70" width="70" height="60" fill="currentColor"/>
+                            {/* Menara kecil kiri */}
+                            <rect x="160" y="50" width="14" height="80" fill="currentColor"/>
+                            <ellipse cx="167" cy="50" rx="7" ry="12" fill="currentColor"/>
+                            {/* Menara kecil kanan */}
+                            <rect x="726" y="50" width="14" height="80" fill="currentColor"/>
+                            <ellipse cx="733" cy="50" rx="7" ry="12" fill="currentColor"/>
                             {/* Tanah */}
-                            <rect x="0" y="135" width="800" height="5" fill="currentColor"/>
+                            <rect x="0" y="126" width="900" height="4" fill="currentColor"/>
                         </svg>
                     </div>
 
