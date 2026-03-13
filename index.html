@@ -148,104 +148,128 @@
         .ketupat::after { width: 50%; height: 100%; top: 0; left: 0; border-right: 1px solid #15803d; }
 
         /* ===================================================
-           IDUL FITRI KAWAII — Colorful Cute Festive Mode 🎊
+           EID MUBARAK — Modern Dark Elegant Edition
+           Palette: midnight navy · emerald · gold · white
            =================================================== */
 
-        /* Bounce in */
-        @keyframes bounce-in {
-            0%   { transform: scale(0) rotate(-20deg); opacity:0; }
-            60%  { transform: scale(1.2) rotate(5deg);  opacity:1; }
-            80%  { transform: scale(0.9) rotate(-3deg); }
-            100% { transform: scale(1) rotate(0deg);    opacity:1; }
-        }
-        /* Wobble float */
-        @keyframes wobble {
-            0%,100% { transform: translateY(0px) rotate(-4deg); }
-            25%      { transform: translateY(-8px) rotate(4deg); }
-            50%      { transform: translateY(-14px) rotate(-3deg); }
-            75%      { transform: translateY(-6px) rotate(3deg); }
-        }
-        /* Rainbow spin */
-        @keyframes rainbow-spin {
-            0%   { filter: hue-rotate(0deg); }
-            100% { filter: hue-rotate(360deg); }
-        }
-        /* Pop pulse */
-        @keyframes pop-pulse {
-            0%,100% { transform: scale(1); }
-            50%      { transform: scale(1.18); }
-        }
-        /* Wiggle */
-        @keyframes wiggle {
-            0%,100% { transform: rotate(-8deg); }
-            50%      { transform: rotate(8deg); }
-        }
-        /* Rain fall */
-        @keyframes rain-fall {
-            0%   { transform: translateY(-30px) rotate(var(--r,0deg)); opacity:0.9; }
-            100% { transform: translateY(105vh) rotate(var(--r2,180deg)); opacity:0.5; }
-        }
-        /* Slide in top */
-        @keyframes slide-top {
-            0%   { transform: translateY(-60px); opacity:0; }
-            100% { transform: translateY(0);     opacity:1; }
-        }
-        /* Marquee scroll */
-        @keyframes marquee {
-            0%   { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
-        }
-        /* Star pop cycle */
-        @keyframes star-cycle {
-            0%,100% { transform: scale(1) rotate(0deg);   opacity:0.8; }
-            33%      { transform: scale(1.3) rotate(30deg); opacity:1; }
-            66%      { transform: scale(0.8) rotate(-20deg);opacity:0.6; }
-        }
-        /* Bounce side */
-        @keyframes bounce-x {
-            0%,100% { transform: translateX(0); }
-            50%      { transform: translateX(var(--bx,10px)); }
-        }
-        /* Heartbeat */
-        @keyframes heartbeat {
-            0%,100% { transform: scale(1); }
-            14%      { transform: scale(1.3); }
-            28%      { transform: scale(1); }
-            42%      { transform: scale(1.2); }
-            56%      { transform: scale(1); }
+        /* — Gradient mesh background — */
+        @keyframes mesh-shift {
+            0%,100% { transform: scale(1) rotate(0deg);   opacity: 1; }
+            50%      { transform: scale(1.08) rotate(4deg); opacity: 0.8; }
         }
 
-        /* Ketupat kawaii */
-        .ketupat-kawaii {
-            width: 28px; height: 28px;
-            background: linear-gradient(135deg, #4ade80, #86efac);
-            border: 2.5px solid #15803d;
-            transform: rotate(45deg);
-            border-radius: 4px;
-            position: relative;
-            box-shadow: 3px 3px 0 #15803d;
+        /* — Particle drift — */
+        @keyframes p-drift {
+            0%   { transform: translateY(0) translateX(0) scale(0.8); opacity: 0; }
+            8%   { opacity: var(--op, 0.7); }
+            50%  { transform: translateY(var(--ty,-55px)) translateX(var(--tx,15px)) scale(1); }
+            92%  { opacity: var(--op, 0.5); }
+            100% { transform: translateY(var(--ty2,-110px)) translateX(var(--tx2,-8px)) scale(0.6); opacity: 0; }
         }
-        .ketupat-kawaii::before { content:''; position:absolute; inset:0; border-bottom:1.5px dashed rgba(21,128,61,0.5); top:40%; }
-        .ketupat-kawaii::after  { content:''; position:absolute; inset:0; border-right:1.5px dashed rgba(21,128,61,0.5); left:40%; }
 
-        /* Cute cloud */
-        .cute-cloud {
-            background: white;
-            border-radius: 50px;
-            position: relative;
-            box-shadow: 4px 4px 0 rgba(0,0,0,0.1);
+        /* — Glow pulse — */
+        @keyframes glow-pulse {
+            0%,100% { opacity: 0.5; transform: scale(1); }
+            50%      { opacity: 1;   transform: scale(1.12); }
         }
-        .cute-cloud::before, .cute-cloud::after {
-            content:'';
-            background: white;
-            border-radius: 50%;
+
+        /* — Line draw — */
+        @keyframes line-draw {
+            0%   { stroke-dashoffset: 600; opacity: 0; }
+            20%  { opacity: 1; }
+            100% { stroke-dashoffset: 0;   opacity: 0.6; }
+        }
+        @keyframes line-undraw {
+            0%   { stroke-dashoffset: 0;   opacity: 0.5; }
+            80%  { opacity: 0.5; }
+            100% { stroke-dashoffset: -600; opacity: 0; }
+        }
+
+        /* — Float gentle — */
+        @keyframes gentle-float {
+            0%,100% { transform: translateY(0px); }
+            50%      { transform: translateY(-10px); }
+        }
+
+        /* — Crescent reveal — */
+        @keyframes crescent-reveal {
+            0%   { opacity:0; transform: translateY(-20px) scale(0.85); }
+            100% { opacity:1; transform: translateY(0)     scale(1); }
+        }
+
+        /* — Shimmer sweep — */
+        @keyframes shimmer-sweep {
+            0%   { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+
+        /* — Rotate slow — */
+        @keyframes rot-slow {
+            0%   { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes rot-slow-rev {
+            0%   { transform: rotate(0deg); }
+            100% { transform: rotate(-360deg); }
+        }
+
+        /* — Mosque — */
+        .mosque-silhouette { color: #0f172a; }
+        @keyframes mosque-rise {
+            0%,100% { opacity: 0.18; }
+            50%      { opacity: 0.26; }
+        }
+        .mosque-silhouette { animation: mosque-rise 8s ease-in-out infinite; }
+
+        /* — Emerald bar — */
+        .eid-top-bar {
+            position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg,
+                transparent 0%,
+                #065f46 5%,
+                #059669 20%,
+                #34d399 40%,
+                #fde68a 50%,
+                #34d399 60%,
+                #059669 80%,
+                #065f46 95%,
+                transparent 100%
+            );
+            background-size: 200% 100%;
+            animation: shimmer-sweep 4s linear infinite;
+            z-index: 5;
+        }
+        .eid-bottom-bar {
+            position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg,
+                transparent 0%,
+                #1e1b4b 5%,
+                #4338ca 20%,
+                #818cf8 40%,
+                #fde68a 50%,
+                #818cf8 60%,
+                #4338ca 80%,
+                #1e1b4b 95%,
+                transparent 100%
+            );
+            background-size: 200% 100%;
+            animation: shimmer-sweep 6s linear infinite reverse;
+            z-index: 5;
+        }
+
+        /* — Geometric ring — */
+        .geo-ring {
             position: absolute;
+            border-radius: 50%;
+            border: 1px solid var(--ring-color, rgba(52,211,153,0.3));
+            animation: rot-slow var(--dur, 30s) linear infinite;
         }
-        .cute-cloud::before { width:55%; height:130%; top:-40%; left:15%; }
-        .cute-cloud::after  { width:40%; height:110%; top:-30%; right:12%; }
-
-        .mosque-silhouette {
-            color: #7c3aed;
+        .geo-ring-rev {
+            position: absolute;
+            border-radius: 50%;
+            border: 1px solid var(--ring-color, rgba(250,204,21,0.2));
+            border-style: dashed;
+            animation: rot-slow-rev var(--dur, 40s) linear infinite;
         }
 
         /* FIREWORKS STYLE */
@@ -585,182 +609,257 @@
 
 
 
-        // --- DEKORASI IDUL FITRI KAWAII 🎊 ---
+        // ── EID MUBARAK — Modern Dark Elegant ──────────────────
         const RamadhanDecor = () => {
 
-            const emojis = ['🌙','⭐','🎁','🪔','🌸','💫','🎀','✨','🌺','🎊','🍀','🌈'];
-            const fallingItems = [
-                {left:'3%',  em:'⭐', s:18, dur:6,   delay:0,   r:'-15deg', r2:'200deg'},
-                {left:'9%',  em:'🌙', s:22, dur:8,   delay:1.2, r:'10deg',  r2:'-180deg'},
-                {left:'15%', em:'🌸', s:16, dur:5.5, delay:2.8, r:'-20deg', r2:'150deg'},
-                {left:'22%', em:'✨', s:20, dur:7,   delay:0.5, r:'5deg',   r2:'220deg'},
-                {left:'29%', em:'🎊', s:18, dur:9,   delay:3.5, r:'-8deg',  r2:'-160deg'},
-                {left:'36%', em:'⭐', s:14, dur:6.5, delay:1.8, r:'12deg',  r2:'190deg'},
-                {left:'44%', em:'🌺', s:20, dur:7.5, delay:0.3, r:'-18deg', r2:'170deg'},
-                {left:'51%', em:'💫', s:16, dur:5,   delay:4,   r:'8deg',   r2:'-200deg'},
-                {left:'58%', em:'🎀', s:18, dur:8.5, delay:1.5, r:'-12deg', r2:'180deg'},
-                {left:'65%', em:'🌸', s:22, dur:6,   delay:2.2, r:'15deg',  r2:'-170deg'},
-                {left:'72%', em:'⭐', s:16, dur:7,   delay:0.8, r:'-10deg', r2:'210deg'},
-                {left:'79%', em:'🪔', s:20, dur:9,   delay:3,   r:'6deg',   r2:'-190deg'},
-                {left:'86%', em:'✨', s:18, dur:5.5, delay:1,   r:'-14deg', r2:'160deg'},
-                {left:'93%', em:'🌙', s:16, dur:7.5, delay:4.5, r:'10deg',  r2:'200deg'},
+            const particles = [
+                {l:'4%',  b:'8%',  s:4, c:'#34d399',op:.6,ty:'-60px',tx:'12px', ty2:'-120px',tx2:'-6px', dur:12,delay:0},
+                {l:'11%', b:'20%', s:3, c:'#fde68a',op:.5,ty:'-45px',tx:'-10px',ty2:'-90px', tx2:'5px',  dur:15,delay:2.5},
+                {l:'19%', b:'5%',  s:5, c:'#818cf8',op:.6,ty:'-70px',tx:'8px',  ty2:'-130px',tx2:'-12px',dur:11,delay:0.8},
+                {l:'28%', b:'15%', s:3, c:'#34d399',op:.5,ty:'-50px',tx:'-15px',ty2:'-95px', tx2:'8px',  dur:14,delay:4},
+                {l:'38%', b:'10%', s:4, c:'#fde68a',op:.7,ty:'-65px',tx:'18px', ty2:'-125px',tx2:'-9px', dur:10,delay:1.5},
+                {l:'48%', b:'22%', s:3, c:'#a5f3fc',op:.5,ty:'-40px',tx:'-8px', ty2:'-80px', tx2:'4px',  dur:16,delay:3.2},
+                {l:'57%', b:'7%',  s:5, c:'#fde68a',op:.65,ty:'-72px',tx:'14px',ty2:'-130px',tx2:'-10px',dur:12,delay:0.3},
+                {l:'66%', b:'18%', s:3, c:'#34d399',op:.5,ty:'-48px',tx:'-12px',ty2:'-92px', tx2:'6px',  dur:13,delay:2},
+                {l:'74%', b:'6%',  s:4, c:'#818cf8',op:.6,ty:'-62px',tx:'10px', ty2:'-118px',tx2:'-7px', dur:11,delay:4.5},
+                {l:'83%', b:'16%', s:3, c:'#fde68a',op:.5,ty:'-44px',tx:'-9px', ty2:'-85px', tx2:'5px',  dur:15,delay:1.2},
+                {l:'91%', b:'9%',  s:5, c:'#34d399',op:.7,ty:'-68px',tx:'16px', ty2:'-128px',tx2:'-11px',dur:10,delay:3.8},
+                {l:'97%', b:'25%', s:3, c:'#a5f3fc',op:.45,ty:'-35px',tx:'-6px',ty2:'-70px', tx2:'3px',  dur:18,delay:5},
             ];
 
-            const floatingBubbles = [
-                {top:'12%', left:'2%',  color:'#fde68a', size:40, dur:4,   delay:0,   bx:'8px'},
-                {top:'28%', left:'1%',  color:'#fbcfe8', size:28, dur:5,   delay:1,   bx:'-6px'},
-                {top:'45%', left:'3%',  color:'#bbf7d0', size:36, dur:3.5, delay:2,   bx:'10px'},
-                {top:'62%', left:'0%',  color:'#bfdbfe', size:32, dur:6,   delay:0.5, bx:'-8px'},
-                {top:'78%', left:'2%',  color:'#ddd6fe', size:24, dur:4.5, delay:1.5, bx:'6px'},
-                {top:'12%', right:'2%', color:'#fecaca', size:34, dur:5.5, delay:0.8, bx:'-10px'},
-                {top:'30%', right:'1%', color:'#fde68a', size:28, dur:4,   delay:2.5, bx:'8px'},
-                {top:'50%', right:'2%', color:'#bbf7d0', size:40, dur:3,   delay:0.3, bx:'-6px'},
-                {top:'68%', right:'0%', color:'#fbcfe8', size:30, dur:5,   delay:1.8, bx:'9px'},
-                {top:'85%', right:'2%', color:'#c7d2fe', size:22, dur:6.5, delay:1,   bx:'-7px'},
-            ];
-
-            const topItems = [
-                {left:'5%',   em:'🕌', s:34, dur:3.5, delay:0},
-                {left:'14%',  em:'⭐', s:26, dur:2.8, delay:0.4},
-                {left:'24%',  em:'🌙', s:30, dur:4,   delay:0.8},
-                {left:'34%',  em:'🎁', s:24, dur:3.2, delay:0.2},
-                {left:'44%',  em:'🎊', s:32, dur:2.5, delay:1.0},
-                {left:'55%',  em:'🪔', s:28, dur:3.8, delay:0.6},
-                {left:'65%',  em:'🌸', s:26, dur:3,   delay:1.2},
-                {left:'75%',  em:'⭐', s:30, dur:4.2, delay:0.3},
-                {left:'85%',  em:'🌙', s:24, dur:2.7, delay:0.9},
-                {left:'93%',  em:'🕌', s:34, dur:3.5, delay:0.5},
-            ];
-
-            /* Pola bintang berwarna background */
-            const bgStars = [
-                {top:'8%', left:'12%',  color:'#fbbf24', s:12},
-                {top:'5%', left:'28%',  color:'#f43f5e', s:10},
-                {top:'9%', left:'52%',  color:'#8b5cf6', s:14},
-                {top:'6%', left:'68%',  color:'#10b981', s:10},
-                {top:'8%', left:'83%',  color:'#3b82f6', s:12},
-                {top:'15%',left:'7%',   color:'#ec4899', s:8},
-                {top:'18%',left:'41%',  color:'#f97316', s:10},
-                {top:'14%',left:'76%',  color:'#facc15', s:9},
-                {top:'20%',left:'95%',  color:'#a855f7', s:8},
+            const glowOrbs = [
+                {top:'8%',  left:'6%',   w:180, h:180, color:'rgba(52,211,153,0.07)',  dur:8,  delay:0},
+                {top:'5%',  right:'8%',  w:220, h:220, color:'rgba(250,204,21,0.06)',  dur:10, delay:2},
+                {top:'40%', left:'1%',   w:150, h:150, color:'rgba(129,140,248,0.07)', dur:12, delay:4},
+                {top:'40%', right:'1%',  w:160, h:160, color:'rgba(52,211,153,0.06)',  dur:9,  delay:1},
+                {top:'70%', left:'10%',  w:200, h:200, color:'rgba(250,204,21,0.05)',  dur:11, delay:3},
+                {top:'70%', right:'10%', w:190, h:190, color:'rgba(129,140,248,0.06)', dur:14, delay:0.5},
             ];
 
             return (
                 <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{zIndex:-1}}>
 
-                    {/* ══ BACKGROUND: warna pastel gradient bergeser ══ */}
-                    <div style={{
-                        position:'absolute', inset:0,
-                        background:'linear-gradient(135deg, rgba(254,249,195,0.25) 0%, rgba(220,252,231,0.2) 25%, rgba(219,234,254,0.2) 50%, rgba(252,231,243,0.2) 75%, rgba(254,249,195,0.25) 100%)',
-                        animation:'rainbow-spin 20s linear infinite',
-                    }}/>
+                    {/* ── Shimmer bars ── */}
+                    <div className="eid-top-bar"/>
+                    <div className="eid-bottom-bar"/>
 
-                    {/* ══ MARQUEE STRIP — emoji berjalan di atas ══ */}
-                    <div style={{
-                        position:'absolute', top:0, left:0, right:0,
-                        height:'36px', zIndex:5, overflow:'hidden',
-                        background:'linear-gradient(90deg,#7c3aed,#db2777,#f97316,#facc15,#10b981,#3b82f6,#7c3aed)',
-                        display:'flex', alignItems:'center',
-                    }}>
-                        <div style={{display:'flex', animation:'marquee 18s linear infinite', whiteSpace:'nowrap'}}>
-                            {[...Array(2)].map((_,rep) => (
-                                <span key={rep} style={{display:'flex', alignItems:'center', gap:'6px', paddingRight:'8px'}}>
-                                    {['🌙 Selamat Idul Fitri','⭐','1 Syawal','✨','Minal Aidin Wal Faizin','🎊','Taqabbalallahu Minna Wa Minkum','🌸','Mohon Maaf Lahir Batin','🪔','Idul Fitri Mubarak','💫'].map((t,i)=>(
-                                        <span key={i} style={{color:'white',fontWeight:800,fontSize:'13px',letterSpacing:'0.5px',textShadow:'0 1px 3px rgba(0,0,0,0.2)',paddingLeft:'16px', fontFamily:'Nunito, sans-serif'}}>{t}</span>
-                                    ))}
-                                </span>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* ══ STRIP WARNA BAWAH ══ */}
-                    <div style={{
-                        position:'absolute', bottom:0, left:0, right:0, height:'8px', zIndex:5,
-                        background:'linear-gradient(90deg,#7c3aed,#db2777,#f97316,#facc15,#10b981,#3b82f6,#7c3aed)',
-                    }}/>
-
-                    {/* ══ ICON LUCU BERJAJAR DI BAWAH STRIP ATAS ══ */}
-                    {topItems.map((t,i) => (
-                        <div key={i} style={{
-                            position:'absolute', top:'40px', left:t.left,
-                            fontSize:t.s, lineHeight:1,
-                            animation:`wobble ${t.dur}s ease-in-out infinite`,
-                            animationDelay:`${t.delay}s`,
-                            filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.15))',
-                            zIndex:4,
-                        }}>{t.em}</div>
-                    ))}
-
-                    {/* ══ BINTANG BERWARNA DI POJOK-POJOK ══ */}
-                    {bgStars.map((s,i)=>(
-                        <div key={i} style={{
-                            position:'absolute', top:s.top, left:s.left,
-                            fontSize:s.s, animation:`star-cycle ${2+i*0.3}s ease-in-out infinite`,
-                            animationDelay:`${i*0.25}s`,
-                        }}>✦</div>
-                    ))}
-
-                    {/* ══ GELEMBUNG WARNA DI KIRI & KANAN ══ */}
-                    {floatingBubbles.map((b,i) => (
+                    {/* ── Soft radial glow orbs ── */}
+                    {glowOrbs.map((o,i)=>(
                         <div key={i} style={{
                             position:'absolute',
-                            top:b.top,
-                            ...(b.left !== undefined ? {left:b.left} : {right:b.right}),
-                            width:b.size, height:b.size,
+                            top: o.top,
+                            ...(o.left ? {left:o.left} : {right:o.right}),
+                            width: o.w, height: o.h,
                             borderRadius:'50%',
-                            background:b.color,
-                            opacity:0.5,
-                            animation:`bounce-x ${b.dur}s ease-in-out infinite`,
-                            animationDelay:`${b.delay}s`,
-                            '--bx': b.bx,
-                            boxShadow:`0 4px 12px ${b.color}`,
+                            background: `radial-gradient(circle, ${o.color} 0%, transparent 70%)`,
+                            animation:`glow-pulse ${o.dur}s ease-in-out infinite`,
+                            animationDelay:`${o.delay}s`,
                         }}/>
                     ))}
 
-                    {/* ══ EMOJI JATUH DARI ATAS ══ */}
-                    {fallingItems.map((f,i) => (
-                        <div key={i} style={{
-                            position:'absolute', top:'-30px', left:f.left,
-                            fontSize:f.s,
-                            animation:`rain-fall ${f.dur}s linear infinite`,
-                            animationDelay:`${f.delay}s`,
-                            '--r': f.r, '--r2': f.r2,
-                            filter:'drop-shadow(0 2px 3px rgba(0,0,0,0.15))',
-                        }}>{f.em}</div>
-                    ))}
+                    {/* ── Geometric rings kiri ── */}
+                    <div style={{position:'absolute', top:'5%', left:'-30px'}}>
+                        <div className="geo-ring" style={{
+                            width:140,height:140,
+                            '--ring-color':'rgba(52,211,153,0.25)',
+                            '--dur':'28s',
+                        }}/>
+                        <div className="geo-ring-rev" style={{
+                            position:'absolute', top:20, left:20,
+                            width:100, height:100,
+                            '--ring-color':'rgba(250,204,21,0.18)',
+                            '--dur':'18s',
+                        }}/>
+                        <div style={{
+                            position:'absolute', top:55, left:55,
+                            width:30, height:30,
+                            borderRadius:'50%',
+                            background:'radial-gradient(circle, rgba(52,211,153,0.5) 0%, transparent 70%)',
+                            animation:'glow-pulse 3s ease-in-out infinite',
+                        }}/>
+                    </div>
 
-                    {/* ══ SILUET MASJID LUCU (WARNA) ══ */}
-                    <div className="mosque-silhouette absolute bottom-8 left-0 right-0 pointer-events-none" style={{height:'110px', opacity:0.13}}>
-                        <svg viewBox="0 0 1000 110" xmlns="http://www.w3.org/2000/svg"
-                            style={{width:'100%',height:'100%',display:'block'}}
-                            preserveAspectRatio="xMidYMax slice">
-                            <rect x="360" y="50" width="280" height="60" fill="currentColor"/>
-                            <ellipse cx="500" cy="50" rx="80" ry="55" fill="currentColor"/>
-                            <ellipse cx="360" cy="72" rx="45" ry="36" fill="currentColor"/>
-                            <rect x="315" y="72" width="90" height="38" fill="currentColor"/>
-                            <ellipse cx="640" cy="72" rx="45" ry="36" fill="currentColor"/>
-                            <rect x="595" y="72" width="90" height="38" fill="currentColor"/>
-                            <rect x="248" y="24" width="16" height="86" fill="currentColor"/>
-                            <ellipse cx="256" cy="24" rx="8" ry="22" fill="currentColor"/>
-                            <rect x="253" y="2" width="6" height="24" fill="currentColor"/>
-                            <rect x="736" y="24" width="16" height="86" fill="currentColor"/>
-                            <ellipse cx="744" cy="24" rx="8" ry="22" fill="currentColor"/>
-                            <rect x="741" y="2" width="6" height="24" fill="currentColor"/>
+                    {/* ── Geometric rings kanan ── */}
+                    <div style={{position:'absolute', top:'5%', right:'-30px'}}>
+                        <div className="geo-ring" style={{
+                            width:140,height:140,
+                            '--ring-color':'rgba(250,204,21,0.22)',
+                            '--dur':'22s',
+                        }}/>
+                        <div className="geo-ring-rev" style={{
+                            position:'absolute', top:20, left:20,
+                            width:100, height:100,
+                            '--ring-color':'rgba(129,140,248,0.2)',
+                            '--dur':'15s',
+                        }}/>
+                        <div style={{
+                            position:'absolute', top:55, left:55,
+                            width:30, height:30,
+                            borderRadius:'50%',
+                            background:'radial-gradient(circle, rgba(250,204,21,0.5) 0%, transparent 70%)',
+                            animation:'glow-pulse 4s ease-in-out infinite 1s',
+                        }}/>
+                    </div>
+
+                    {/* ── Crescent + star centred ── */}
+                    <div style={{
+                        position:'absolute', top:'3%', left:'50%', transform:'translateX(-50%)',
+                        animation:'crescent-reveal 1.2s cubic-bezier(0.34,1.56,0.64,1) forwards, gentle-float 7s ease-in-out 1.2s infinite',
+                        zIndex:4,
+                    }}>
+                        <svg width="130" height="90" viewBox="0 0 130 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <radialGradient id="moonHalo" cx="50%" cy="50%" r="50%">
+                                    <stop offset="0%" stopColor="rgba(250,204,21,0.12)"/>
+                                    <stop offset="100%" stopColor="transparent"/>
+                                </radialGradient>
+                                <linearGradient id="moonFill" x1="0" y1="0" x2="1" y2="1">
+                                    <stop offset="0%" stopColor="#fef9c3"/>
+                                    <stop offset="50%" stopColor="#facc15"/>
+                                    <stop offset="100%" stopColor="#92400e"/>
+                                </linearGradient>
+                                <filter id="moonGlowF">
+                                    <feGaussianBlur stdDeviation="3" result="blur"/>
+                                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                                </filter>
+                            </defs>
+                            {/* Halo */}
+                            <ellipse cx="45" cy="48" rx="42" ry="42" fill="url(#moonHalo)"/>
+                            {/* Bulan sabit */}
+                            <path filter="url(#moonGlowF)"
+                                d="M65 46C65 63 53 76 37 76C27 76 18 71 12 63C18 65 25 66 32 66C50 66 65 51 65 33C65 24 62 16 56 10C61 17 65 31 65 46Z"
+                                fill="url(#moonFill)"/>
+                            {/* Highlight */}
+                            <path d="M56 18C60 25 62 33 62 41C62 56 53 68 40 72C50 68 58 56 58 43C58 34 55 26 50 21Z"
+                                fill="rgba(255,255,255,0.18)"/>
+                            {/* Star utama */}
+                            <g filter="url(#moonGlowF)">
+                                <polygon points="100,10 103,20 114,20 105.5,26 108.5,36 100,30 91.5,36 94.5,26 86,20 97,20"
+                                    fill="#fde68a"/>
+                            </g>
+                            {/* Stars kecil */}
+                            <circle cx="18" cy="16" r="2.5" fill="#fde68a" opacity="0.75"/>
+                            <circle cx="118" cy="52" r="2"   fill="#a5f3fc" opacity="0.8"/>
+                            <circle cx="78"  cy="6"  r="1.8" fill="#fde68a" opacity="0.7"/>
+                            <circle cx="10"  cy="42" r="1.5" fill="#34d399" opacity="0.65"/>
                         </svg>
                     </div>
 
-                    {/* ══ KETUPAT LUCU POJOK KIRI BAWAH & KANAN BAWAH ══ */}
-                    <div style={{position:'absolute', bottom:'48px', left:'12px', animation:'heartbeat 2s ease-in-out infinite', zIndex:3}}>
-                        <span style={{fontSize:36, filter:'drop-shadow(0 2px 6px rgba(0,0,0,0.2))'}}>🪁</span>
+                    {/* ── Geometric ornament sisi kiri tengah ── */}
+                    <div style={{position:'absolute', top:'35%', left:'0', opacity:0.22, animation:'gentle-float 9s ease-in-out infinite 1s'}}>
+                        <svg width="50" height="200" viewBox="0 0 50 200" fill="none">
+                            <defs>
+                                <linearGradient id="leftLineG" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+                                    <stop offset="0" stopColor="#34d399" stopOpacity="0"/>
+                                    <stop offset="0.3" stopColor="#34d399" stopOpacity="1"/>
+                                    <stop offset="0.7" stopColor="#fde68a" stopOpacity="1"/>
+                                    <stop offset="1" stopColor="#fde68a" stopOpacity="0"/>
+                                </linearGradient>
+                            </defs>
+                            <line x1="25" y1="0" x2="25" y2="200" stroke="url(#leftLineG)" strokeWidth="1.5"/>
+                            {[30,65,100,135,170].map((y,i)=>(
+                                <g key={i} transform={`translate(25,${y})`}>
+                                    <polygon points="0,-9 5.2,4.5 -5.2,4.5" fill={i%2===0?'#34d399':'#fde68a'} opacity="0.9" transform={i%2===0?'':'rotate(180)'}/>
+                                    <circle r="3" fill="white" opacity="0.5"/>
+                                </g>
+                            ))}
+                        </svg>
                     </div>
-                    <div style={{position:'absolute', bottom:'48px', right:'12px', animation:'heartbeat 2s ease-in-out infinite 0.5s', zIndex:3}}>
-                        <span style={{fontSize:36, filter:'drop-shadow(0 2px 6px rgba(0,0,0,0.2))'}}>🪁</span>
+
+                    {/* ── Geometric ornament sisi kanan tengah ── */}
+                    <div style={{position:'absolute', top:'35%', right:'0', opacity:0.22, animation:'gentle-float 11s ease-in-out infinite 2s'}}>
+                        <svg width="50" height="200" viewBox="0 0 50 200" fill="none">
+                            <defs>
+                                <linearGradient id="rightLineG" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+                                    <stop offset="0" stopColor="#818cf8" stopOpacity="0"/>
+                                    <stop offset="0.3" stopColor="#818cf8" stopOpacity="1"/>
+                                    <stop offset="0.7" stopColor="#fde68a" stopOpacity="1"/>
+                                    <stop offset="1" stopColor="#fde68a" stopOpacity="0"/>
+                                </linearGradient>
+                            </defs>
+                            <line x1="25" y1="0" x2="25" y2="200" stroke="url(#rightLineG)" strokeWidth="1.5"/>
+                            {[30,65,100,135,170].map((y,i)=>(
+                                <g key={i} transform={`translate(25,${y})`}>
+                                    <rect x="-7" y="-7" width="14" height="14" rx="2" fill={i%2===0?'#818cf8':'#fde68a'} opacity="0.85" transform={`rotate(${45*(i+1)})`}/>
+                                    <circle r="2.5" fill="white" opacity="0.5"/>
+                                </g>
+                            ))}
+                        </svg>
                     </div>
-                    <div style={{position:'absolute', bottom:'90px', left:'48px', animation:'pop-pulse 3s ease-in-out infinite', zIndex:3}}>
-                        <span style={{fontSize:28}}>🌸</span>
-                    </div>
-                    <div style={{position:'absolute', bottom:'90px', right:'48px', animation:'pop-pulse 3s ease-in-out infinite 1s', zIndex:3}}>
-                        <span style={{fontSize:28}}>🌸</span>
+
+                    {/* ── Floating particles ── */}
+                    {particles.map((p,i)=>(
+                        <div key={i} style={{
+                            position:'absolute',
+                            left:p.l, bottom:p.b,
+                            width:p.s, height:p.s,
+                            borderRadius:'50%',
+                            background:p.c,
+                            boxShadow:`0 0 ${p.s*2}px ${p.c}`,
+                            animation:`p-drift ${p.dur}s ease-in-out infinite`,
+                            animationDelay:`${p.delay}s`,
+                            '--op':p.op,
+                            '--ty':p.ty, '--tx':p.tx,
+                            '--ty2':p.ty2, '--tx2':p.tx2,
+                        }}/>
+                    ))}
+
+                    {/* ── Horizontal accent lines ── */}
+                    <svg style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',pointerEvents:'none'}} preserveAspectRatio="none">
+                        <defs>
+                            <linearGradient id="hlineG1" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%"   stopColor="transparent"/>
+                                <stop offset="20%"  stopColor="rgba(52,211,153,0.4)"/>
+                                <stop offset="50%"  stopColor="rgba(250,204,21,0.5)"/>
+                                <stop offset="80%"  stopColor="rgba(52,211,153,0.4)"/>
+                                <stop offset="100%" stopColor="transparent"/>
+                            </linearGradient>
+                            <linearGradient id="hlineG2" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%"   stopColor="transparent"/>
+                                <stop offset="15%"  stopColor="rgba(129,140,248,0.3)"/>
+                                <stop offset="50%"  stopColor="rgba(250,204,21,0.35)"/>
+                                <stop offset="85%"  stopColor="rgba(129,140,248,0.3)"/>
+                                <stop offset="100%" stopColor="transparent"/>
+                            </linearGradient>
+                        </defs>
+                        {/* Top accent line */}
+                        <line x1="0" y1="18" x2="10000" y2="18" stroke="url(#hlineG1)" strokeWidth="0.8" opacity="0.7"/>
+                        {/* Bottom accent line */}
+                        <line x1="0" y1="99%" x2="10000" y2="99%" stroke="url(#hlineG2)" strokeWidth="0.8" opacity="0.6" transform="translate(0,-18)"/>
+                    </svg>
+
+                    {/* ── Masjid silhouette ── */}
+                    <div className="mosque-silhouette absolute bottom-0 left-0 right-0 pointer-events-none" style={{height:'100px'}}>
+                        <svg viewBox="0 0 1200 100" xmlns="http://www.w3.org/2000/svg"
+                            style={{width:'100%',height:'100%',display:'block'}}
+                            preserveAspectRatio="xMidYMax slice">
+                            {/* Gradient overlay atas masjid */}
+                            <defs>
+                                <linearGradient id="mosqueGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0" stopColor="currentColor" stopOpacity="0"/>
+                                    <stop offset="0.4" stopColor="currentColor" stopOpacity="1"/>
+                                    <stop offset="1" stopColor="currentColor" stopOpacity="1"/>
+                                </linearGradient>
+                            </defs>
+                            {/* Siluet masjid */}
+                            <rect x="450" y="45" width="300" height="55" fill="url(#mosqueGrad)"/>
+                            <ellipse cx="600" cy="45" rx="90" ry="56" fill="url(#mosqueGrad)"/>
+                            <ellipse cx="450" cy="62" rx="55" ry="42" fill="url(#mosqueGrad)"/>
+                            <rect x="395" y="62" width="110" height="38" fill="url(#mosqueGrad)"/>
+                            <ellipse cx="750" cy="62" rx="55" ry="42" fill="url(#mosqueGrad)"/>
+                            <rect x="695" y="62" width="110" height="38" fill="url(#mosqueGrad)"/>
+                            <rect x="305" y="22" width="18" height="78" fill="url(#mosqueGrad)"/>
+                            <ellipse cx="314" cy="22" rx="9" ry="20" fill="url(#mosqueGrad)"/>
+                            <rect x="311" y="2" width="6" height="22" fill="url(#mosqueGrad)"/>
+                            <rect x="877" y="22" width="18" height="78" fill="url(#mosqueGrad)"/>
+                            <ellipse cx="886" cy="22" rx="9" ry="20" fill="url(#mosqueGrad)"/>
+                            <rect x="883" y="2" width="6" height="22" fill="url(#mosqueGrad)"/>
+                            <rect x="185" y="42" width="13" height="58" fill="url(#mosqueGrad)"/>
+                            <ellipse cx="191" cy="42" rx="6.5" ry="14" fill="url(#mosqueGrad)"/>
+                            <rect x="1002" y="42" width="13" height="58" fill="url(#mosqueGrad)"/>
+                            <ellipse cx="1009" cy="42" rx="6.5" ry="14" fill="url(#mosqueGrad)"/>
+                            <rect x="0" y="97" width="1200" height="3" fill="currentColor" opacity="0.3"/>
+                        </svg>
                     </div>
 
                 </div>
