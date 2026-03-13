@@ -3175,17 +3175,19 @@
                         dueDate: invoiceData.dueDate ? new Date(invoiceData.dueDate).toISOString() : null, 
                         isPaid: invoiceData.isPaid, 
                         isConsignment: invoiceData.isConsignment || false,
-                        items: finalItems.map(item => ({ id: item.id, name: item.name, qty: item.qty, price: item.price, buyPrice: item.buyPrice || 0, discountBeli: item.discountBeli || 0, discountBeliType: item.discountBeliType || '%' })),
+                        items: finalItems.map(item => ({ id: item.id, name: item.name, qty: item.qty, price: item.price, buyPrice: item.buyPrice || 0, discountBeli: item.discountBeli || 0, discountBeliType: item.discountBeliType || '%', batchNo: item.batchNo || '' })),
                         updatedAt: window.serverTimestamp(),
                         ...(attachmentData ? { attachmentData, attachmentType, attachmentName } : {})
                     };
 
                     // 1. Simpan atau update faktur
+                    let savedPurchaseId = editingPurchaseId;
                     if (editingPurchaseId) {
                         await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'purchases', editingPurchaseId), invoicePayload);
                     } else {
                         invoicePayload.createdAt = window.serverTimestamp();
-                        await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'purchases'), invoicePayload);
+                        const newRef = await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'purchases'), invoicePayload);
+                        savedPurchaseId = newRef.id;
                     }
                     
                     console.log('✅ Faktur berhasil disimpan!');
@@ -3251,6 +3253,19 @@
                             const updateData = {
                                 [`stocks.${storeId}`]: newStockInStore,
                                 updatedAt: window.serverTimestamp()
+                            };
+                            
+                            // Simpan lastBatch — referensi ke faktur asal, bisa ditelusuri
+                            updateData.lastBatch = {
+                                batchNo: item.batchNo || invoiceData.invoiceNumber || '',
+                                invoiceNumber: invoiceData.invoiceNumber || '',
+                                purchaseId: savedPurchaseId || '',
+                                supplier: invoiceData.supplier || '',
+                                date: invoiceData.date || new Date().toISOString().slice(0,10),
+                                receivedDate: invoiceData.receivedDate || new Date().toISOString().slice(0,10),
+                                qty: item.qty,
+                                storeId: currentProfile.id,
+                                storeName: currentProfile.name,
                             };
                             
                             // Jika default store, update field qty juga (backward compatibility)
@@ -3759,6 +3774,16 @@
                                             </button>
                                         )}
                                     </div>
+                                    {/* Badge batch per barang */}
+                                    {p.items && p.items.some(i => i.batchNo) && (
+                                        <div className="ml-11 mt-2 flex flex-wrap gap-1">
+                                            {p.items.filter(i => i.batchNo).map((i, idx) => (
+                                                <span key={idx} className="inline-flex items-center gap-1 text-[9px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100 px-1.5 py-0.5 rounded-md font-mono">
+                                                    🔢 {i.batchNo} <span className="text-indigo-300 font-sans font-normal">({i.name})</span>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
@@ -3894,7 +3919,7 @@
                                             {itemSearch && filteredItems.length > 0 && (
                                                 <div className="mb-2 bg-white border border-slate-200 rounded-xl max-h-40 overflow-y-auto shadow-lg">
                                                     {filteredItems.map(item => (
-                                                        <button key={item.id} type="button" onClick={() => { setSelectedItem(item); setItemSearch(item.name); setItemPrice(item.price ? item.price.toString() : ''); setShowNewItemForm(false); }} className="w-full text-left px-3 py-2 hover:bg-teal-50 flex justify-between items-center border-b border-slate-100 last:border-0">
+                                                        <button key={item.id} type="button" onClick={() => { setSelectedItem(item); setItemSearch(item.name); setItemPrice(item.price ? item.price.toString() : ''); setShowNewItemForm(false); if (!itemBatchNo && invoiceData.invoiceNumber) setItemBatchNo(invoiceData.invoiceNumber); }} className="w-full text-left px-3 py-2 hover:bg-teal-50 flex justify-between items-center border-b border-slate-100 last:border-0">
                                                             <span className="text-xs font-medium text-slate-800">{item.name}</span>
                                                             <span className="text-[10px] text-slate-500">Stok: {item.qty || 0}</span>
                                                         </button>
@@ -7930,6 +7955,23 @@
                                             </div>
                                         );
                                     })}
+                                </div>
+                            )}
+                            {/* Info Faktur Asal (lastBatch) */}
+                            {item.lastBatch && (item.lastBatch.invoiceNumber || item.lastBatch.batchNo || item.lastBatch.supplier) && (
+                                <div className="mt-1.5 flex items-center gap-1 flex-wrap">
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-md">
+                                        <Icon name="file-invoice" className="text-[8px]" />
+                                        {item.lastBatch.invoiceNumber ? `Faktur #${item.lastBatch.invoiceNumber}` : item.lastBatch.supplier || 'Faktur'}
+                                        {item.lastBatch.batchNo && item.lastBatch.batchNo !== item.lastBatch.invoiceNumber && (
+                                            <span className="ml-0.5 text-indigo-400 font-mono">· {item.lastBatch.batchNo}</span>
+                                        )}
+                                    </span>
+                                    {item.lastBatch.receivedDate && (
+                                        <span className="text-[9px] text-slate-400 font-medium">
+                                            {new Date(item.lastBatch.receivedDate).toLocaleDateString('id-ID', {day:'numeric', month:'short', year:'2-digit'})}
+                                        </span>
+                                    )}
                                 </div>
                             )}
                         </div></div></div><div className="flex items-center gap-4 md:gap-8 flex-shrink-0"><div className="text-right"><p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Stok</p><div className="flex items-baseline justify-end gap-1"><span className={`text-sm font-black ${isLow ? 'text-amber-600' : 'text-slate-800'}`}>{item.qty}</span><span className="text-[9px] font-semibold text-slate-500">{item.unit || 'Pcs'}</span></div>
