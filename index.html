@@ -18,15 +18,8 @@
                         night: { 800: '#1e293b', 900: '#0f172a' },
                         ketupat: { light: '#86efac', dark: '#15803d' }
                     },
-                    fontFamily: { sans: ['Outfit', 'Inter', 'Plus Jakarta Sans', 'sans-serif'], mono: ['Courier Prime', 'Courier New', 'monospace'] },
-                    boxShadow: { 
-                        'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)', 
-                        'glow': '0 0 20px rgba(250, 204, 21, 0.4)',
-                        'sky-glow': '0 0 30px rgba(14, 165, 233, 0.25)',
-                        'premium': '0 8px 40px -8px rgba(0, 0, 0, 0.12), 0 1px 0 rgba(255,255,255,0.9) inset',
-                        'elevated': '0 20px 60px -12px rgba(0, 0, 0, 0.18)',
-                        'glass': '0 8px 32px rgba(0, 0, 0, 0.06), 0 1px 0 rgba(255,255,255,0.9) inset',
-                    },
+                    fontFamily: { sans: ['Inter', 'Plus Jakarta Sans', 'sans-serif'], mono: ['Courier Prime', 'Courier New', 'monospace'] },
+                    boxShadow: { 'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)', 'glow': '0 0 20px rgba(250, 204, 21, 0.4)' },
                     animation: {
                         'sway': 'sway 3s ease-in-out infinite alternate',
                         'sway-slow': 'sway 5s ease-in-out infinite alternate-reverse',
@@ -38,12 +31,22 @@
                         'type-reveal': 'typeReveal 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards',
                         'pop-in': 'popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
                         'falling-star': 'fallingStar 4s linear infinite',
-                        'glass-shimmer': 'glass-shimmer 2.5s linear infinite',
-                        'glow-pulse': 'glow-pulse 3s ease-in-out infinite',
-                        'slide-in-left': 'slide-in-left 0.4s cubic-bezier(0.4, 0, 0.2, 1) both',
-                        'slide-in-right': 'slide-in-right 0.4s cubic-bezier(0.4, 0, 0.2, 1) both',
-                        'scale-in': 'scale-in 0.4s cubic-bezier(0.4, 0, 0.2, 1) both',
-                        'float-gentle': 'float-gentle 7s ease-in-out infinite',
+                        'spin-slow': 'spinSlow 8s linear infinite',
+                        'spin-rev': 'spinRev 10s linear infinite',
+                        'bounce-cute': 'bounceCute 2.5s ease-in-out infinite',
+                        'wiggle': 'wiggle 1.5s ease-in-out infinite',
+                        'rainbow-hue': 'rainbowHue 6s linear infinite',
+                        'aurora': 'aurora 9s ease-in-out infinite',
+                        'confetti-a': 'confettiA 9s linear infinite',
+                        'confetti-b': 'confettiB 11s linear infinite',
+                        'heart-beat': 'heartBeat 1.8s ease-in-out infinite',
+                        'glitter': 'glitter 3s ease-in-out infinite',
+                        'bubble-up': 'bubbleUp 12s ease-in-out infinite',
+                        'orb-pulse': 'orbPulse 5s ease-in-out infinite',
+                        'flag-wave': 'flagWave 2.5s ease-in-out infinite',
+                        'diamond-spin': 'diamondSpin 4s ease-in-out infinite',
+                        'pop-jelly': 'popJelly 3s ease-in-out infinite',
+                        'ribbon-wave': 'ribbonWave 3s ease-in-out infinite alternate',
                     },
                     keyframes: {
                         sway: { from: { transform: 'rotate(-5deg)' }, to: { transform: 'rotate(5deg)' } },
@@ -52,12 +55,22 @@
                         popIn: { '0%': { opacity: '0', transform: 'scale(0.5)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
                         fallingStar: { '0%': { transform: 'translate(0, 0) rotate(35deg)', opacity: 0 }, '20%': { opacity: 1 }, '100%': { transform: 'translate(-200px, 200px) rotate(35deg)', opacity: 0 } },
                         floatUp: { '0%': { transform: 'translateY(100vh) scale(0.5)', opacity: 0 }, '20%': { opacity: 0.6 }, '80%': { opacity: 0.6 }, '100%': { transform: 'translateY(-10vh) scale(1)', opacity: 0 } },
-                        'glass-shimmer': { '0%': { backgroundPosition: '-400px 0' }, '100%': { backgroundPosition: '400px 0' } },
-                        'glow-pulse': { '0%, 100%': { boxShadow: '0 0 20px rgba(14,165,233,0.15)' }, '50%': { boxShadow: '0 0 40px rgba(14,165,233,0.40)' } },
-                        'slide-in-left':  { from: { opacity: '0', transform: 'translateX(-18px)' }, to: { opacity: '1', transform: 'translateX(0)' } },
-                        'slide-in-right': { from: { opacity: '0', transform: 'translateX(18px)' },  to: { opacity: '1', transform: 'translateX(0)' } },
-                        'scale-in': { from: { opacity: '0', transform: 'scale(0.92)' }, to: { opacity: '1', transform: 'scale(1)' } },
-                        'float-gentle': { '0%, 100%': { transform: 'translateY(0px)' }, '50%': { transform: 'translateY(-7px)' } },
+                        spinSlow: { from: { transform: 'rotate(0deg)' }, to: { transform: 'rotate(360deg)' } },
+                        spinRev: { from: { transform: 'rotate(360deg)' }, to: { transform: 'rotate(0deg)' } },
+                        bounceCute: { '0%,100%': { transform: 'translateY(0) scale(1)' }, '40%': { transform: 'translateY(-22px) scale(1.08)' }, '60%': { transform: 'translateY(-18px) scale(1.04)' } },
+                        wiggle: { '0%,100%': { transform: 'rotate(-12deg) scale(1)' }, '50%': { transform: 'rotate(12deg) scale(1.1)' } },
+                        rainbowHue: { '0%': { filter: 'hue-rotate(0deg) brightness(1)' }, '50%': { filter: 'hue-rotate(180deg) brightness(1.1)' }, '100%': { filter: 'hue-rotate(360deg) brightness(1)' } },
+                        aurora: { '0%,100%': { transform: 'translateX(-8%) scaleX(1.1)', opacity: '0.45' }, '50%': { transform: 'translateX(8%) scaleX(1)', opacity: '0.75' } },
+                        confettiA: { '0%': { transform: 'translateY(-8vh) rotate(0deg)', opacity: '1' }, '100%': { transform: 'translateY(108vh) rotate(800deg)', opacity: '0.2' } },
+                        confettiB: { '0%': { transform: 'translateY(-8vh) rotate(45deg) translateX(0px)', opacity: '1' }, '33%': { transform: 'translateY(33vh) rotate(300deg) translateX(25px)' }, '66%': { transform: 'translateY(66vh) rotate(600deg) translateX(-25px)' }, '100%': { transform: 'translateY(108vh) rotate(900deg) translateX(10px)', opacity: '0.2' } },
+                        heartBeat: { '0%,100%': { transform: 'scale(1)' }, '20%': { transform: 'scale(1.35)' }, '40%': { transform: 'scale(1.1)' }, '60%': { transform: 'scale(1.28)' } },
+                        glitter: { '0%,100%': { opacity: '0.1', transform: 'scale(0.6) rotate(0deg)' }, '50%': { opacity: '1', transform: 'scale(1.4) rotate(180deg)' } },
+                        bubbleUp: { '0%': { transform: 'translateY(100vh) scale(0.4)', opacity: '0' }, '15%': { opacity: '0.7' }, '85%': { opacity: '0.5' }, '100%': { transform: 'translateY(-5vh) scale(1.3)', opacity: '0' } },
+                        orbPulse: { '0%,100%': { transform: 'scale(1)', opacity: '0.3' }, '50%': { transform: 'scale(1.4)', opacity: '0.6' } },
+                        flagWave: { '0%,100%': { transform: 'skewX(-2deg) scaleY(1)' }, '50%': { transform: 'skewX(2deg) scaleY(1.04)' } },
+                        diamondSpin: { '0%,100%': { transform: 'rotate(45deg) scale(1)' }, '50%': { transform: 'rotate(225deg) scale(1.2)' } },
+                        popJelly: { '0%,100%': { transform: 'scale(1) rotate(0deg)' }, '25%': { transform: 'scale(1.15) rotate(-5deg)' }, '75%': { transform: 'scale(0.9) rotate(5deg)' } },
+                        ribbonWave: { from: { transform: 'scaleX(0.97) skewX(-1deg)' }, to: { transform: 'scaleX(1.03) skewX(1deg)' } },
                     }
                 }
             }
@@ -74,7 +87,7 @@
     
     <!-- Fonts & Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&family=Amiri:wght@400;700&family=Courier+Prime:wght@400;700&family=Caveat:wght@400;500;600;700&family=Kalam:wght@400;700&family=Dancing+Script:wght@400;600;700&family=Quicksand:wght@400;600;700&family=Indie+Flower&family=Patrick+Hand&family=Pacifico&family=Permanent+Marker&family=Special+Elite&family=Shadows+Into+Light&family=Amatic+SC:wght@400;700&family=Gloria+Hallelujah&family=Lobster&family=Fredoka+One&family=Comfortaa:wght@400;600;700&family=Nunito:wght@400;600;700;800&family=Righteous&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Amiri:wght@400;700&family=Courier+Prime:wght@400;700&family=Caveat:wght@400;500;600;700&family=Kalam:wght@400;700&family=Dancing+Script:wght@400;600;700&family=Quicksand:wght@400;600;700&family=Indie+Flower&family=Patrick+Hand&family=Pacifico&family=Permanent+Marker&family=Special+Elite&family=Shadows+Into+Light&family=Amatic+SC:wght@400;700&family=Gloria+Hallelujah&family=Lobster&family=Fredoka+One&family=Comfortaa:wght@400;600;700&family=Nunito:wght@400;600;700;800&family=Righteous&display=swap" rel="stylesheet">
 
     <!-- Fuse.js -->
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
@@ -133,623 +146,225 @@
     </script>
 
     <style>
-
-        /* ========================================================
-           🌟 PREMIUM DESIGN SYSTEM — Sistem Kasir Toko Husna
-           Glassmorphism · Gradient Modern · Soft Shadow · Animation
-           ======================================================== */
-        :root {
-            --glass-white: rgba(255, 255, 255, 0.78);
-            --glass-border: rgba(255, 255, 255, 0.55);
-            --glass-blur: blur(18px) saturate(180%);
-            --sky-primary: #0ea5e9;
-            --sky-dark: #0284c7;
-            --sky-deeper: #0369a1;
-            --gold-accent: #eab308;
-            --shadow-soft: 0 4px 24px -4px rgba(0, 0, 0, 0.08);
-            --shadow-medium: 0 8px 40px -8px rgba(0, 0, 0, 0.12);
-            --shadow-elevated: 0 20px 60px -12px rgba(0, 0, 0, 0.18);
-            --shadow-glow-sky: 0 0 30px rgba(14, 165, 233, 0.22);
-            --shadow-glow-gold: 0 0 24px rgba(234, 179, 8, 0.28);
-            --sidebar-bg: linear-gradient(180deg, #0b1120 0%, #0f172a 30%, #0c2340 70%, #0a2848 100%);
-            --sidebar-border: rgba(255, 255, 255, 0.06);
-            --sidebar-active-bg: linear-gradient(135deg, rgba(14, 165, 233, 0.22), rgba(2, 132, 199, 0.14));
-            --sidebar-active-border: rgba(14, 165, 233, 0.35);
-            --transition-smooth: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        /* ── Body Background (Mesh Gradient) ── */
-        body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(145deg, #e8f4fd 0%, #f0f9ff 30%, #e6f7f0 60%, #f0f9ff 100%) !important;
-            background-attachment: fixed !important;
-            -webkit-tap-highlight-color: transparent;
-            overflow-x: hidden;
-        }
-
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background:
-                radial-gradient(ellipse 800px 600px at 15% 10%, rgba(14, 165, 233, 0.07) 0%, transparent 60%),
-                radial-gradient(ellipse 600px 500px at 85% 85%, rgba(16, 185, 129, 0.05) 0%, transparent 55%),
-                radial-gradient(ellipse 500px 400px at 50% 50%, rgba(234, 179, 8, 0.03) 0%, transparent 65%),
-                radial-gradient(ellipse 400px 300px at 90% 15%, rgba(99, 102, 241, 0.04) 0%, transparent 50%);
-            pointer-events: none;
-            z-index: 0;
-            animation: ambientShift 20s ease-in-out infinite alternate;
-        }
-
-        @keyframes ambientShift {
-            0%   { transform: scale(1)    rotate(0deg);  opacity: 0.85; }
-            50%  { transform: scale(1.04) rotate(1deg);  opacity: 1;    }
-            100% { transform: scale(1.02) rotate(-1deg); opacity: 0.9;  }
-        }
-
-        /* ── Premium Scrollbar ── */
-        ::-webkit-scrollbar { width: 5px; height: 5px; }
-        ::-webkit-scrollbar-thumb {
-            background: linear-gradient(180deg, #38bdf8, #0284c7);
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-track {
-            background: rgba(241, 245, 249, 0.4);
-            border-radius: 10px;
-        }
-
-        /* ── Core Animations ── */
-        .fade-in  { animation: fadeIn  0.4s ease-out both; }
-        .slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
-        .pop-in   { animation: popIn   0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
-
-        @keyframes fadeIn  { from { opacity: 0; transform: translateY(6px); }   to { opacity: 1; transform: translateY(0); } }
-        @keyframes slideUp { from { transform: translateY(40px); opacity: 0; }  to { transform: translateY(0); opacity: 1; } }
-        @keyframes popIn   { from { opacity: 0; transform: scale(0.5); }        to { opacity: 1; transform: scale(1); } }
-
-        @keyframes shimmer {
-            0%   { background-position: -1200px 0; }
-            100% { background-position:  1200px 0; }
-        }
-        @keyframes glowPulse {
-            0%, 100% { box-shadow: 0 0 18px rgba(14, 165, 233, 0.18); }
-            50%       { box-shadow: 0 0 38px rgba(14, 165, 233, 0.40); }
-        }
-        @keyframes floatGentle {
-            0%, 100% { transform: translateY(0px);  }
-            50%       { transform: translateY(-7px); }
-        }
-        @keyframes gradientFlow {
-            0%   { background-position: 0%   50%; }
-            50%  { background-position: 100% 50%; }
-            100% { background-position: 0%   50%; }
-        }
-        @keyframes borderGlow {
-            0%, 100% { border-color: rgba(14, 165, 233, 0.25); }
-            50%       { border-color: rgba(14, 165, 233, 0.65); }
-        }
-        @keyframes slideInLeft  { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: translateX(0); } }
-        @keyframes slideInRight { from { opacity: 0; transform: translateX( 18px); } to { opacity: 1; transform: translateX(0); } }
-        @keyframes scaleIn      { from { opacity: 0; transform: scale(0.92); }       to { opacity: 1; transform: scale(1);    } }
-        @keyframes ripple {
-            to { transform: scale(4); opacity: 0; }
-        }
-
-        /* ── Typing Dots ── */
-        .typing-dot {
-            height: 6px; width: 6px;
-            background: linear-gradient(135deg, #38bdf8, #0ea5e9);
-            border-radius: 50%; display: inline-block;
-            animation: typing 1.4s infinite ease-in-out both; margin: 0 2px;
-            box-shadow: 0 0 6px rgba(14, 165, 233, 0.4);
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #f0f9ff; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        .slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+        .pop-in { animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+        .typing-dot { height: 6px; width: 6px; background-color: #0ea5e9; border-radius: 50%; display: inline-block; animation: typing 1.4s infinite ease-in-out both; margin: 0 2px; }
         .typing-dot:nth-child(1) { animation-delay: -0.32s; }
         .typing-dot:nth-child(2) { animation-delay: -0.16s; }
         @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
-
-        /* ── Card Hover ── */
-        .card-hover {
-            transition: var(--transition-smooth) !important;
-            will-change: transform;
-        }
-        .card-hover:hover {
-            transform: translateY(-3px) !important;
-            box-shadow: 0 14px 44px -8px rgba(0, 0, 0, 0.13),
-                        0 0 0 1px rgba(255, 255, 255, 0.85) inset !important;
-        }
-
-        /* ── Ramadhan / Idul Fitri Decorations ── */
-        @keyframes twinkle  { 0%, 100% { opacity: 0.3; transform: scale(0.8);  } 50% { opacity: 1;   transform: scale(1.2);  } }
-        @keyframes float    { 0%, 100% { transform: translateY(0);             } 50% { transform: translateY(-10px);          } }
-
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05); }
+        
+        /* Ramadhan Decorations Animations */
+        @keyframes twinkle { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        
         .islamic-pattern {
-            background-color: transparent;
-            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%230ea5e9' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            background-color: #f0f9ff;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%230ea5e9' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
         }
+        
         .font-arab { font-family: 'Amiri', serif; }
 
-        /* ── Ketupat Style ── */
-        .ketupat {
-            width: 30px; height: 30px;
-            background: linear-gradient(135deg, #86efac, #4ade80);
-            border: 2px solid #15803d; transform: rotate(45deg);
-            position: relative; display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 12px rgba(21, 128, 61, 0.25), 0 0 0 1px rgba(255,255,255,0.3) inset;
-        }
-        .ketupat::before, .ketupat::after {
-            content: ''; position: absolute;
-            background-color: #22c55e; opacity: 0.3;
-        }
+        /* Ketupat Style */
+        .ketupat { width: 30px; height: 30px; background-color: #86efac; border: 2px solid #15803d; transform: rotate(45deg); position: relative; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .ketupat::before, .ketupat::after { content: ''; position: absolute; background-color: #22c55e; opacity: 0.3; }
         .ketupat::before { width: 100%; height: 50%; top: 0; left: 0; border-bottom: 1px solid #15803d; }
-        .ketupat::after  { width: 50%; height: 100%; top: 0; left: 0; border-right: 1px solid #15803d; }
+        .ketupat::after { width: 50%; height: 100%; top: 0; left: 0; border-right: 1px solid #15803d; }
 
-        /* ── Fireworks ── */
-        .firework-particle {
-            position: fixed; pointer-events: none; border-radius: 50%; z-index: 9999;
-            animation: firework-fade 0.8s ease-out forwards;
+        /* PREMIUM CUTE DECORATION STYLES */
+        .prem-bubble {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: bubbleUp var(--dur, 12s) var(--delay, 0s) ease-in-out infinite;
         }
+        .prem-confetti {
+            position: absolute;
+            pointer-events: none;
+            border-radius: 2px;
+        }
+        .prem-confetti.shape-a { animation: confettiA var(--dur, 9s) var(--delay, 0s) linear infinite; }
+        .prem-confetti.shape-b { animation: confettiB var(--dur, 11s) var(--delay, 0s) linear infinite; border-radius: 50%; }
+        .prem-confetti.shape-c { animation: confettiA var(--dur, 7s) var(--delay, 0s) linear infinite; width: 6px; height: 14px; }
+        .prem-glitter {
+            position: absolute;
+            pointer-events: none;
+            font-size: 10px;
+            animation: glitter var(--dur, 3s) var(--delay, 0s) ease-in-out infinite;
+        }
+        .prem-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            pointer-events: none;
+            animation: orbPulse var(--dur, 5s) var(--delay, 0s) ease-in-out infinite;
+        }
+        .orn-string {
+            width: 1px;
+            background: linear-gradient(to bottom, rgba(255,200,50,0.7), rgba(255,200,50,0.1));
+            margin: 0 auto;
+        }
+        .orn-ball {
+            border-radius: 50%;
+            margin: 0 auto;
+            position: relative;
+            overflow: hidden;
+        }
+        .orn-ball::after {
+            content: '';
+            position: absolute;
+            top: 15%;
+            left: 20%;
+            width: 30%;
+            height: 20%;
+            background: rgba(255,255,255,0.45);
+            border-radius: 50%;
+            transform: rotate(-30deg);
+        }
+        .prem-aurora {
+            position: absolute;
+            top: 0; left: -10%; right: -10%;
+            height: 180px;
+            pointer-events: none;
+            animation: aurora 9s ease-in-out infinite;
+            border-radius: 0 0 60% 60%;
+        }
+        .banner-flag {
+            display: inline-block;
+            clip-path: polygon(0 0, 100% 0, 100% 80%, 50% 100%, 0 80%);
+            animation: flagWave 2.5s ease-in-out infinite;
+        }
+        .prem-heart {
+            display: inline-block;
+            animation: heartBeat var(--dur, 1.8s) var(--delay, 0s) ease-in-out infinite;
+            pointer-events: none;
+        }
+        .prem-star-spin {
+            display: inline-block;
+            animation: spinSlow var(--dur, 8s) linear infinite;
+        }
+        .prem-bounce {
+            display: inline-block;
+            animation: bounceCute var(--dur, 2.5s) var(--delay, 0s) ease-in-out infinite;
+        }
+        .prem-wiggle {
+            display: inline-block;
+            animation: wiggle var(--dur, 1.5s) var(--delay, 0s) ease-in-out infinite;
+        }
+        .rainbow-text {
+            background: linear-gradient(90deg, #ff6b9d, #ffd93d, #6bcb77, #4d96ff, #c77dff, #ff9f43);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: rainbowHue 6s linear infinite;
+        }
+        .prem-diamond {
+            animation: diamondSpin var(--dur, 4s) var(--delay, 0s) ease-in-out infinite;
+            display: inline-block;
+        }
+        .prem-pop {
+            animation: popJelly var(--dur, 3s) var(--delay, 0s) ease-in-out infinite;
+            display: inline-block;
+        }
+
+        /* FIREWORKS STYLE */
+        .firework-particle { position: fixed; pointer-events: none; border-radius: 50%; z-index: 9999; animation: firework-fade 0.8s ease-out forwards; }
         @keyframes firework-fade { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(0); opacity: 0; } }
-        .type-effect-wrapper {
-            display: inline-block; overflow: hidden; white-space: nowrap;
-            vertical-align: bottom; max-width: 0;
-            animation: revealText 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-        }
+        .type-effect-wrapper { display: inline-block; overflow: hidden; white-space: nowrap; vertical-align: bottom; max-width: 0; animation: revealText 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
         @keyframes revealText { 0% { max-width: 0; opacity: 0; } 100% { max-width: 100%; opacity: 1; } }
-
-        /* ── Checkmark Animation ── */
-        .checkmark-circle {
-            stroke-dasharray: 166; stroke-dashoffset: 166; stroke-width: 2;
-            stroke-miterlimit: 10; stroke: #22c55e; fill: none;
-            animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
-        }
-        .checkmark {
-            width: 56px; height: 56px; border-radius: 50%; display: block;
-            stroke-width: 2; stroke: #fff; stroke-miterlimit: 10; margin: 10% auto;
-            box-shadow: inset 0px 0px 0px #22c55e;
-            animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both;
-        }
-        .checkmark__check {
-            transform-origin: 50% 50%; stroke-dasharray: 48; stroke-dashoffset: 48;
-            animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
-        }
+        
+        /* Checkmark Animation */
+        .checkmark-circle { stroke-dasharray: 166; stroke-dashoffset: 166; stroke-width: 2; stroke-miterlimit: 10; stroke: #22c55e; fill: none; animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards; }
+        .checkmark { width: 56px; height: 56px; border-radius: 50%; display: block; stroke-width: 2; stroke: #fff; stroke-miterlimit: 10; margin: 10% auto; box-shadow: inset 0px 0px 0px #22c55e; animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both; }
+        .checkmark__check { transform-origin: 50% 50%; stroke-dasharray: 48; stroke-dashoffset: 48; animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards; }
         @keyframes stroke { 100% { stroke-dashoffset: 0; } }
-        @keyframes scale  { 0%, 100% { transform: none; } 50% { transform: scale3d(1.1, 1.1, 1); } }
-        @keyframes fill   { 100% { box-shadow: inset 0px 0px 0px 30px #22c55e; } }
-
-        /* ── Toggle Switch ── */
+        @keyframes scale { 0%, 100% { transform: none; } 50% { transform: scale3d(1.1, 1.1, 1); } }
+        @keyframes fill { 100% { box-shadow: inset 0px 0px 0px 30px #22c55e; } }
+        
+        /* Toggle Switch */
         .toggle-checkbox:checked { right: 0; border-color: #0ea5e9; }
         .toggle-checkbox:checked + .toggle-label { background-color: #0ea5e9; }
 
-        /* ========================================================
-           🔐 AUTH SCREEN — Premium Glass Dark Theme
-           ======================================================== */
+        /* AUTH SCREEN STYLES */
         .auth-bg {
             min-height: 100vh;
-            background: linear-gradient(135deg, 
-                #060d1a 0%, #0a1628 15%,
-                #0f1f3d 30%, #0c3a5e 50%,
-                #0a4a72 65%, #083a5a 80%,
-                #06283f 100%) !important;
-            position: relative; overflow: hidden;
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 40%, #0c4a6e 70%, #075985 100%);
+            position: relative;
+            overflow: hidden;
         }
         .auth-bg::before {
             content: '';
-            position: absolute; inset: 0;
-            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%230ea5e9' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-            pointer-events: none;
-        }
-        .auth-bg::after {
-            content: '';
-            position: absolute; inset: 0;
-            background:
-                radial-gradient(ellipse 700px 500px at 25% 20%, rgba(14, 165, 233, 0.14) 0%, transparent 55%),
-                radial-gradient(ellipse 500px 400px at 75% 80%, rgba(56, 189, 248, 0.10) 0%, transparent 50%),
-                radial-gradient(ellipse 400px 300px at 50% 50%, rgba(234, 179, 8, 0.04) 0%, transparent 60%);
-            pointer-events: none;
+            position: absolute;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%230ea5e9' fill-opacity='0.06'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
         }
         .auth-card {
-            background: rgba(255, 255, 255, 0.97) !important;
-            backdrop-filter: blur(24px) saturate(200%) !important;
-            -webkit-backdrop-filter: blur(24px) saturate(200%) !important;
-            border-radius: 26px;
-            border: 1px solid rgba(255, 255, 255, 0.7) !important;
-            box-shadow:
-                0 32px 80px rgba(0, 0, 0, 0.5),
-                0 0 0 1px rgba(255, 255, 255, 0.15),
-                0 0 80px rgba(14, 165, 233, 0.08),
-                inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+            background: rgba(255,255,255,0.97);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1);
         }
         .auth-input {
-            width: 100%; padding: 12px 16px 12px 44px;
-            border: 1.5px solid #e2e8f0; border-radius: 12px;
-            font-size: 14px; font-weight: 500;
-            transition: var(--transition-smooth);
-            background: #f8fafc; color: #1e293b; outline: none;
+            width: 100%;
+            padding: 12px 16px 12px 44px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            background: #f8fafc;
+            color: #1e293b;
+            outline: none;
             font-family: 'Inter', sans-serif;
         }
-        .auth-input:focus {
-            border-color: #0ea5e9; background: #fff;
-            box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.12),
-                        0 4px 12px rgba(14, 165, 233, 0.08) !important;
-        }
+        .auth-input:focus { border-color: #0ea5e9; background: #fff; box-shadow: 0 0 0 4px rgba(14,165,233,0.1); }
         .auth-input::placeholder { color: #94a3b8; font-weight: 400; }
         .auth-btn-primary {
-            width: 100%; padding: 14px;
-            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 60%, #0369a1 100%);
-            background-size: 200% 200%;
-            color: white; font-weight: 700; font-size: 15px;
-            border: none; border-radius: 13px; cursor: pointer;
-            transition: var(--transition-smooth);
-            font-family: 'Inter', sans-serif; letter-spacing: 0.3px;
-            box-shadow: 0 6px 24px rgba(14, 165, 233, 0.35),
-                        0 1px 0 rgba(255, 255, 255, 0.2) inset;
-        }
-        .auth-btn-primary:hover {
-            background-position: right center;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 32px rgba(14, 165, 233, 0.48),
-                        0 1px 0 rgba(255, 255, 255, 0.25) inset !important;
-        }
-        .auth-btn-primary:active { transform: translateY(0); }
-        .auth-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
-
-        .auth-orb {
-            position: absolute; border-radius: 50%;
-            filter: blur(80px); pointer-events: none;
-            animation: floatGentle 8s ease-in-out infinite;
-        }
-        @keyframes authFadeIn {
-            from { opacity: 0; transform: translateY(28px) scale(0.96); }
-            to   { opacity: 1; transform: translateY(0)    scale(1);    }
-        }
-        .auth-fade-in { animation: authFadeIn 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        @keyframes pulse-ring {
-            0%   { transform: scale(0.95); opacity: 0.7; }
-            70%  { transform: scale(1.18); opacity: 0;   }
-            100% { transform: scale(1.18); opacity: 0;   }
-        }
-        .pulse-ring::before {
-            content: ''; position: absolute; inset: -8px; border-radius: 50%;
-            border: 3px solid rgba(14, 165, 233, 0.4);
-            animation: pulse-ring 2.2s ease-out infinite;
-        }
-        .auth-tab {
-            padding: 8px 20px; border-radius: 10px;
-            font-weight: 700; font-size: 13px; cursor: pointer;
-            transition: var(--transition-smooth); border: none; background: transparent;
-        }
-        .auth-tab.active {
+            width: 100%;
+            padding: 14px;
             background: linear-gradient(135deg, #0ea5e9, #0284c7);
             color: white;
-            box-shadow: 0 4px 14px rgba(14, 165, 233, 0.35);
+            font-weight: 700;
+            font-size: 15px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: 0.3px;
         }
+        .auth-btn-primary:hover { background: linear-gradient(135deg, #0284c7, #0369a1); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(14,165,233,0.35); }
+        .auth-btn-primary:active { transform: translateY(0); }
+        .auth-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+        .auth-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            pointer-events: none;
+        }
+        @keyframes authFadeIn { from { opacity: 0; transform: translateY(24px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .auth-fade-in { animation: authFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes pulse-ring { 0% { transform: scale(0.95); opacity: 0.7; } 70% { transform: scale(1.15); opacity: 0; } 100% { transform: scale(1.15); opacity: 0; } }
+        .pulse-ring::before { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 3px solid rgba(14,165,233,0.4); animation: pulse-ring 2s ease-out infinite; }
+        .auth-tab { padding: 8px 20px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s; border: none; background: transparent; }
+        .auth-tab.active { background: #0ea5e9; color: white; box-shadow: 0 4px 12px rgba(14,165,233,0.3); }
         .auth-tab:not(.active) { color: #64748b; }
         .auth-tab:not(.active):hover { background: #f1f5f9; color: #334155; }
-        .otp-input {
-            width: 48px; height: 56px; text-align: center;
-            font-size: 22px; font-weight: 800;
-            border: 2px solid #e2e8f0; border-radius: 12px;
-            background: #f8fafc; color: #1e293b;
-            transition: var(--transition-smooth); outline: none;
-            font-family: 'Inter', sans-serif;
-        }
-        .otp-input:focus {
-            border-color: #0ea5e9;
-            box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.12); background: white;
-        }
+        .otp-input { width: 48px; height: 56px; text-align: center; font-size: 22px; font-weight: 800; border: 2px solid #e2e8f0; border-radius: 12px; background: #f8fafc; color: #1e293b; transition: all 0.2s; outline: none; font-family: 'Inter', sans-serif; }
+        .otp-input:focus { border-color: #0ea5e9; box-shadow: 0 0 0 4px rgba(14,165,233,0.1); background: white; }
         .auth-floating-star { position: absolute; pointer-events: none; animation: authStar 4s ease-in-out infinite; }
-        @keyframes authStar {
-            0%, 100% { opacity: 0.3; transform: scale(0.8) rotate(0deg);   }
-            50%       { opacity: 0.8; transform: scale(1.2) rotate(15deg);  }
-        }
-
-        /* ========================================================
-           🗂️ SIDEBAR — Premium Dark Glass
-           ======================================================== */
-        aside {
-            background: var(--sidebar-bg) !important;
-            backdrop-filter: blur(24px) saturate(160%) !important;
-            -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
-            border-right: 1px solid var(--sidebar-border) !important;
-            box-shadow: 6px 0 40px rgba(0, 0, 0, 0.22), 1px 0 0 rgba(255,255,255,0.04) !important;
-        }
-
-        /* Sidebar brand title */
-        aside .font-black.text-white,
-        aside h1.text-white, aside span.font-black {
-            background: linear-gradient(135deg, #ffffff 0%, #bae6fd 50%, #7dd3fc 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        /* Sidebar top divider */
-        aside .border-b {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
-        }
-        aside .border-t {
-            border-top: 1px solid rgba(255, 255, 255, 0.07) !important;
-        }
-
-        /* Nav buttons */
-        aside nav button {
-            color: rgba(255, 255, 255, 0.58) !important;
-            transition: var(--transition-smooth) !important;
-            border: 1px solid transparent !important;
-        }
-        aside nav button:hover:not(.bg-slate-800) {
-            background: rgba(255, 255, 255, 0.07) !important;
-            color: rgba(255, 255, 255, 0.9) !important;
-            border-color: rgba(255, 255, 255, 0.08) !important;
-            transform: translateX(2px) !important;
-        }
-        aside nav button.bg-slate-800 {
-            background: var(--sidebar-active-bg) !important;
-            border: 1px solid var(--sidebar-active-border) !important;
-            color: #fff !important;
-            box-shadow: 0 4px 16px rgba(14, 165, 233, 0.18), inset 0 1px 0 rgba(255,255,255,0.08) !important;
-        }
-        /* Active indicator bar */
-        aside nav button.bg-slate-800::before {
-            content: '';
-            position: absolute; left: 0; top: 50%;
-            transform: translateY(-50%);
-            width: 3px; height: 55%;
-            background: linear-gradient(180deg, #7dd3fc, #0ea5e9);
-            border-radius: 0 4px 4px 0;
-            box-shadow: 0 0 10px rgba(125, 211, 252, 0.6);
-        }
-        aside nav button i { color: rgba(255, 255, 255, 0.45) !important; }
-        aside nav button.bg-slate-800 i { color: #7dd3fc !important; }
-        aside nav button:hover:not(.bg-slate-800) i { color: rgba(255, 255, 255, 0.8) !important; }
-
-        /* Sidebar user profile card */
-        aside .bg-sky-50 {
-            background: rgba(255, 255, 255, 0.07) !important;
-            border: 1px solid rgba(255, 255, 255, 0.10) !important;
-            backdrop-filter: blur(8px) !important;
-        }
-        aside .bg-sky-50 .text-slate-700 { color: rgba(255, 255, 255, 0.92) !important; }
-        aside .bg-sky-50 .text-slate-400 { color: rgba(255, 255, 255, 0.42) !important; }
-        aside .text-slate-400            { color: rgba(255, 255, 255, 0.28) !important; }
-        aside .text-slate-500            { color: rgba(255, 255, 255, 0.55) !important; }
-
-        /* Logout button */
-        aside .text-red-500 {
-            color: rgba(252, 165, 165, 0.8) !important;
-            transition: var(--transition-smooth) !important;
-        }
-        aside .text-red-500:hover {
-            color: #fca5a5 !important;
-            background: rgba(239, 68, 68, 0.10) !important;
-        }
-
-        /* Version label */
-        aside p.text-slate-400:last-of-type {
-            color: rgba(255, 255, 255, 0.22) !important;
-        }
-
-        /* ========================================================
-           📦 CARDS & PANELS — Premium Glass
-           ======================================================== */
-        .bg-white {
-            background: rgba(255, 255, 255, 0.93) !important;
-        }
-
-        /* White cards with premium shadow */
-        .bg-white.rounded-xl, .bg-white.rounded-2xl, .bg-white.rounded-3xl {
-            box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.08),
-                        0 1px 0 rgba(255, 255, 255, 0.95) inset !important;
-            border: 1px solid rgba(226, 232, 240, 0.6) !important;
-        }
-
-        /* Elevated modals */
-        .bg-white.rounded-3xl {
-            background: rgba(255, 255, 255, 0.98) !important;
-            backdrop-filter: blur(20px) !important;
-            box-shadow: 0 28px 80px rgba(0, 0, 0, 0.16),
-                        0 0 0 1px rgba(255, 255, 255, 0.6) inset !important;
-            border: 1px solid rgba(255, 255, 255, 0.7) !important;
-        }
-
-        /* Notification panel */
-        .fixed.top-1\/2 .bg-white {
-            background: rgba(255, 255, 255, 0.97) !important;
-            backdrop-filter: blur(20px) !important;
-        }
-
-        /* ── Modal Backdrop ── */
-        .bg-slate-900\/40,
-        [class*="bg-slate-900/40"],
-        [class*="bg-black/30"] {
-            background: rgba(10, 15, 30, 0.55) !important;
-            backdrop-filter: blur(8px) saturate(180%) !important;
-        }
-        .backdrop-blur-sm {
-            backdrop-filter: blur(10px) saturate(180%) !important;
-        }
-
-        /* ── Gradient Header Sections ── */
-        .bg-gradient-to-r.from-sky-600,
-        [class*="from-sky-600"][class*="to-sky-500"] {
-            background: linear-gradient(135deg, #0369a1 0%, #0284c7 40%, #0ea5e9 100%) !important;
-            box-shadow: 0 4px 20px rgba(14, 165, 233, 0.28), 0 1px 0 rgba(255,255,255,0.12) inset !important;
-        }
-        .bg-gradient-to-r.from-sky-500,
-        [class*="from-sky-500"][class*="to-sky-400"] {
-            background: linear-gradient(135deg, #0284c7, #0ea5e9 60%, #38bdf8 100%) !important;
-        }
-        .bg-gradient-to-br.from-sky-600 {
-            background: linear-gradient(135deg, #0369a1 0%, #0284c7 50%, #0ea5e9 100%) !important;
-        }
-
-        /* ── Shadow Enhancements ── */
-        .shadow-2xl {
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.14),
-                        0 0 0 1px rgba(255, 255, 255, 0.06) inset !important;
-        }
-        .shadow-xl {
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08),
-                        0 8px 10px -6px rgba(0, 0, 0, 0.04) !important;
-        }
-        .shadow-lg {
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07),
-                        0 4px 6px -4px rgba(0, 0, 0, 0.04) !important;
-        }
-        .shadow-md {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07),
-                        0 2px 4px -2px rgba(0, 0, 0, 0.05) !important;
-        }
-
-        /* ── Input Focus States ── */
-        input:focus, textarea:focus, select:focus {
-            border-color: #0ea5e9 !important;
-            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.13),
-                        0 4px 12px rgba(14, 165, 233, 0.07) !important;
-        }
-        button:focus-visible {
-            outline: 2px solid rgba(14, 165, 233, 0.5) !important;
-            outline-offset: 2px !important;
-        }
-
-        /* ── Sky Button Glow ── */
-        .bg-sky-500, .bg-sky-600 {
-            box-shadow: 0 4px 16px rgba(14, 165, 233, 0.28) !important;
-        }
-        .bg-sky-500:hover, .bg-sky-600:hover {
-            box-shadow: 0 6px 22px rgba(14, 165, 233, 0.40) !important;
-        }
-
-        /* ── Slate-800 active button ── */
-        .bg-slate-800 {
-            background: linear-gradient(135deg, #1e293b, #0f172a) !important;
-            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.28) !important;
-        }
-
-        /* ── Border Refinements ── */
-        .border-slate-200 { border-color: rgba(226, 232, 240, 0.7) !important; }
-        .border-slate-100 { border-color: rgba(241, 245, 249, 0.6) !important; }
-
-        /* ── Status Colour Cards ── */
-        .bg-green-50  { background: linear-gradient(135deg, rgba(240,253,244,0.92), rgba(220,252,231,0.82)) !important; }
-        .bg-red-50    { background: linear-gradient(135deg, rgba(254,242,242,0.92), rgba(254,226,226,0.82)) !important; }
-        .bg-amber-50  { background: linear-gradient(135deg, rgba(255,251,235,0.92), rgba(254,243,199,0.82)) !important; }
-        .bg-blue-50   { background: linear-gradient(135deg, rgba(239,246,255,0.92), rgba(219,234,254,0.82)) !important; }
-        .bg-sky-50    { background: linear-gradient(135deg, rgba(240,249,255,0.92), rgba(224,242,254,0.82)) !important; }
-        .bg-slate-50  { background: rgba(248, 250, 252, 0.85) !important; }
-
-        /* ── Mobile Header Buttons ── */
-        .bg-white\/90 {
-            background: rgba(255, 255, 255, 0.88) !important;
-            backdrop-filter: blur(14px) saturate(180%) !important;
-            -webkit-backdrop-filter: blur(14px) saturate(180%) !important;
-        }
-
-        /* ── Toast ── */
-        .fixed.bottom-10.left-1\/2 {
-            backdrop-filter: blur(12px) !important;
-            border: 1px solid rgba(255,255,255,0.15) !important;
-        }
-        .bg-slate-800.text-white.rounded-full {
-            background: linear-gradient(135deg, rgba(30,41,59,0.97), rgba(15,23,42,0.97)) !important;
-            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28), 0 1px 0 rgba(255,255,255,0.08) inset !important;
-        }
-        .bg-red-500.text-white.rounded-full {
-            background: linear-gradient(135deg, #ef4444, #dc2626) !important;
-            box-shadow: 0 8px 24px rgba(239, 68, 68, 0.35) !important;
-        }
-
-        /* ── Premium Badge Pulse ── */
-        .animate-pulse {
-            animation: badgePulse 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
-        }
-        @keyframes badgePulse {
-            0%, 100% { opacity: 1;   transform: scale(1);    }
-            50%       { opacity: 0.8; transform: scale(1.06); }
-        }
-
-        /* ── Gold / Star Glow ── */
-        .text-gold-500, .text-gold-400, .text-yellow-400 {
-            filter: drop-shadow(0 0 5px rgba(234, 179, 8, 0.45)) !important;
-        }
-
-        /* ── Global Smooth Transitions ── */
-        button, a {
-            transition: var(--transition-smooth) !important;
-        }
-        button:active:not([disabled]) {
-            transform: scale(0.965) !important;
-        }
-        .active\:scale-95:active { transform: scale(0.95) !important; }
-
-        /* ── Table Row Hover ── */
-        tr:hover td {
-            background: rgba(14, 165, 233, 0.025) !important;
-        }
-
-        /* ── Premium Gradient Text Utility ── */
-        .gradient-text {
-            background: linear-gradient(135deg, #0ea5e9, #0284c7, #0369a1);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        /* ── Shimmer Skeleton ── */
-        .shimmer {
-            background: linear-gradient(90deg, #f0f4f8 25%, #e8eef4 50%, #f0f4f8 75%);
-            background-size: 1200px 100%;
-            animation: shimmer 2s infinite linear;
-        }
-
-        /* ── Confirmation Modal Border ── */
-        .border-gold-100 {
-            border-color: rgba(254, 249, 195, 0.8) !important;
-        }
-
-        /* ── Stagger children animation utility ── */
-        .stagger > *:nth-child(1) { animation-delay: 0.05s; }
-        .stagger > *:nth-child(2) { animation-delay: 0.10s; }
-        .stagger > *:nth-child(3) { animation-delay: 0.15s; }
-        .stagger > *:nth-child(4) { animation-delay: 0.20s; }
-        .stagger > *:nth-child(5) { animation-delay: 0.25s; }
-        .stagger > *:nth-child(6) { animation-delay: 0.30s; }
-
-        /* ── Rounded corner refinements ── */
-        .rounded-3xl { border-radius: 22px !important; }
-        .rounded-2xl { border-radius: 16px !important; }
-        .rounded-xl  { border-radius: 12px !important; }
-
-        /* ── Notification Bell Badge ── */
-        .bg-red-500.text-white.rounded-full.w-4,
-        .bg-red-500.text-white.rounded-full.w-5 {
-            background: linear-gradient(135deg, #f87171, #ef4444) !important;
-            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4) !important;
-        }
-
-        /* ── Floating decorative background orb ── */
-        #root::before {
-            content: '';
-            position: fixed;
-            width: 700px; height: 700px;
-            background: radial-gradient(circle, rgba(14, 165, 233, 0.035) 0%, transparent 70%);
-            top: -250px; right: -250px;
-            pointer-events: none; z-index: -1;
-            animation: floatGentle 14s ease-in-out infinite;
-        }
-        #root::after {
-            content: '';
-            position: fixed;
-            width: 500px; height: 500px;
-            background: radial-gradient(circle, rgba(16, 185, 129, 0.03) 0%, transparent 70%);
-            bottom: -150px; left: -150px;
-            pointer-events: none; z-index: -1;
-            animation: floatGentle 18s ease-in-out infinite reverse;
-        }
-
+        @keyframes authStar { 0%,100% { opacity:0.3; transform: scale(0.8) rotate(0deg); } 50% { opacity:0.8; transform: scale(1.2) rotate(15deg); } }
     </style>
 </head>
-<body class="islamic-pattern relative" style="scroll-behavior:smooth;">
+<body class="islamic-pattern relative">
     <div id="root" class="relative z-10"></div>
 
     <!-- React App (Babel) -->
@@ -997,71 +612,239 @@
 
 
 
-        // --- DEKORASI IDUL FITRI ---
-        const RamadhanDecor = () => (
-            <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{zIndex: -1}}>
-                {/* Partikel bintang melayang */}
-                <div className="absolute inset-0 z-0">
-                    {[...Array(14)].map((_, i) => (
-                        <div key={i} className="absolute rounded-full opacity-0 animate-float-up"
-                             style={{
-                                 background: i % 3 === 0 ? '#facc15' : i % 3 === 1 ? '#86efac' : '#fda4af',
-                                 width: Math.random() * 5 + 2 + 'px',
-                                 height: Math.random() * 5 + 2 + 'px',
-                                 left: Math.random() * 100 + '%',
-                                 animationDelay: Math.random() * 10 + 's',
-                                 animationDuration: Math.random() * 10 + 10 + 's'
-                             }}></div>
+        // --- DEKORASI PREMIUM CUTE ---
+        const RamadhanDecor = () => {
+            // Pre-defined static data (no Math.random in render for stability)
+            const confettiData = [
+                {l:'2%',  delay:'0s',   dur:'9s',  color:'#ff6b9d', w:10, h:10, shape:'shape-a'},
+                {l:'7%',  delay:'1.5s', dur:'11s', color:'#ffd93d', w:8,  h:8,  shape:'shape-b'},
+                {l:'13%', delay:'3s',   dur:'8s',  color:'#6bcb77', w:12, h:12, shape:'shape-a'},
+                {l:'19%', delay:'0.5s', dur:'10s', color:'#4d96ff', w:7,  h:14, shape:'shape-c'},
+                {l:'25%', delay:'2s',   dur:'9s',  color:'#c77dff', w:10, h:10, shape:'shape-b'},
+                {l:'31%', delay:'4s',   dur:'12s', color:'#ff9f43', w:8,  h:8,  shape:'shape-a'},
+                {l:'37%', delay:'1s',   dur:'8s',  color:'#ff6b9d', w:11, h:11, shape:'shape-b'},
+                {l:'43%', delay:'5s',   dur:'10s', color:'#ffd93d', w:9,  h:9,  shape:'shape-a'},
+                {l:'50%', delay:'2.5s', dur:'9s',  color:'#6bcb77', w:6,  h:14, shape:'shape-c'},
+                {l:'56%', delay:'0.8s', dur:'11s', color:'#4d96ff', w:12, h:12, shape:'shape-b'},
+                {l:'62%', delay:'3.5s', dur:'8s',  color:'#c77dff', w:8,  h:8,  shape:'shape-a'},
+                {l:'68%', delay:'1.2s', dur:'10s', color:'#ff9f43', w:10, h:10, shape:'shape-b'},
+                {l:'74%', delay:'4.5s', dur:'9s',  color:'#ff6b9d', w:7,  h:7,  shape:'shape-a'},
+                {l:'80%', delay:'0.3s', dur:'12s', color:'#ffd93d', w:9,  h:9,  shape:'shape-c'},
+                {l:'86%', delay:'2.2s', dur:'8s',  color:'#6bcb77', w:11, h:11, shape:'shape-b'},
+                {l:'92%', delay:'3.8s', dur:'10s', color:'#c77dff', w:8,  h:8,  shape:'shape-a'},
+                {l:'96%', delay:'1.7s', dur:'9s',  color:'#ff9f43', w:10, h:10, shape:'shape-b'},
+                {l:'10%', delay:'6s',   dur:'11s', color:'#54a0ff', w:6,  h:6,  shape:'shape-a'},
+                {l:'47%', delay:'7s',   dur:'9s',  color:'#ff6b6b', w:8,  h:8,  shape:'shape-b'},
+                {l:'78%', delay:'5.5s', dur:'10s', color:'#feca57', w:7,  h:14, shape:'shape-c'},
+            ];
+
+            const bubblesData = [
+                {l:'5%',  delay:'0s',   dur:'14s', size:28, op:0.12},
+                {l:'15%', delay:'3s',   dur:'11s', size:18, op:0.15},
+                {l:'28%', delay:'1.5s', dur:'16s', size:36, op:0.10},
+                {l:'42%', delay:'5s',   dur:'13s', size:22, op:0.13},
+                {l:'58%', delay:'2s',   dur:'15s', size:30, op:0.11},
+                {l:'70%', delay:'4s',   dur:'12s', size:16, op:0.14},
+                {l:'83%', delay:'0.5s', dur:'14s', size:24, op:0.12},
+                {l:'93%', delay:'6s',   dur:'11s', size:20, op:0.15},
+            ];
+
+            const glitterData = [
+                {l:'5%',  t:'12%', delay:'0s',   dur:'2.5s', icon:'✦', color:'#ffd93d', size:14},
+                {l:'12%', t:'35%', delay:'1s',   dur:'3.5s', icon:'✧', color:'#ff6b9d', size:11},
+                {l:'22%', t:'18%', delay:'2s',   dur:'2s',   icon:'⋆', color:'#c77dff', size:16},
+                {l:'33%', t:'55%', delay:'0.5s', dur:'4s',   icon:'✦', color:'#6bcb77', size:12},
+                {l:'45%', t:'25%', delay:'1.5s', dur:'2.8s', icon:'✧', color:'#4d96ff', size:14},
+                {l:'55%', t:'42%', delay:'3s',   dur:'3.2s', icon:'⋆', color:'#ff9f43', size:10},
+                {l:'66%', t:'15%', delay:'0.8s', dur:'2.5s', icon:'✦', color:'#ff6b9d', size:15},
+                {l:'75%', t:'60%', delay:'2.5s', dur:'3.8s', icon:'✧', color:'#ffd93d', size:12},
+                {l:'85%', t:'30%', delay:'1.2s', dur:'2.2s', icon:'⋆', color:'#c77dff', size:16},
+                {l:'92%', t:'48%', delay:'0.3s', dur:'3s',   icon:'✦', color:'#6bcb77', size:11},
+                {l:'8%',  t:'70%', delay:'4s',   dur:'2.8s', icon:'✧', color:'#54a0ff', size:13},
+                {l:'50%', t:'75%', delay:'1.8s', dur:'3.5s', icon:'⋆', color:'#ff6b6b', size:10},
+                {l:'38%', t:'80%', delay:'3.5s', dur:'2.5s', icon:'✦', color:'#feca57', size:14},
+                {l:'78%', t:'72%', delay:'0.6s', dur:'4s',   icon:'✧', color:'#48dbfb', size:12},
+            ];
+
+            // Hanging ornament configs
+            const ornaments = [
+                {pos:'left-1 md:left-6',    delay:'0s',   dur:'3.8s',  stringH:'h-20 md:h-28',  ballSize:22, ballColor:'linear-gradient(135deg,#ff6b9d,#c77dff)', capColor:'#c77dff', label:'🎀'},
+                {pos:'left-16 md:left-32',   delay:'0.7s', dur:'4.5s',  stringH:'h-28 md:h-36',  ballSize:18, ballColor:'linear-gradient(135deg,#ffd93d,#ff9f43)', capColor:'#ff9f43', label:'⭐'},
+                {pos:'left-[28%]',           delay:'1.2s', dur:'5s',    stringH:'h-16 md:h-24',  ballSize:20, ballColor:'linear-gradient(135deg,#6bcb77,#0ea5e9)', capColor:'#0ea5e9', label:'🌟'},
+                {pos:'left-[42%]',           delay:'0.3s', dur:'3.5s',  stringH:'h-24 md:h-32',  ballSize:16, ballColor:'linear-gradient(135deg,#4d96ff,#c77dff)', capColor:'#4d96ff', label:'💎'},
+                {pos:'left-[56%]',           delay:'1.8s', dur:'4.2s',  stringH:'h-20 md:h-28',  ballSize:22, ballColor:'linear-gradient(135deg,#ff9f43,#ffd93d)', capColor:'#ff9f43', label:'🎊'},
+                {pos:'right-[28%]',          delay:'0.9s', dur:'4.8s',  stringH:'h-16 md:h-24',  ballSize:18, ballColor:'linear-gradient(135deg,#ff6b9d,#ffd93d)', capColor:'#ff6b9d', label:'🌺'},
+                {pos:'right-16 md:right-32', delay:'0.4s', dur:'3.9s',  stringH:'h-28 md:h-36',  ballSize:20, ballColor:'linear-gradient(135deg,#c77dff,#4d96ff)', capColor:'#c77dff', label:'💜'},
+                {pos:'right-1 md:right-6',   delay:'1.4s', dur:'4.4s',  stringH:'h-20 md:h-28',  ballSize:24, ballColor:'linear-gradient(135deg,#6bcb77,#ffd93d)', capColor:'#6bcb77', label:'🌈'},
+            ];
+
+            const floatingIcons = [
+                {l:'4%',  t:'22%', icon:'🦋', delay:'0s',   dur:'3.2s', size:'text-xl'},
+                {l:'18%', t:'45%', icon:'🌸', delay:'1s',   dur:'2.8s', size:'text-lg'},
+                {l:'30%', t:'30%', icon:'⭐', delay:'2s',   dur:'3.5s', size:'text-xl'},
+                {l:'65%', t:'38%', icon:'🌺', delay:'0.5s', dur:'2.5s', size:'text-lg'},
+                {l:'78%', t:'55%', icon:'💫', delay:'1.5s', dur:'3.8s', size:'text-xl'},
+                {l:'90%', t:'28%', icon:'🎀', delay:'0.8s', dur:'2.2s', size:'text-2xl'},
+                {l:'48%', t:'60%', icon:'🌟', delay:'2.5s', dur:'3s',   size:'text-lg'},
+                {l:'8%',  t:'65%', icon:'💎', delay:'1.2s', dur:'4s',   size:'text-base'},
+                {l:'88%', t:'70%', icon:'🦄', delay:'3s',   dur:'2.8s', size:'text-lg'},
+            ];
+
+            return (
+                <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{zIndex: -1}}>
+
+                    {/* ── LAYER 1: Aurora gradient blob at top ── */}
+                    <div className="prem-aurora opacity-50" style={{background:'linear-gradient(90deg,rgba(255,107,157,0.55),rgba(255,217,61,0.5),rgba(107,203,119,0.5),rgba(77,150,255,0.55),rgba(199,125,255,0.5))'}}></div>
+                    <div className="prem-aurora opacity-30" style={{background:'linear-gradient(90deg,rgba(77,150,255,0.4),rgba(199,125,255,0.5),rgba(255,107,157,0.4),rgba(255,159,67,0.45))', animationDelay:'3s', animationDirection:'reverse', height:'120px', borderRadius:'0 0 80% 80%'}}></div>
+
+                    {/* ── LAYER 2: Soft glowing orbs in background ── */}
+                    <div className="prem-orb" style={{width:320,height:320,background:'radial-gradient(circle,rgba(255,107,157,0.18),transparent 70%)',top:'5%',left:'-5%','--delay':'0s','--dur':'6s'}}></div>
+                    <div className="prem-orb" style={{width:280,height:280,background:'radial-gradient(circle,rgba(77,150,255,0.15),transparent 70%)',top:'10%',right:'-3%','--delay':'2s','--dur':'7s'}}></div>
+                    <div className="prem-orb" style={{width:200,height:200,background:'radial-gradient(circle,rgba(199,125,255,0.13),transparent 70%)',top:'40%',left:'40%','--delay':'3.5s','--dur':'5s'}}></div>
+                    <div className="prem-orb" style={{width:250,height:250,background:'radial-gradient(circle,rgba(107,203,119,0.12),transparent 70%)',bottom:'15%',left:'8%','--delay':'1s','--dur':'8s'}}></div>
+                    <div className="prem-orb" style={{width:220,height:220,background:'radial-gradient(circle,rgba(255,217,61,0.12),transparent 70%)',bottom:'20%',right:'5%','--delay':'4s','--dur':'6.5s'}}></div>
+
+                    {/* ── LAYER 3: Rainbow top bunting/banner strings ── */}
+                    <div style={{position:'absolute',top:0,left:0,right:0,display:'flex',alignItems:'flex-start',justifyContent:'center',gap:0,overflow:'hidden'}}>
+                        {['#ff6b9d','#ff9f43','#ffd93d','#6bcb77','#4d96ff','#c77dff','#ff6b9d','#ff9f43','#ffd93d','#6bcb77','#4d96ff','#c77dff','#ff6b9d','#ff9f43','#ffd93d'].map((c,i) => (
+                            <div key={i} className="banner-flag flex-shrink-0" style={{
+                                width:40, height:36, background:c,
+                                marginLeft: i === 0 ? 0 : -2,
+                                opacity:0.85,
+                                animationDelay: `${i * 0.15}s`
+                            }}></div>
+                        ))}
+                    </div>
+
+                    {/* ── LAYER 4: Hanging ornament balls ── */}
+                    {ornaments.map((o, i) => (
+                        <div key={i} className={`absolute -top-4 ${o.pos} z-0 origin-top`}
+                             style={{animation:`swing ${o.dur} ${o.delay} ease-in-out infinite alternate`}}>
+                            {/* Cap */}
+                            <div style={{width:8,height:10,background:o.capColor,borderRadius:'3px 3px 0 0',margin:'0 auto',boxShadow:`0 0 6px ${o.capColor}55`}}></div>
+                            {/* String */}
+                            <div className={`orn-string ${o.stringH}`}></div>
+                            {/* Ball */}
+                            <div className="orn-ball" style={{
+                                width:o.ballSize, height:o.ballSize,
+                                background:o.ballColor,
+                                boxShadow:`0 4px 16px rgba(0,0,0,0.18), 0 0 12px ${o.capColor}55`
+                            }}></div>
+                            {/* Emoji tag */}
+                            <div style={{textAlign:'center',fontSize:10,marginTop:2,lineHeight:1}}>{o.label}</div>
+                        </div>
                     ))}
-                </div>
 
-                {/* Bintang-bintang kecil berkelip */}
-                <div className="absolute top-10 left-[10%] text-gold-400 text-[10px] animate-twinkle delay-100 opacity-60"><Icon name="star" /></div>
-                <div className="absolute top-32 left-[40%] text-gold-300 text-[8px] animate-twinkle delay-700 opacity-40"><Icon name="star" /></div>
-                <div className="absolute top-5 right-[15%] text-gold-500 text-[12px] animate-twinkle delay-300 opacity-70"><Icon name="star" /></div>
-                <div className="absolute top-16 right-[35%] text-yellow-300 text-[9px] animate-twinkle delay-500 opacity-50"><Icon name="star" /></div>
-                <div className="absolute -top-10 right-10 w-20 h-0.5 bg-gradient-to-l from-transparent to-white opacity-40 animate-falling-star"></div>
+                    {/* ── LAYER 5: Confetti rain ── */}
+                    {confettiData.map((c, i) => (
+                        <div key={i} className={`prem-confetti ${c.shape}`}
+                             style={{
+                                 left:c.l,
+                                 top: `-${c.h + 10}px`,
+                                 width:c.w, height:c.h,
+                                 background:c.color,
+                                 '--delay':c.delay,
+                                 '--dur':c.dur,
+                                 boxShadow:`0 0 4px ${c.color}66`,
+                                 borderRadius: c.shape === 'shape-b' ? '50%' : '2px'
+                             }}>
+                        </div>
+                    ))}
 
-                {/* Gantungan kiri: Icon Kado — sejajar dengan bintang kanan */}
-                <div className="absolute -top-8 left-2 md:left-12 z-0 animate-swing origin-top duration-[4000ms]">
-                    <div className="h-20 md:h-32 w-[1px] bg-gold-400/60 mx-auto"></div>
-                    <div className="text-gold-500 text-4xl md:text-6xl drop-shadow-glow relative z-10"><Icon name="gift" /></div>
-                </div>
+                    {/* ── LAYER 6: Glitter sparkles ── */}
+                    {glitterData.map((g, i) => (
+                        <div key={i} className="prem-glitter"
+                             style={{left:g.l,top:g.t,color:g.color,fontSize:g.size,'--delay':g.delay,'--dur':g.dur,
+                                     textShadow:`0 0 8px ${g.color}, 0 0 16px ${g.color}88`}}>
+                            {g.icon}
+                        </div>
+                    ))}
 
-                {/* Gantungan ketupat kiri — sejajar dengan ketupat kanan */}
-                <div className="absolute -top-14 left-20 md:left-40 z-0 animate-sway origin-top duration-[5500ms]">
-                    <div className="h-28 md:h-44 w-[1px] bg-gold-400/40 mx-auto"></div>
-                    <div className="ketupat mx-auto shadow-lg"></div>
-                    <div className="h-4 w-[1px] bg-gold-400/40 mx-auto"></div>
-                    <div className="text-green-600 text-[10px] text-center"><Icon name="leaf" /></div>
-                </div>
+                    {/* ── LAYER 7: Floating cute emoji icons ── */}
+                    {floatingIcons.map((f, i) => (
+                        <div key={i} className={`prem-bounce absolute ${f.size}`}
+                             style={{left:f.l, top:f.t, '--delay':f.delay, '--dur':f.dur, lineHeight:1, opacity:0.55}}>
+                            {f.icon}
+                        </div>
+                    ))}
 
-                {/* Gantungan tengah: kembang api / bintang */}
-                <div className="absolute -top-12 left-[30%] hidden md:block z-0 animate-swing-slow origin-top duration-[4500ms]">
-                    <div className="h-20 w-[1px] bg-gold-400/40 mx-auto"></div>
-                    <div className="text-yellow-400 text-2xl drop-shadow-md animate-pulse"><Icon name="star" /></div>
-                </div>
+                    {/* ── LAYER 8: Transparent rising bubbles ── */}
+                    {bubblesData.map((b, i) => (
+                        <div key={i} className="prem-bubble"
+                             style={{
+                                 left:b.l, bottom:'-60px',
+                                 width:b.size, height:b.size,
+                                 border:`1.5px solid rgba(255,255,255,${b.op * 3})`,
+                                 background:`radial-gradient(circle at 35% 35%, rgba(255,255,255,${b.op * 2}), rgba(200,220,255,${b.op}))`,
+                                 boxShadow:`inset 0 0 8px rgba(255,255,255,0.3)`,
+                                 '--delay': `${i * 1.2}s`,
+                                 '--dur': `${b.dur}`
+                             }}>
+                        </div>
+                    ))}
 
-                {/* Gantungan kanan: bintang emas besar */}
-                <div className="absolute -top-8 right-4 md:right-12 z-0 animate-swing origin-top duration-[4000ms]">
-                    <div className="h-20 md:h-32 w-[1px] bg-gold-400/60 mx-auto"></div>
-                    <div className="text-gold-500 text-4xl md:text-6xl drop-shadow-glow relative z-10"><Icon name="star" /></div>
-                </div>
+                    {/* ── LAYER 9: Left side vertical cute strip ── */}
+                    <div style={{position:'absolute',left:0,top:'15%',bottom:'15%',width:22,display:'flex',flexDirection:'column',alignItems:'center',gap:12,opacity:0.5}}>
+                        {['🌸','⭐','💜','🌺','💫','🎀','✨','💎','🦋'].map((em,i)=>(
+                            <div key={i} className="prem-pop" style={{fontSize:13,'--delay':`${i*0.3}s`,'--dur':`${2.5+i*0.2}s`}}>{em}</div>
+                        ))}
+                    </div>
 
-                {/* Gantungan ketupat kanan */}
-                <div className="absolute -top-14 right-20 md:right-40 z-0 animate-sway origin-top duration-[5500ms]">
-                    <div className="h-28 md:h-44 w-[1px] bg-gold-400/40 mx-auto"></div>
-                    <div className="ketupat mx-auto shadow-lg bg-green-200 border-green-600"></div>
-                </div>
+                    {/* ── LAYER 10: Right side vertical cute strip ── */}
+                    <div style={{position:'absolute',right:0,top:'15%',bottom:'15%',width:22,display:'flex',flexDirection:'column',alignItems:'center',gap:12,opacity:0.5}}>
+                        {['💎','🌟','🎊','🦄','🌈','💕','⭐','🌸','💫'].map((em,i)=>(
+                            <div key={i} className="prem-wiggle" style={{fontSize:13,'--delay':`${i*0.25}s`,'--dur':`${1.5+i*0.15}s`}}>{em}</div>
+                        ))}
+                    </div>
 
-                {/* Siluet masjid bawah — tema Idul Fitri tetap pakai masjid */}
-                <div className="absolute bottom-0 left-0 right-0 h-32 opacity-10 pointer-events-none flex items-end justify-center overflow-hidden">
-                    <div className="text-slate-800 text-[150px] md:text-[200px] leading-none -mb-10"><Icon name="mosque" /></div>
-                    <div className="text-slate-800 text-[100px] md:text-[140px] leading-none -mb-8 -ml-10"><Icon name="mosque" /></div>
-                    <div className="text-slate-800 text-[100px] md:text-[140px] leading-none -mb-8 -mr-10 order-first"><Icon name="mosque" /></div>
+                    {/* ── LAYER 11: Bottom cute wave decoration ── */}
+                    <div style={{position:'absolute',bottom:0,left:0,right:0,height:70,overflow:'hidden',pointerEvents:'none'}}>
+                        {/* Wave 1 */}
+                        <svg viewBox="0 0 1440 70" preserveAspectRatio="none" style={{position:'absolute',bottom:0,left:0,right:0,width:'100%',height:'100%'}}>
+                            <defs>
+                                <linearGradient id="waveGrad1" x1="0" y1="0" x2="1" y2="0">
+                                    <stop offset="0%" stopColor="#ff6b9d" stopOpacity="0.12"/>
+                                    <stop offset="25%" stopColor="#ffd93d" stopOpacity="0.12"/>
+                                    <stop offset="50%" stopColor="#6bcb77" stopOpacity="0.12"/>
+                                    <stop offset="75%" stopColor="#4d96ff" stopOpacity="0.12"/>
+                                    <stop offset="100%" stopColor="#c77dff" stopOpacity="0.12"/>
+                                </linearGradient>
+                                <linearGradient id="waveGrad2" x1="0" y1="0" x2="1" y2="0">
+                                    <stop offset="0%" stopColor="#c77dff" stopOpacity="0.1"/>
+                                    <stop offset="50%" stopColor="#ff9f43" stopOpacity="0.1"/>
+                                    <stop offset="100%" stopColor="#6bcb77" stopOpacity="0.1"/>
+                                </linearGradient>
+                            </defs>
+                            <path d="M0,35 C180,10 360,60 540,35 C720,10 900,60 1080,35 C1260,10 1350,50 1440,35 L1440,70 L0,70 Z" fill="url(#waveGrad1)"/>
+                            <path d="M0,50 C200,25 400,65 600,45 C800,25 1000,65 1200,45 C1300,35 1380,55 1440,45 L1440,70 L0,70 Z" fill="url(#waveGrad2)"/>
+                        </svg>
+                        {/* Mini stars at bottom */}
+                        {['3%','12%','22%','33%','45%','55%','65%','76%','86%','94%'].map((l,i)=>(
+                            <div key={i} style={{position:'absolute',bottom:8+((i%3)*6),left:l,fontSize:8+((i%3)*3),opacity:0.25,animation:`glitter ${2+i*0.3}s ${i*0.4}s ease-in-out infinite`}}>
+                                {['✦','✧','⋆','✦','✧'][i%5]}
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* ── LAYER 12: Corner accent gems ── */}
+                    {/* Top-left corner */}
+                    <div style={{position:'absolute',top:40,left:8,opacity:0.4}}>
+                        <div className="prem-diamond" style={{fontSize:20,color:'#ff6b9d','--delay':'0s','--dur':'4s'}}>💎</div>
+                    </div>
+                    {/* Top-right corner */}
+                    <div style={{position:'absolute',top:40,right:8,opacity:0.4}}>
+                        <div className="prem-diamond" style={{fontSize:20,color:'#ffd93d','--delay':'1s','--dur':'4.5s'}}>⭐</div>
+                    </div>
+                    {/* Center top sparkle cluster */}
+                    <div style={{position:'absolute',top:44,left:'50%',transform:'translateX(-50%)',display:'flex',gap:10,opacity:0.5}}>
+                        <div className="prem-glitter" style={{position:'relative',color:'#ff6b9d',fontSize:12,'--delay':'0s','--dur':'2s'}}>✦</div>
+                        <div className="prem-glitter" style={{position:'relative',color:'#ffd93d',fontSize:18,'--delay':'0.5s','--dur':'1.8s'}}>✦</div>
+                        <div className="prem-glitter" style={{position:'relative',color:'#6bcb77',fontSize:12,'--delay':'1s','--dur':'2.2s'}}>✦</div>
+                    </div>
+
                 </div>
-            </div>
-        );
+            );
+        };
 
         // --- UTILS ---
         const safeNumber = (val) => { if (!val) return 0; const num = parseFloat(val); return isNaN(num) ? 0 : num; };
