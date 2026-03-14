@@ -9970,6 +9970,7 @@
 
             // ---- Absensi states ----
             const [absensiList, setAbsensiList]         = useState([]);
+            const [usersList, setUsersList]             = useState([]);
             const [loadingAbsensi, setLoadingAbsensi]   = useState(true);
             const [cameraActive, setCameraActive]       = useState(false);
             const [cameraStream, setCameraStream]       = useState(null);
@@ -10041,6 +10042,18 @@
                 return window.onSnapshot(q, snap => {
                     setAbsensiList(snap.docs.map(d=>({id:d.id,...d.data()})));
                     setLoadingAbsensi(false);
+                });
+            }, [user]);
+
+            // Load daftar pengguna akun untuk dropdown absensi
+            useEffect(() => {
+                if (!user) return;
+                const q = window.query(
+                    window.collection(window.db,'artifacts',window.appId,'public','data','users'),
+                    window.orderBy('namaLengkap','asc')
+                );
+                return window.onSnapshot(q, snap => {
+                    setUsersList(snap.docs.map(d=>({id:d.id,...d.data()})));
                 });
             }, [user]);
 
@@ -10141,10 +10154,9 @@
                 if (!absensiKaryawan) { showToast('Pilih nama terlebih dahulu', 'error'); return; }
                 setSubmittingAbsensi(true);
                 try {
-                    const isOwnerSelf = absensiKaryawan.startsWith('owner_');
-                    const kObj = isOwnerSelf ? null : karyawanList.find(k => k.id === absensiKaryawan);
-                    const namaDisplay = isOwnerSelf ? (authSession?.namaLengkap || 'Owner') : (kObj?.nama || '-');
-                    const jabatanDisplay = isOwnerSelf ? 'Owner' : (kObj?.jabatan || '-');
+                    const uObj = usersList.find(u => u.id === absensiKaryawan);
+                    const namaDisplay = uObj?.namaLengkap || uObj?.username || '-';
+                    const jabatanDisplay = isOwnerEmail(uObj?.email) ? 'Owner' : (uObj?.jabatan || uObj?.role || 'Karyawan');
                     const now  = new Date();
                     await window.addDoc(colAbsensi(), {
                         karyawanId:   absensiKaryawan,
@@ -10437,11 +10449,13 @@
                                     <select value={absensiKaryawan} onChange={e=>setAbsensiKaryawan(e.target.value)}
                                         className="w-full border-2 border-slate-200 focus:border-emerald-400 rounded-xl px-3 py-2.5 text-sm outline-none font-medium text-slate-700">
                                         <option value="">— Pilih nama —</option>
-                                        {isOwner && authSession?.namaLengkap && (
-                                            <option value={`owner_${authSession.id}`}>👑 {authSession.namaLengkap} (Owner)</option>
-                                        )}
-                                        {karyawanList.map(k => <option key={k.id} value={k.id}>{k.nama} ({k.jabatan})</option>)}
+                                        {usersList.map(u => (
+                                            <option key={u.id} value={u.id}>
+                                                {isOwnerEmail(u.email) ? '👑 ' : ''}{u.namaLengkap || u.username}{isOwnerEmail(u.email) ? ' (Owner)' : u.jabatan ? ` (${u.jabatan})` : ''}
+                                            </option>
+                                        ))}
                                     </select>
+                                    {usersList.length === 0 && <p className="text-[10px] text-amber-500 mt-1">⚠️ Belum ada pengguna terdaftar di Pengguna Akun</p>}
                                 </div>
                                 {/* Pilih Shift */}
                                 <div>
