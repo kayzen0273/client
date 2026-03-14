@@ -9986,7 +9986,7 @@
             const [lightboxAbsensi, setLightboxAbsensi] = useState(null);
             const [filterAbsensiDate, setFilterAbsensiDate] = useState('');
             // ---- Shift Config states ----
-            const [shiftConfig, setShiftConfig]       = useState(null);
+            const [shiftConfig, setShiftConfig]       = useState({});
             const [modalShift, setModalShift]         = useState(false);
             const [editShiftRow, setEditShiftRow]     = useState(null); // {id, label, jamMulai, jamSelesai}
             // ---- Lokasi states ----
@@ -10019,11 +10019,12 @@
             const weekLabel  = weekOffset===0?'Pekan Ini':weekOffset===1?'Pekan Depan':weekOffset===-1?'Pekan Lalu':`${weekOffset>0?'+':''}${weekOffset} Pekan`;
 
             /* ---------- Firestore ---------- */
-            const colKaryawan = () => window.collection(window.db,'artifacts',window.appId,'public','data','shift_karyawan');
-            const colLokasi   = () => window.collection(window.db,'artifacts',window.appId,'public','data','shift_lokasi');
-            const colJadwal   = () => window.collection(window.db,'artifacts',window.appId,'public','data','shift_jadwal');
-            const colAbsensi  = () => window.collection(window.db,'artifacts',window.appId,'public','data','shift_absensi');
-            const docShiftCfg = () => window.doc(window.db,'artifacts',window.appId,'public','data','shift_config','default');
+            const colKaryawan  = () => window.collection(window.db,'artifacts',window.appId,'public','data','shift_karyawan');
+            const colLokasi    = () => window.collection(window.db,'artifacts',window.appId,'public','data','shift_lokasi');
+            const colJadwal    = () => window.collection(window.db,'artifacts',window.appId,'public','data','shift_jadwal');
+            const colAbsensi   = () => window.collection(window.db,'artifacts',window.appId,'public','data','shift_absensi');
+            const colShiftCfg  = () => window.collection(window.db,'artifacts',window.appId,'public','data','shift_config');
+            const docShiftCfg  = () => window.doc(colShiftCfg(), 'default');
 
             useEffect(() => {
                 if (!user) return;
@@ -10039,9 +10040,11 @@
 
             useEffect(() => {
                 if (!user) return;
-                return window.onSnapshot(docShiftCfg(), snap => {
-                    setShiftConfig(snap.exists() ? snap.data() : null);
-                });
+                const ref = docShiftCfg();
+                return window.onSnapshot(ref,
+                    snap => { setShiftConfig(snap.exists() ? snap.data() : {}); },
+                    err  => { console.error('shiftConfig onSnapshot error:', err); }
+                );
             }, [user]);
 
             useEffect(() => {
@@ -10129,11 +10132,18 @@
 
             /* ---------- Save Shift Config ---------- */
             const saveShiftConfig = async (id, jamMulai, jamSelesai) => {
+                const ref = docShiftCfg();
                 try {
-                    await window.setDoc(docShiftCfg(), { [id]: { jamMulai: jamMulai.trim(), jamSelesai: jamSelesai.trim() }, updatedAt: window.serverTimestamp() }, {merge:true});
+                    await window.setDoc(ref, {
+                        [id]: { jamMulai: jamMulai.trim(), jamSelesai: jamSelesai.trim() },
+                        updatedAt: window.serverTimestamp()
+                    }, {merge: true});
                     setEditShiftRow(null);
                     showToast('✅ Jam shift disimpan');
-                } catch(e) { showToast('Gagal menyimpan','error'); }
+                } catch(e) {
+                    console.error('saveShiftConfig error:', e);
+                    showToast('Gagal simpan: ' + e.message, 'error');
+                }
             };
 
             /* ---------- Rekap ---------- */
@@ -10787,9 +10797,13 @@
                                     <button
                                         onClick={async () => {
                                             const newVal = !(shiftConfig?.doubleSlot);
+                                            const ref = docShiftCfg();
                                             try {
-                                                await window.setDoc(docShiftCfg(), { doubleSlot: newVal, updatedAt: window.serverTimestamp() }, {merge:true});
-                                            } catch(e) { showToast('Gagal menyimpan','error'); }
+                                                await window.setDoc(ref, { doubleSlot: newVal, updatedAt: window.serverTimestamp() }, {merge:true});
+                                            } catch(e) {
+                                                console.error('toggle doubleSlot error:', e);
+                                                showToast('Gagal menyimpan','error');
+                                            }
                                         }}
                                         className={`relative w-11 h-6 rounded-full transition-all flex-shrink-0 ${shiftConfig?.doubleSlot ? 'bg-violet-500' : 'bg-slate-300'}`}
                                     >
