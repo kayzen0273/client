@@ -9937,7 +9937,7 @@
         };
 
         // =================== JADWAL SHIFT VIEW (v2 - Pagi/Siang per Lokasi) ===================
-        const JadwalShiftView = ({ user, showToast, readOnly, currentProfile, settings }) => {
+        const JadwalShiftView = ({ user, showToast, readOnly, currentProfile, settings, isOwner, authSession }) => {
             const HARI = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
             const SHIFTS = [
                 { id: 'pagi',  label: 'Pagi',  jam: '08:00 – 14:00', bg: '#FFF176', text: '#5D4037', border: '#F9A825' },
@@ -9963,10 +9963,27 @@
             const [newLNama, setNewLNama]            = useState('');
             const [editLokasi, setEditLokasi]        = useState(null);
             const [delLokasi, setDelLokasi]          = useState(null);
-            // Rekap
-            const [activeView, setActiveView]        = useState('jadwal'); // 'jadwal' | 'rekap'
+            // Tab aktif
+            const [activeView, setActiveView]        = useState('jadwal'); // 'jadwal' | 'absensi'
             // Print title
             const storeName = currentProfile?.name || settings?.storeName || 'Apotek';
+
+            // ---- Absensi states ----
+            const [absensiList, setAbsensiList]         = useState([]);
+            const [loadingAbsensi, setLoadingAbsensi]   = useState(true);
+            const [cameraActive, setCameraActive]       = useState(false);
+            const [cameraStream, setCameraStream]       = useState(null);
+            const [capturedPhoto, setCapturedPhoto]     = useState(null); // base64
+            const [absensiKaryawan, setAbsensiKaryawan] = useState('');
+            const [absensiShift, setAbsensiShift]       = useState('pagi');
+            const [absensiCatatan, setAbsensiCatatan]   = useState('');
+            const [submittingAbsensi, setSubmittingAbsensi] = useState(false);
+            const [confirmClearAll, setConfirmClearAll] = useState(false);
+            const [confirmDelOne, setConfirmDelOne]     = useState(null); // absensi doc id
+            const [lightboxAbsensi, setLightboxAbsensi] = useState(null);
+            const [filterAbsensiDate, setFilterAbsensiDate] = useState('');
+            const videoRef = React.useRef(null);
+            const canvasRef = React.useRef(null);
 
             /* ---------- Helpers tanggal ---------- */
             const getMondayOfWeek = (offset = 0) => {
@@ -9994,6 +10011,7 @@
             const colKaryawan = () => window.collection(window.db,'artifacts',window.appId,'public','data','shift_karyawan');
             const colLokasi   = () => window.collection(window.db,'artifacts',window.appId,'public','data','shift_lokasi');
             const colJadwal   = () => window.collection(window.db,'artifacts',window.appId,'public','data','shift_jadwal');
+            const colAbsensi  = () => window.collection(window.db,'artifacts',window.appId,'public','data','shift_absensi');
 
             useEffect(() => {
                 if (!user) return;
@@ -10014,6 +10032,17 @@
                     setJadwal(prev => ({...prev, [weekKey]: snap.exists() ? snap.data() : {}}));
                 });
             }, [user, weekKey]);
+
+            // Load absensi (realtime, 100 terbaru)
+            useEffect(() => {
+                if (!user) return;
+                setLoadingAbsensi(true);
+                const q = window.query(colAbsensi(), window.orderBy('createdAt','desc'), window.limit(200));
+                return window.onSnapshot(q, snap => {
+                    setAbsensiList(snap.docs.map(d=>({id:d.id,...d.data()})));
+                    setLoadingAbsensi(false);
+                });
+            }, [user]);
 
             const weekJadwal = jadwal[weekKey] || {};
             const cellKey    = (dayIdx, shiftId, lokasiId) => `${dayIdx}_${shiftId}_${lokasiId}`;
@@ -10076,6 +10105,93 @@
                 return counts;
             };
 
+            /* ---------- Absensi: Camera ---------- */
+            const startCamera = async () => {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: {ideal:640}, height: {ideal:480} }, audio: false });
+                    setCameraStream(stream);
+                    setCameraActive(true);
+                    setTimeout(() => {
+                        if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play(); }
+                    }, 150);
+                } catch(e) { showToast('Tidak bisa akses kamera: ' + e.message, 'error'); }
+            };
+            const stopCamera = () => {
+                if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); setCameraStream(null); }
+                setCameraActive(false);
+            };
+            const capturePhoto = () => {
+                if (!videoRef.current || !canvasRef.current) return;
+                const v = videoRef.current;
+                const c = canvasRef.current;
+                c.width = v.videoWidth || 640;
+                c.height = v.videoHeight || 480;
+                const ctx = c.getContext('2d');
+                // Mirror untuk selfie
+                ctx.save(); ctx.scale(-1, 1); ctx.drawImage(v, -c.width, 0, c.width, c.height); ctx.restore();
+                const dataUrl = c.toDataURL('image/jpeg', 0.75);
+                setCapturedPhoto(dataUrl);
+                stopCamera();
+            };
+            const retakePhoto = () => { setCapturedPhoto(null); startCamera(); };
+
+            /* ---------- Absensi: Submit ---------- */
+            const submitAbsensi = async () => {
+                if (!capturedPhoto) { showToast('Foto selfie wajib diambil!', 'error'); return; }
+                if (!absensiKaryawan) { showToast('Pilih karyawan terlebih dahulu', 'error'); return; }
+                setSubmittingAbsensi(true);
+                try {
+                    const kObj = karyawanList.find(k => k.id === absensiKaryawan);
+                    const now  = new Date();
+                    await window.addDoc(colAbsensi(), {
+                        karyawanId:   absensiKaryawan,
+                        karyawanNama: kObj?.nama || '-',
+                        karyawanJabatan: kObj?.jabatan || '-',
+                        shift:        absensiShift,
+                        catatan:      absensiCatatan.trim(),
+                        photo:        capturedPhoto,
+                        tanggal:      now.toISOString().slice(0,10),
+                        waktu:        now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}),
+                        createdAt:    window.serverTimestamp(),
+                    });
+                    showToast('✅ Absensi berhasil disimpan!', 'success');
+                    setCapturedPhoto(null);
+                    setAbsensiCatatan('');
+                } catch(e) { showToast('Gagal menyimpan absensi: ' + e.message, 'error'); }
+                setSubmittingAbsensi(false);
+            };
+
+            /* ---------- Absensi: Delete ---------- */
+            const doDelAbsensi = async (id) => {
+                try {
+                    await window.deleteDoc(window.doc(colAbsensi(), id));
+                    showToast('Data absensi dihapus', 'success');
+                } catch(e) { showToast('Gagal menghapus', 'error'); }
+                setConfirmDelOne(null);
+            };
+            const doClearAllAbsensi = async () => {
+                try {
+                    const toDelete = filterAbsensiDate
+                        ? absensiList.filter(a => a.tanggal === filterAbsensiDate)
+                        : absensiList;
+                    const batch = window.writeBatch(window.db);
+                    toDelete.forEach(a => batch.delete(window.doc(colAbsensi(), a.id)));
+                    await batch.commit();
+                    showToast(`${toDelete.length} data absensi dihapus`, 'success');
+                } catch(e) { showToast('Gagal menghapus semua', 'error'); }
+                setConfirmClearAll(false);
+            };
+
+            /* ---------- Absensi: Helpers ---------- */
+            const fmtAbsDate = (tgl) => {
+                if (!tgl) return '-';
+                const [y,m,d] = tgl.split('-');
+                const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+                return `${d} ${months[parseInt(m)-1]} ${y}`;
+            };
+            const shiftColor = { pagi: {bg:'#FFF9C4',text:'#7B6200',border:'#F9A825'}, siang: {bg:'#B2EBF2',text:'#006064',border:'#00ACC1'}, libur: {bg:'#F1F5F9',text:'#94A3B8',border:'#E2E8F0'} };
+            const filteredAbsensi = filterAbsensiDate ? absensiList.filter(a => a.tanggal === filterAbsensiDate) : absensiList;
+
             /* ---------- Print ---------- */
             const handlePrint = () => {
                 const el = document.getElementById('shift-print-area');
@@ -10101,15 +10217,15 @@
                     <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
                         <div className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white flex items-center justify-center shadow text-sm">
-                                <Icon name="calendar-days" />
+                                <Icon name={activeView === 'absensi' ? 'camera' : 'calendar-days'} />
                             </div>
                             <div>
-                                <h2 className="font-extrabold text-slate-800 text-base leading-tight">Jadwal Shift</h2>
-                                <p className="text-[10px] text-slate-400">Pagi & Siang per lokasi toko</p>
+                                <h2 className="font-extrabold text-slate-800 text-base leading-tight">{activeView === 'absensi' ? 'Absensi Kehadiran' : 'Jadwal Shift'}</h2>
+                                <p className="text-[10px] text-slate-400">{activeView === 'absensi' ? 'Foto selfie wajib saat absen' : 'Pagi & Siang per lokasi toko'}</p>
                             </div>
                         </div>
                         <div className="flex gap-1.5 flex-wrap">
-                            {!readOnly && (
+                            {activeView === 'jadwal' && !readOnly && (
                                 <>
                                     <button onClick={() => setModalLokasi(true)} className="flex items-center gap-1 px-2.5 py-1.5 bg-sky-500 hover:bg-sky-600 text-white text-[11px] font-bold rounded-lg shadow transition-all active:scale-95">
                                         <Icon name="shop" /> Lokasi
@@ -10119,10 +10235,33 @@
                                     </button>
                                 </>
                             )}
+                            {activeView === 'absensi' && isOwner && filteredAbsensi.length > 0 && (
+                                <button onClick={() => setConfirmClearAll(true)} className="flex items-center gap-1 px-2.5 py-1.5 bg-red-500 hover:bg-red-600 text-white text-[11px] font-bold rounded-lg shadow transition-all active:scale-95">
+                                    <Icon name="trash" /> Hapus Semua
+                                </button>
+                            )}
                         </div>
                     </div>
 
-                    {/* NAVIGASI PEKAN */}
+                    {/* TAB NAVIGASI */}
+                    <div className="flex gap-1.5 mb-3 bg-slate-100 rounded-xl p-1">
+                        <button
+                            onClick={() => setActiveView('jadwal')}
+                            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-extrabold transition-all ${activeView === 'jadwal' ? 'bg-white text-violet-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            <Icon name="calendar-days" /> Jadwal Shift
+                        </button>
+                        <button
+                            onClick={() => { setActiveView('absensi'); stopCamera(); setCapturedPhoto(null); }}
+                            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-extrabold transition-all ${activeView === 'absensi' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            <Icon name="camera" /> Absensi
+                            {absensiList.length > 0 && <span className="bg-emerald-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none">{absensiList.length}</span>}
+                        </button>
+                    </div>
+
+                    {/* NAVIGASI PEKAN — hanya tampil di tab Jadwal */}
+                    {activeView === 'jadwal' && (
                     <div className="flex items-center justify-between mb-3 bg-white rounded-xl border border-slate-200 px-3 py-2 shadow-sm">
                         <button onClick={()=>setWeekOffset(w=>w-1)} className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition-all active:scale-95 text-xs">
                             <Icon name="chevron-left" />
@@ -10140,7 +10279,11 @@
                             </button>
                         </div>
                     </div>
+                    )}
 
+                    {/* ===== TAB JADWAL ===== */}
+                    {activeView === 'jadwal' && (
+                    <>
                     {loadingData ? (
                         <div className="flex flex-col items-center justify-center py-20 gap-3">
                             <div className="w-10 h-10 border-4 border-violet-200 border-t-violet-500 rounded-full animate-spin"></div>
@@ -10269,6 +10412,173 @@
                         </div>
                         </>
                     )}
+                    </>
+                    )} {/* END activeView === 'jadwal' */}
+
+                    {/* ===== TAB ABSENSI ===== */}
+                    {activeView === 'absensi' && (
+                    <div className="space-y-3">
+                        {/* CANVAS hidden untuk capture */}
+                        <canvas ref={canvasRef} style={{display:'none'}} />
+
+                        {/* ---- FORM ABSEN ---- */}
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-3">
+                                <p className="text-white font-extrabold text-sm flex items-center gap-2"><Icon name="camera" /> Form Absensi Kehadiran</p>
+                                <p className="text-emerald-100 text-[10px] mt-0.5">Foto selfie wajib untuk konfirmasi kehadiran</p>
+                            </div>
+                            <div className="p-4 space-y-3">
+                                {/* Pilih Karyawan */}
+                                <div>
+                                    <label className="text-[11px] font-bold text-slate-600 block mb-1">👤 Nama Karyawan</label>
+                                    <select value={absensiKaryawan} onChange={e=>setAbsensiKaryawan(e.target.value)}
+                                        className="w-full border-2 border-slate-200 focus:border-emerald-400 rounded-xl px-3 py-2.5 text-sm outline-none font-medium text-slate-700">
+                                        <option value="">— Pilih karyawan —</option>
+                                        {karyawanList.map(k => <option key={k.id} value={k.id}>{k.nama} ({k.jabatan})</option>)}
+                                    </select>
+                                </div>
+                                {/* Pilih Shift */}
+                                <div>
+                                    <label className="text-[11px] font-bold text-slate-600 block mb-1">⏰ Shift</label>
+                                    <div className="flex gap-2">
+                                        {[{id:'pagi',label:'Pagi',jam:'08:00–14:00'},{id:'siang',label:'Siang',jam:'14:00–21:00'},{id:'libur',label:'Libur',jam:'—'}].map(s => (
+                                            <button key={s.id} onClick={()=>setAbsensiShift(s.id)}
+                                                className={`flex-1 py-2.5 rounded-xl text-[11px] font-extrabold border-2 transition-all ${absensiShift===s.id ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'}`}>
+                                                {s.label}
+                                                <span className="block text-[9px] font-normal mt-0.5 opacity-70">{s.jam}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                {/* Catatan opsional */}
+                                <div>
+                                    <label className="text-[11px] font-bold text-slate-600 block mb-1">📝 Catatan (opsional)</label>
+                                    <input value={absensiCatatan} onChange={e=>setAbsensiCatatan(e.target.value)} placeholder="Misal: terlambat 10 menit..."
+                                        className="w-full border-2 border-slate-200 focus:border-emerald-400 rounded-xl px-3 py-2.5 text-sm outline-none text-slate-700" />
+                                </div>
+
+                                {/* ---- KAMERA SELFIE ---- */}
+                                <div>
+                                    <label className="text-[11px] font-bold text-slate-600 block mb-2">📸 Foto Selfie <span className="text-red-500">*</span></label>
+                                    {!cameraActive && !capturedPhoto && (
+                                        <button onClick={startCamera}
+                                            className="w-full py-10 rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold text-sm flex flex-col items-center justify-center gap-2 transition-all active:scale-95">
+                                            <span className="text-4xl">📷</span>
+                                            <span>Buka Kamera Selfie</span>
+                                            <span className="text-[10px] text-emerald-400 font-normal">Kamera depan akan diaktifkan</span>
+                                        </button>
+                                    )}
+                                    {cameraActive && !capturedPhoto && (
+                                        <div className="relative rounded-2xl overflow-hidden bg-black shadow-lg">
+                                            <video ref={videoRef} autoPlay playsInline muted className="w-full rounded-2xl" style={{transform:'scaleX(-1)', maxHeight:'300px', objectFit:'cover'}} />
+                                            <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-3">
+                                                <button onClick={capturePhoto}
+                                                    className="w-16 h-16 bg-white rounded-full shadow-2xl border-4 border-emerald-500 flex items-center justify-center text-2xl hover:scale-105 active:scale-95 transition-all">
+                                                    📸
+                                                </button>
+                                                <button onClick={stopCamera}
+                                                    className="w-10 h-10 bg-red-500 rounded-full shadow-lg flex items-center justify-center text-white text-xs font-bold hover:bg-red-600 active:scale-95 transition-all self-center">
+                                                    <Icon name="xmark" />
+                                                </button>
+                                            </div>
+                                            <div className="absolute top-3 left-0 right-0 flex justify-center">
+                                                <span className="bg-black/50 text-white text-[10px] font-bold px-3 py-1 rounded-full">📷 Posisikan wajah di tengah, lalu tekan tombol</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {capturedPhoto && (
+                                        <div className="relative rounded-2xl overflow-hidden shadow-lg">
+                                            <img src={capturedPhoto} alt="selfie" className="w-full rounded-2xl" style={{maxHeight:'280px', objectFit:'cover'}} onClick={()=>setLightboxAbsensi(capturedPhoto)} />
+                                            <div className="absolute top-2 right-2">
+                                                <button onClick={retakePhoto}
+                                                    className="bg-black/60 hover:bg-black/80 text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1 transition-all active:scale-95">
+                                                    <Icon name="rotate-left" /> Foto Ulang
+                                                </button>
+                                            </div>
+                                            <div className="absolute bottom-2 left-2">
+                                                <span className="bg-emerald-500 text-white text-[9px] font-bold px-2.5 py-1 rounded-full">✅ Foto siap</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Submit */}
+                                <button
+                                    onClick={submitAbsensi}
+                                    disabled={submittingAbsensi || !capturedPhoto || !absensiKaryawan}
+                                    className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:opacity-40 text-white font-extrabold text-sm rounded-2xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+                                    {submittingAbsensi ? <><Icon name="spinner" className="animate-spin" /> Menyimpan...</> : <><Icon name="check" /> Simpan Absensi</>}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* ---- RIWAYAT ABSENSI ---- */}
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                                <p className="font-extrabold text-slate-700 text-sm flex items-center gap-2">
+                                    <Icon name="clock-rotate-left" className="text-emerald-500" /> Riwayat Absensi
+                                    <span className="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-full">{filteredAbsensi.length}</span>
+                                </p>
+                                <input type="date" value={filterAbsensiDate} onChange={e=>setFilterAbsensiDate(e.target.value)}
+                                    className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-[11px] outline-none focus:border-emerald-400 text-slate-600" />
+                            </div>
+                            {loadingAbsensi ? (
+                                <div className="flex items-center justify-center py-12 gap-2">
+                                    <div className="w-6 h-6 border-3 border-emerald-200 border-t-emerald-500 rounded-full animate-spin"></div>
+                                    <p className="text-xs text-slate-400">Memuat absensi...</p>
+                                </div>
+                            ) : filteredAbsensi.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                                    <span className="text-5xl">📋</span>
+                                    <p className="text-sm font-bold text-slate-400">Belum ada data absensi</p>
+                                    <p className="text-xs text-slate-300">{filterAbsensiDate ? 'Tidak ada absensi pada tanggal ini' : 'Mulai absen dengan kamera di atas'}</p>
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-slate-50">
+                                    {filteredAbsensi.map(a => (
+                                        <div key={a.id} className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-all">
+                                            {/* Foto */}
+                                            <div className="flex-shrink-0 cursor-pointer" onClick={()=>setLightboxAbsensi(a.photo)}>
+                                                <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-slate-200 shadow-sm relative">
+                                                    {a.photo
+                                                        ? <img src={a.photo} alt="selfie" className="w-full h-full object-cover" />
+                                                        : <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-300 text-2xl">👤</div>
+                                                    }
+                                                    <div className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 rounded-tl-lg flex items-center justify-center">
+                                                        <Icon name="camera" className="text-white" style={{fontSize:'7px'}} />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {/* Info */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <p className="font-extrabold text-slate-800 text-sm truncate">{a.karyawanNama}</p>
+                                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full border"
+                                                        style={{background: shiftColor[a.shift]?.bg || '#f1f5f9', color: shiftColor[a.shift]?.text || '#64748b', borderColor: shiftColor[a.shift]?.border || '#e2e8f0'}}>
+                                                        {a.shift?.charAt(0).toUpperCase() + a.shift?.slice(1)}
+                                                    </span>
+                                                </div>
+                                                <p className="text-[10px] text-slate-400 mt-0.5">{a.karyawanJabatan}</p>
+                                                <div className="flex items-center gap-3 mt-1 text-[10px] text-slate-500">
+                                                    <span className="flex items-center gap-1"><Icon name="calendar" /> {fmtAbsDate(a.tanggal)}</span>
+                                                    <span className="flex items-center gap-1"><Icon name="clock" /> {a.waktu}</span>
+                                                </div>
+                                                {a.catatan && <p className="text-[10px] text-slate-400 mt-1 italic">"{a.catatan}"</p>}
+                                            </div>
+                                            {/* Tombol hapus (owner only) */}
+                                            {isOwner && (
+                                                <button onClick={()=>setConfirmDelOne(a.id)}
+                                                    className="flex-shrink-0 w-8 h-8 bg-red-50 hover:bg-red-100 text-red-400 rounded-xl flex items-center justify-center text-xs transition-all active:scale-95">
+                                                    <Icon name="trash" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    )} {/* END activeView === 'absensi' */}
 
                     {/* OVERLAY tutup picker */}
                     {isOpen && <div className="fixed inset-0 z-30" onClick={()=>setPickerTarget(null)} />}
@@ -10385,6 +10695,48 @@
                                     <button onClick={()=>setDelLokasi(null)} className="flex-1 py-2.5 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-600">Batal</button>
                                     <button onClick={()=>doDelLokasi(delLokasi.id)} className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-bold">Hapus</button>
                                 </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* KONFIRMASI HAPUS SATU ABSENSI */}
+                    {confirmDelOne && (
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.55)'}}>
+                            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xs text-center slide-up">
+                                <div className="w-12 h-12 bg-red-100 rounded-2xl text-red-500 flex items-center justify-center mx-auto mb-3 text-xl"><Icon name="triangle-exclamation" /></div>
+                                <p className="font-extrabold text-slate-800 mb-1">Hapus Data Absensi?</p>
+                                <p className="text-xs text-slate-500 mb-4">Data absensi ini akan dihapus permanen dan tidak bisa dipulihkan.</p>
+                                <div className="flex gap-2">
+                                    <button onClick={()=>setConfirmDelOne(null)} className="flex-1 py-2.5 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-600">Batal</button>
+                                    <button onClick={()=>doDelAbsensi(confirmDelOne)} className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-bold">Hapus</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* KONFIRMASI HAPUS SEMUA ABSENSI */}
+                    {confirmClearAll && (
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.55)'}}>
+                            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xs text-center slide-up">
+                                <div className="w-14 h-14 bg-red-100 rounded-2xl text-red-500 flex items-center justify-center mx-auto mb-3 text-2xl"><Icon name="trash" /></div>
+                                <p className="font-extrabold text-slate-800 mb-1">Hapus Semua Absensi?</p>
+                                <p className="text-xs text-slate-500 mb-1">{filterAbsensiDate ? `Menghapus ${filteredAbsensi.length} data absensi pada ${fmtAbsDate(filterAbsensiDate)}.` : `Menghapus semua ${absensiList.length} data absensi.`}</p>
+                                <p className="text-xs text-red-400 font-bold mb-4">⚠️ Tindakan ini tidak bisa dibatalkan!</p>
+                                <div className="flex gap-2">
+                                    <button onClick={()=>setConfirmClearAll(false)} className="flex-1 py-2.5 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-600">Batal</button>
+                                    <button onClick={doClearAllAbsensi} className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-bold">Hapus Semua</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* LIGHTBOX FOTO ABSENSI */}
+                    {lightboxAbsensi && (
+                        <div onClick={()=>setLightboxAbsensi(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.9)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:'16px'}}>
+                            <div style={{position:'relative',maxWidth:'95vw',maxHeight:'90vh'}} onClick={e=>e.stopPropagation()}>
+                                <img src={lightboxAbsensi} alt="selfie besar" style={{maxWidth:'90vw',maxHeight:'85vh',borderRadius:'16px',objectFit:'contain',boxShadow:'0 8px 40px rgba(0,0,0,0.6)'}} />
+                                <button onClick={()=>setLightboxAbsensi(null)} style={{position:'absolute',top:'-12px',right:'-12px',width:'32px',height:'32px',background:'#ef4444',border:'none',borderRadius:'50%',color:'#fff',fontWeight:900,fontSize:'14px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 8px rgba(0,0,0,0.4)'}}>✕</button>
+                                <div style={{position:'absolute',bottom:'-30px',left:0,right:0,textAlign:'center'}}><span style={{color:'rgba(255,255,255,0.6)',fontSize:'11px'}}>Foto Selfie Absensi — klik di luar untuk tutup</span></div>
                             </div>
                         </div>
                     )}
@@ -11860,7 +12212,7 @@
                         {activeTab === 'settings' && (<SettingsView settings={settingsData} onSave={handleSaveSettings} loading={submitting} authSession={authSession} onUpdateSession={(newSession) => { setAuthSession(newSession); saveSession(newSession); }} />)}
                         {activeTab === 'pengguna_akun' && (<PenggunaAkunView authSession={authSession} onUpdateSession={(newSession) => { setAuthSession(newSession); saveSession(newSession); }} showToast={showToast} />)}
                         {activeTab === 'catatan' && (<PapanCatatan user={user} readOnly={menuItems.find(m=>m.id==='catatan')?.readOnly} />)}
-                        {activeTab === 'jadwal_shift' && (<JadwalShiftView user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='jadwal_shift')?.readOnly} />)}
+                        {activeTab === 'jadwal_shift' && (<JadwalShiftView user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='jadwal_shift')?.readOnly} isOwner={isOwner} authSession={authSession} />)}
                         {activeTab === 'transfer_barang' && (<TransferBarangView user={user} showToast={showToast} rawInventory={rawInventory} settings={settingsData} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='transfer_barang')?.readOnly} authSession={authSession} />)}
                     </main>
                     <ConfirmModal isOpen={deleteModal.show} title="Hapus Barang?" message={`Yakin ingin menghapus permanen "${deleteModal.item?.name}"? Barang ini akan hilang dari SEMUA toko.`} onConfirm={handleDelete} onCancel={() => setDeleteModal({ show: false, item: null })} />
