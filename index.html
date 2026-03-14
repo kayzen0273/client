@@ -916,11 +916,235 @@
         };
         // ==================== END AKSES MENU TAB ====================
 
+        // ==================== AKSES TOKO TAB ====================
+        const AksesTokoTab = ({ users, loadingUsers, storeProfiles, showToast }) => {
+            const [selectedUser, setSelectedUser] = useState(null);
+            const [allowedStores, setAllowedStores] = useState([]); // [] = semua diizinkan
+            const [isAllStores, setIsAllStores] = useState(true); // true = akses semua toko
+            const [loadingAccess, setLoadingAccess] = useState(false);
+            const [saving, setSaving] = useState(false);
+            const [searchKaryawan, setSearchKaryawan] = useState('');
+
+            const realProfiles = storeProfiles.filter(p => p.id !== 'all_stores');
+            const activeUsers = users.filter(u => u.isActive !== false);
+            const filteredUsers = activeUsers.filter(u =>
+                searchKaryawan === '' ||
+                u.namaLengkap?.toLowerCase().includes(searchKaryawan.toLowerCase()) ||
+                u.username?.toLowerCase().includes(searchKaryawan.toLowerCase())
+            );
+
+            const handleSelectUser = async (usr) => {
+                setSelectedUser(usr);
+                setLoadingAccess(true);
+                try {
+                    const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'users', usr.id);
+                    const snap = await window.getDoc(ref);
+                    const data = snap.exists() ? snap.data() : {};
+                    const saved = data.allowedStores;
+                    if (!saved || saved.length === 0) {
+                        setIsAllStores(true);
+                        setAllowedStores(realProfiles.map(p => p.id));
+                    } else {
+                        setIsAllStores(false);
+                        setAllowedStores(saved);
+                    }
+                } catch (e) {
+                    setIsAllStores(true);
+                    setAllowedStores(realProfiles.map(p => p.id));
+                }
+                setLoadingAccess(false);
+            };
+
+            const handleSave = async () => {
+                if (!selectedUser) return;
+                setSaving(true);
+                try {
+                    const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'users', selectedUser.id);
+                    const storeData = isAllStores ? [] : allowedStores;
+                    await window.updateDoc(ref, { allowedStores: storeData });
+                    showToast(`Akses toko "${selectedUser.namaLengkap}" berhasil disimpan!`);
+                } catch (e) { showToast('Gagal menyimpan akses toko'); }
+                setSaving(false);
+            };
+
+            const handleReset = async () => {
+                if (!selectedUser) return;
+                setSaving(true);
+                try {
+                    const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'users', selectedUser.id);
+                    await window.updateDoc(ref, { allowedStores: [] });
+                    showToast(`Akses toko "${selectedUser.namaLengkap}" direset ke semua toko`);
+                    setIsAllStores(true);
+                    setAllowedStores(realProfiles.map(p => p.id));
+                } catch (e) { showToast('Gagal mereset'); }
+                setSaving(false);
+            };
+
+            const toggleStore = (storeId) => {
+                setAllowedStores(prev => {
+                    if (prev.includes(storeId)) {
+                        const next = prev.filter(id => id !== storeId);
+                        return next;
+                    }
+                    return [...prev, storeId];
+                });
+            };
+
+            if (realProfiles.length <= 1) {
+                return (
+                    <div className="p-4">
+                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-center">
+                            <Icon name="shop" className="text-3xl text-slate-300 mb-2" />
+                            <p className="font-bold text-slate-500 text-sm">Hanya ada 1 toko</p>
+                            <p className="text-xs text-slate-400 mt-1">Fitur ini aktif jika ada 2 toko atau lebih. Tambahkan profil toko di menu <strong>Pengaturan → Profil & Cabang Toko</strong>.</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="p-4 space-y-3">
+                    <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl">
+                        <p className="text-xs text-teal-800 font-semibold"><Icon name="circle-info" className="mr-1" />Atur toko mana saja yang bisa diakses setiap karyawan. Karyawan hanya bisa berpindah ke toko yang diizinkan.</p>
+                    </div>
+
+                    {/* Pilih karyawan */}
+                    {!selectedUser && (
+                        <div className="space-y-2">
+                            <div className="relative">
+                                <Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                                <input className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-teal-400 bg-slate-50" placeholder="Cari karyawan..." value={searchKaryawan} onChange={e => setSearchKaryawan(e.target.value)} />
+                            </div>
+                            {loadingUsers && <div className="text-center py-6 text-slate-400 text-sm">Memuat karyawan...</div>}
+                            {!loadingUsers && filteredUsers.length === 0 && (
+                                <div className="py-10 text-center text-slate-400 text-sm font-medium">
+                                    <Icon name="users-slash" className="text-3xl mb-2 block" />
+                                    {searchKaryawan ? 'Karyawan tidak ditemukan' : 'Belum ada karyawan aktif'}
+                                </div>
+                            )}
+                            {filteredUsers.map(usr => {
+                                const storedStores = usr.allowedStores;
+                                const hasRestriction = storedStores && storedStores.length > 0;
+                                const accessCount = hasRestriction ? storedStores.length : realProfiles.length;
+                                return (
+                                    <button key={usr.id} onClick={() => handleSelectUser(usr)}
+                                        className="w-full p-3 bg-white border border-slate-200 hover:border-teal-300 rounded-xl flex items-center gap-3 transition-all active:scale-[0.99] text-left">
+                                        <div className="w-9 h-9 rounded-xl bg-teal-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                            {usr.profilePhoto ? <img src={usr.profilePhoto} alt="" className="w-full h-full object-cover" /> : <span className="font-black text-teal-700 text-sm">{(usr.namaLengkap||'?').charAt(0).toUpperCase()}</span>}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-bold text-slate-800 text-sm truncate">{usr.namaLengkap}</p>
+                                            <p className="text-[10px] text-slate-400 truncate">@{usr.username}</p>
+                                        </div>
+                                        <div className={`flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold border ${hasRestriction ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>
+                                            <Icon name={hasRestriction ? 'lock' : 'store'} className="text-[9px]" />
+                                            {hasRestriction ? `${accessCount} toko` : 'Semua toko'}
+                                        </div>
+                                        <Icon name="chevron-right" className="text-slate-300 text-xs flex-shrink-0" />
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {/* Detail akses toko */}
+                    {selectedUser && (
+                        <div className="space-y-3">
+                            {/* Back + user info */}
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => setSelectedUser(null)} className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-all active:scale-95 flex-shrink-0">
+                                    <Icon name="arrow-left" className="text-sm" />
+                                </button>
+                                <div className="flex items-center gap-2.5 flex-1 min-w-0 p-2 bg-teal-50 rounded-xl border border-teal-100">
+                                    <div className="w-8 h-8 rounded-lg bg-teal-500 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                        {selectedUser.profilePhoto ? <img src={selectedUser.profilePhoto} alt="" className="w-full h-full object-cover" /> : <span className="font-black text-white text-xs">{(selectedUser.namaLengkap||'?').charAt(0).toUpperCase()}</span>}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="font-bold text-teal-900 text-sm truncate">{selectedUser.namaLengkap}</p>
+                                        <p className="text-[10px] text-teal-600">@{selectedUser.username}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {loadingAccess && <div className="text-center py-6 text-slate-400 text-sm">Memuat akses...</div>}
+
+                            {!loadingAccess && (
+                                <>
+                                    {/* Toggle akses semua / terbatas */}
+                                    <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-3">
+                                        <p className="font-bold text-slate-700 text-xs">Mode Akses Toko</p>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => { setIsAllStores(true); setAllowedStores(realProfiles.map(p => p.id)); }}
+                                                className={`flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all ${isAllStores ? 'bg-teal-500 text-white border-teal-500 shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'}`}>
+                                                <Icon name="store" /> Semua Toko
+                                            </button>
+                                            <button onClick={() => { setIsAllStores(false); if (allowedStores.length === realProfiles.length) setAllowedStores([]); }}
+                                                className={`flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all ${!isAllStores ? 'bg-amber-500 text-white border-amber-500 shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:border-amber-300'}`}>
+                                                <Icon name="lock" /> Terbatas
+                                            </button>
+                                        </div>
+                                        {isAllStores && <p className="text-[10px] text-teal-700 bg-teal-50 px-3 py-2 rounded-lg font-medium"><Icon name="circle-check" className="mr-1" />Karyawan ini bisa mengakses semua toko yang tersedia.</p>}
+                                        {!isAllStores && <p className="text-[10px] text-amber-700 bg-amber-50 px-3 py-2 rounded-lg font-medium"><Icon name="circle-exclamation" className="mr-1" />Pilih toko yang boleh diakses. Toko yang tidak dipilih akan disembunyikan.</p>}
+                                    </div>
+
+                                    {/* Daftar toko (hanya tampil jika mode terbatas) */}
+                                    {!isAllStores && (
+                                        <div className="space-y-2">
+                                            <p className="text-xs font-bold text-slate-600 px-1">Pilih Toko yang Dapat Diakses:</p>
+                                            {realProfiles.map(profile => {
+                                                const checked = allowedStores.includes(profile.id);
+                                                return (
+                                                    <div key={profile.id} onClick={() => toggleStore(profile.id)}
+                                                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${checked ? 'bg-teal-50 border-teal-300' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
+                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${checked ? 'bg-teal-500' : 'bg-slate-100'}`}>
+                                                            <Icon name="shop" className={`text-sm ${checked ? 'text-white' : 'text-slate-400'}`} />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className={`font-bold text-sm ${checked ? 'text-teal-900' : 'text-slate-600'}`}>{profile.name}</p>
+                                                            {profile.address && <p className="text-[10px] text-slate-400 truncate">{profile.address}</p>}
+                                                        </div>
+                                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${checked ? 'bg-teal-500 border-teal-500' : 'border-slate-300'}`}>
+                                                            {checked && <Icon name="check" className="text-white text-[9px]" />}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                            {allowedStores.length === 0 && (
+                                                <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
+                                                    <p className="text-xs text-red-700 font-semibold"><Icon name="triangle-exclamation" className="mr-1" />Minimal 1 toko harus dipilih. Karyawan tidak bisa login jika tidak ada toko yang diizinkan.</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Tombol simpan & reset */}
+                                    <div className="flex gap-2 pt-1">
+                                        <button onClick={handleReset} disabled={saving}
+                                            className="px-4 py-3 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold hover:bg-slate-200 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-1.5">
+                                            <Icon name="rotate-left" /> Reset
+                                        </button>
+                                        <button onClick={handleSave} disabled={saving || (!isAllStores && allowedStores.length === 0)}
+                                            className="flex-1 py-3 rounded-xl bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold shadow-md transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5">
+                                            {saving
+                                                ? <><span className="typing-dot bg-white"></span><span className="typing-dot bg-white"></span><span className="typing-dot bg-white"></span></>
+                                                : <><Icon name="floppy-disk" /> Simpan Akses Toko</>
+                                            }
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+        // ==================== END AKSES TOKO TAB ====================
+
         // ==================== OWNER PANEL ====================
         const OwnerPanel = ({ onBack, localSettings, handleChange, onSave, savingSettings, ownerSettings, onSaveSettings, ownerAuthSession }) => {
             const [users, setUsers] = useState([]);
             const [loadingUsers, setLoadingUsers] = useState(true);
-            const [activeTab, setActiveTab] = useState('karyawan'); // 'karyawan' | 'akses_menu' | 'sidebar' | 'pengaturan_menu' | 'kode'
+            const [activeTab, setActiveTab] = useState('karyawan'); // 'karyawan' | 'akses_menu' | 'akses_toko' | 'sidebar' | 'pengaturan_menu' | 'kode'
             const [confirmModal, setConfirmModal] = useState({ show: false, type: '', user: null });
             const [actionLoading, setActionLoading] = useState(false);
             const [toast, setToast] = useState('');
@@ -1066,6 +1290,7 @@
                     <div className="flex gap-1 p-4 pb-0 flex-wrap">
                         <button onClick={() => setActiveTab('karyawan')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab==='karyawan' ? 'bg-amber-500 text-white shadow-md' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}><Icon name="users" className="mr-1.5" />Karyawan ({filteredUsers.length})</button>
                         <button onClick={() => setActiveTab('akses_menu')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab==='akses_menu' ? 'bg-amber-500 text-white shadow-md' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}><Icon name="sliders" className="mr-1.5" />Akses Menu</button>
+                        <button onClick={() => setActiveTab('akses_toko')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab==='akses_toko' ? 'bg-teal-500 text-white shadow-md' : 'bg-teal-50 text-teal-700 hover:bg-teal-100'}`}><Icon name="shop" className="mr-1.5" />Akses Toko</button>
                         <button onClick={() => setActiveTab('sidebar')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab==='sidebar' ? 'bg-amber-500 text-white shadow-md' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}><Icon name="sidebar" className="mr-1.5" />Sidebar</button>
                         <button onClick={() => setActiveTab('pengaturan_menu')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab==='pengaturan_menu' ? 'bg-amber-500 text-white shadow-md' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}><Icon name="gears" className="mr-1.5" />Menu Pengaturan</button>
                         <button onClick={() => setActiveTab('kode')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab==='kode' ? 'bg-amber-500 text-white shadow-md' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}><Icon name="key" className="mr-1.5" />Ubah Kode</button>
@@ -1144,6 +1369,16 @@
                             onSaveGlobal={onSave}
                             savingSettings={savingSettings}
                             menuAccessList={menuAccessList}
+                            showToast={showToast}
+                        />
+                    )}
+
+                    {/* ---- TAB: AKSES TOKO ---- */}
+                    {activeTab === 'akses_toko' && (
+                        <AksesTokoTab
+                            users={users.filter(u => !isOwnerEmail(u.email))}
+                            loadingUsers={loadingUsers}
+                            storeProfiles={localSettings.storeProfiles || [{ id: 'default', name: 'Toko Utama' }]}
                             showToast={showToast}
                         />
                     )}
@@ -7584,15 +7819,12 @@
 
             return (
                 <div className="space-y-6 fade-in pb-24 md:pb-0">
-                    <div className="rounded-3xl overflow-hidden shadow-2xl border border-slate-700 bg-black" style={{aspectRatio:'16/9',width:'100%'}}>
-                        <video
-                            src="tokohusna.mp4"
-                            autoPlay
-                            loop
-                            muted
-                            playsInline
-                            style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}
-                        />
+                    <div className="bg-gradient-to-r from-night-900 to-sky-900 rounded-3xl p-5 md:p-6 text-white relative overflow-hidden shadow-2xl border border-slate-700 group">
+                        <div className="absolute right-0 top-0 w-48 h-48 bg-gold-400 opacity-10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                        <div className="relative z-10 flex items-center justify-between">
+                            <div><h3 className="font-arab text-2xl md:text-3xl text-gold-400 mb-1">عيد الفطر مبارك</h3><p className="text-xs md:text-sm text-slate-300 font-medium opacity-90">Selamat Hari Raya Idul Fitri — Minal Aidin Wal Faizin 🌙✨</p><div className="mt-3 inline-flex items-center gap-2 bg-green-500/20 px-3 py-1 rounded-full backdrop-blur-sm border border-green-500/30"><div className="w-2 h-2 rounded-full bg-green-50 animate-pulse"></div><span className="text-[10px] font-bold tracking-wide text-green-300">ONLINE (FIREBASE)</span></div></div>
+                            <div className="text-4xl text-gold-500/80 animate-pulse"><Icon name="star" /></div>
+                        </div>
                     </div>
                     
                     <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 relative z-10">
@@ -10787,6 +11019,7 @@
             const [notifCounts, setNotifCounts] = useState({ pendingCarts: 0, activeCarts: 0 });
             const [authSession, setAuthSession] = useState(() => getStoredSession());
             const [personalMenuAccess, setPersonalMenuAccess] = useState(null); // null = follow global
+            const [allowedStores, setAllowedStores] = useState(null); // null = semua toko boleh diakses
             const [showNotifPanel, setShowNotifPanel] = useState(false);
             const [readChangelogs, setReadChangelogs] = useState(() => {
                 try { return JSON.parse(localStorage.getItem(CHANGELOG_STORAGE_KEY) || '[]'); } catch { return []; }
@@ -11013,10 +11246,26 @@
                             return;
                         }
                         setPersonalMenuAccess(data.menuAccess || null);
+                        setAllowedStores(data.allowedStores || null);
                     }
                 });
                 return () => unsub();
             }, [authSession?.id, user]);
+
+            // Jika toko aktif tidak termasuk dalam allowedStores user, pindahkan ke toko pertama yang diizinkan
+            useEffect(() => {
+                if (!allowedStores || allowedStores.length === 0) return;
+                if (isOwnerEmail(authSession?.email)) return;
+                const allProfiles = settingsData.storeProfiles || [{ id: 'default' }];
+                const allowed = allProfiles.filter(p => allowedStores.includes(p.id));
+                if (allowed.length === 0) return;
+                const currentOk = allowed.find(p => p.id === activeStoreId);
+                if (!currentOk) {
+                    setActiveStoreId(allowed[0].id);
+                    localStorage.setItem('activeStoreId', allowed[0].id);
+                    showToast(`Toko diganti ke "${allowed[0].name}" sesuai hak akses`);
+                }
+            }, [allowedStores, settingsData.storeProfiles]);
 
             useEffect(() => {
                 const initAuth = async () => { if (window.initialAuthToken) { await window.signInWithCustomToken(window.auth, window.initialAuthToken); } else { await window.signInAnonymously(window.auth); } };
@@ -11259,6 +11508,14 @@
             
             const isOwner = isOwnerEmail(authSession?.email);
 
+            // Daftar toko yang boleh diakses user (owner selalu bisa akses semua)
+            const allStoreProfiles = settingsData.storeProfiles || [{ id: 'default', name: settingsData.storeName || APP_NAME }];
+            const visibleStoreProfiles = (() => {
+                if (isOwner || !allowedStores || allowedStores.length === 0) return allStoreProfiles;
+                const filtered = allStoreProfiles.filter(p => allowedStores.includes(p.id));
+                return filtered.length > 0 ? filtered : allStoreProfiles.slice(0, 1);
+            })();
+
             // Resolve a menu key: owner always true, else user-specific override → global setting
             const menuOn = (key, globalVal) => {
                 if (isOwner) return true;
@@ -11358,12 +11615,12 @@
                                             <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden fade-in z-[60]">
                                                 <div className="p-2 border-b border-slate-50 bg-slate-50/50"><span className="text-[10px] font-bold text-slate-500 uppercase px-2">Pilih Profil Toko</span></div>
                                                 <div className="max-h-48 overflow-y-auto">
-                                                    {(settingsData.storeProfiles || [{id:'default', name: APP_NAME}]).map(profile => (
+                                                    {visibleStoreProfiles.map(profile => (
                                                         <button key={profile.id} onClick={() => handleSwitchStore(profile.id)} className={`w-full text-left px-4 py-3 text-sm font-bold flex items-center justify-between hover:bg-sky-50 transition-colors ${activeStoreId === profile.id ? 'text-sky-600 bg-sky-50' : 'text-slate-700'}`}>
                                                             <span className="truncate">{profile.name}</span>{activeStoreId === profile.id && <Icon name="check" className="text-xs" />}
                                                         </button>
                                                     ))}
-                                                    {(settingsData.storeProfiles && settingsData.storeProfiles.length > 1) && (
+                                                    {isOwner && (visibleStoreProfiles.length > 1) && (
                                                         <button onClick={() => handleSwitchStore('all_stores')} className={`w-full text-left px-4 py-3 text-sm font-bold flex items-center justify-between hover:bg-indigo-50 transition-colors border-t border-slate-100 ${activeStoreId === 'all_stores' ? 'text-indigo-600 bg-indigo-50' : 'text-slate-700'}`}>
                                                             <span className="truncate">Semua Toko (Gabungan)</span>{activeStoreId === 'all_stores' && <Icon name="check" className="text-xs" />}
                                                         </button>
