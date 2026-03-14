@@ -10461,15 +10461,15 @@
                             <div className="p-4 space-y-3">
                                 {/* Pilih Nama — Card Picker */}
                                 <div>
-                                    <label className="text-[11px] font-bold text-slate-600 block mb-2">👤 Pilih Nama</label>
+                                    <label className="text-[11px] font-bold text-slate-600 block mb-1.5">👤 Pilih Nama</label>
                                     {/* Trigger Button */}
                                     <button
                                         onClick={() => { setShowNamePicker(true); setNameSearch(''); }}
-                                        className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl border-2 transition-all text-left ${absensiKaryawan ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 bg-slate-50 hover:border-emerald-300 hover:bg-emerald-50/50'}`}
+                                        className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-2 transition-all text-left ${absensiKaryawan ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 bg-white hover:border-emerald-300'}`}
                                     >
                                         {selectedUser ? (
                                             <>
-                                                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-extrabold text-sm flex-shrink-0 overflow-hidden shadow-sm"
+                                                <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-extrabold text-sm flex-shrink-0 overflow-hidden shadow-sm"
                                                     style={{background: selectedUser.profilePhoto ? 'transparent' : getAvatarColor(selectedUser.namaLengkap||selectedUser.username)}}>
                                                     {selectedUser.profilePhoto
                                                         ? <img src={selectedUser.profilePhoto} alt="" className="w-full h-full object-cover" />
@@ -10487,54 +10487,53 @@
                                             </>
                                         ) : (
                                             <>
-                                                <div className="w-9 h-9 rounded-xl bg-slate-200 flex items-center justify-center text-slate-400 flex-shrink-0">
+                                                <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 flex-shrink-0">
                                                     <Icon name="user" className="text-sm" />
                                                 </div>
-                                                <p className="flex-1 text-slate-400 text-sm font-medium">— Ketuk untuk pilih nama —</p>
+                                                <p className="flex-1 text-slate-400 text-sm">— Ketuk untuk pilih nama —</p>
                                                 <Icon name="chevron-down" className="text-slate-300 text-xs flex-shrink-0" />
                                             </>
                                         )}
                                     </button>
-                                    {usersList.length === 0 && <p className="text-[10px] text-amber-500 mt-1.5 flex items-center gap-1"><Icon name="triangle-exclamation" /> Belum ada pengguna terdaftar di Pengguna Akun</p>}
+                                    {usersList.length === 0 && <p className="text-[10px] text-amber-500 mt-1 flex items-center gap-1"><Icon name="triangle-exclamation" /> Belum ada pengguna terdaftar</p>}
                                 </div>
 
                                 {/* ===== MODAL PILIH NAMA ===== */}
                                 {showNamePicker && (
-                                    <div className="fixed inset-0 z-[70] flex items-end justify-center" style={{background:'rgba(0,0,0,0.5)'}}>
-                                        <div className="bg-white w-full max-w-lg rounded-t-3xl shadow-2xl slide-up flex flex-col" style={{maxHeight:'80vh'}}>
+                                    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.5)'}} onClick={()=>setShowNamePicker(false)}>
+                                        <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl flex flex-col" style={{maxHeight:'70vh'}} onClick={e=>e.stopPropagation()}>
                                             {/* Header */}
-                                            <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-slate-100 flex-shrink-0">
-                                                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                                                    <Icon name="users" className="text-sm" />
+                                            <div className="flex items-center gap-2.5 px-4 pt-4 pb-2.5 border-b border-slate-100 flex-shrink-0">
+                                                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                                                    <Icon name="users" className="text-xs" />
                                                 </div>
                                                 <div className="flex-1">
                                                     <p className="font-extrabold text-slate-800 text-sm">Pilih Nama</p>
-                                                    <p className="text-[10px] text-slate-400">{sortedUsersList.length} pengguna terdaftar</p>
+                                                    <p className="text-[10px] text-slate-400">{sortedUsersList.length} pengguna</p>
                                                 </div>
-                                                <button onClick={()=>setShowNamePicker(false)} className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-all">
-                                                    <Icon name="xmark" className="text-xs" />
+                                                <button onClick={()=>setShowNamePicker(false)} className="w-7 h-7 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-all text-xs">
+                                                    <Icon name="xmark" />
                                                 </button>
                                             </div>
                                             {/* Search */}
-                                            <div className="px-4 py-2.5 flex-shrink-0">
+                                            <div className="px-3 pt-2.5 pb-1.5 flex-shrink-0">
                                                 <div className="flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2">
-                                                    <Icon name="magnifying-glass" className="text-slate-400 text-xs" />
+                                                    <Icon name="magnifying-glass" className="text-slate-400 text-xs flex-shrink-0" />
                                                     <input
-                                                        autoFocus
                                                         value={nameSearch}
                                                         onChange={e=>setNameSearch(e.target.value)}
                                                         placeholder="Cari nama..."
                                                         className="flex-1 bg-transparent outline-none text-sm text-slate-700 placeholder:text-slate-300 font-medium"
                                                     />
-                                                    {nameSearch && <button onClick={()=>setNameSearch('')} className="text-slate-400 hover:text-slate-600"><Icon name="xmark" className="text-xs" /></button>}
+                                                    {nameSearch && <button onClick={()=>setNameSearch('')} className="text-slate-400 hover:text-slate-600 flex-shrink-0"><Icon name="xmark" className="text-xs" /></button>}
                                                 </div>
                                             </div>
                                             {/* List */}
-                                            <div className="overflow-y-auto flex-1 px-3 pb-4 space-y-1.5">
+                                            <div className="overflow-y-auto flex-1 px-3 pb-3">
                                                 {filteredUsersList.length === 0 && (
-                                                    <div className="flex flex-col items-center justify-center py-10 gap-2">
-                                                        <span className="text-3xl">🔍</span>
-                                                        <p className="text-sm text-slate-400 font-medium">Nama tidak ditemukan</p>
+                                                    <div className="flex flex-col items-center justify-center py-8 gap-2">
+                                                        <span className="text-2xl">🔍</span>
+                                                        <p className="text-xs text-slate-400">Nama tidak ditemukan</p>
                                                     </div>
                                                 )}
                                                 {filteredUsersList.map((u, idx) => {
@@ -10542,56 +10541,46 @@
                                                     const isSelected = absensiKaryawan === u.id;
                                                     const initials = (u.namaLengkap||u.username||'?').charAt(0).toUpperCase();
                                                     const avatarBg = getAvatarColor(u.namaLengkap||u.username);
-                                                    const isFirst = idx === 0;
+                                                    const prevIsOwner = idx > 0 && isOwnerEmail(filteredUsersList[idx-1].email);
+                                                    const showOwnerLabel = idx === 0 && isOwnerU;
+                                                    const showStaffLabel = isOwnerU ? false : (idx === 0 || prevIsOwner);
                                                     return (
                                                         <React.Fragment key={u.id}>
-                                                            {isFirst && isOwnerU && (
-                                                                <p className="text-[10px] font-extrabold text-amber-600 uppercase tracking-wide px-2 pt-1 pb-0.5">👑 Pemilik</p>
+                                                            {showOwnerLabel && (
+                                                                <p className="text-[9px] font-extrabold text-amber-500 uppercase tracking-widest px-1 pt-2 pb-1">👑 Owner</p>
                                                             )}
-                                                            {isFirst && !isOwnerU && (
-                                                                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wide px-2 pt-1 pb-0.5">Karyawan</p>
-                                                            )}
-                                                            {idx > 0 && !isOwnerEmail(filteredUsersList[idx-1].email) && isOwnerU === false && idx === filteredUsersList.findIndex(x=>!isOwnerEmail(x.email)) && (
-                                                                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wide px-2 pt-2 pb-0.5">Karyawan</p>
-                                                            )}
-                                                            {idx > 0 && isOwnerEmail(filteredUsersList[idx-1].email) && !isOwnerU && (
-                                                                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wide px-2 pt-2 pb-0.5">Karyawan</p>
+                                                            {showStaffLabel && (
+                                                                <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest px-1 pt-2 pb-1">Karyawan</p>
                                                             )}
                                                             <button
                                                                 onClick={() => { setAbsensiKaryawan(u.id); setShowNamePicker(false); setNameSearch(''); }}
-                                                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl border-2 transition-all text-left active:scale-[0.98] ${
+                                                                className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl border transition-all text-left active:scale-[0.98] mb-1 ${
                                                                     isSelected
-                                                                        ? 'border-emerald-400 bg-emerald-50 shadow-sm'
+                                                                        ? 'border-emerald-400 bg-emerald-50'
                                                                         : isOwnerU
-                                                                            ? 'border-amber-200 bg-amber-50/60 hover:bg-amber-50 hover:border-amber-300'
-                                                                            : 'border-transparent bg-slate-50 hover:bg-slate-100 hover:border-slate-200'
+                                                                            ? 'border-amber-200 bg-amber-50/70 hover:bg-amber-100'
+                                                                            : 'border-transparent bg-slate-50 hover:bg-slate-100'
                                                                 }`}
                                                             >
                                                                 {/* Avatar */}
-                                                                <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-extrabold text-base flex-shrink-0 shadow-sm overflow-hidden relative"
+                                                                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-extrabold text-sm flex-shrink-0 overflow-hidden relative shadow-sm"
                                                                     style={{background: u.profilePhoto ? 'transparent' : avatarBg}}>
                                                                     {u.profilePhoto
                                                                         ? <img src={u.profilePhoto} alt="" className="w-full h-full object-cover" />
                                                                         : initials
                                                                     }
-                                                                    {isOwnerU && (
-                                                                        <span className="absolute -top-0.5 -right-0.5 text-[10px] leading-none">👑</span>
-                                                                    )}
+                                                                    {isOwnerU && <span className="absolute -top-0.5 -right-0.5 text-[9px] leading-none">👑</span>}
                                                                 </div>
                                                                 {/* Info */}
                                                                 <div className="flex-1 min-w-0">
-                                                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                                                        <p className={`font-extrabold text-sm truncate ${isOwnerU ? 'text-amber-800' : 'text-slate-800'}`}>
-                                                                            {u.namaLengkap || u.username}
-                                                                        </p>
-                                                                        {isOwnerU && <span className="text-[9px] font-black bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded-full flex-shrink-0">Owner</span>}
-                                                                    </div>
-                                                                    <p className="text-[10px] text-slate-400 truncate">{u.jabatan || (isOwnerU ? 'Pemilik Toko' : 'Karyawan')} {u.username ? `· @${u.username}` : ''}</p>
+                                                                    <p className={`font-extrabold text-xs truncate ${isOwnerU ? 'text-amber-800' : 'text-slate-800'}`}>
+                                                                        {u.namaLengkap || u.username}
+                                                                    </p>
+                                                                    <p className="text-[10px] text-slate-400 truncate">{u.jabatan || (isOwnerU ? 'Pemilik Toko' : 'Karyawan')}</p>
                                                                 </div>
-                                                                {/* Check */}
                                                                 {isSelected && (
-                                                                    <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0">
-                                                                        <Icon name="check" className="text-white text-[10px]" />
+                                                                    <div className="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                                                        <Icon name="check" className="text-white" style={{fontSize:'8px'}} />
                                                                     </div>
                                                                 )}
                                                             </button>
