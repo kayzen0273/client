@@ -10187,7 +10187,10 @@
                 if (!tgl) return '-';
                 const [y,m,d] = tgl.split('-');
                 const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-                return `${d} ${months[parseInt(m)-1]} ${y}`;
+                const days = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+                const dateObj = new Date(parseInt(y), parseInt(m)-1, parseInt(d));
+                const dayName = days[dateObj.getDay()];
+                return `${dayName}, ${d} ${months[parseInt(m)-1]} ${y}`;
             };
             const shiftColor = { pagi: {bg:'#FFF9C4',text:'#7B6200',border:'#F9A825'}, siang: {bg:'#B2EBF2',text:'#006064',border:'#00ACC1'}, libur: {bg:'#F1F5F9',text:'#94A3B8',border:'#E2E8F0'} };
             const filteredAbsensi = filterAbsensiDate ? absensiList.filter(a => a.tanggal === filterAbsensiDate) : absensiList;
@@ -10453,7 +10456,7 @@
                                 <div>
                                     <label className="text-[11px] font-bold text-slate-600 block mb-1">⏰ Shift</label>
                                     <div className="flex gap-2">
-                                        {[{id:'pagi',label:'Pagi',jam:'08:00–14:00'},{id:'siang',label:'Siang',jam:'14:00–21:00'},{id:'libur',label:'Libur',jam:'—'}].map(s => (
+                                        {[{id:'pagi',label:'Pagi',jam:'08:00–14:00'},{id:'siang',label:'Siang',jam:'14:00–21:00'}].map(s => (
                                             <button key={s.id} onClick={()=>setAbsensiShift(s.id)}
                                                 className={`flex-1 py-2.5 rounded-xl text-[11px] font-extrabold border-2 transition-all ${absensiShift===s.id ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'}`}>
                                                 {s.label}
