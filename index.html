@@ -9939,18 +9939,22 @@
         // =================== JADWAL SHIFT VIEW (v2 - Pagi/Siang per Lokasi) ===================
         const JadwalShiftView = ({ user, showToast, readOnly, currentProfile, settings, isOwner, authSession }) => {
             const HARI = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
-            const SHIFTS = [
-                { id: 'pagi',  label: 'Pagi',  jam: '08:00 – 14:00', bg: '#FFF176', text: '#5D4037', border: '#F9A825' },
-                { id: 'siang', label: 'Siang', jam: '14:00 – 21:00', bg: '#80DEEA', text: '#006064', border: '#00ACC1' },
-                { id: 'libur', label: 'Libur', jam: '—',             bg: '#F8FAFC', text: '#94a3b8', border: '#e2e8f0' },
+            const DEFAULT_SHIFTS = [
+                { id: 'pagi',  label: 'Pagi',  jamMulai: '08:00', jamSelesai: '14:00', bg: '#FFF176', text: '#5D4037', border: '#F9A825' },
+                { id: 'siang', label: 'Siang', jamMulai: '14:00', jamSelesai: '21:00', bg: '#80DEEA', text: '#006064', border: '#00ACC1' },
+                { id: 'libur', label: 'Libur', jamMulai: '',      jamSelesai: '',      bg: '#F8FAFC', text: '#94a3b8', border: '#e2e8f0' },
             ];
+            const SHIFTS = DEFAULT_SHIFTS.map(s => {
+                const cfg = shiftConfig?.[s.id];
+                return { ...s, jamMulai: cfg?.jamMulai ?? s.jamMulai, jamSelesai: cfg?.jamSelesai ?? s.jamSelesai };
+            });
 
             const [weekOffset, setWeekOffset]   = useState(0);
             const [jadwal, setJadwal]            = useState({});
             const [karyawanList, setKaryawanList]= useState([]);
             const [lokasiList, setLokasiList]    = useState([]);
             const [loadingData, setLoadingData]  = useState(true);
-            const [pickerTarget, setPickerTarget]= useState(null); // {dayIdx, shiftId, lokasiId}
+            const [pickerTarget, setPickerTarget]= useState(null); // {dayIdx, shiftId, lokasiId, slotIdx}
             const [pickerSearch, setPickerSearch]= useState('');
             // Modals karyawan
             const [modalKaryawan, setModalKaryawan] = useState(false);
@@ -9981,6 +9985,10 @@
             const [confirmDelOne, setConfirmDelOne]     = useState(null); // absensi doc id
             const [lightboxAbsensi, setLightboxAbsensi] = useState(null);
             const [filterAbsensiDate, setFilterAbsensiDate] = useState('');
+            // ---- Shift Config states ----
+            const [shiftConfig, setShiftConfig]       = useState(null);
+            const [modalShift, setModalShift]         = useState(false);
+            const [editShiftRow, setEditShiftRow]     = useState(null); // {id, label, jamMulai, jamSelesai}
             // ---- Lokasi states ----
             const [locationStatus, setLocationStatus]   = useState('idle'); // 'idle' | 'requesting' | 'granted' | 'denied'
             const [locationData, setLocationData]       = useState(null);   // {lat, lng, accuracy}
@@ -10015,6 +10023,7 @@
             const colLokasi   = () => window.collection(window.db,'artifacts',window.appId,'public','data','shift_lokasi');
             const colJadwal   = () => window.collection(window.db,'artifacts',window.appId,'public','data','shift_jadwal');
             const colAbsensi  = () => window.collection(window.db,'artifacts',window.appId,'public','data','shift_absensi');
+            const docShiftCfg = () => window.doc(window.db,'artifacts',window.appId,'public','data','shift_config','default');
 
             useEffect(() => {
                 if (!user) return;
@@ -10026,6 +10035,13 @@
                 if (!user) return;
                 const q = window.query(colLokasi(), window.orderBy('createdAt','asc'));
                 return window.onSnapshot(q, snap => setLokasiList(snap.docs.map(d=>({id:d.id,...d.data()}))));
+            }, [user]);
+
+            useEffect(() => {
+                if (!user) return;
+                return window.onSnapshot(docShiftCfg(), snap => {
+                    setShiftConfig(snap.exists() ? snap.data() : null);
+                });
             }, [user]);
 
             useEffect(() => {
@@ -10049,7 +10065,12 @@
 
             const weekJadwal = jadwal[weekKey] || {};
             const cellKey    = (dayIdx, shiftId, lokasiId) => `${dayIdx}_${shiftId}_${lokasiId}`;
-            const getCell    = (dayIdx, shiftId, lokasiId) => weekJadwal[cellKey(dayIdx,shiftId,lokasiId)] || null;
+            const getCell    = (dayIdx, shiftId, lokasiId) => {
+                const v = weekJadwal[cellKey(dayIdx,shiftId,lokasiId)];
+                if (!v) return [];
+                if (Array.isArray(v)) return v.filter(Boolean);
+                return [v]; // backward compat: single string → array
+            };
             const getKaryawan= (id) => karyawanList.find(k=>k.id===id);
 
             const setCell = async (dayIdx, shiftId, lokasiId, karyawanId) => {
@@ -10057,7 +10078,21 @@
                 const ref = window.doc(colJadwal(), weekKey);
                 const k   = cellKey(dayIdx, shiftId, lokasiId);
                 try {
-                    await window.setDoc(ref, { [k]: karyawanId || null, updatedAt: window.serverTimestamp() }, {merge:true});
+                    await window.setDoc(ref, { [k]: karyawanId ? [karyawanId] : null, updatedAt: window.serverTimestamp() }, {merge:true});
+                } catch(e) { showToast('Gagal menyimpan','error'); }
+                setPickerTarget(null);
+            };
+
+            const setCellSlot = async (dayIdx, shiftId, lokasiId, slotIdx, karyawanId) => {
+                if (readOnly) { showToast('Tidak ada akses edit','error'); return; }
+                const ref = window.doc(colJadwal(), weekKey);
+                const k   = cellKey(dayIdx, shiftId, lokasiId);
+                const current = [...getCell(dayIdx, shiftId, lokasiId)];
+                while (current.length <= slotIdx) current.push(null);
+                current[slotIdx] = karyawanId || null;
+                const cleaned = current.filter(Boolean);
+                try {
+                    await window.setDoc(ref, { [k]: cleaned.length ? cleaned : null, updatedAt: window.serverTimestamp() }, {merge:true});
                 } catch(e) { showToast('Gagal menyimpan','error'); }
                 setPickerTarget(null);
             };
@@ -10092,13 +10127,23 @@
                 await window.deleteDoc(window.doc(colLokasi(),id)); setDelLokasi(null); showToast('Lokasi dihapus');
             };
 
+            /* ---------- Save Shift Config ---------- */
+            const saveShiftConfig = async (id, jamMulai, jamSelesai) => {
+                try {
+                    await window.setDoc(docShiftCfg(), { [id]: { jamMulai: jamMulai.trim(), jamSelesai: jamSelesai.trim() }, updatedAt: window.serverTimestamp() }, {merge:true});
+                    setEditShiftRow(null);
+                    showToast('✅ Jam shift disimpan');
+                } catch(e) { showToast('Gagal menyimpan','error'); }
+            };
+
             /* ---------- Rekap ---------- */
             const getRekapKaryawan = (k) => {
                 const counts = {pagi:0, siang:0, libur:0, total:0};
                 for (let d=0; d<7; d++) {
                     lokasiList.forEach(loc => {
                         SHIFTS.forEach(s => {
-                            if (getCell(d,s.id,loc.id) === k.id) {
+                            const ids = getCell(d,s.id,loc.id);
+                            if (ids.includes(k.id)) {
                                 counts[s.id]++;
                                 if (s.id !== 'libur') counts.total++;
                             }
@@ -10275,6 +10320,9 @@
                         <div className="flex gap-1.5 flex-wrap">
                             {activeView === 'jadwal' && !readOnly && (
                                 <>
+                                    <button onClick={() => setModalShift(true)} className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold rounded-lg shadow transition-all active:scale-95">
+                                        <Icon name="clock" /> Shift
+                                    </button>
                                     <button onClick={() => setModalLokasi(true)} className="flex items-center gap-1 px-2.5 py-1.5 bg-sky-500 hover:bg-sky-600 text-white text-[11px] font-bold rounded-lg shadow transition-all active:scale-95">
                                         <Icon name="shop" /> Lokasi
                                     </button>
@@ -10388,61 +10436,74 @@
                                                         )}
                                                         {/* SHIFT LABEL */}
                                                         <td className="px-1.5 py-1 text-center font-extrabold border border-slate-200" style={{background: shift.id==='libur' ? '#f1f5f9' : shift.bg, color: shift.id==='libur' ? '#94a3b8' : shift.text, fontSize:'10px'}}>
-                                                            {shift.label}
+                                                            <div>{shift.label}</div>
+                                                            {shift.id !== 'libur' && (
+                                                                <div style={{fontSize:'8px', opacity:0.75, fontWeight:600}}>{shift.jamMulai}–{shift.jamSelesai}</div>
+                                                            )}
                                                         </td>
                                                         {/* LOKASI CELLS */}
                                                         {lokasiList.map(loc => {
-                                                            const kId  = getCell(dayIdx, shift.id, loc.id);
-                                                            const k    = kId ? getKaryawan(kId) : null;
-                                                            const isT  = pickerTarget?.dayIdx===dayIdx && pickerTarget?.shiftId===shift.id && pickerTarget?.lokasiId===loc.id;
+                                                            const ids  = getCell(dayIdx, shift.id, loc.id);
                                                             const isLibur = shift.id === 'libur';
                                                             return (
                                                                 <td key={loc.id} className="px-1 py-0.5 text-center border border-slate-200 relative" style={{background: isLibur ? '#f8fafc' : shift.bg + '60'}}>
-                                                                    <button
-                                                                        disabled={readOnly}
-                                                                        onClick={()=>{ setPickerTarget(isT?null:{dayIdx,shiftId:shift.id,lokasiId:loc.id}); setPickerSearch(''); }}
-                                                                        className={`w-full rounded-md py-1 px-1 font-bold transition-all ${!readOnly ? 'cursor-pointer hover:ring-2 ring-violet-400' : ''} ${isT ? 'ring-2 ring-violet-500 ring-offset-1' : ''}`}
-                                                                        style={{
-                                                                            fontSize: '11px',
-                                                                            color: k ? (isLibur ? '#dc2626' : shift.text) : '#d1d5db',
-                                                                            background: k ? (isLibur ? '#fee2e2' : shift.bg) : 'transparent',
-                                                                            minHeight:'24px'
-                                                                        }}
-                                                                    >
-                                                                        {k ? `${k.nama}${isLibur ? ' (L)' : ''}` : <span style={{color:'#e2e8f0'}}>—</span>}
-                                                                    </button>
-                                                                    {/* PICKER DROPDOWN */}
-                                                                    {isT && (
-                                                                        <div className="absolute z-40 top-full left-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2 w-48" onClick={e=>e.stopPropagation()}>
-                                                                            <input
-                                                                                autoFocus
-                                                                                value={pickerSearch}
-                                                                                onChange={e=>setPickerSearch(e.target.value)}
-                                                                                placeholder="Cari karyawan..."
-                                                                                className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 text-[11px] outline-none focus:border-violet-400 mb-1.5"
-                                                                            />
-                                                                            <div className="max-h-44 overflow-y-auto">
-                                                                                {karyawanList
-                                                                                    .filter(k => !pickerSearch || k.nama.toLowerCase().includes(pickerSearch.toLowerCase()))
-                                                                                    .map(k => (
-                                                                                    <button key={k.id} onClick={()=>setCell(dayIdx,shift.id,loc.id,k.id)}
-                                                                                        className="w-full text-left px-2.5 py-1.5 rounded-xl mb-0.5 text-[12px] font-bold hover:bg-violet-50 hover:text-violet-700 transition-all">
-                                                                                        {k.nama}
-                                                                                        <span className="text-[9px] text-slate-400 font-normal block">{k.jabatan}</span>
-                                                                                    </button>
-                                                                                ))}
-                                                                                {karyawanList.filter(k=>!pickerSearch||k.nama.toLowerCase().includes(pickerSearch.toLowerCase())).length===0 && (
-                                                                                    <p className="text-xs text-slate-400 text-center py-2">Tidak ditemukan</p>
+                                                                    {/* SLOT 0 */}
+                                                                    {[0, 1].map(slotIdx => {
+                                                                        const kId = ids[slotIdx] || null;
+                                                                        const k   = kId ? getKaryawan(kId) : null;
+                                                                        const isT = pickerTarget?.dayIdx===dayIdx && pickerTarget?.shiftId===shift.id && pickerTarget?.lokasiId===loc.id && pickerTarget?.slotIdx===slotIdx;
+                                                                        return (
+                                                                            <div key={slotIdx} className="relative">
+                                                                                <button
+                                                                                    disabled={readOnly}
+                                                                                    onClick={()=>{ setPickerTarget(isT?null:{dayIdx,shiftId:shift.id,lokasiId:loc.id,slotIdx}); setPickerSearch(''); }}
+                                                                                    className={`w-full rounded-md py-0.5 px-1 font-bold transition-all ${!readOnly ? 'cursor-pointer hover:ring-2 ring-violet-400' : ''} ${isT ? 'ring-2 ring-violet-500 ring-offset-1' : ''} ${slotIdx===1 && !k && !ids[0] ? 'opacity-0 pointer-events-none' : ''}`}
+                                                                                    style={{
+                                                                                        fontSize: '10px',
+                                                                                        color: k ? (isLibur ? '#dc2626' : shift.text) : '#bfbfbf',
+                                                                                        background: k ? (isLibur ? '#fee2e2' : shift.bg) : 'transparent',
+                                                                                        minHeight:'20px',
+                                                                                        marginBottom: slotIdx===0 ? '1px' : 0,
+                                                                                    }}
+                                                                                >
+                                                                                    {k ? `${k.nama}${isLibur ? ' (L)' : ''}` : (slotIdx===0 ? <span style={{color:'#e2e8f0'}}>—</span> : <span style={{color:'#c7d2fe',fontSize:'9px'}}>+ orang 2</span>)}
+                                                                                </button>
+                                                                                {/* PICKER DROPDOWN */}
+                                                                                {isT && (
+                                                                                    <div className="absolute z-40 top-full left-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2 w-48" onClick={e=>e.stopPropagation()} style={{minWidth:'180px'}}>
+                                                                                        <div className="text-[10px] font-bold text-slate-400 mb-1.5 px-1">Orang ke-{slotIdx+1}</div>
+                                                                                        <input
+                                                                                            autoFocus
+                                                                                            value={pickerSearch}
+                                                                                            onChange={e=>setPickerSearch(e.target.value)}
+                                                                                            placeholder="Cari karyawan..."
+                                                                                            className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 text-[11px] outline-none focus:border-violet-400 mb-1.5"
+                                                                                        />
+                                                                                        <div className="max-h-44 overflow-y-auto">
+                                                                                            {karyawanList
+                                                                                                .filter(k => !pickerSearch || k.nama.toLowerCase().includes(pickerSearch.toLowerCase()))
+                                                                                                .map(k => (
+                                                                                                <button key={k.id} onClick={()=>setCellSlot(dayIdx,shift.id,loc.id,slotIdx,k.id)}
+                                                                                                    className="w-full text-left px-2.5 py-1.5 rounded-xl mb-0.5 text-[12px] font-bold hover:bg-violet-50 hover:text-violet-700 transition-all">
+                                                                                                    {k.nama}
+                                                                                                    <span className="text-[9px] text-slate-400 font-normal block">{k.jabatan}</span>
+                                                                                                </button>
+                                                                                            ))}
+                                                                                            {karyawanList.filter(k=>!pickerSearch||k.nama.toLowerCase().includes(pickerSearch.toLowerCase())).length===0 && (
+                                                                                                <p className="text-xs text-slate-400 text-center py-2">Tidak ditemukan</p>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        <div className="border-t border-slate-100 mt-1 pt-1">
+                                                                                            <button onClick={()=>setCellSlot(dayIdx,shift.id,loc.id,slotIdx,null)}
+                                                                                                className="w-full text-center px-2.5 py-1.5 rounded-xl text-[11px] text-red-400 font-bold hover:bg-red-50 transition-all">
+                                                                                                <Icon name="eraser" className="mr-1" /> Kosongkan
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    </div>
                                                                                 )}
                                                                             </div>
-                                                                            <div className="border-t border-slate-100 mt-1 pt-1">
-                                                                                <button onClick={()=>setCell(dayIdx,shift.id,loc.id,null)}
-                                                                                    className="w-full text-center px-2.5 py-1.5 rounded-xl text-[11px] text-red-400 font-bold hover:bg-red-50 transition-all">
-                                                                                    <Icon name="eraser" className="mr-1" /> Kosongkan
-                                                                                </button>
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
+                                                                        );
+                                                                    })}
                                                                 </td>
                                                             );
                                                         })}
@@ -10497,11 +10558,11 @@
                                 <div>
                                     <label className="text-[11px] font-bold text-slate-600 block mb-1">⏰ Shift</label>
                                     <div className="flex gap-2">
-                                        {[{id:'pagi',label:'Pagi',jam:'08:00–14:00'},{id:'siang',label:'Siang',jam:'14:00–21:00'}].map(s => (
+                                        {SHIFTS.filter(s=>s.id!=='libur').map(s => (
                                             <button key={s.id} onClick={()=>setAbsensiShift(s.id)}
                                                 className={`flex-1 py-2.5 rounded-xl text-[11px] font-extrabold border-2 transition-all ${absensiShift===s.id ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'}`}>
                                                 {s.label}
-                                                <span className="block text-[9px] font-normal mt-0.5 opacity-70">{s.jam}</span>
+                                                <span className="block text-[9px] font-normal mt-0.5 opacity-70">{s.jamMulai}–{s.jamSelesai}</span>
                                             </button>
                                         ))}
                                     </div>
@@ -10704,6 +10765,72 @@
 
                     {/* OVERLAY tutup picker */}
                     {isOpen && <div className="fixed inset-0 z-30" onClick={()=>setPickerTarget(null)} />}
+
+                    {/* ===== MODAL KELOLA SHIFT (JAM) ===== */}
+                    {modalShift && (
+                        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4" style={{background:'rgba(0,0,0,0.5)'}}>
+                            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-5 slide-up">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-9 h-9 rounded-2xl bg-amber-500 text-white flex items-center justify-center"><Icon name="clock" /></div>
+                                    <div className="flex-1">
+                                        <p className="font-extrabold text-slate-800">Kelola Jam Shift</p>
+                                        <p className="text-[10px] text-slate-400">Edit jam mulai & selesai tiap shift</p>
+                                    </div>
+                                    <button onClick={()=>{ setModalShift(false); setEditShiftRow(null); }} className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center"><Icon name="xmark" /></button>
+                                </div>
+                                <div className="space-y-2">
+                                    {SHIFTS.filter(s=>s.id!=='libur').map(s => (
+                                        <div key={s.id} className="rounded-xl border-2 overflow-hidden" style={{borderColor: s.border}}>
+                                            {editShiftRow?.id === s.id ? (
+                                                <div className="flex items-center gap-2 px-3 py-2.5" style={{background: s.bg + '80'}}>
+                                                    <div className="font-extrabold text-sm w-14 flex-shrink-0" style={{color: s.text}}>{s.label}</div>
+                                                    <div className="flex items-center gap-1.5 flex-1">
+                                                        <input
+                                                            type="time"
+                                                            value={editShiftRow.jamMulai}
+                                                            onChange={e=>setEditShiftRow({...editShiftRow, jamMulai: e.target.value})}
+                                                            className="flex-1 border-2 border-slate-200 focus:border-amber-400 rounded-lg px-2 py-1.5 text-sm outline-none font-bold"
+                                                        />
+                                                        <span className="text-slate-400 font-bold text-xs">–</span>
+                                                        <input
+                                                            type="time"
+                                                            value={editShiftRow.jamSelesai}
+                                                            onChange={e=>setEditShiftRow({...editShiftRow, jamSelesai: e.target.value})}
+                                                            className="flex-1 border-2 border-slate-200 focus:border-amber-400 rounded-lg px-2 py-1.5 text-sm outline-none font-bold"
+                                                        />
+                                                    </div>
+                                                    <button onClick={()=>saveShiftConfig(s.id, editShiftRow.jamMulai, editShiftRow.jamSelesai)}
+                                                        className="w-8 h-8 bg-green-500 hover:bg-green-600 text-white rounded-lg flex items-center justify-center text-sm flex-shrink-0 transition-all active:scale-95">
+                                                        <Icon name="check" />
+                                                    </button>
+                                                    <button onClick={()=>setEditShiftRow(null)}
+                                                        className="w-8 h-8 bg-slate-200 hover:bg-slate-300 text-slate-600 rounded-lg flex items-center justify-center text-sm flex-shrink-0 transition-all">
+                                                        <Icon name="xmark" />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-3 px-3 py-3" style={{background: s.bg + '50'}}>
+                                                    <div className="w-8 h-8 rounded-xl flex items-center justify-center font-extrabold text-xs flex-shrink-0" style={{background: s.bg, color: s.text, border: `2px solid ${s.border}`}}>{s.label.charAt(0)}</div>
+                                                    <div className="flex-1">
+                                                        <p className="font-extrabold text-sm" style={{color: s.text}}>{s.label}</p>
+                                                        <p className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
+                                                            <Icon name="clock" className="text-[10px]" />
+                                                            {s.jamMulai} – {s.jamSelesai}
+                                                        </p>
+                                                    </div>
+                                                    <button onClick={()=>setEditShiftRow({id:s.id, jamMulai:s.jamMulai, jamSelesai:s.jamSelesai})}
+                                                        className="w-8 h-8 bg-amber-50 hover:bg-amber-100 text-amber-500 rounded-lg flex items-center justify-center text-xs transition-all active:scale-95 flex-shrink-0">
+                                                        <Icon name="pen" />
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                                <p className="text-[10px] text-slate-400 mt-3 text-center">Perubahan langsung tersimpan & berlaku untuk semua</p>
+                            </div>
+                        </div>
+                    )}
 
                     {/* ===== MODAL KELOLA KARYAWAN ===== */}
                     {modalKaryawan && (
