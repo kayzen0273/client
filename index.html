@@ -10138,15 +10138,18 @@
             /* ---------- Absensi: Submit ---------- */
             const submitAbsensi = async () => {
                 if (!capturedPhoto) { showToast('Foto selfie wajib diambil!', 'error'); return; }
-                if (!absensiKaryawan) { showToast('Pilih karyawan terlebih dahulu', 'error'); return; }
+                if (!absensiKaryawan) { showToast('Pilih nama terlebih dahulu', 'error'); return; }
                 setSubmittingAbsensi(true);
                 try {
-                    const kObj = karyawanList.find(k => k.id === absensiKaryawan);
+                    const isOwnerSelf = absensiKaryawan.startsWith('owner_');
+                    const kObj = isOwnerSelf ? null : karyawanList.find(k => k.id === absensiKaryawan);
+                    const namaDisplay = isOwnerSelf ? (authSession?.namaLengkap || 'Owner') : (kObj?.nama || '-');
+                    const jabatanDisplay = isOwnerSelf ? 'Owner' : (kObj?.jabatan || '-');
                     const now  = new Date();
                     await window.addDoc(colAbsensi(), {
                         karyawanId:   absensiKaryawan,
-                        karyawanNama: kObj?.nama || '-',
-                        karyawanJabatan: kObj?.jabatan || '-',
+                        karyawanNama: namaDisplay,
+                        karyawanJabatan: jabatanDisplay,
                         shift:        absensiShift,
                         catatan:      absensiCatatan.trim(),
                         photo:        capturedPhoto,
@@ -10428,12 +10431,15 @@
                                 <p className="text-emerald-100 text-[10px] mt-0.5">Foto selfie wajib untuk konfirmasi kehadiran</p>
                             </div>
                             <div className="p-4 space-y-3">
-                                {/* Pilih Karyawan */}
+                                {/* Pilih Nama */}
                                 <div>
-                                    <label className="text-[11px] font-bold text-slate-600 block mb-1">👤 Nama Karyawan</label>
+                                    <label className="text-[11px] font-bold text-slate-600 block mb-1">👤 Pilih Nama</label>
                                     <select value={absensiKaryawan} onChange={e=>setAbsensiKaryawan(e.target.value)}
                                         className="w-full border-2 border-slate-200 focus:border-emerald-400 rounded-xl px-3 py-2.5 text-sm outline-none font-medium text-slate-700">
-                                        <option value="">— Pilih karyawan —</option>
+                                        <option value="">— Pilih nama —</option>
+                                        {isOwner && authSession?.namaLengkap && (
+                                            <option value={`owner_${authSession.id}`}>👑 {authSession.namaLengkap} (Owner)</option>
+                                        )}
                                         {karyawanList.map(k => <option key={k.id} value={k.id}>{k.nama} ({k.jabatan})</option>)}
                                     </select>
                                 </div>
