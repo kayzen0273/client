@@ -9939,15 +9939,6 @@
         // =================== JADWAL SHIFT VIEW (v2 - Pagi/Siang per Lokasi) ===================
         const JadwalShiftView = ({ user, showToast, readOnly, currentProfile, settings, isOwner, authSession }) => {
             const HARI = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
-            const DEFAULT_SHIFTS = [
-                { id: 'pagi',  label: 'Pagi',  jamMulai: '08:00', jamSelesai: '14:00', bg: '#FFF176', text: '#5D4037', border: '#F9A825' },
-                { id: 'siang', label: 'Siang', jamMulai: '14:00', jamSelesai: '21:00', bg: '#80DEEA', text: '#006064', border: '#00ACC1' },
-                { id: 'libur', label: 'Libur', jamMulai: '',      jamSelesai: '',      bg: '#F8FAFC', text: '#94a3b8', border: '#e2e8f0' },
-            ];
-            const SHIFTS = DEFAULT_SHIFTS.map(s => {
-                const cfg = shiftConfig?.[s.id];
-                return { ...s, jamMulai: cfg?.jamMulai ?? s.jamMulai, jamSelesai: cfg?.jamSelesai ?? s.jamSelesai };
-            });
 
             const [weekOffset, setWeekOffset]   = useState(0);
             const [jadwal, setJadwal]            = useState({});
@@ -9989,6 +9980,17 @@
             const [shiftConfig, setShiftConfig]       = useState({});
             const [modalShift, setModalShift]         = useState(false);
             const [editShiftRow, setEditShiftRow]     = useState(null); // {id, label, jamMulai, jamSelesai}
+
+            // ---- SHIFTS dihitung SETELAH shiftConfig state (agar reaktif) ----
+            const DEFAULT_SHIFTS = [
+                { id: 'pagi',  label: 'Pagi',  jamMulai: '08:00', jamSelesai: '14:00', bg: '#FFF176', text: '#5D4037', border: '#F9A825' },
+                { id: 'siang', label: 'Siang', jamMulai: '14:00', jamSelesai: '21:00', bg: '#80DEEA', text: '#006064', border: '#00ACC1' },
+                { id: 'libur', label: 'Libur', jamMulai: '',      jamSelesai: '',      bg: '#F8FAFC', text: '#94a3b8', border: '#e2e8f0' },
+            ];
+            const SHIFTS = DEFAULT_SHIFTS.map(s => {
+                const cfg = shiftConfig?.[s.id];
+                return { ...s, jamMulai: cfg?.jamMulai ?? s.jamMulai, jamSelesai: cfg?.jamSelesai ?? s.jamSelesai };
+            });
             // ---- Lokasi states ----
             const [locationStatus, setLocationStatus]   = useState('idle'); // 'idle' | 'requesting' | 'granted' | 'denied'
             const [locationData, setLocationData]       = useState(null);   // {lat, lng, accuracy}
