@@ -1,278 +1,698 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Muslim App - Jadwal & Kiblat</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Poppins', sans-serif; background-color: #f8fafc; }
-        .compass-container { position: relative; width: 220px; height: 220px; transition: all 0.5s ease; }
-        .needle { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        #notification-banner { transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .active-prayer { border-color: #059669; background-color: #ecfdf5; }
-    </style>
-</head>
-<body class="pb-10">
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Home, 
+  BookOpen, 
+  Clock, 
+  Compass, 
+  Grid, 
+  Search, 
+  ArrowLeft, 
+  MapPin, 
+  PlayCircle, 
+  PauseCircle,
+  Moon,
+  Sun
+} from 'lucide-react';
 
-    <!-- NOTIFIKASI ATAS LAYAR -->
-    <div id="notification-banner" class="fixed top-0 left-0 w-full bg-emerald-600 text-white p-4 shadow-2xl transform -translate-y-full z-50 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-            <i class="fas fa-bell text-2xl animate-bounce"></i>
-            <div>
-                <p class="font-bold text-lg" id="notif-msg">Waktu Sholat Tiba!</p>
-                <p class="text-sm opacity-90">Mari tunaikan ibadah sholat.</p>
-            </div>
-        </div>
-        <button onclick="hideNotif()" class="bg-white/20 p-2 rounded-full"><i class="fas fa-times"></i></button>
+// --- Komponen Utama ---
+export default function App() {
+  const [activeTab, setActiveTab] = useState('home');
+  const [subView, setSubView] = useState(null); // Untuk navigasi halaman dalam
+  const [selectedData, setSelectedData] = useState(null);
+
+  // Fungsi navigasi
+  const goTo = (view, data = null) => {
+    setSubView(view);
+    setSelectedData(data);
+  };
+
+  const goBack = () => {
+    setSubView(null);
+    setSelectedData(null);
+  };
+
+  // Render konten berdasarkan state navigasi
+  const renderContent = () => {
+    if (subView === 'quran-detail') return <SurahDetail surah={selectedData} onBack={goBack} />;
+    if (subView === 'bacaan-sholat') return <BacaanSholat onBack={goBack} />;
+    if (subView === 'doa-harian') return <DoaHarian onBack={goBack} />;
+
+    switch (activeTab) {
+      case 'home': return <HomeView goTo={goTo} />;
+      case 'quran': return <QuranView goTo={goTo} />;
+      case 'jadwal': return <JadwalView />;
+      case 'kiblat': return <KiblatView />;
+      default: return <HomeView goTo={goTo} />;
+    }
+  };
+
+  return (
+    <div className="max-w-md mx-auto min-h-screen bg-gray-50 flex flex-col relative font-sans shadow-2xl overflow-hidden text-gray-800">
+      {/* Area Konten Utama yang bisa di-scroll */}
+      <div className="flex-1 overflow-y-auto pb-20">
+        {renderContent()}
+      </div>
+
+      {/* Navigasi Bawah */}
+      {!subView && (
+        <nav className="fixed bottom-0 w-full max-w-md bg-white border-t border-gray-200 flex justify-around items-center h-16 px-2 pb-safe z-50">
+          <NavItem icon={<Home />} label="Beranda" isActive={activeTab === 'home'} onClick={() => setActiveTab('home')} />
+          <NavItem icon={<BookOpen />} label="Qur'an" isActive={activeTab === 'quran'} onClick={() => setActiveTab('quran')} />
+          <NavItem icon={<Clock />} label="Jadwal" isActive={activeTab === 'jadwal'} onClick={() => setActiveTab('jadwal')} />
+          <NavItem icon={<Compass />} label="Kiblat" isActive={activeTab === 'kiblat'} onClick={() => setActiveTab('kiblat')} />
+        </nav>
+      )}
     </div>
+  );
+}
 
-    <!-- HEADER -->
-    <div class="bg-emerald-700 text-white p-6 rounded-b-[3rem] shadow-lg mb-6 relative overflow-hidden">
-        <div class="absolute -right-10 -top-10 opacity-10">
-            <i class="fas fa-moon text-9xl"></i>
-        </div>
-        <div class="max-w-md mx-auto relative z-10">
-            <div class="flex justify-between items-start">
-                <div>
-                    <h1 class="text-2xl font-bold">MuslimKu</h1>
-                    <p id="city-name" class="text-emerald-100 text-sm"><i class="fas fa-location-dot mr-1"></i> Mencari lokasi...</p>
-                </div>
-                <div class="text-right">
-                    <p id="live-clock" class="text-2xl font-mono font-bold">00:00:00</p>
-                    <p id="live-date" class="text-xs opacity-80">-- --- ----</p>
-                </div>
-            </div>
-        </div>
+// --- Komponen Navigasi ---
+const NavItem = ({ icon, label, isActive, onClick }) => (
+  <button 
+    onClick={onClick} 
+    className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${isActive ? 'text-emerald-600' : 'text-gray-400 hover:text-emerald-500'}`}
+  >
+    <div className={`${isActive ? 'scale-110' : 'scale-100'} transition-transform duration-200`}>
+      {React.cloneElement(icon, { size: 22, strokeWidth: isActive ? 2.5 : 2 })}
     </div>
+    <span className="text-[10px] font-medium">{label}</span>
+  </button>
+);
 
-    <div class="max-w-md mx-auto px-4 space-y-5">
-        
-        <!-- STATUS CARD -->
-        <div id="bg-info-card" class="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex gap-3 items-start">
-            <i class="fas fa-circle-info text-blue-500 mt-1"></i>
-            <div class="text-xs text-blue-800">
-                <p class="font-bold mb-1">Mode Notifikasi Aktif</p>
-                <p>Agar tetap berbunyi, biarkan tab ini terbuka. Aplikasi akan otomatis mengingatkan saat waktu sholat tiba.</p>
-            </div>
+// --- Tampilan: Beranda ---
+const HomeView = ({ goTo }) => {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const features = [
+    { icon: <BookOpen size={28} className="text-emerald-500" />, title: "Al-Qur'an", action: () => document.querySelector('button:nth-child(2)').click() },
+    { icon: <Clock size={28} className="text-amber-500" />, title: "Jadwal Sholat", action: () => document.querySelector('button:nth-child(3)').click() },
+    { icon: <Compass size={28} className="text-blue-500" />, title: "Arah Kiblat", action: () => document.querySelector('button:nth-child(4)').click() },
+    { icon: <Grid size={28} className="text-purple-500" />, title: "Bacaan Sholat", action: () => goTo('bacaan-sholat') },
+    { icon: <Moon size={28} className="text-indigo-500" />, title: "Doa Harian", action: () => goTo('doa-harian') },
+  ];
+
+  return (
+    <div className="animate-fade-in">
+      {/* Header / Hero */}
+      <div className="bg-emerald-600 rounded-b-[40px] p-6 pt-10 text-white shadow-lg relative overflow-hidden">
+        <div className="absolute top-0 right-0 opacity-10 transform translate-x-1/4 -translate-y-1/4">
+          <Moon size={200} />
         </div>
-
-        <!-- JADWAL SHOLAT -->
-        <div class="bg-white rounded-3xl p-5 shadow-sm border border-emerald-50">
-            <h2 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
-                <i class="fas fa-calendar-day text-emerald-600"></i> Jadwal Sholat Hari Ini
-            </h2>
-            <div id="prayer-grid" class="grid grid-cols-2 gap-3">
-                <div class="animate-pulse bg-gray-100 h-12 rounded-xl col-span-2"></div>
+        <div className="relative z-10">
+          <p className="text-emerald-100 font-medium mb-1">Assalamu'alaikum,</p>
+          <h1 className="text-2xl font-bold mb-6">Hamba Allah</h1>
+          
+          <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4 border border-white/30">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium">Waktu Sekarang</span>
+              <span className="text-xs bg-emerald-500/50 px-2 py-1 rounded-full">{time.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
             </div>
-            
-            <div class="flex gap-2 mt-4">
-                <button onclick="testNotif()" class="flex-1 py-2.5 text-xs font-semibold text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition">
-                    <i class="fas fa-vial mr-1"></i> Tes Suara & Notif
-                </button>
-                <button id="btn-notif-permission" onclick="requestNotifPermission()" class="flex-1 py-2.5 text-xs font-bold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 shadow-md transition animate-pulse">
-                    <i class="fas fa-bell mr-1"></i> Aktifkan Izin
-                </button>
+            <div className="text-4xl font-bold font-mono tracking-widest text-center my-2">
+              {time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
             </div>
+            <p className="text-center text-sm mt-2 text-emerald-50">Persiapkan diri untuk waktu sholat berikutnya</p>
+          </div>
         </div>
+      </div>
 
-        <!-- KOMPAS -->
-        <div class="bg-white rounded-3xl p-6 shadow-sm border border-emerald-50 text-center">
-            <h2 class="font-bold text-gray-700 mb-4 text-left flex items-center gap-2">
-                <i class="fas fa-compass text-emerald-600"></i> Arah Kiblat
-            </h2>
-            <div class="flex justify-center mb-6">
-                <div class="compass-container bg-slate-50 rounded-full border-8 border-white shadow-inner flex items-center justify-center">
-                    <div id="compass-ring" class="absolute w-full h-full rounded-full border-2 border-dashed border-emerald-200">
-                        <span class="absolute top-1 left-1/2 -translate-x-1/2 font-bold text-red-500">U</span>
-                    </div>
-                    <div id="qibla-needle" class="needle absolute w-full h-full flex flex-col items-center justify-start pt-4">
-                        <i class="fas fa-location-arrow text-emerald-600 text-4xl"></i>
-                    </div>
-                    <div class="z-10 bg-gray-800 p-2 rounded-lg shadow-lg">
-                        <i class="fas fa-kaaba text-white text-xl"></i>
-                    </div>
-                </div>
-            </div>
-            <button id="sensor-btn" onclick="requestSensor()" class="bg-emerald-50 text-emerald-700 border border-emerald-200 w-full py-3 rounded-2xl font-bold transition">
-                <i class="fas fa-location-arrow mr-2"></i> Sinkron Kompas
+      {/* Menu Grid */}
+      <div className="p-6">
+        <h2 className="text-lg font-bold text-gray-800 mb-4">Menu Utama</h2>
+        <div className="grid grid-cols-3 gap-4">
+          {features.map((item, index) => (
+            <button 
+              key={index} 
+              onClick={item.action}
+              className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center space-y-2 hover:bg-emerald-50 hover:border-emerald-100 transition-all active:scale-95"
+            >
+              <div className="bg-gray-50 p-3 rounded-xl">
+                {item.icon}
+              </div>
+              <span className="text-xs font-medium text-gray-600 text-center">{item.title}</span>
             </button>
+          ))}
         </div>
+      </div>
+      
+      {/* Kutipan Hari Ini */}
+      <div className="px-6 mb-6">
+        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100 p-5 rounded-2xl relative overflow-hidden">
+          <div className="absolute top-2 right-2 text-emerald-200 opacity-50"><BookOpen size={40} /></div>
+          <h3 className="font-bold text-emerald-800 mb-2 text-sm relative z-10">Ayat Hari Ini</h3>
+          <p className="text-sm text-gray-700 italic relative z-10">
+            "Maka ingatlah kepada-Ku, Aku pun akan ingat kepadamu. Bersyukurlah kepada-Ku, dan janganlah kamu ingkar kepada-Ku."
+          </p>
+          <p className="text-xs text-emerald-600 mt-2 font-medium relative z-10">- QS. Al-Baqarah: 152</p>
+        </div>
+      </div>
     </div>
+  );
+};
 
-    <!-- Audio Element untuk Notifikasi -->
-    <audio id="notif-sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+// --- Tampilan: Al-Qur'an ---
+const QuranView = ({ goTo }) => {
+  const [surahs, setSurahs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
 
-    <script>
-        let qiblaAngle = 295;
-        let prayerTimes = {};
-        let scheduledTimeouts = [];
-        const prayers = [
-            {id: 'Fajr', label: 'Subuh'},
-            {id: 'Dhuhr', label: 'Dzuhur'},
-            {id: 'Asr', label: 'Ashar'},
-            {id: 'Maghrib', label: 'Maghrib'},
-            {id: 'Isha', label: 'Isya'}
-        ];
+  useEffect(() => {
+    fetch('https://equran.id/api/v2/surat')
+      .then(res => res.json())
+      .then(data => {
+        setSurahs(data.data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
+  }, []);
 
-        // 1. Inisialisasi Jam & Hari
-        function updateClock() {
-            const now = new Date();
-            document.getElementById('live-clock').innerText = now.toLocaleTimeString('id-ID', { hour12: false });
-            document.getElementById('live-date').innerText = now.toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
+  const filteredSurahs = surahs.filter(s => 
+    s.namaLatin.toLowerCase().includes(search.toLowerCase()) || 
+    s.arti.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="bg-white min-h-screen">
+      <div className="bg-emerald-600 p-6 pt-10 sticky top-0 z-10 shadow-md">
+        <h1 className="text-xl font-bold text-white text-center mb-4">Al-Qur'an</h1>
+        <div className="relative">
+          <input 
+            type="text" 
+            placeholder="Cari Surah..." 
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 rounded-xl border-none focus:ring-2 focus:ring-emerald-300 shadow-inner bg-white/90 text-sm"
+          />
+          <Search className="absolute left-3 top-3 text-gray-400" size={20} />
+        </div>
+      </div>
+
+      <div className="p-4">
+        {loading ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-10 w-10 border-4 border-emerald-500 border-t-transparent"></div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredSurahs.map((surah) => (
+              <button 
+                key={surah.nomor}
+                onClick={() => goTo('quran-detail', surah)}
+                className="w-full flex items-center p-4 bg-gray-50 hover:bg-emerald-50 rounded-2xl border border-gray-100 transition-colors text-left"
+              >
+                <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 font-bold flex items-center justify-center text-sm mr-4 relative">
+                  <span className="absolute transform rotate-45 border border-emerald-300 w-8 h-8 rounded-sm"></span>
+                  {surah.nomor}
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-gray-800">{surah.namaLatin}</h3>
+                  <p className="text-xs text-gray-500">{surah.arti} • {surah.jumlahAyat} Ayat</p>
+                </div>
+                <div className="text-xl font-arabic text-emerald-600 font-bold">
+                  {surah.nama}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// --- Tampilan: Detail Surah ---
+const SurahDetail = ({ surah, onBack }) => {
+  const [detail, setDetail] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [playingAudio, setPlayingAudio] = useState(null);
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    fetch(`https://equran.id/api/v2/surat/${surah.nomor}`)
+      .then(res => res.json())
+      .then(data => {
+        setDetail(data.data);
+        setLoading(false);
+      });
+      
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
+  }, [surah.nomor]);
+
+  const toggleAudio = (audioUrl, ayahNumber) => {
+    if (playingAudio === ayahNumber) {
+      audioRef.current.pause();
+      setPlayingAudio(null);
+    } else {
+      if (audioRef.current) audioRef.current.pause();
+      audioRef.current = new Audio(audioUrl);
+      audioRef.current.play();
+      setPlayingAudio(ayahNumber);
+      audioRef.current.onended = () => setPlayingAudio(null);
+    }
+  };
+
+  return (
+    <div className="bg-gray-50 min-h-screen pb-6">
+      <div className="bg-emerald-600 p-4 pt-8 sticky top-0 z-20 flex items-center shadow-md text-white">
+        <button onClick={onBack} className="p-2 mr-2 hover:bg-emerald-700 rounded-full transition-colors">
+          <ArrowLeft size={24} />
+        </button>
+        <div>
+          <h1 className="text-lg font-bold">{surah.namaLatin}</h1>
+          <p className="text-xs text-emerald-100">{surah.arti} • {surah.jumlahAyat} Ayat</p>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center pt-20">
+          <div className="animate-spin rounded-full h-8 w-8 border-4 border-emerald-500 border-t-transparent"></div>
+        </div>
+      ) : (
+        <div className="p-4 space-y-6">
+          {/* Bismillah Header if not Surah Al-Tawbah (9) */}
+          {surah.nomor !== 9 && surah.nomor !== 1 && (
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex justify-center items-center">
+              <h2 className="text-2xl font-arabic text-emerald-800 font-bold leading-loose text-center">
+                بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم
+              </h2>
+            </div>
+          )}
+
+          {detail?.ayat.map((ayat) => (
+            <div key={ayat.nomorAyat} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+              <div className="flex justify-between items-center mb-4">
+                <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-600 text-xs font-bold flex items-center justify-center">
+                  {ayat.nomorAyat}
+                </div>
+                <button 
+                  onClick={() => toggleAudio(ayat.audio['05'], ayat.nomorAyat)}
+                  className="text-emerald-500 hover:text-emerald-700 bg-emerald-50 p-2 rounded-full transition-colors"
+                >
+                  {playingAudio === ayat.nomorAyat ? <PauseCircle size={22} /> : <PlayCircle size={22} />}
+                </button>
+              </div>
+              
+              <div className="text-right mb-6">
+                <p className="text-3xl font-arabic leading-loose text-gray-800" dir="rtl">
+                  {ayat.teksArab}
+                </p>
+              </div>
+              
+              <div className="space-y-2 border-t border-gray-50 pt-4">
+                <p className="text-sm text-emerald-600 font-medium italic">
+                  {ayat.teksLatin}
+                </p>
+                <p className="text-sm text-gray-600">
+                  {ayat.teksIndonesia}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- Tampilan: Jadwal Sholat ---
+const JadwalView = () => {
+  const [jadwal, setJadwal] = useState(null);
+  const [lokasi, setLokasi] = useState("Mencari lokasi...");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Gunakan Geolocation jika tersedia
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          fetchJadwal(latitude, longitude);
+          fetchLocationName(latitude, longitude);
+        },
+        (error) => {
+          console.log("Geolocation error", error);
+          // Fallback ke Jakarta
+          fetchJadwal(-6.2088, 106.8456);
+          setLokasi("Jakarta (Default)");
         }
-        setInterval(updateClock, 1000);
+      );
+    } else {
+      fetchJadwal(-6.2088, 106.8456);
+      setLokasi("Jakarta (Default)");
+    }
+  }, []);
 
-        // 2. Load Aplikasi
-        async function initApp() {
-            // Cek izin notifikasi
-            if ("Notification" in window && Notification.permission === "granted") {
-                document.getElementById('btn-notif-permission').classList.add('hidden');
-            }
+  const fetchJadwal = (lat, lng) => {
+    const date = new Date();
+    const timestamp = Math.floor(date.getTime() / 1000);
+    // Method 11 is Majlis Ugama Islam Singapura, commonly used in SEA if Kemenag is not perfectly matched by Aladhan.
+    // Method 20 is Kemenag RI, let's use 20.
+    fetch(`https://api.aladhan.com/v1/timings/${timestamp}?latitude=${lat}&longitude=${lng}&method=20`)
+      .then(res => res.json())
+      .then(data => {
+        setJadwal(data.data.timings);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
+  };
 
-            // Dapatkan Lokasi
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(pos => {
-                    const { latitude, longitude } = pos.coords;
-                    fetchPrayers(latitude, longitude);
-                    calculateQibla(latitude, longitude);
-                    document.getElementById('city-name').innerHTML = `<i class="fas fa-location-crosshairs mr-1"></i> Lokasi Aktif`;
-                }, err => {
-                    fetchPrayers(-6.2, 106.8); // Default Jakarta
-                    document.getElementById('city-name').innerHTML = `<i class="fas fa-map-pin mr-1"></i> Jakarta (Default)`;
-                });
-            }
-            
-            // Wake Lock agar layar tidak mati (jika didukung)
-            if ('wakeLock' in navigator) {
-                try { await navigator.wakeLock.request('screen'); } catch (err) {}
-            }
-        }
+  const fetchLocationName = (lat, lng) => {
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+      .then(res => res.json())
+      .then(data => {
+        setLokasi(data.address.city || data.address.town || data.address.county || "Lokasi Anda");
+      })
+      .catch(() => setLokasi("Lokasi Anda"));
+  };
 
-        // 3. Ambil Jadwal Sholat
-        async function fetchPrayers(lat, lon) {
-            try {
-                const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lon}&method=20`);
-                const data = await res.json();
-                prayerTimes = data.data.timings;
-                renderPrayers();
-                scheduleNotifications();
-            } catch (e) {
-                console.error("Gagal memuat jadwal");
-            }
-        }
+  const waktuSholat = jadwal ? [
+    { nama: 'Imsak', waktu: jadwal.Imsak, icon: <Moon size={20}/> },
+    { nama: 'Subuh', waktu: jadwal.Fajr, icon: <Sun size={20} className="text-indigo-400"/> },
+    { nama: 'Terbit', waktu: jadwal.Sunrise, icon: <Sun size={20} className="text-orange-400"/> },
+    { nama: 'Dzuhur', waktu: jadwal.Dhuhr, icon: <Sun size={20} className="text-yellow-500"/> },
+    { nama: 'Ashar', waktu: jadwal.Asr, icon: <Sun size={20} className="text-amber-500"/> },
+    { nama: 'Maghrib', waktu: jadwal.Maghrib, icon: <Moon size={20} className="text-purple-500"/> },
+    { nama: 'Isya', waktu: jadwal.Isha, icon: <Moon size={20} className="text-indigo-800"/> },
+  ] : [];
 
-        function renderPrayers() {
-            const grid = document.getElementById('prayer-grid');
-            grid.innerHTML = '';
-            prayers.forEach(p => {
-                grid.innerHTML += `
-                    <div id="card-${p.id}" class="bg-white border border-emerald-100 p-3 rounded-2xl flex justify-between items-center transition-all">
-                        <span class="text-gray-600 font-medium">${p.label}</span>
-                        <span class="text-emerald-700 font-bold">${prayerTimes[p.id]}</span>
+  return (
+    <div className="bg-white min-h-screen">
+      <div className="bg-emerald-600 p-6 pt-10 text-white rounded-b-[40px] shadow-md mb-6 relative overflow-hidden">
+         <div className="absolute top-0 right-0 opacity-10 transform translate-x-1/4 -translate-y-1/4">
+          <Clock size={200} />
+        </div>
+        <h1 className="text-2xl font-bold mb-2 relative z-10">Jadwal Sholat</h1>
+        <div className="flex items-center space-x-2 bg-black/20 w-fit px-3 py-1.5 rounded-full relative z-10">
+          <MapPin size={16} />
+          <span className="text-sm">{lokasi}</span>
+        </div>
+        <p className="mt-4 text-emerald-100 text-sm relative z-10">
+          {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        </p>
+      </div>
+
+      <div className="px-6 pb-6">
+        {loading ? (
+          <div className="space-y-3">
+            {[1,2,3,4,5,6].map(i => (
+              <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse"></div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {waktuSholat.map((item, index) => {
+              // Cek jika waktu ini adalah waktu sholat berikutnya (sederhana)
+              const isPassed = new Date(`1970/01/01 ${item.waktu}`) < new Date(`1970/01/01 ${new Date().toLocaleTimeString('en-US', {hour12:false, hour:'2-digit', minute:'2-digit'})}`);
+              
+              return (
+                <div 
+                  key={index} 
+                  className={`flex justify-between items-center p-4 rounded-2xl border transition-all ${
+                    !isPassed ? 'bg-emerald-50 border-emerald-200 shadow-sm' : 'bg-white border-gray-100 opacity-60'
+                  }`}
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className={`p-2 rounded-full ${!isPassed ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-500'}`}>
+                      {item.icon}
                     </div>
-                `;
-            });
-        }
+                    <span className={`font-semibold ${!isPassed ? 'text-emerald-900' : 'text-gray-600'}`}>{item.nama}</span>
+                  </div>
+                  <span className={`text-xl font-bold font-mono ${!isPassed ? 'text-emerald-700' : 'text-gray-500'}`}>
+                    {item.waktu}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
-        // 4. Penjadwalan Notifikasi (Foreground)
-        function scheduleNotifications() {
-            // Bersihkan jadwal lama
-            scheduledTimeouts.forEach(clearTimeout);
-            scheduledTimeouts = [];
+// --- Tampilan: Arah Kiblat ---
+const KiblatView = () => {
+  const [heading, setHeading] = useState(null);
+  const [qiblaAngle, setQiblaAngle] = useState(295); // Default approx for Indonesia
+  const [permissionGranted, setPermissionGranted] = useState(false);
+  const [needsPermission, setNeedsPermission] = useState(false);
 
-            const now = new Date();
-            prayers.forEach(p => {
-                const [h, m] = prayerTimes[p.id].split(':').map(Number);
-                const pDate = new Date();
-                pDate.setHours(h, m, 0, 0);
+  useEffect(() => {
+    // Cek apakah API membutuhkan permission (khususnya iOS 13+)
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      setNeedsPermission(true);
+    } else {
+      startCompass();
+    }
+    
+    // Fallback ambil koordinat untuk hitung kiblat lebih akurat
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((pos) => {
+         const lat = pos.coords.latitude;
+         const lng = pos.coords.longitude;
+         // Rumus Haversine sederhana atau hit API aladhan untuk kiblat
+         fetch(`https://api.aladhan.com/v1/qibla/${lat}/${lng}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data && data.data) setQiblaAngle(data.data.direction);
+          });
+      });
+    }
 
-                const diff = pDate.getTime() - now.getTime();
-                if (diff > 0) {
-                    const timeout = setTimeout(() => {
-                        triggerPrayerNotification(p.label);
-                    }, diff);
-                    scheduledTimeouts.push(timeout);
-                }
-            });
-        }
+    return () => {
+      window.removeEventListener('deviceorientation', handleOrientation);
+    };
+  }, []);
 
-        function triggerPrayerNotification(label) {
-            // Banner In-App
-            const banner = document.getElementById('notification-banner');
-            document.getElementById('notif-msg').innerText = `Waktu ${label} Tiba!`;
-            banner.classList.remove('-translate-y-full');
-            
-            // Bunyi
-            const sound = document.getElementById('notif-sound');
-            sound.play().catch(e => console.log("Interaksi user diperlukan untuk suara"));
+  const handleOrientation = (event) => {
+    let alpha = event.alpha;
+    let webkitAlpha = event.webkitCompassHeading;
+    if (webkitAlpha) {
+      // iOS
+      setHeading(webkitAlpha);
+    } else if (alpha !== null) {
+      // Android
+      setHeading(Math.abs(alpha - 360));
+    }
+  };
 
-            // Getar
-            if (navigator.vibrate) navigator.vibrate([500, 200, 500]);
+  const startCompass = () => {
+    window.addEventListener('deviceorientation', handleOrientation, true);
+    setPermissionGranted(true);
+    setNeedsPermission(false);
+  };
 
-            // Sistem Notif (jika diizinkan)
-            if (Notification.permission === "granted") {
-                new Notification(`Waktu ${label}!`, {
-                    body: `Sudah masuk waktu sholat ${label}.`,
-                    icon: "https://cdn-icons-png.flaticon.com/512/3592/3592864.png"
-                });
-            }
-        }
+  const requestAccess = () => {
+    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+      DeviceOrientationEvent.requestPermission()
+        .then(permissionState => {
+          if (permissionState === 'granted') {
+            startCompass();
+          } else {
+            alert('Akses sensor ditolak');
+          }
+        })
+        .catch(console.error);
+    }
+  };
 
-        async function requestNotifPermission() {
-            const permission = await Notification.requestPermission();
-            if (permission === "granted") {
-                document.getElementById('btn-notif-permission').classList.add('hidden');
-                triggerPrayerNotification("Notifikasi Aktif");
-            }
-        }
+  // Rotasi kompas
+  const compassRotation = heading !== null ? -heading : 0;
+  // Menentukan apakah menghadap kiblat (toleransi 5 derajat)
+  const isFacingQibla = heading !== null && Math.abs((heading - qiblaAngle + 360) % 360) < 5 || Math.abs((heading - qiblaAngle - 360) % 360) < 5;
 
-        function testNotif() {
-            triggerPrayerNotification("Tes");
-            setTimeout(hideNotif, 4000);
-        }
+  return (
+    <div className="bg-gray-50 min-h-screen flex flex-col items-center pt-10 px-6">
+      <h1 className="text-2xl font-bold text-gray-800 mb-2">Arah Kiblat</h1>
+      <p className="text-sm text-gray-500 text-center mb-10">Pastikan smartphone Anda dalam posisi datar (horizontal) menjauhi magnet.</p>
 
-        function hideNotif() {
-            document.getElementById('notification-banner').classList.add('-translate-y-full');
-        }
+      {needsPermission ? (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 text-center mt-20">
+          <Compass size={60} className="mx-auto text-emerald-500 mb-4" />
+          <h3 className="font-bold text-gray-800 mb-2">Akses Sensor Dibutuhkan</h3>
+          <p className="text-sm text-gray-600 mb-6">Kami memerlukan akses ke sensor kompas perangkat Anda untuk menunjukkan arah kiblat.</p>
+          <button 
+            onClick={requestAccess}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors"
+          >
+            Berikan Akses
+          </button>
+        </div>
+      ) : (
+        <div className="relative flex flex-col items-center w-full max-w-[300px] mt-10">
+          {/* Status Indicator */}
+          <div className={`mb-12 px-6 py-2 rounded-full text-sm font-bold shadow-sm transition-colors duration-500 ${isFacingQibla ? 'bg-emerald-500 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
+            {isFacingQibla ? 'Anda Menghadap Kiblat' : 'Putar Perangkat Anda'}
+          </div>
 
-        // 5. Kompas Kiblat
-        function calculateQibla(lat, lon) {
-            const mLat = 21.422487 * Math.PI / 180;
-            const mLon = 39.826206 * Math.PI / 180;
-            const pLat = lat * Math.PI / 180;
-            const pLon = lon * Math.PI / 180;
-            const y = Math.sin(mLon - pLon);
-            const x = Math.cos(pLat) * Math.tan(mLat) - Math.sin(pLat) * Math.cos(mLon - pLon);
-            qiblaAngle = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-            document.getElementById('qibla-needle').style.transform = `rotate(${qiblaAngle}deg)`;
-        }
+          {/* Compass Graphic */}
+          <div className="relative w-72 h-72">
+            {/* Compass Ring */}
+            <div 
+              className="absolute inset-0 rounded-full border-4 border-gray-200 shadow-inner flex items-center justify-center transition-transform duration-200 ease-out bg-white"
+              style={{ transform: `rotate(${compassRotation}deg)` }}
+            >
+              {/* Markers */}
+              <div className="absolute top-2 font-bold text-gray-400">U</div>
+              <div className="absolute bottom-2 font-bold text-gray-400">S</div>
+              <div className="absolute right-4 font-bold text-gray-400">T</div>
+              <div className="absolute left-4 font-bold text-gray-400">B</div>
+              
+              {/* Qibla Indicator Line on the ring */}
+              <div 
+                className="absolute w-1 h-full py-1"
+                style={{ transform: `rotate(${qiblaAngle}deg)` }}
+              >
+                <div className="w-4 h-4 rounded-full bg-emerald-500 mx-auto -mt-2 shadow-[0_0_10px_rgba(16,185,129,0.8)]"></div>
+              </div>
+            </div>
 
-        function requestSensor() {
-            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                DeviceOrientationEvent.requestPermission()
-                    .then(permission => {
-                        if (permission === 'granted') startCompass();
-                    });
-            } else {
-                startCompass();
-            }
-        }
+            {/* Static Center & Arrow (Device direction) */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="w-16 h-16 rounded-full bg-white shadow-md flex items-center justify-center border border-gray-100 z-10">
+                <div className="w-3 h-3 rounded-full bg-emerald-600"></div>
+              </div>
+              {/* Device pointing line */}
+              <div className="absolute top-8 w-1 h-1/2 bg-gradient-to-t from-transparent to-red-500 opacity-50 rounded-full"></div>
+            </div>
+          </div>
 
-        function startCompass() {
-            window.addEventListener('deviceorientation', (e) => {
-                let heading = e.webkitCompassHeading || (360 - e.alpha);
-                if (heading) {
-                    document.getElementById('compass-ring').style.transform = `rotate(${-heading}deg)`;
-                    document.getElementById('qibla-needle').style.transform = `rotate(${qiblaAngle - heading}deg)`;
-                    document.getElementById('sensor-btn').innerHTML = `<i class="fas fa-check mr-2"></i> Kompas Aktif`;
-                }
-            }, true);
-        }
+          <div className="mt-16 text-center">
+            <p className="text-3xl font-mono font-bold text-gray-800">
+              {heading !== null ? Math.round(heading) : '--'}°
+            </p>
+            <p className="text-sm text-gray-500 mt-1">
+              Arah Kiblat: {Math.round(qiblaAngle)}°
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
-        window.onload = initApp;
-    </script>
-</body>
-</html>
+// --- Tampilan: Bacaan Sholat ---
+const BacaanSholat = ({ onBack }) => {
+  const data = [
+    {
+      title: "Takbiratul Ihram",
+      arab: "اللَّهُ أَكْبَرُ",
+      latin: "Allahu Akbar",
+      arti: "Allah Maha Besar."
+    },
+    {
+      title: "Doa Iftitah",
+      arab: "اللَّهُمَّ بَاعِدْ بَيْنِي وَبَيْنَ خَطَايَايَ كَمَا بَاعَدْتَ بَيْنَ الْمَشْرِقِ وَالْمَغْرِبِ",
+      latin: "Allahumma baa'id bainii wa baina khathaayaaya kamaa baa'adta bainal masyriqi wal maghrib.",
+      arti: "Ya Allah, jauhkanlah antara diriku dan kesalahan-kesalahanku sebagaimana Engkau jauhkan antara timur dan barat."
+    },
+    {
+      title: "Bacaan Ruku",
+      arab: "سُبْحَانَ رَبِّيَ الْعَظِيمِ وَبِحَمْدِهِ",
+      latin: "Subhaana rabbiyal 'azhiimi wa bihamdih. (3x)",
+      arti: "Maha Suci Tuhanku Yang Maha Agung dan dengan memuji-Nya."
+    },
+    {
+      title: "I'tidal",
+      arab: "سَمِعَ اللَّهُ لِمَنْ حَمِدَهُ - رَبَّنَا وَلَكَ الْحَمْدُ",
+      latin: "Sami'allahu liman hamidah. Rabbanaa walakal hamdu.",
+      arti: "Allah mendengar orang yang memuji-Nya. Ya Tuhan kami, bagi-Mu segala puji."
+    },
+    {
+      title: "Sujud",
+      arab: "سُبْحَانَ رَبِّيَ الأَعْلَى وَبِحَمْدِهِ",
+      latin: "Subhaana rabbiyal a'laa wa bihamdih. (3x)",
+      arti: "Maha Suci Tuhanku Yang Maha Tinggi dan dengan memuji-Nya."
+    },
+    {
+      title: "Duduk Diantara Dua Sujud",
+      arab: "رَبِّ اغْفِرْ لِي وَارْحَمْنِي وَاجْبُرْنِي وَارْفَعْنِي وَارْزُقْنِي وَاهْدِنِي وَعَافِنِي وَاعْفُ عَنِّي",
+      latin: "Rabbighfirlii warhamnii wajburnii warfa'nii warzuqnii wahdinii wa'aafinii wa'fu 'annii.",
+      arti: "Ya Tuhanku ampunilah aku, rahmatilah aku, cukupkanlah aku, angkatlah derajatku, berilah rezeki kepadaku, tunjukilah aku, berilah kesehatan kepadaku, dan maafkanlah aku."
+    },
+    {
+      title: "Tahiyat (Tasyahud) Akhir",
+      arab: "التَّحِيَّاتُ الْمُبَارَكَاتُ الصَّلَوَاتُ الطَّيِّبَاتُ لِلَّهِ، السَّلاَمُ عَلَيْكَ أَيُّهَا النَّبِيُّ وَرَحْمَةُ اللَّهِ وَبَرَكَاتُهُ...",
+      latin: "At-tahiyyaatul mubaarakaatush shalawaatuth thayyibaatulillaah. Assalaamu 'alaika ayyuhan nabiyyu wa rahmatullahi wabarakaatuh...",
+      arti: "Segala penghormatan, keberkahan, shalawat, dan kebaikan hanya milik Allah. Semoga keselamatan, rahmat Allah, dan keberkahan-Nya tetap tercurahkan atasmu wahai Nabi..."
+    },
+    {
+      title: "Salam",
+      arab: "السَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللَّهِ",
+      latin: "Assalaamu 'alaikum wa rahmatullah.",
+      arti: "Semoga keselamatan dan rahmat Allah dilimpahkan kepadamu."
+    }
+  ];
+
+  return (
+    <div className="bg-gray-50 min-h-screen">
+      <div className="bg-emerald-600 p-4 pt-8 sticky top-0 z-20 flex items-center shadow-md text-white">
+        <button onClick={onBack} className="p-2 mr-2 hover:bg-emerald-700 rounded-full transition-colors">
+          <ArrowLeft size={24} />
+        </button>
+        <h1 className="text-lg font-bold">Panduan Bacaan Sholat</h1>
+      </div>
+
+      <div className="p-4 space-y-4">
+        {data.map((item, index) => (
+          <div key={index} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+            <h2 className="font-bold text-emerald-700 mb-4 flex items-center">
+              <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 text-xs flex items-center justify-center mr-2">{index + 1}</span>
+              {item.title}
+            </h2>
+            <p className="text-2xl font-arabic text-right mb-4 leading-loose text-gray-800" dir="rtl">{item.arab}</p>
+            <p className="text-sm text-emerald-600 italic mb-2">{item.latin}</p>
+            <p className="text-sm text-gray-600 border-t border-gray-50 pt-2">{item.arti}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// --- Tampilan: Doa Harian ---
+const DoaHarian = ({ onBack }) => {
+  const doaData = [
+    { title: "Doa Sebelum Tidur", arab: "بِاسْمِكَ اللَّهُمَّ أَحْيَا وَبِاسْمِكَ أَمُوتُ", latin: "Bismika Allahumma ahyaa wa bismika amuut.", arti: "Dengan nama-Mu ya Allah aku hidup dan dengan nama-Mu aku mati." },
+    { title: "Doa Bangun Tidur", arab: "الْحَمْدُ لِلَّهِ الَّذِي أَحْيَانَا بَعْدَ مَا أَمَاتَنَا وَإِلَيْهِ النُّشُورُ", latin: "Alhamdulillahilladzii ahyaanaa ba'da maa amaatanaa wa ilaihin nusyuur.", arti: "Segala puji bagi Allah yang menghidupkan kami setelah mematikan kami dan kepada-Nya kami kembali." },
+    { title: "Doa Sebelum Makan", arab: "اللَّهُمَّ بَارِكْ لَنَا فِيمَا رَزَقْتَنَا وَقِنَا عَذَابَ النَّارِ", latin: "Allahumma baarik lanaa fiimaa razaqtanaa wa qinaa 'adzaaban naar.", arti: "Ya Allah, berkahilah kami dalam rezeki yang telah Engkau berikan kepada kami dan peliharalah kami dari siksa api neraka." },
+    { title: "Doa Keluar Rumah", arab: "بِسْمِ اللَّهِ تَوَكَّلْتُ عَلَى اللَّهِ لاَ حَوْلَ وَلاَ قُوَّةَ إِلاَّ بِاللَّهِ", latin: "Bismillahi tawakkaltu 'alallah laa hawla wa laa quwwata illaa billaah.", arti: "Dengan nama Allah, aku bertawakal kepada Allah, tiada daya dan kekuatan kecuali dengan pertolongan Allah." }
+  ];
+
+  return (
+    <div className="bg-gray-50 min-h-screen">
+      <div className="bg-emerald-600 p-4 pt-8 sticky top-0 z-20 flex items-center shadow-md text-white">
+        <button onClick={onBack} className="p-2 mr-2 hover:bg-emerald-700 rounded-full transition-colors">
+          <ArrowLeft size={24} />
+        </button>
+        <h1 className="text-lg font-bold">Kumpulan Doa Harian</h1>
+      </div>
+
+      <div className="p-4 grid gap-4">
+        {doaData.map((doa, idx) => (
+          <div key={idx} className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-50 hover:border-emerald-200 transition-colors">
+            <h3 className="font-bold text-gray-800 mb-4">{doa.title}</h3>
+            <p className="text-xl font-arabic text-right mb-3 leading-loose text-emerald-800" dir="rtl">{doa.arab}</p>
+            <p className="text-sm text-emerald-600 italic mb-2">{doa.latin}</p>
+            <p className="text-xs text-gray-500 bg-gray-50 p-2 rounded-lg">{doa.arti}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
