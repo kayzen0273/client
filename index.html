@@ -78,6 +78,8 @@
         function render() {
             cleanup();
             const content = document.getElementById('app-content');
+            if (!content) return;
+            
             content.className = "flex-1 overflow-y-auto pb-24 hide-scrollbar fade-in"; // reset animation
 
             if (subView === 'quran-detail') renderSurahDetail(content);
@@ -89,7 +91,9 @@
             else if (activeTab === 'kiblat') renderKiblat(content);
 
             updateNavVisibility();
-            setTimeout(() => lucide.createIcons(), 10); // Render ikon
+            setTimeout(() => {
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }, 10);
         }
 
         function cleanup() {
@@ -107,16 +111,21 @@
             subView = null;
             selectedData = null;
             
-            // Update styling nav bar
+            // Update styling nav bar dengan pengecekan elemen
             document.querySelectorAll('.nav-btn').forEach(btn => {
                 btn.classList.remove('text-emerald-600');
                 btn.classList.add('text-gray-400');
-                btn.querySelector('i').classList.remove('scale-110');
+                const icon = btn.querySelector('i');
+                if (icon) icon.classList.remove('scale-110');
             });
+
             const activeBtn = document.getElementById(`nav-${tab}`);
-            activeBtn.classList.remove('text-gray-400');
-            activeBtn.classList.add('text-emerald-600');
-            activeBtn.querySelector('i').classList.add('scale-110');
+            if (activeBtn) {
+                activeBtn.classList.remove('text-gray-400');
+                activeBtn.classList.add('text-emerald-600');
+                const activeIcon = activeBtn.querySelector('i');
+                if (activeIcon) activeIcon.classList.add('scale-110');
+            }
             
             render();
         }
@@ -125,7 +134,8 @@
             subView = view;
             selectedData = data;
             render();
-            window.scrollTo(0, 0);
+            const content = document.getElementById('app-content');
+            if (content) content.scrollTo(0, 0);
         }
 
         function goBack() {
@@ -136,12 +146,15 @@
 
         function updateNavVisibility() {
             const nav = document.getElementById('bottom-nav');
+            const content = document.getElementById('app-content');
+            if (!nav || !content) return;
+
             if (subView) {
                 nav.style.display = 'none';
-                document.getElementById('app-content').classList.remove('pb-24');
+                content.classList.remove('pb-24');
             } else {
                 nav.style.display = 'flex';
-                document.getElementById('app-content').classList.add('pb-24');
+                content.classList.add('pb-24');
             }
         }
 
@@ -210,7 +223,6 @@
                 </div>
             `;
 
-            // Logic Jam Berjalan
             const updateTime = () => {
                 const now = new Date();
                 const timeEl = document.getElementById('clock-time');
@@ -247,26 +259,30 @@
                 }
                 displaySurahList(quranList);
 
-                // Fitur Pencarian
-                document.getElementById('quran-search').addEventListener('input', (e) => {
-                    const keyword = e.target.value.toLowerCase();
-                    const filtered = quranList.filter(s => 
-                        s.namaLatin.toLowerCase().includes(keyword) || 
-                        s.arti.toLowerCase().includes(keyword)
-                    );
-                    displaySurahList(filtered);
-                });
+                const searchInput = document.getElementById('quran-search');
+                if (searchInput) {
+                    searchInput.addEventListener('input', (e) => {
+                        const keyword = e.target.value.toLowerCase();
+                        const filtered = quranList.filter(s => 
+                            s.namaLatin.toLowerCase().includes(keyword) || 
+                            s.arti.toLowerCase().includes(keyword)
+                        );
+                        displaySurahList(filtered);
+                    });
+                }
 
             } catch (err) {
-                document.getElementById('quran-list-container').innerHTML = '<p class="text-center text-red-500 mt-10">Gagal memuat data. Periksa koneksi internet.</p>';
+                const listContainer = document.getElementById('quran-list-container');
+                if (listContainer) listContainer.innerHTML = '<p class="text-center text-red-500 mt-10">Gagal memuat data. Periksa koneksi internet.</p>';
             }
         }
 
         function displaySurahList(list) {
             const container = document.getElementById('quran-list-container');
+            if (!container) return;
             container.innerHTML = `<div class="space-y-3">
                 ${list.map(surah => `
-                    <button onclick='goTo("quran-detail", ${JSON.stringify(surah).replace(/'/g, "&#39;")})' class="w-full flex items-center p-4 bg-gray-50 hover:bg-emerald-50 rounded-2xl border border-gray-100 transition-colors text-left active:scale-[0.98]">
+                    <button onclick='goTo("quran-detail", ${JSON.stringify(surah).replace(/'/g, "&#39;")})' class="w-full flex items-center p-4 bg-white hover:bg-emerald-50 rounded-2xl border border-gray-100 shadow-sm transition-colors text-left active:scale-[0.98]">
                         <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 font-bold flex items-center justify-center text-sm mr-4 relative shrink-0">
                             <span class="absolute transform rotate-45 border border-emerald-300 w-8 h-8 rounded-sm"></span>
                             ${surah.nomor}
@@ -286,6 +302,8 @@
         // --- View: Detail Surah ---
         async function renderSurahDetail(container) {
             const surah = selectedData;
+            if (!surah) return;
+            
             container.innerHTML = `
                 <div class="bg-emerald-600 p-4 pt-8 sticky top-0 z-20 flex items-center shadow-md text-white">
                     <button onclick="goBack()" class="p-2 mr-2 hover:bg-emerald-700 rounded-full transition-colors">
@@ -309,7 +327,6 @@
                 const detail = data.data;
 
                 let html = '';
-                // Bismillah Header (Kecuali Al-Fatihah & At-Taubah)
                 if (surah.nomor !== 9 && surah.nomor !== 1) {
                     html += `
                         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex justify-center items-center mb-6">
@@ -346,22 +363,25 @@
                     </div>
                 `).join('');
 
-                document.getElementById('ayat-container').innerHTML = html;
-                lucide.createIcons();
+                const ayatContainer = document.getElementById('ayat-container');
+                if (ayatContainer) {
+                    ayatContainer.innerHTML = html;
+                    lucide.createIcons();
+                }
 
             } catch(err) {
-                document.getElementById('ayat-container').innerHTML = '<p class="text-center text-red-500 mt-10">Gagal memuat ayat.</p>';
+                const ayatContainer = document.getElementById('ayat-container');
+                if (ayatContainer) ayatContainer.innerHTML = '<p class="text-center text-red-500 mt-10">Gagal memuat ayat.</p>';
             }
         }
 
         window.toggleAudio = function(url, ayatNumber) {
-            // Reset semua ikon ke play
             document.querySelectorAll('[id^="btn-audio-"]').forEach(btn => {
                 btn.innerHTML = '<i data-lucide="play-circle" class="w-5 h-5"></i>';
             });
 
             if (playingAyat === ayatNumber) {
-                currentAudio.pause();
+                if (currentAudio) currentAudio.pause();
                 playingAyat = null;
             } else {
                 if (currentAudio) currentAudio.pause();
@@ -369,13 +389,18 @@
                 currentAudio.play();
                 playingAyat = ayatNumber;
                 
-                // Ubah ikon tombol ini jadi pause
-                document.getElementById(`btn-audio-${ayatNumber}`).innerHTML = '<i data-lucide="pause-circle" class="w-5 h-5"></i>';
+                const currentBtn = document.getElementById(`btn-audio-${ayatNumber}`);
+                if (currentBtn) {
+                    currentBtn.innerHTML = '<i data-lucide="pause-circle" class="w-5 h-5"></i>';
+                }
                 
                 currentAudio.onended = () => {
                     playingAyat = null;
-                    document.getElementById(`btn-audio-${ayatNumber}`).innerHTML = '<i data-lucide="play-circle" class="w-5 h-5"></i>';
-                    lucide.createIcons();
+                    const btn = document.getElementById(`btn-audio-${ayatNumber}`);
+                    if (btn) {
+                        btn.innerHTML = '<i data-lucide="play-circle" class="w-5 h-5"></i>';
+                        lucide.createIcons();
+                    }
                 };
             }
             lucide.createIcons();
@@ -397,38 +422,40 @@
                 </div>
                 <div class="px-6 pb-6" id="jadwal-container">
                     <div class="space-y-3">
-                        ${[1,2,3,4,5,6].map(() => `<div class="h-16 bg-gray-200 rounded-xl animate-pulse"></div>`).join('')}
+                        ${[1,2,3,4,5,6].map(() => `<div class="h-16 bg-white rounded-xl animate-pulse shadow-sm"></div>`).join('')}
                     </div>
                 </div>
             `;
 
-            document.getElementById('tanggal-jadwal').innerText = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const dateEl = document.getElementById('tanggal-jadwal');
+            if (dateEl) dateEl.innerText = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (pos) => fetchJadwalData(pos.coords.latitude, pos.coords.longitude),
-                    (err) => {
-                        fetchJadwalData(-6.2088, 106.8456); // Fallback Jakarta
-                        document.getElementById('lokasi-text').innerText = "Jakarta (Default)";
+                    () => {
+                        fetchJadwalData(-6.2088, 106.8456); // Jakarta
+                        const locText = document.getElementById('lokasi-text');
+                        if (locText) locText.innerText = "Jakarta (Default)";
                     }
                 );
             } else {
                 fetchJadwalData(-6.2088, 106.8456);
-                document.getElementById('lokasi-text').innerText = "Jakarta (Default)";
+                const locText = document.getElementById('lokasi-text');
+                if (locText) locText.innerText = "Jakarta (Default)";
             }
         }
 
         async function fetchJadwalData(lat, lng) {
             try {
-                // Get Location Name
                 fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
                     .then(res => res.json())
                     .then(data => {
                         const locName = data.address.city || data.address.town || data.address.county || "Lokasi Anda";
-                        document.getElementById('lokasi-text').innerText = locName;
+                        const locText = document.getElementById('lokasi-text');
+                        if (locText) locText.innerText = locName;
                     }).catch(()=>{});
 
-                // Get Schedule
                 const timestamp = Math.floor(Date.now() / 1000);
                 const res = await fetch(`https://api.aladhan.com/v1/timings/${timestamp}?latitude=${lat}&longitude=${lng}&method=20`);
                 const data = await res.json();
@@ -465,11 +492,15 @@
                 });
                 html += '</div>';
                 
-                document.getElementById('jadwal-container').innerHTML = html;
-                lucide.createIcons();
+                const container = document.getElementById('jadwal-container');
+                if (container) {
+                    container.innerHTML = html;
+                    lucide.createIcons();
+                }
 
             } catch(err) {
-                document.getElementById('jadwal-container').innerHTML = '<p class="text-center text-red-500 mt-10">Gagal memuat jadwal sholat.</p>';
+                const container = document.getElementById('jadwal-container');
+                if (container) container.innerHTML = '<p class="text-center text-red-500 mt-10">Gagal memuat jadwal sholat.</p>';
             }
         }
 
@@ -479,17 +510,14 @@
                 <div class="bg-gray-50 min-h-screen flex flex-col items-center pt-10 px-6">
                     <h1 class="text-2xl font-bold text-gray-800 mb-2">Arah Kiblat</h1>
                     <p class="text-sm text-gray-500 text-center mb-10">Posisikan HP Anda secara horizontal (datar) dan jauhkan dari magnet.</p>
-
-                    <div id="kiblat-content" class="w-full flex flex-col items-center">
-                        <!-- Tampilan Izin / Kompas Akan di render disini -->
-                    </div>
+                    <div id="kiblat-content" class="w-full flex flex-col items-center"></div>
                 </div>
             `;
             initCompass();
         }
 
         function initCompass() {
-            let qiblaAngle = 295; // Default Indonesia
+            let qiblaAngle = 295; 
 
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition((pos) => {
@@ -500,8 +528,8 @@
             }
 
             const content = document.getElementById('kiblat-content');
+            if (!content) return;
 
-            // Cek Izin (iOS)
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
                 content.innerHTML = `
                     <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 text-center mt-10 w-full max-w-sm">
@@ -529,27 +557,23 @@
 
         function startCompassEngine(qiblaAngle) {
             const content = document.getElementById('kiblat-content');
+            if (!content) return;
+
             content.innerHTML = `
                 <div class="relative flex flex-col items-center w-full max-w-[300px] mt-4">
                     <div id="kiblat-status" class="mb-12 px-6 py-2 rounded-full text-sm font-bold shadow-sm transition-colors duration-500 bg-white text-gray-600 border border-gray-200">
                         Putar Perangkat Anda
                     </div>
-
                     <div class="relative w-72 h-72">
-                        <!-- Compass Ring -->
                         <div id="compass-ring" class="absolute inset-0 rounded-full border-4 border-gray-200 shadow-inner flex items-center justify-center transition-transform duration-100 ease-linear bg-white">
                             <div class="absolute top-2 font-bold text-gray-400">U</div>
                             <div class="absolute bottom-2 font-bold text-gray-400">S</div>
                             <div class="absolute right-4 font-bold text-gray-400">T</div>
                             <div class="absolute left-4 font-bold text-gray-400">B</div>
-                            
-                            <!-- Qibla Indicator Line -->
                             <div class="absolute w-1 h-full py-1" style="transform: rotate(${qiblaAngle}deg)">
                                 <div class="w-4 h-4 rounded-full bg-emerald-500 mx-auto -mt-2 shadow-[0_0_10px_rgba(16,185,129,0.8)]"></div>
                             </div>
                         </div>
-
-                        <!-- Static Center Pointing Arrow -->
                         <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
                             <div class="w-16 h-16 rounded-full bg-white shadow-md flex items-center justify-center border border-gray-100 z-10">
                                 <div class="w-3 h-3 rounded-full bg-emerald-600"></div>
@@ -557,7 +581,6 @@
                             <div class="absolute top-8 w-1 h-1/2 bg-gradient-to-t from-transparent to-red-500 opacity-50 rounded-full"></div>
                         </div>
                     </div>
-
                     <div class="mt-16 text-center">
                         <p class="text-3xl font-mono font-bold text-gray-800" id="compass-degree">--°</p>
                         <p class="text-sm text-gray-500 mt-1">Arah Kiblat: ${Math.round(qiblaAngle)}°</p>
@@ -567,11 +590,8 @@
 
             compassHandler = (event) => {
                 let heading = null;
-                if (event.webkitCompassHeading) {
-                    heading = event.webkitCompassHeading; // iOS
-                } else if (event.alpha !== null) {
-                    heading = Math.abs(event.alpha - 360); // Android (Absolute needed to be true north if supported)
-                }
+                if (event.webkitCompassHeading) heading = event.webkitCompassHeading;
+                else if (event.alpha !== null) heading = Math.abs(event.alpha - 360);
 
                 if (heading !== null) {
                     const compassRing = document.getElementById('compass-ring');
@@ -580,23 +600,23 @@
                     
                     if(compassRing) {
                         compassRing.style.transform = `rotate(${-heading}deg)`;
-                        degreeText.innerText = `${Math.round(heading)}°`;
+                        if (degreeText) degreeText.innerText = `${Math.round(heading)}°`;
 
-                        // Toleransi 5 derajat
                         let diff = Math.abs(heading - qiblaAngle);
                         if (diff > 180) diff = 360 - diff;
 
-                        if (diff < 5) {
-                            statusText.className = "mb-12 px-6 py-2 rounded-full text-sm font-bold shadow-sm transition-colors duration-500 bg-emerald-500 text-white";
-                            statusText.innerText = "Anda Menghadap Kiblat";
-                        } else {
-                            statusText.className = "mb-12 px-6 py-2 rounded-full text-sm font-bold shadow-sm transition-colors duration-500 bg-white text-gray-600 border border-gray-200";
-                            statusText.innerText = "Putar Perangkat Anda";
+                        if (statusText) {
+                            if (diff < 5) {
+                                statusText.className = "mb-12 px-6 py-2 rounded-full text-sm font-bold shadow-sm transition-colors duration-500 bg-emerald-500 text-white";
+                                statusText.innerText = "Anda Menghadap Kiblat";
+                            } else {
+                                statusText.className = "mb-12 px-6 py-2 rounded-full text-sm font-bold shadow-sm transition-colors duration-500 bg-white text-gray-600 border border-gray-200";
+                                statusText.innerText = "Putar Perangkat Anda";
+                            }
                         }
                     }
                 }
             };
-
             window.addEventListener('deviceorientation', compassHandler, true);
         }
 
@@ -676,7 +696,6 @@
             container.innerHTML = html;
         }
 
-        // --- Inisialisasi Pertama Kali ---
         window.onload = () => {
             render();
         };
