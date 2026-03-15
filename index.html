@@ -7536,110 +7536,87 @@
                             </button>
                         )}
                     </div>
-                    {/* Filter Modal */}
+                    {/* Filter Modal - bottom sheet style sama seperti faktur pembelian */}
                     {histFilterModalOpen && (
-                        <div className="fixed inset-0 z-[200] bg-white flex flex-col" style={{fontFamily:'Inter,sans-serif'}}>
-                            {/* Header */}
-                            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-                                <button onClick={() => setHistFilterModalOpen(false)} className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-slate-700">
-                                    <Icon name="xmark" className="text-lg" />
-                                </button>
-                                <span className="font-semibold text-slate-700 text-sm">Riwayat kasir</span>
-                                <button
-                                    onClick={() => {
-                                        setFilterStatus(tempFilterStatus);
-                                        setFilterKasir(tempFilterKasir);
-                                        setFilterPayment(tempFilterPayment);
-                                        setHistFilterModalOpen(false);
-                                    }}
-                                    className="px-5 py-2 rounded-lg text-sm font-bold text-white"
-                                    style={{background:'#0d9488'}}
-                                >Pasang</button>
-                            </div>
-                            {/* Body */}
-                            <div className="flex-1 overflow-y-auto px-4 pt-5">
-                                <h2 className="text-3xl font-black text-slate-900 mb-6">Filter</h2>
-                                {/* Row: Kasir */}
-                                {uniqueKasirList.length > 0 && (
-                                    <div>
-                                        <div className="flex items-center justify-between py-3">
-                                            <div>
-                                                <span className="font-semibold text-slate-800 text-sm">Kasir</span>
-                                                {tempFilterKasir !== 'all' && <p className="text-xs text-teal-600 font-bold mt-0.5">{tempFilterKasir}</p>}
-                                            </div>
-                                            <button
-                                                onClick={() => setHistFilterActiveSection(histFilterActiveSection === 'kasir' ? null : 'kasir')}
-                                                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 text-teal-600 text-sm font-bold hover:bg-slate-50"
-                                            >Ubah <Icon name="pen" className="text-xs" /></button>
+                        <div className="fixed inset-0 z-50 flex flex-col justify-end" style={{background:'rgba(0,0,0,0.45)'}}>
+                            <div onClick={() => setHistFilterModalOpen(false)} className="absolute inset-0" />
+                            <div className="relative bg-white rounded-t-2xl shadow-2xl w-full max-w-lg mx-auto" style={{maxHeight:'90vh',overflowY:'auto'}}>
+                                {/* Header */}
+                                <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-100">
+                                    <div className="flex items-center gap-3">
+                                        <button onClick={() => setHistFilterModalOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500"><Icon name="xmark" /></button>
+                                        <h3 className="text-xl font-extrabold text-slate-800">Filter</h3>
+                                    </div>
+                                    <button onClick={() => { setFilterStatus(tempFilterStatus); setFilterKasir(tempFilterKasir); setFilterPayment(tempFilterPayment); setHistFilterModalOpen(false); }} className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-xl transition-all active:scale-95">Pasang</button>
+                                </div>
+                                {/* Filter rows */}
+                                <div className="px-5 py-2">
+                                    {/* Kasir */}
+                                    {uniqueKasirList.length > 0 && (
+                                        <div className="border-b border-slate-100">
+                                            <button onClick={() => setHistFilterActiveSection(histFilterActiveSection === 'kasir' ? null : 'kasir')} className="w-full flex items-center justify-between py-4 text-left">
+                                                <span className="font-bold text-slate-800 text-sm">Kasir</span>
+                                                <span className={`flex items-center gap-1.5 text-xs font-bold border rounded-lg px-3 py-1.5 transition-all ${tempFilterKasir !== 'all' ? 'border-teal-500 text-teal-600 bg-teal-50' : 'border-slate-200 text-teal-600'}`}>
+                                                    <Icon name="pen" className="text-[10px]" /> {tempFilterKasir !== 'all' ? tempFilterKasir : 'Ubah'}
+                                                </span>
+                                            </button>
+                                            {histFilterActiveSection === 'kasir' && (
+                                                <div className="pb-4 flex flex-wrap gap-2">
+                                                    {[{value:'all',label:'Semua Kasir'}, ...uniqueKasirList.map(u=>({value:u.name,label:u.isActive?u.name:`${u.name} (nonaktif)`}))].map(opt => (
+                                                        <button key={opt.value} onClick={() => { setTempFilterKasir(opt.value); setHistFilterActiveSection(null); }}
+                                                            className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${tempFilterKasir === opt.value ? 'bg-teal-600 border-teal-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                                                            {opt.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
-                                        {histFilterActiveSection === 'kasir' && (
-                                            <div className="mb-3 flex flex-wrap gap-2 pb-3">
-                                                {[{value:'all',label:'Semua Kasir'}, ...uniqueKasirList.map(u=>({value:u.name,label:u.isActive?u.name:`${u.name} (nonaktif)`}))].map(opt => (
-                                                    <button key={opt.value} onClick={() => setTempFilterKasir(opt.value)}
-                                                        className={`px-3 py-2 rounded-lg text-xs font-bold border transition-all ${tempFilterKasir === opt.value ? 'bg-teal-600 border-teal-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                                    )}
+                                    {/* Tipe Transaksi */}
+                                    <div className="border-b border-slate-100">
+                                        <button onClick={() => setHistFilterActiveSection(histFilterActiveSection === 'status' ? null : 'status')} className="w-full flex items-center justify-between py-4 text-left">
+                                            <span className="font-bold text-slate-800 text-sm">Tipe transaksi</span>
+                                            <span className={`flex items-center gap-1.5 text-xs font-bold border rounded-lg px-3 py-1.5 transition-all ${tempFilterStatus !== 'all' ? 'border-teal-500 text-teal-600 bg-teal-50' : 'border-slate-200 text-teal-600'}`}>
+                                                <Icon name="pen" className="text-[10px]" /> {tempFilterStatus !== 'all' ? ({success:'Sukses',partial:'Retur Sebagian',returned:'Retur Full'}[tempFilterStatus]) : 'Ubah'}
+                                            </span>
+                                        </button>
+                                        {histFilterActiveSection === 'status' && (
+                                            <div className="pb-4 flex flex-wrap gap-2">
+                                                {[{value:'all',label:'Semua'},{value:'success',label:'Sukses'},{value:'partial',label:'Retur Sebagian'},{value:'returned',label:'Retur Full (Batal)'}].map(opt => (
+                                                    <button key={opt.value} onClick={() => { setTempFilterStatus(opt.value); setHistFilterActiveSection(null); }}
+                                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${tempFilterStatus === opt.value ? 'bg-teal-600 border-teal-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                                                         {opt.label}
                                                     </button>
                                                 ))}
                                             </div>
                                         )}
-                                        <div className="border-b border-slate-100"></div>
                                     </div>
-                                )}
-                                {/* Row: Tipe Transaksi (Status) */}
-                                <div>
-                                    <div className="flex items-center justify-between py-3">
-                                        <div>
-                                            <span className="font-semibold text-slate-800 text-sm">Tipe transaksi</span>
-                                            {tempFilterStatus !== 'all' && <p className="text-xs text-teal-600 font-bold mt-0.5">{{success:'Sukses',partial:'Retur Sebagian',returned:'Retur Full (Batal)'}[tempFilterStatus]}</p>}
-                                        </div>
-                                        <button
-                                            onClick={() => setHistFilterActiveSection(histFilterActiveSection === 'status' ? null : 'status')}
-                                            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 text-teal-600 text-sm font-bold hover:bg-slate-50"
-                                        >Ubah <Icon name="pen" className="text-xs" /></button>
+                                    {/* Bayar */}
+                                    <div className="border-b border-slate-100">
+                                        <button onClick={() => setHistFilterActiveSection(histFilterActiveSection === 'payment' ? null : 'payment')} className="w-full flex items-center justify-between py-4 text-left">
+                                            <span className="font-bold text-slate-800 text-sm">Bayar</span>
+                                            <span className={`flex items-center gap-1.5 text-xs font-bold border rounded-lg px-3 py-1.5 transition-all ${tempFilterPayment !== 'all' ? 'border-teal-500 text-teal-600 bg-teal-50' : 'border-slate-200 text-teal-600'}`}>
+                                                <Icon name="pen" className="text-[10px]" /> {tempFilterPayment !== 'all' ? ({tunai:'💵 Tunai',qris:'💳 QRIS',transfer:'🏦 Transfer'}[tempFilterPayment]) : 'Ubah'}
+                                            </span>
+                                        </button>
+                                        {histFilterActiveSection === 'payment' && (
+                                            <div className="pb-4 flex flex-wrap gap-2">
+                                                {[{value:'all',label:'Semua'},{value:'tunai',label:'💵 Tunai'},{value:'qris',label:'💳 QRIS'},{value:'transfer',label:'🏦 Transfer'}].map(opt => (
+                                                    <button key={opt.value} onClick={() => { setTempFilterPayment(opt.value); setHistFilterActiveSection(null); }}
+                                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${tempFilterPayment === opt.value ? 'bg-teal-600 border-teal-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                                                        {opt.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
-                                    {histFilterActiveSection === 'status' && (
-                                        <div className="mb-3 flex flex-wrap gap-2 pb-3">
-                                            {[{value:'all',label:'Semua'},{value:'success',label:'Sukses'},{value:'partial',label:'Retur Sebagian'},{value:'returned',label:'Retur Full (Batal)'}].map(opt => (
-                                                <button key={opt.value} onClick={() => setTempFilterStatus(opt.value)}
-                                                    className={`px-3 py-2 rounded-lg text-xs font-bold border transition-all ${tempFilterStatus === opt.value ? 'bg-teal-600 border-teal-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
-                                                    {opt.label}
-                                                </button>
-                                            ))}
-                                        </div>
+                                    {/* Reset */}
+                                    {(tempFilterStatus !== 'all' || tempFilterKasir !== 'all' || tempFilterPayment !== 'all') && (
+                                        <button onClick={() => { setTempFilterStatus('all'); setTempFilterKasir('all'); setTempFilterPayment('all'); }} className="mt-4 mb-2 w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-red-200 text-red-500 text-sm font-bold hover:bg-red-50 transition-all">
+                                            <Icon name="xmark" /> Reset Filter
+                                        </button>
                                     )}
-                                    <div className="border-b border-slate-100"></div>
                                 </div>
-                                {/* Row: Bayar (Payment) */}
-                                <div>
-                                    <div className="flex items-center justify-between py-3">
-                                        <div>
-                                            <span className="font-semibold text-slate-800 text-sm">Bayar</span>
-                                            {tempFilterPayment !== 'all' && <p className="text-xs text-teal-600 font-bold mt-0.5">{{tunai:'💵 Tunai',qris:'💳 QRIS',transfer:'🏦 Transfer'}[tempFilterPayment]}</p>}
-                                        </div>
-                                        <button
-                                            onClick={() => setHistFilterActiveSection(histFilterActiveSection === 'payment' ? null : 'payment')}
-                                            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 text-teal-600 text-sm font-bold hover:bg-slate-50"
-                                        >Ubah <Icon name="pen" className="text-xs" /></button>
-                                    </div>
-                                    {histFilterActiveSection === 'payment' && (
-                                        <div className="mb-3 flex flex-wrap gap-2 pb-3">
-                                            {[{value:'all',label:'Semua'},{value:'tunai',label:'💵 Tunai'},{value:'qris',label:'💳 QRIS'},{value:'transfer',label:'🏦 Transfer'}].map(opt => (
-                                                <button key={opt.value} onClick={() => setTempFilterPayment(opt.value)}
-                                                    className={`px-3 py-2 rounded-lg text-xs font-bold border transition-all ${tempFilterPayment === opt.value ? 'bg-teal-600 border-teal-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
-                                                    {opt.label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                    <div className="border-b border-slate-100"></div>
-                                </div>
-                                {/* Reset all */}
-                                {(tempFilterStatus !== 'all' || tempFilterKasir !== 'all' || tempFilterPayment !== 'all') && (
-                                    <button
-                                        onClick={() => { setTempFilterStatus('all'); setTempFilterKasir('all'); setTempFilterPayment('all'); }}
-                                        className="mt-4 w-full py-3 rounded-xl border border-red-200 text-red-500 text-sm font-bold hover:bg-red-50 transition-all"
-                                    >Reset Semua Filter</button>
-                                )}
                             </div>
                         </div>
                     )}
