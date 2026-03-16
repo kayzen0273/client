@@ -422,6 +422,8 @@
             // Fitur Daftar Barang
             enableCopyWA: true,
             enableExportExcel: true,
+            // Fitur Absensi
+            requireAbsensiGps: true,
         };
 
         // --- BLUETOOTH PRINTER HELPERS ---
@@ -1244,6 +1246,7 @@
                 { key: 'enableTransferBarang', label: 'Transfer Barang', icon: 'right-left', desc: 'Transfer stok antar toko' },
                 { key: 'enableCopyWA', label: 'Salin WhatsApp', icon: 'whatsapp', desc: 'Tombol salin daftar barang ke WA' },
                 { key: 'enableExportExcel', label: 'Export Excel', icon: 'file-excel', desc: 'Tombol export daftar barang ke Excel' },
+                { key: 'requireAbsensiGps', label: 'GPS Wajib Absensi', icon: 'location-dot', desc: 'Wajibkan GPS saat karyawan melakukan absensi' },
             ];
             const settingsAccessList = [
                 { key: 'enableSettingsToko', label: 'Profil & Cabang Toko', icon: 'shop', desc: 'Edit nama, alamat toko' },
@@ -3404,7 +3407,7 @@
                         dueDate: invoiceData.dueDate ? new Date(invoiceData.dueDate).toISOString() : null, 
                         isPaid: invoiceData.isPaid, 
                         isConsignment: invoiceData.isConsignment || false,
-                        items: finalItems.map(item => ({ id: item.id, name: item.name, qty: item.qty, price: item.price, buyPrice: item.buyPrice || 0, discountBeli: item.discountBeli || 0, discountBeliType: item.discountBeliType || '%' })),
+                        items: finalItems.map(item => ({ id: item.id, name: item.name, qty: item.qty, price: item.price, buyPrice: item.buyPrice || 0, discountBeli: item.discountBeli || 0, discountBeliType: item.discountBeliType || '%', batchNo: item.batchNo || '' })),
                         updatedAt: window.serverTimestamp(),
                         ...(attachmentData ? { attachmentData, attachmentType, attachmentName } : {})
                     };
@@ -10131,12 +10134,20 @@
                 indigo: { bg:'#E8EAF6', text:'#1A237E', border:'#5C6BC0', label:'Indigo' },
             };
 
-            // ---- DEFAULT_SHIFTS & LIBUR (SHIFTS dihitung setelah weekJadwal tersedia) ----
+            // ---- SHIFTS dihitung SETELAH shiftConfig state (agar reaktif) ----
             const DEFAULT_SHIFTS = [
                 { id: 'pagi',  label: 'Pagi',  jamMulai: '08:00', jamSelesai: '14:00', bg: '#FFF176', text: '#5D4037', border: '#F9A825' },
                 { id: 'siang', label: 'Siang', jamMulai: '14:00', jamSelesai: '21:00', bg: '#80DEEA', text: '#006064', border: '#00ACC1' },
             ];
             const LIBUR_SHIFT = { id: 'libur', label: 'Libur', jamMulai: '', jamSelesai: '', bg: '#F8FAFC', text: '#94a3b8', border: '#e2e8f0' };
+            const SHIFTS = [
+                ...DEFAULT_SHIFTS.map(s => {
+                    const cfg = shiftConfig?.[s.id];
+                    return { ...s, jamMulai: cfg?.jamMulai ?? s.jamMulai, jamSelesai: cfg?.jamSelesai ?? s.jamSelesai };
+                }),
+                ...(shiftConfig?.customShifts || []),
+                LIBUR_SHIFT,
+            ];
             // ---- Lokasi states ----
             const [locationStatus, setLocationStatus]   = useState('idle'); // 'idle' | 'requesting' | 'granted' | 'denied'
             const [locationData, setLocationData]       = useState(null);   // {lat, lng, accuracy}
@@ -10217,16 +10228,6 @@
             const weekJadwal = jadwal[weekKey] || {};
             const cellKey    = (dayIdx, shiftId, lokasiId) => `${dayIdx}_${shiftId}_${lokasiId}`;
 
-            // ---- SHIFTS dihitung di sini agar weekJadwal & shiftConfig sudah tersedia ----
-            const SHIFTS = [
-                ...DEFAULT_SHIFTS.map(s => {
-                    const cfg = shiftConfig?.[s.id];
-                    return { ...s, jamMulai: cfg?.jamMulai ?? s.jamMulai, jamSelesai: cfg?.jamSelesai ?? s.jamSelesai };
-                }),
-                ...(weekJadwal._customShifts || []),
-                LIBUR_SHIFT,
-            ];
-
             // doubleSlot per-pekan (bukan global)
             const doubleSlot = weekJadwal._doubleSlot || false;
             const toggleDoubleSlot = async () => {
@@ -10250,27 +10251,27 @@
                 } catch(e) { showToast('Gagal menyimpan','error'); }
             };
 
-            // ---- Custom Shift CRUD (per-pekan) ----
+            // ---- Custom Shift CRUD ----
             const addCustomShift = async () => {
                 if (!newShiftData.label.trim()) return;
                 const id = 'custom_' + Date.now();
                 const preset = SHIFT_COLOR_PRESETS[newShiftData.colorKey] || SHIFT_COLOR_PRESETS.orange;
                 const newShift = { id, label: newShiftData.label.trim(), jamMulai: newShiftData.jamMulai, jamSelesai: newShiftData.jamSelesai, bg: preset.bg, text: preset.text, border: preset.border };
-                const current = weekJadwal._customShifts || [];
-                const ref = window.doc(colJadwal(), weekKey);
+                const current = shiftConfig?.customShifts || [];
+                const ref = docShiftCfg();
                 try {
-                    await window.setDoc(ref, { _customShifts: [...current, newShift], updatedAt: window.serverTimestamp() }, {merge:true});
+                    await window.setDoc(ref, { customShifts: [...current, newShift], updatedAt: window.serverTimestamp() }, {merge:true});
                     setNewShiftData({ label: '', jamMulai: '09:00', jamSelesai: '17:00', colorKey: 'orange' });
                     setAddingShift(false);
-                    showToast('✅ Shift ditambahkan untuk pekan ini');
+                    showToast('✅ Shift ditambahkan');
                 } catch(e) { showToast('Gagal tambah shift','error'); }
             };
             const deleteCustomShift = async (shiftId) => {
-                const current = weekJadwal._customShifts || [];
+                const current = shiftConfig?.customShifts || [];
                 const updated = current.filter(s => s.id !== shiftId);
-                const ref = window.doc(colJadwal(), weekKey);
+                const ref = docShiftCfg();
                 try {
-                    await window.setDoc(ref, { _customShifts: updated, updatedAt: window.serverTimestamp() }, {merge:true});
+                    await window.setDoc(ref, { customShifts: updated, updatedAt: window.serverTimestamp() }, {merge:true});
                     showToast('Shift dihapus');
                 } catch(e) { showToast('Gagal hapus','error'); }
             };
@@ -10354,13 +10355,13 @@
 
             /* ---------- Rekap ---------- */
             const getRekapKaryawan = (k) => {
-                const counts = { libur: 0, total: 0 };
+                const counts = {pagi:0, siang:0, libur:0, total:0};
                 for (let d=0; d<7; d++) {
                     lokasiList.forEach(loc => {
                         SHIFTS.forEach(s => {
                             const ids = getCell(d,s.id,loc.id);
                             if (ids.includes(k.id)) {
-                                counts[s.id] = (counts[s.id] || 0) + 1;
+                                counts[s.id]++;
                                 if (s.id !== 'libur') counts.total++;
                             }
                         });
@@ -10429,14 +10430,17 @@
             /* ---------- Absensi: Submit ---------- */
             const submitAbsensi = async () => {
                 if (!capturedPhoto) { showToast('Foto selfie wajib diambil!', 'error'); return; }
-                // Minta lokasi jika belum granted
+                const gpsRequired = settings?.requireAbsensiGps !== false;
+                // Minta lokasi jika GPS diwajibkan dan belum granted
                 let locData = locationData;
-                if (locationStatus !== 'granted' || !locData) {
-                    try {
-                        locData = await requestLocation();
-                    } catch(e) {
-                        showToast('❌ Aktifkan izin lokasi untuk menyimpan absensi!', 'error');
-                        return;
+                if (gpsRequired) {
+                    if (locationStatus !== 'granted' || !locData) {
+                        try {
+                            locData = await requestLocation();
+                        } catch(e) {
+                            showToast('❌ Aktifkan izin lokasi untuk menyimpan absensi!', 'error');
+                            return;
+                        }
                     }
                 }
                 setSubmittingAbsensi(true);
@@ -10799,7 +10803,8 @@
                                         className="w-full border-2 border-slate-200 focus:border-emerald-400 rounded-xl px-3 py-2.5 text-sm outline-none text-slate-700" />
                                 </div>
 
-                                {/* ---- LOKASI GPS ---- */}
+                                {/* ---- LOKASI GPS (hanya jika diwajibkan admin) ---- */}
+                                {settings?.requireAbsensiGps !== false && (
                                 <div>
                                     <label className="text-[11px] font-bold text-slate-600 block mb-1.5">📍 Lokasi GPS <span className="text-red-500">*</span></label>
                                     {locationStatus === 'idle' && (
@@ -10849,6 +10854,7 @@
                                         </div>
                                     )}
                                 </div>
+                                )}
 
                                 {/* ---- KAMERA SELFIE ---- */}
                                 <div>
@@ -10896,17 +10902,17 @@
                                 </div>
 
                                 {/* Submit */}
-                                {locationStatus === 'denied' && (
+                                {settings?.requireAbsensiGps !== false && locationStatus === 'denied' && (
                                     <div className="text-[11px] text-center text-red-500 font-bold bg-red-50 rounded-xl py-2 border border-red-200">
                                         ❌ Izin lokasi wajib diaktifkan sebelum simpan absensi
                                     </div>
                                 )}
                                 <button
                                     onClick={submitAbsensi}
-                                    disabled={submittingAbsensi || !capturedPhoto || locationStatus === 'denied'}
+                                    disabled={submittingAbsensi || !capturedPhoto || (settings?.requireAbsensiGps !== false && locationStatus === 'denied')}
                                     className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:opacity-40 text-white font-extrabold text-sm rounded-2xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-2">
                                     {submittingAbsensi ? <><Icon name="spinner" className="animate-spin" /> Menyimpan...</>
-                                    : locationStatus === 'requesting' ? <><Icon name="spinner" className="animate-spin" /> Mendapatkan lokasi...</>
+                                    : (settings?.requireAbsensiGps !== false && locationStatus === 'requesting') ? <><Icon name="spinner" className="animate-spin" /> Mendapatkan lokasi...</>
                                     : <><Icon name="check" /> Simpan Absensi</>}
                                 </button>
                             </div>
@@ -11061,10 +11067,7 @@
                                 {/* SHIFT KUSTOM */}
                                 <div>
                                     <div className="flex items-center justify-between mb-2 px-1">
-                                        <div>
-                                            <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Shift Tambahan</p>
-                                            <p className="text-[9px] text-violet-500 font-bold">⚡ Hanya berlaku pekan ini</p>
-                                        </div>
+                                        <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Shift Tambahan</p>
                                         {!addingShift && (
                                             <button onClick={()=>setAddingShift(true)} className="flex items-center gap-1 px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold rounded-lg shadow transition-all active:scale-95">
                                                 <Icon name="plus" /> Tambah Shift
@@ -11072,9 +11075,9 @@
                                         )}
                                     </div>
 
-                                    {/* Daftar custom shifts pekan ini */}
+                                    {/* Daftar custom shifts */}
                                     <div className="space-y-2">
-                                    {(weekJadwal._customShifts || []).map(s => (
+                                    {(shiftConfig?.customShifts || []).map(s => (
                                         <div key={s.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl border-2" style={{background: s.bg + '50', borderColor: s.border}}>
                                             <div className="w-8 h-8 rounded-xl flex items-center justify-center font-extrabold text-xs flex-shrink-0" style={{background: s.bg, color: s.text, border: `2px solid ${s.border}`}}>{(s.label||'S').charAt(0)}</div>
                                             <div className="flex-1 min-w-0">
@@ -11084,8 +11087,8 @@
                                             <button onClick={()=>deleteCustomShift(s.id)} className="w-8 h-8 bg-red-50 hover:bg-red-100 text-red-400 rounded-lg flex items-center justify-center text-xs transition-all active:scale-95 flex-shrink-0"><Icon name="trash" /></button>
                                         </div>
                                     ))}
-                                    {(weekJadwal._customShifts||[]).length === 0 && !addingShift && (
-                                        <p className="text-[11px] text-slate-400 text-center py-3 bg-slate-50 rounded-xl border border-dashed border-slate-200">Belum ada shift tambahan pekan ini</p>
+                                    {(shiftConfig?.customShifts||[]).length === 0 && !addingShift && (
+                                        <p className="text-[11px] text-slate-400 text-center py-3 bg-slate-50 rounded-xl border border-dashed border-slate-200">Belum ada shift tambahan</p>
                                     )}
                                     </div>
 
@@ -11127,7 +11130,7 @@
                                     )}
                                 </div>
                                 </div>
-                                <p className="text-[10px] text-slate-400 mt-3 text-center flex-shrink-0">Jam Pagi & Siang berlaku global · Shift tambahan hanya berlaku pekan ini</p>
+                                <p className="text-[10px] text-slate-400 mt-3 text-center flex-shrink-0">Perubahan langsung tersimpan & berlaku untuk semua</p>
                             </div>
                         </div>
                     )}
@@ -12761,7 +12764,7 @@
                         {activeTab === 'settings' && (<SettingsView settings={settingsData} onSave={handleSaveSettings} loading={submitting} authSession={authSession} onUpdateSession={(newSession) => { setAuthSession(newSession); saveSession(newSession); }} />)}
                         {activeTab === 'pengguna_akun' && (<PenggunaAkunView authSession={authSession} onUpdateSession={(newSession) => { setAuthSession(newSession); saveSession(newSession); }} showToast={showToast} />)}
                         {activeTab === 'catatan' && (<PapanCatatan user={user} readOnly={menuItems.find(m=>m.id==='catatan')?.readOnly} />)}
-                        {activeTab === 'jadwal_shift' && (<JadwalShiftView user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='jadwal_shift')?.readOnly} isOwner={isOwner} authSession={authSession} />)}
+                        {activeTab === 'jadwal_shift' && (<JadwalShiftView user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='jadwal_shift')?.readOnly} isOwner={isOwner} authSession={authSession} settings={settingsData} />)}
                         {activeTab === 'transfer_barang' && (<TransferBarangView user={user} showToast={showToast} rawInventory={rawInventory} settings={settingsData} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='transfer_barang')?.readOnly} authSession={authSession} />)}
                     </main>
                     <ConfirmModal isOpen={deleteModal.show} title="Hapus Barang?" message={`Yakin ingin menghapus permanen "${deleteModal.item?.name}"? Barang ini akan hilang dari SEMUA toko.`} onConfirm={handleDelete} onCancel={() => setDeleteModal({ show: false, item: null })} />
