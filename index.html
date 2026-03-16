@@ -10131,20 +10131,12 @@
                 indigo: { bg:'#E8EAF6', text:'#1A237E', border:'#5C6BC0', label:'Indigo' },
             };
 
-            // ---- SHIFTS dihitung SETELAH shiftConfig state (agar reaktif) ----
+            // ---- DEFAULT_SHIFTS & LIBUR (SHIFTS dihitung setelah weekJadwal tersedia) ----
             const DEFAULT_SHIFTS = [
                 { id: 'pagi',  label: 'Pagi',  jamMulai: '08:00', jamSelesai: '14:00', bg: '#FFF176', text: '#5D4037', border: '#F9A825' },
                 { id: 'siang', label: 'Siang', jamMulai: '14:00', jamSelesai: '21:00', bg: '#80DEEA', text: '#006064', border: '#00ACC1' },
             ];
             const LIBUR_SHIFT = { id: 'libur', label: 'Libur', jamMulai: '', jamSelesai: '', bg: '#F8FAFC', text: '#94a3b8', border: '#e2e8f0' };
-            const SHIFTS = [
-                ...DEFAULT_SHIFTS.map(s => {
-                    const cfg = shiftConfig?.[s.id];
-                    return { ...s, jamMulai: cfg?.jamMulai ?? s.jamMulai, jamSelesai: cfg?.jamSelesai ?? s.jamSelesai };
-                }),
-                ...(weekJadwal._customShifts || []),
-                LIBUR_SHIFT,
-            ];
             // ---- Lokasi states ----
             const [locationStatus, setLocationStatus]   = useState('idle'); // 'idle' | 'requesting' | 'granted' | 'denied'
             const [locationData, setLocationData]       = useState(null);   // {lat, lng, accuracy}
@@ -10224,6 +10216,16 @@
 
             const weekJadwal = jadwal[weekKey] || {};
             const cellKey    = (dayIdx, shiftId, lokasiId) => `${dayIdx}_${shiftId}_${lokasiId}`;
+
+            // ---- SHIFTS dihitung di sini agar weekJadwal & shiftConfig sudah tersedia ----
+            const SHIFTS = [
+                ...DEFAULT_SHIFTS.map(s => {
+                    const cfg = shiftConfig?.[s.id];
+                    return { ...s, jamMulai: cfg?.jamMulai ?? s.jamMulai, jamSelesai: cfg?.jamSelesai ?? s.jamSelesai };
+                }),
+                ...(weekJadwal._customShifts || []),
+                LIBUR_SHIFT,
+            ];
 
             // doubleSlot per-pekan (bukan global)
             const doubleSlot = weekJadwal._doubleSlot || false;
