@@ -559,19 +559,21 @@
             }));
 
             return (
-                <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{zIndex: -1}}>
-
-                    {/* ===== RUNNING TEXT ===== */}
-                    <div className="absolute top-0 left-0 right-0 overflow-hidden select-none" style={{zIndex:10,
-                        background: 'linear-gradient(90deg,#1e3a5f,#15502e,#1e3a5f)',
-                        borderBottom: '1px solid rgba(250,204,21,0.25)',
-                        padding: '3px 0'}}>
-                        <div style={{display:'flex', width:'max-content', animation:'marquee 34s linear infinite', whiteSpace:'nowrap'}}>
-                            <span style={{color:'#fde68a', fontSize:'11px', fontWeight:'800', letterSpacing:'0.06em', padding:'0 16px', textShadow:'0 1px 6px rgba(0,0,0,0.5)'}}>
-                                {doubleMarquee}
-                            </span>
-                        </div>
+                <>
+                {/* ===== RUNNING TEXT — fixed di atas semua layer ===== */}
+                <div className="fixed left-0 right-0 overflow-hidden select-none" style={{
+                    top: 0, zIndex: 99,
+                    background: 'linear-gradient(90deg,#1e3a5f,#15502e,#1e3a5f)',
+                    borderBottom: '1px solid rgba(250,204,21,0.3)',
+                    padding: '4px 0',
+                }}>
+                    <div style={{display:'flex', width:'max-content', animation:'marquee 34s linear infinite', whiteSpace:'nowrap'}}>
+                        <span style={{color:'#fde68a', fontSize:'11px', fontWeight:'800', letterSpacing:'0.06em', padding:'0 16px', textShadow:'0 1px 6px rgba(0,0,0,0.5)'}}>
+                            {doubleMarquee}
+                        </span>
                     </div>
+                </div>
+                <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{zIndex: -1}}>
 
                     {/* ===== FULL SVG SCENE ===== */}
                     <svg width="100%" height="100%" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice"
@@ -930,6 +932,7 @@
                     ))}
 
                 </div>
+                </>
             );
         };
 
