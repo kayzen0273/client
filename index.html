@@ -40,6 +40,15 @@
                         'drift-left': 'driftLeft ease-in-out infinite',
                         'drift-right': 'driftRight ease-in-out infinite',
                         'glow-pulse': 'glowPulse ease-in-out infinite',
+                        'bird-fly': 'birdFly linear infinite',
+                        'wing-flap': 'wingFlap ease-in-out infinite',
+                        'river-wave': 'riverWave ease-in-out infinite',
+                        'tree-wave': 'treeWave ease-in-out infinite',
+                        'flamingo-walk': 'flamingoWalk ease-in-out infinite',
+                        'swan-glide': 'swanGlide ease-in-out infinite',
+                        'cloud-drift': 'cloudDrift ease-in-out infinite alternate',
+                        'moon-glow': 'moonGlow ease-in-out infinite',
+                        'grass-wave': 'grassWave ease-in-out infinite',
                     },
                     keyframes: {
                         sway: { from: { transform: 'rotate(-5deg)' }, to: { transform: 'rotate(5deg)' } },
@@ -58,6 +67,18 @@
                         spinBounce: { '0%': { transform: 'rotate(0deg) scale(1)' }, '25%': { transform: 'rotate(90deg) scale(1.2)' }, '50%': { transform: 'rotate(180deg) scale(1)' }, '75%': { transform: 'rotate(270deg) scale(0.85)' }, '100%': { transform: 'rotate(360deg) scale(1)' } },
                         driftLeft: { '0%,100%': { transform: 'translate(0,0) rotate(0deg)' }, '33%': { transform: 'translate(-18px,-15px) rotate(-12deg)' }, '66%': { transform: 'translate(12px,-25px) rotate(8deg)' } },
                         driftRight: { '0%,100%': { transform: 'translate(0,0) rotate(0deg)' }, '33%': { transform: 'translate(18px,-12px) rotate(10deg)' }, '66%': { transform: 'translate(-10px,-22px) rotate(-8deg)' } },
+                        birdFly: { '0%': { transform: 'translateX(-120px)' }, '100%': { transform: 'translateX(calc(100vw + 120px))' } },
+                        wingFlap: { '0%,100%': { transform: 'scaleY(1)' }, '50%': { transform: 'scaleY(-0.4)' } },
+                        riverWave: { '0%,100%': { transform: 'translateX(0)' }, '50%': { transform: 'translateX(-30px)' } },
+                        waterShimmer: { '0%,100%': { opacity: 0.15 }, '50%': { opacity: 0.35 } },
+                        treeWave: { '0%,100%': { transform: 'rotate(0deg)', transformOrigin: 'bottom center' }, '50%': { transform: 'rotate(2deg)', transformOrigin: 'bottom center' } },
+                        flamingoWalk: { '0%,100%': { transform: 'translateX(0) scaleX(1)' }, '48%': { transform: 'translateX(22px) scaleX(1)' }, '50%': { transform: 'translateX(22px) scaleX(-1)' }, '98%': { transform: 'translateX(0) scaleX(-1)' } },
+                        flamingoNeck: { '0%,100%': { transform: 'rotate(0deg)' }, '50%': { transform: 'rotate(10deg)' } },
+                        swanGlide: { '0%': { transform: 'translateX(0) scaleX(1)' }, '45%': { transform: 'translateX(35px) scaleX(1)' }, '50%': { transform: 'translateX(35px) scaleX(-1)' }, '95%': { transform: 'translateX(0) scaleX(-1)' }, '100%': { transform: 'translateX(0) scaleX(1)' } },
+                        ripple: { '0%': { r: '2', opacity: 0.6 }, '100%': { r: '14', opacity: 0 } },
+                        cloudDrift: { '0%': { transform: 'translateX(0)' }, '100%': { transform: 'translateX(60px)' } },
+                        moonGlow: { '0%,100%': { filter: 'drop-shadow(0 0 8px #fde68a88)' }, '50%': { filter: 'drop-shadow(0 0 18px #fde68acc)' } },
+                        grassWave: { '0%,100%': { transform: 'rotate(0deg)', transformOrigin: 'bottom' }, '50%': { transform: 'rotate(4deg)', transformOrigin: 'bottom' } },
                     }
                 }
             }
@@ -507,45 +528,6 @@
 
         // --- DEKORASI IDUL FITRI ---
         const RamadhanDecor = () => {
-            // Simbol Idul Fitri melayang
-            const fitriSymbols = React.useMemo(() => {
-                const syms = ['🌙','⭐','✨','🌟','💫','🌙','⭐','✨','🌟','💫',
-                               '🌙','⭐','✨','🌟','💫','🌙','⭐','✨','🌟','💫',
-                               '🌙','⭐','✨','🌟','💫','🌙','⭐','✨','🌟','💫'];
-                return syms.map((s, i) => ({
-                    id: i, sym: s,
-                    left: (i * 3.4 + 1) % 99,
-                    size: 10 + (i % 8) * 2,
-                    dur: 5 + (i % 6),
-                    delay: -(i * 0.85),
-                }));
-            }, []);
-
-            // Big floating emojis scattered
-            const bigEmojis = [
-                { e:'🌙', x:5,  y:15, dur:4.5, delay:0,    anim:'driftLeft',  size:28 },
-                { e:'⭐', x:18, y:55, dur:3.8, delay:0.5,  anim:'popBounce',  size:24 },
-                { e:'🫙', x:88, y:20, dur:5,   delay:0.3,  anim:'driftRight', size:26 },
-                { e:'✨', x:78, y:60, dur:3.5, delay:1.0,  anim:'popBounce',  size:22 },
-                { e:'🎊', x:50, y:8,  dur:4,   delay:0.7,  anim:'popBounce',  size:26 },
-                { e:'🕌', x:92, y:45, dur:6,   delay:0.2,  anim:'driftLeft',  size:30 },
-                { e:'🌟', x:3,  y:70, dur:4.2, delay:1.2,  anim:'driftRight', size:22 },
-                { e:'💫', x:63, y:75, dur:3.9, delay:0.9,  anim:'popBounce',  size:20 },
-                { e:'🎉', x:35, y:72, dur:4.8, delay:0.4,  anim:'driftLeft',  size:24 },
-                { e:'🌸', x:72, y:12, dur:5.5, delay:1.5,  anim:'driftRight', size:20 },
-                { e:'🪔', x:25, y:30, dur:4.0, delay:0.8,  anim:'popBounce',  size:24 },
-                { e:'🎈', x:82, y:82, dur:5.2, delay:0.1,  anim:'driftLeft',  size:22 },
-            ];
-
-            // Glowing blobs background
-            const blobs = [
-                { color:'#facc1520', x:'-5%', y:'10%',  w:320, h:320, dur:8,  delay:0   },
-                { color:'#22d3ee18', x:'70%', y:'5%',   w:280, h:280, dur:10, delay:2   },
-                { color:'#4ade8018', x:'40%', y:'60%',  w:350, h:350, dur:9,  delay:1   },
-                { color:'#ec489915', x:'85%', y:'65%',  w:240, h:240, dur:7,  delay:3   },
-                { color:'#a78bfa18', x:'15%', y:'75%',  w:300, h:300, dur:11, delay:1.5 },
-            ];
-
             const marqueeItems = [
                 '🌙 Taqobbalallahu Minna Wa Minkum',
                 '🎊 Minal Aidzin Wal Faizin',
@@ -560,95 +542,392 @@
             const fullMarquee = marqueeItems.join('   ✦   ');
             const doubleMarquee = fullMarquee + '   ✦   ' + fullMarquee;
 
+            // Birds config: beberapa kawanan di ketinggian berbeda
+            const birdGroups = [
+                { y: '12%', dur: 18, delay: 0,    scale: 1,    opacity: 0.75 },
+                { y: '18%', dur: 24, delay: -8,   scale: 0.75, opacity: 0.6  },
+                { y: '8%',  dur: 30, delay: -15,  scale: 0.6,  opacity: 0.5  },
+                { y: '22%', dur: 20, delay: -4,   scale: 0.85, opacity: 0.65 },
+                { y: '6%',  dur: 35, delay: -22,  scale: 0.5,  opacity: 0.4  },
+            ];
+
+            // Stars
+            const stars = Array.from({length: 28}, (_, i) => ({
+                cx: (i * 13 + 7) % 98, cy: 3 + (i * 7) % 30,
+                r: 0.6 + (i % 4) * 0.4,
+                delay: i * 0.3, dur: 2 + (i % 3)
+            }));
+
             return (
                 <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{zIndex: -1}}>
 
-                    {/* === GLOWING BLOBS latar === */}
-                    {blobs.map((b,i) => (
-                        <div key={i} className="absolute rounded-full"
-                             style={{
-                                 background: b.color,
-                                 left: b.x, top: b.y,
-                                 width: b.w, height: b.h,
-                                 filter: 'blur(60px)',
-                                 animation: `glowPulse ${b.dur}s ease-in-out ${b.delay}s infinite`,
-                             }} />
-                    ))}
-
-                    {/* === SIMBOL IDUL FITRI MELAYANG DARI BAWAH === */}
-                    {fitriSymbols.map(p => (
-                        <div key={p.id}
-                             style={{
-                                 position: 'absolute',
-                                 left: p.left + '%',
-                                 top: '0',
-                                 fontSize: p.size + 'px',
-                                 userSelect: 'none',
-                                 animation: `confettiFall ${p.dur}s ${p.delay}s linear infinite`,
-                                 opacity: 0.55,
-                             }}>{p.sym}</div>
-                    ))}
-
-                    {/* === BIG FLOATING EMOJIS === */}
-                    {bigEmojis.map((em, i) => (
-                        <div key={i}
-                             style={{
-                                 position: 'absolute',
-                                 left: em.x + '%',
-                                 top: em.y + '%',
-                                 fontSize: em.size + 'px',
-                                 userSelect: 'none',
-                                 animation: `${em.anim} ${em.dur}s ease-in-out ${em.delay}s infinite`,
-                                 opacity: 0.55,
-                                 filter: 'drop-shadow(0 0 6px rgba(250,204,21,0.4))',
-                             }}>{em.e}</div>
-                    ))}
-
-                    {/* === SPARKLE-SPARKLE di tepi kiri & kanan === */}
-                    {['✨','⭐','💫','🌟','✨','⭐','💫','🌟'].map((s,i) => (
-                        <div key={i} className="absolute animate-twinkle"
-                             style={{
-                                 top: (8 + i*11) + '%',
-                                 left: i%2===0 ? (1 + (i%3)*2) + '%' : (91 + (i%4)*2) + '%',
-                                 fontSize: (10 + i%7) + 'px',
-                                 animationDelay: (i*0.4) + 's',
-                                 opacity: 0.6,
-                                 userSelect: 'none',
-                             }}>{s}</div>
-                    ))}
-
-                    {/* === SILUET MASJID BAWAH === */}
-                    <div className="absolute bottom-0 left-0 right-0 h-36 pointer-events-none flex items-end justify-center overflow-hidden"
-                         style={{opacity: 0.06}}>
-                        <div className="text-slate-700 leading-none -mb-10" style={{fontSize:'200px'}}><Icon name="mosque" /></div>
-                        <div className="text-slate-700 leading-none -mb-8 -ml-12 order-first" style={{fontSize:'140px'}}><Icon name="mosque" /></div>
-                        <div className="text-slate-700 leading-none -mb-8 -mr-12" style={{fontSize:'140px'}}><Icon name="mosque" /></div>
-                    </div>
-
-                    {/* === RUNNING TEXT ATAS === */}
-                    <div className="absolute top-0 left-0 right-0 overflow-hidden select-none"
-                         style={{
-                             background: 'linear-gradient(90deg, #7c3aed, #db2777, #ea580c, #d97706, #16a34a, #0284c7, #7c3aed)',
-                             backgroundSize: '200% 100%',
-                             animation: 'marquee 28s linear infinite, glowPulse 3s ease-in-out infinite',
-                             padding: '4px 0',
-                         }}>
-                        <div style={{
-                            display: 'flex',
-                            width: 'max-content',
-                            animation: 'marquee 30s linear infinite',
-                            whiteSpace: 'nowrap',
-                        }}>
-                            <span style={{
-                                color: 'white',
-                                fontSize: '11px',
-                                fontWeight: '800',
-                                letterSpacing: '0.04em',
-                                padding: '0 16px',
-                                textShadow: '0 1px 4px rgba(0,0,0,0.4)',
-                            }}>{doubleMarquee}</span>
+                    {/* ===== RUNNING TEXT ===== */}
+                    <div className="absolute top-0 left-0 right-0 overflow-hidden select-none" style={{zIndex:10,
+                        background: 'linear-gradient(90deg,#1e3a5f,#15502e,#1e3a5f)',
+                        borderBottom: '1px solid rgba(250,204,21,0.25)',
+                        padding: '3px 0'}}>
+                        <div style={{display:'flex', width:'max-content', animation:'marquee 34s linear infinite', whiteSpace:'nowrap'}}>
+                            <span style={{color:'#fde68a', fontSize:'11px', fontWeight:'800', letterSpacing:'0.06em', padding:'0 16px', textShadow:'0 1px 6px rgba(0,0,0,0.5)'}}>
+                                {doubleMarquee}
+                            </span>
                         </div>
                     </div>
+
+                    {/* ===== FULL SVG SCENE ===== */}
+                    <svg width="100%" height="100%" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice"
+                         xmlns="http://www.w3.org/2000/svg" style={{position:'absolute',inset:0}}>
+                        <defs>
+                            {/* Sky gradient - senja keemasan Idul Fitri */}
+                            <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%"   stopColor="#0f1e3d" />
+                                <stop offset="35%"  stopColor="#1a3a6b" />
+                                <stop offset="65%"  stopColor="#c2440f" stopOpacity="0.45"/>
+                                <stop offset="85%"  stopColor="#ea580c" stopOpacity="0.3"/>
+                                <stop offset="100%" stopColor="#166534" />
+                            </linearGradient>
+                            {/* River gradient */}
+                            <linearGradient id="riverGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%"  stopColor="#0ea5e9" stopOpacity="0.85"/>
+                                <stop offset="100%" stopColor="#0369a1" stopOpacity="0.95"/>
+                            </linearGradient>
+                            {/* River shimmer */}
+                            <linearGradient id="shimmerGrad" x1="0" y1="0" x2="1" y2="0">
+                                <stop offset="0%"   stopColor="white" stopOpacity="0"/>
+                                <stop offset="40%"  stopColor="white" stopOpacity="0.25"/>
+                                <stop offset="60%"  stopColor="white" stopOpacity="0.25"/>
+                                <stop offset="100%" stopColor="white" stopOpacity="0"/>
+                            </linearGradient>
+                            {/* Grass gradient */}
+                            <linearGradient id="grassGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%"  stopColor="#16a34a"/>
+                                <stop offset="100%" stopColor="#14532d"/>
+                            </linearGradient>
+                            {/* Tree gradient */}
+                            <linearGradient id="treeGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%"  stopColor="#15803d"/>
+                                <stop offset="100%" stopColor="#064e3b"/>
+                            </linearGradient>
+                            {/* Flamingo pink */}
+                            <linearGradient id="flamingoGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%"  stopColor="#f9a8d4"/>
+                                <stop offset="100%" stopColor="#ec4899"/>
+                            </linearGradient>
+                            {/* Moon glow */}
+                            <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
+                                <stop offset="0%"   stopColor="#fde68a" stopOpacity="0.6"/>
+                                <stop offset="100%" stopColor="#fde68a" stopOpacity="0"/>
+                            </radialGradient>
+                            {/* Water reflection */}
+                            <linearGradient id="reflGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#fde68a" stopOpacity="0.3"/>
+                                <stop offset="100%" stopColor="#fde68a" stopOpacity="0"/>
+                            </linearGradient>
+                            <clipPath id="sceneClip">
+                                <rect width="1200" height="700"/>
+                            </clipPath>
+                        </defs>
+                        <g clipPath="url(#sceneClip)">
+
+                        {/* === SKY === */}
+                        <rect width="1200" height="700" fill="url(#skyGrad)" opacity="0.92"/>
+
+                        {/* === BINTANG-BINTANG === */}
+                        {stars.map((s,i) => (
+                            <circle key={i} cx={s.cx*12} cy={s.cy*6} r={s.r} fill="white">
+                                <animate attributeName="opacity" values="0.2;0.9;0.2" dur={s.dur+'s'} begin={s.delay+'s'} repeatCount="indefinite"/>
+                            </circle>
+                        ))}
+
+                        {/* === BULAN SABIT BERCAHAYA === */}
+                        <g transform="translate(980,70)">
+                            {/* Glow lingkaran */}
+                            <circle cx="0" cy="0" r="45" fill="url(#moonGlow)">
+                                <animate attributeName="r" values="45;55;45" dur="4s" repeatCount="indefinite"/>
+                                <animate attributeName="opacity" values="0.6;1;0.6" dur="4s" repeatCount="indefinite"/>
+                            </circle>
+                            {/* Bulan sabit */}
+                            <path d="M0,-22 A22,22 0 1,1 0,22 A14,18 0 1,0 0,-22 Z" fill="#fde68a">
+                                <animateTransform attributeName="transform" type="rotate" values="0;3;0;-3;0" dur="6s" repeatCount="indefinite"/>
+                            </path>
+                            {/* Bintang kecil sebelah bulan */}
+                            <polygon points="28,-8 30,-2 36,-2 31,2 33,8 28,4 23,8 25,2 20,-2 26,-2" fill="#fde68a" opacity="0.9" transform="scale(0.45)">
+                                <animate attributeName="opacity" values="0.6;1;0.6" dur="2s" repeatCount="indefinite"/>
+                            </polygon>
+                        </g>
+
+                        {/* === AWAN LEMBUT === */}
+                        {[
+                            {x:80, y:70,  sx:1,    op:0.12, dur:60},
+                            {x:350,y:50,  sx:0.85, op:0.1,  dur:75},
+                            {x:700,y:80,  sx:1.1,  op:0.1,  dur:50},
+                            {x:1050,y:60, sx:0.9,  op:0.08, dur:65},
+                        ].map((cl,i)=>(
+                            <g key={i} transform={`translate(${cl.x},${cl.y}) scale(${cl.sx})`} opacity={cl.op}>
+                                <animateTransform attributeName="transform" type="translate"
+                                    values={`${cl.x},${cl.y};${cl.x+50},${cl.y};${cl.x},${cl.y}`}
+                                    dur={cl.dur+'s'} repeatCount="indefinite"/>
+                                <ellipse cx="0"   cy="0" rx="55" ry="18" fill="white"/>
+                                <ellipse cx="-25" cy="5" rx="35" ry="14" fill="white"/>
+                                <ellipse cx="28"  cy="5" rx="40" ry="14" fill="white"/>
+                            </g>
+                        ))}
+
+                        {/* === LATAR PEGUNUNGAN === */}
+                        <path d="M0,420 L120,300 L240,370 L360,260 L480,340 L600,240 L720,320 L840,260 L960,350 L1080,280 L1200,360 L1200,700 L0,700 Z"
+                              fill="#0f172a" opacity="0.45"/>
+                        <path d="M0,460 L100,360 L200,410 L350,330 L500,400 L650,310 L800,390 L950,340 L1100,410 L1200,370 L1200,700 L0,700 Z"
+                              fill="#1e293b" opacity="0.5"/>
+
+                        {/* === HUTAN - POHON BESAR (background) === */}
+                        {[30,110,180,290,380,480,580,680,790,880,970,1060,1140].map((tx,i)=>{
+                            const h = 120 + (i%4)*30, w = 44 + (i%3)*12;
+                            return (
+                                <g key={i} transform={`translate(${tx},${490 - h})`}>
+                                    <animateTransform attributeName="transform" type="rotate"
+                                        values={`0,${tx + w/2},${490}`+`;${i%2===0?1.5:-1.5},${tx+w/2},490;0,${tx+w/2},490`}
+                                        dur={(5+i%3)+'s'} repeatCount="indefinite"/>
+                                    {/* Batang */}
+                                    <rect x={w/2-5} y={h-22} width="10" height="22" fill="#713f12" rx="2"/>
+                                    {/* Daun 3 layer */}
+                                    <ellipse cx={w/2} cy={h*0.55} rx={w*0.5} ry={h*0.35} fill="url(#treeGrad)" opacity="0.95"/>
+                                    <ellipse cx={w/2} cy={h*0.35} rx={w*0.38} ry={h*0.28} fill="#15803d"/>
+                                    <ellipse cx={w/2} cy={h*0.18} rx={w*0.26} ry={h*0.2}  fill="#16a34a"/>
+                                </g>
+                            );
+                        })}
+
+                        {/* === TANAH / RUMPUT === */}
+                        <path d="M0,490 Q150,478 300,488 Q450,498 600,482 Q750,468 900,482 Q1050,495 1200,480 L1200,700 L0,700 Z"
+                              fill="url(#grassGrad)" opacity="0.95"/>
+                        {/* Rumput detil */}
+                        <path d="M0,500 Q150,490 300,498 Q450,507 600,492 Q750,478 900,492 Q1050,505 1200,490 L1200,504 Q1050,519 900,506 Q750,492 600,506 Q450,521 300,512 Q150,504 0,514 Z"
+                              fill="#15803d" opacity="0.6"/>
+
+                        {/* === SEMAK DAN RUMPUT HALUS === */}
+                        {[50,160,280,420,560,680,820,960,1100].map((gx,i)=>(
+                            <g key={i}>
+                                {/* Bulu rumput */}
+                                {[-8,-4,0,4,8].map((ox,j)=>(
+                                    <line key={j} x1={gx+ox} y1={490+(i%3)*3} x2={gx+ox+(j%2===0?-2:2)} y2={472+(i%3)*3}
+                                          stroke={j%2===0?"#4ade80":"#22c55e"} strokeWidth="1.5" strokeLinecap="round">
+                                        <animateTransform attributeName="transform" type="rotate"
+                                            values={`0,${gx+ox},490;${j%2===0?3:-3},${gx+ox},490;0,${gx+ox},490`}
+                                            dur={(2+j*0.4)+'s'} begin={(i*0.2)+'s'} repeatCount="indefinite"/>
+                                    </line>
+                                ))}
+                                {/* Bunga kecil */}
+                                <circle cx={gx} cy={470+(i%3)*3} r="3" fill={['#fbbf24','#f472b6','#86efac','#38bdf8'][i%4]} opacity="0.8"/>
+                            </g>
+                        ))}
+
+                        {/* === SUNGAI === */}
+                        <path d="M0,540 Q200,530 400,545 Q600,558 800,542 Q1000,526 1200,538 L1200,600 Q1000,588 800,604 Q600,618 400,605 Q200,592 0,600 Z"
+                              fill="url(#riverGrad)" opacity="0.88"/>
+                        {/* Pantulan cahaya sungai */}
+                        <path d="M0,540 Q200,530 400,545 Q600,558 800,542 Q1000,526 1200,538 L1200,543 Q1000,531 800,547 Q600,563 400,550 Q200,535 0,545 Z"
+                              fill="url(#shimmerGrad)">
+                            <animateTransform attributeName="transform" type="translate" values="0,0;-30,0;0,0" dur="4s" repeatCount="indefinite"/>
+                        </path>
+                        {/* Kilap cahaya bulan di sungai */}
+                        <ellipse cx="620" cy="568" rx="80" ry="12" fill="url(#reflGrad)" opacity="0.55">
+                            <animate attributeName="opacity" values="0.3;0.7;0.3" dur="3s" repeatCount="indefinite"/>
+                            <animateTransform attributeName="transform" type="translate" values="0,0;15,0;0,0" dur="5s" repeatCount="indefinite"/>
+                        </ellipse>
+                        {/* Gelombang sungai */}
+                        {[150,350,550,750,950,1100].map((wx,i)=>(
+                            <path key={i} d={`M${wx},${560+(i%3)*4} Q${wx+18},${556+(i%3)*4} ${wx+36},${560+(i%3)*4}`}
+                                  fill="none" stroke="white" strokeWidth="1.2" strokeLinecap="round" opacity="0.35">
+                                <animateTransform attributeName="transform" type="translate"
+                                    values="0,0;-20,0;0,0" dur={(2.5+i*0.4)+'s'} begin={(i*0.3)+'s'} repeatCount="indefinite"/>
+                            </path>
+                        ))}
+                        {/* Riak lingkaran */}
+                        {[[300,570],[700,565],[1050,572]].map(([rx,ry],i)=>(
+                            <g key={i}>
+                                <circle cx={rx} cy={ry} r="2" fill="none" stroke="white" strokeWidth="0.8" opacity="0.5">
+                                    <animate attributeName="r" values="2;14;2" dur="3s" begin={(i*1.1)+'s'} repeatCount="indefinite"/>
+                                    <animate attributeName="opacity" values="0.5;0;0.5" dur="3s" begin={(i*1.1)+'s'} repeatCount="indefinite"/>
+                                </circle>
+                                <circle cx={rx} cy={ry} r="2" fill="none" stroke="white" strokeWidth="0.6" opacity="0.3">
+                                    <animate attributeName="r" values="2;22;2" dur="3s" begin={(i*1.1+0.5)+'s'} repeatCount="indefinite"/>
+                                    <animate attributeName="opacity" values="0.3;0;0.3" dur="3s" begin={(i*1.1+0.5)+'s'} repeatCount="indefinite"/>
+                                </circle>
+                            </g>
+                        ))}
+
+                        {/* === FLAMINGO 1 — kiri sungai === */}
+                        <g transform="translate(180,500)">
+                            <animateTransform attributeName="transform" type="translate"
+                                values="180,500;205,500;180,500" dur="8s" repeatCount="indefinite"/>
+                            {/* Tubuh */}
+                            <ellipse cx="0" cy="0" rx="16" ry="10" fill="url(#flamingoGrad)"/>
+                            {/* Leher */}
+                            <path d="M6,-8 Q10,-20 5,-30 Q0,-36 -2,-28 Q2,-20 -2,-8 Z" fill="#f9a8d4">
+                                <animateTransform attributeName="transform" type="rotate"
+                                    values="0,4,-8;5,4,-8;-3,4,-8;0,4,-8" dur="3s" repeatCount="indefinite"/>
+                            </path>
+                            {/* Kepala */}
+                            <ellipse cx="4" cy="-32" rx="5" ry="4" fill="#f472b6">
+                                <animateTransform attributeName="transform" type="rotate"
+                                    values="0,4,-32;4,4,-32;-2,4,-32;0,4,-32" dur="3s" repeatCount="indefinite"/>
+                            </ellipse>
+                            {/* Paruh */}
+                            <path d="M8,-32 Q14,-30 13,-28 Q10,-27 7,-29 Z" fill="#f97316"/>
+                            {/* Mata */}
+                            <circle cx="6" cy="-33" r="1" fill="#1e1b4b"/>
+                            {/* Kaki kiri */}
+                            <line x1="-4" y1="8" x2="-6" y2="24" stroke="#f472b6" strokeWidth="1.8" strokeLinecap="round"/>
+                            <line x1="-6" y1="24" x2="-10" y2="27" stroke="#f472b6" strokeWidth="1.5" strokeLinecap="round"/>
+                            <line x1="-6" y1="24" x2="-4"  y2="27" stroke="#f472b6" strokeWidth="1.5" strokeLinecap="round"/>
+                            {/* Kaki kanan - angkat bergantian */}
+                            <g>
+                                <line x1="4" y1="8" x2="6" y2="20" stroke="#f472b6" strokeWidth="1.8" strokeLinecap="round">
+                                    <animateTransform attributeName="transform" type="rotate"
+                                        values="0,4,8;-20,4,8;0,4,8" dur="1.4s" repeatCount="indefinite"/>
+                                </line>
+                            </g>
+                            {/* Sayap */}
+                            <path d="M-12,-2 Q-20,4 -14,10 Q-6,6 0,2 Z" fill="#fda4af" opacity="0.8">
+                                <animateTransform attributeName="transform" type="rotate"
+                                    values="0,-10,2;8,-10,2;0,-10,2" dur="2s" repeatCount="indefinite"/>
+                            </path>
+                        </g>
+
+                        {/* === FLAMINGO 2 — lebih ke kanan, di tepi sungai === */}
+                        <g transform="translate(420,515)">
+                            <animateTransform attributeName="transform" type="translate"
+                                values="420,515;398,515;420,515" dur="6s" begin="-2s" repeatCount="indefinite"/>
+                            <ellipse cx="0" cy="0" rx="14" ry="8" fill="#f9a8d4"/>
+                            <path d="M-5,-7 Q-8,-18 -4,-26 Q0,-30 1,-23 Q-2,-16 2,-7 Z" fill="#fda4af">
+                                <animateTransform attributeName="transform" type="rotate"
+                                    values="0,-3,-7;-4,-3,-7;3,-3,-7;0,-3,-7" dur="2.5s" repeatCount="indefinite"/>
+                            </path>
+                            <ellipse cx="-3" cy="-29" rx="4" ry="3.5" fill="#f472b6"/>
+                            <path d="M-7,-29 Q-13,-27 -12,-25 Q-9,-24 -6,-26 Z" fill="#f97316"/>
+                            <circle cx="-5" cy="-30" r="0.9" fill="#1e1b4b"/>
+                            <line x1="-4" y1="7" x2="-5" y2="20" stroke="#f472b6" strokeWidth="1.6"/>
+                            <line x1="-5" y1="20" x2="-8"  y2="23" stroke="#f472b6" strokeWidth="1.4"/>
+                            <line x1="-5" y1="20" x2="-3"  y2="23" stroke="#f472b6" strokeWidth="1.4"/>
+                            <g>
+                                <line x1="4" y1="7" x2="5" y2="18" stroke="#f472b6" strokeWidth="1.6">
+                                    <animateTransform attributeName="transform" type="rotate"
+                                        values="0,4,7;15,4,7;0,4,7" dur="1.2s" begin="-0.5s" repeatCount="indefinite"/>
+                                </line>
+                            </g>
+                        </g>
+
+                        {/* === ANGSA 1 — mengapung di sungai === */}
+                        <g>
+                            <animateTransform attributeName="transform" type="translate"
+                                values="550,558;610,555;550,558" dur="7s" repeatCount="indefinite"/>
+                            {/* Badan */}
+                            <ellipse cx="0" cy="0" rx="22" ry="12" fill="white" opacity="0.95"/>
+                            {/* Sayap besar */}
+                            <path d="M-20,0 Q-28,-8 -16,-14 Q-6,-10 0,-4 Z" fill="white" opacity="0.85">
+                                <animateTransform attributeName="transform" type="rotate"
+                                    values="0,-18,0;-10,-18,0;0,-18,0" dur="1.6s" repeatCount="indefinite"/>
+                            </path>
+                            {/* Leher anggun */}
+                            <path d="M16,-4 Q24,-16 20,-26 Q16,-30 12,-24 Q16,-14 10,-4 Z" fill="white">
+                                <animateTransform attributeName="transform" type="rotate"
+                                    values="0,14,-4;6,14,-4;-4,14,-4;0,14,-4" dur="3s" repeatCount="indefinite"/>
+                            </path>
+                            {/* Kepala */}
+                            <ellipse cx="20" cy="-28" rx="6" ry="5" fill="white"/>
+                            <path d="M24,-27 Q32,-25 31,-23 Q28,-22 23,-24 Z" fill="#f97316"/>
+                            <circle cx="22" cy="-30" r="1.2" fill="#1e1b4b"/>
+                            {/* Riak air di bawah angsa */}
+                            <ellipse cx="0" cy="10" rx="26" ry="4" fill="none" stroke="#7dd3fc" strokeWidth="1" opacity="0.5">
+                                <animate attributeName="rx" values="26;32;26" dur="2s" repeatCount="indefinite"/>
+                                <animate attributeName="opacity" values="0.5;0.1;0.5" dur="2s" repeatCount="indefinite"/>
+                            </ellipse>
+                        </g>
+
+                        {/* === ANGSA 2 — lebih kecil, jauh === */}
+                        <g>
+                            <animateTransform attributeName="transform" type="translate"
+                                values="820,562;860,558;820,562" dur="9s" begin="-3s" repeatCount="indefinite"/>
+                            <ellipse cx="0" cy="0" rx="16" ry="8" fill="white" opacity="0.9"/>
+                            <path d="M12,-3 Q18,-12 15,-20 Q11,-22 9,-17 Q12,-10 7,-3 Z" fill="white">
+                                <animateTransform attributeName="transform" type="rotate"
+                                    values="0,11,-3;5,11,-3;-3,11,-3;0,11,-3" dur="2.5s" repeatCount="indefinite"/>
+                            </path>
+                            <ellipse cx="15" cy="-21" rx="4" ry="3.5" fill="white"/>
+                            <path d="M18,-20 Q23,-18 22,-17 Q20,-16 16,-18 Z" fill="#f97316"/>
+                            <circle cx="16" cy="-22" r="0.9" fill="#1e1b4b"/>
+                        </g>
+
+                        {/* === POHON TEPI SUNGAI (lebih detail) === */}
+                        {[{x:80,h:160},{x:1080,h:145},{x:650,h:130}].map(({x,h},i)=>(
+                            <g key={i}>
+                                <animateTransform attributeName="transform" type="rotate"
+                                    values={`0,${x},490;${i%2===0?2:-2},${x},490;0,${x},490`}
+                                    dur={(4+i)+'s'} begin={(i*0.8)+'s'} repeatCount="indefinite"/>
+                                {/* Batang tebal */}
+                                <rect x={x-7} y={490-h} width="14" height={h} fill="#713f12" rx="3"/>
+                                {/* Ranting */}
+                                <line x1={x} y1={490-h*0.7} x2={x-35} y2={490-h*0.85} stroke="#713f12" strokeWidth="5"/>
+                                <line x1={x} y1={490-h*0.5} x2={x+38} y2={490-h*0.65} stroke="#713f12" strokeWidth="4"/>
+                                {/* Daun lebat */}
+                                <ellipse cx={x}    cy={490-h}        rx="45" ry="38" fill="url(#treeGrad)" opacity="0.95"/>
+                                <ellipse cx={x-30} cy={490-h*0.85}   rx="28" ry="22" fill="#15803d" opacity="0.9"/>
+                                <ellipse cx={x+32} cy={490-h*0.82}   rx="30" ry="20" fill="#15803d" opacity="0.85"/>
+                                <ellipse cx={x}    cy={490-h*0.7}    rx="38" ry="28" fill="#16a34a" opacity="0.7"/>
+                            </g>
+                        ))}
+
+                        {/* === RERUMPUTAN TEPI SUNGAI === */}
+                        {[120,250,360,490,580,720,850,980,1080,1150].map((gx,i)=>(
+                            <g key={i}>
+                                {[0,4,8,12].map((ox,j)=>(
+                                    <line key={j} x1={gx+ox} y1={535} x2={gx+ox+(j%2===0?-3:3)} y2={518}
+                                          stroke={j%2===0?"#4ade80":"#86efac"} strokeWidth="1.8" strokeLinecap="round" opacity="0.85">
+                                        <animateTransform attributeName="transform" type="rotate"
+                                            values={`0,${gx+ox},535;${j%2===0?4:-4},${gx+ox},535;0,${gx+ox},535`}
+                                            dur={(1.8+j*0.3)+'s'} begin={(i*0.15)+'s'} repeatCount="indefinite"/>
+                                    </line>
+                                ))}
+                            </g>
+                        ))}
+
+                        </g>{/* end clipPath */}
+                    </svg>
+
+                    {/* ===== KAWANAN BURUNG TERBANG ===== */}
+                    {birdGroups.map((bg, gi) => (
+                        <div key={gi} style={{
+                            position: 'absolute', top: bg.y, left: '-120px',
+                            animation: `birdFly ${bg.dur}s ${bg.delay}s linear infinite`,
+                            opacity: bg.opacity,
+                            transform: `scale(${bg.scale})`,
+                        }}>
+                            {/* SVG kawanan 5 burung dengan kepak sayap */}
+                            <svg width="120" height="40" viewBox="0 0 120 40" fill="none">
+                                {[[10,20],[30,8],[50,18],[70,6],[90,16]].map(([bx,by],bi)=>(
+                                    <g key={bi} transform={`translate(${bx},${by})`}>
+                                        {/* Sayap kiri */}
+                                        <path fill="#1e293b" opacity="0.85">
+                                            <animate attributeName="d"
+                                                values="M0,0 Q-8,-6 -14,-2;M0,0 Q-8,2 -14,5;M0,0 Q-8,-6 -14,-2"
+                                                dur={(0.6+bi*0.05)+'s'} begin={(bi*0.12)+'s'} repeatCount="indefinite"/>
+                                        </path>
+                                        {/* Sayap kanan */}
+                                        <path fill="#1e293b" opacity="0.85">
+                                            <animate attributeName="d"
+                                                values="M0,0 Q8,-6 14,-2;M0,0 Q8,2 14,5;M0,0 Q8,-6 14,-2"
+                                                dur={(0.6+bi*0.05)+'s'} begin={(bi*0.12)+'s'} repeatCount="indefinite"/>
+                                        </path>
+                                        {/* Badan */}
+                                        <ellipse cx="0" cy="0" rx="4" ry="2" fill="#1e293b" opacity="0.9"/>
+                                        {/* Kepala */}
+                                        <circle cx="4" cy="-1" r="2" fill="#1e293b" opacity="0.9"/>
+                                        {/* Paruh */}
+                                        <line x1="6" y1="-1" x2="10" y2="-1" stroke="#f97316" strokeWidth="1.2" strokeLinecap="round"/>
+                                    </g>
+                                ))}
+                            </svg>
+                        </div>
+                    ))}
 
                 </div>
             );
