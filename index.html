@@ -34,6 +34,12 @@
                         'marquee': 'marquee 28s linear infinite',
                         'bounce-emoji': 'bounceEmoji 2s ease-in-out infinite',
                         'wiggle': 'wiggle 1.2s ease-in-out infinite',
+                        'confetti-fall': 'confettiFall linear infinite',
+                        'pop-bounce': 'popBounce ease-in-out infinite',
+                        'spin-bounce': 'spinBounce ease-in-out infinite',
+                        'drift-left': 'driftLeft ease-in-out infinite',
+                        'drift-right': 'driftRight ease-in-out infinite',
+                        'glow-pulse': 'glowPulse ease-in-out infinite',
                     },
                     keyframes: {
                         sway: { from: { transform: 'rotate(-5deg)' }, to: { transform: 'rotate(5deg)' } },
@@ -45,6 +51,13 @@
                         marquee: { '0%': { transform: 'translateX(0%)' }, '100%': { transform: 'translateX(-50%)' } },
                         bounceEmoji: { '0%,100%': { transform: 'translateY(0) rotate(-5deg)' }, '50%': { transform: 'translateY(-12px) rotate(5deg)' } },
                         wiggle: { '0%,100%': { transform: 'rotate(-8deg) scale(1)' }, '50%': { transform: 'rotate(8deg) scale(1.15)' } },
+                        confettiFall: { '0%': { transform: 'translateY(-10vh) rotate(0deg)', opacity: 1 }, '100%': { transform: 'translateY(110vh) rotate(720deg)', opacity: 0.3 } },
+                        orbitSpin: { '0%': { transform: 'rotate(0deg) translateX(40px) rotate(0deg)' }, '100%': { transform: 'rotate(360deg) translateX(40px) rotate(-360deg)' } },
+                        glowPulse: { '0%,100%': { opacity: 0.12, transform: 'scale(1)' }, '50%': { opacity: 0.22, transform: 'scale(1.15)' } },
+                        popBounce: { '0%,100%': { transform: 'scale(1) translateY(0)' }, '30%': { transform: 'scale(1.3) translateY(-8px)' }, '60%': { transform: 'scale(0.9) translateY(2px)' } },
+                        spinBounce: { '0%': { transform: 'rotate(0deg) scale(1)' }, '25%': { transform: 'rotate(90deg) scale(1.2)' }, '50%': { transform: 'rotate(180deg) scale(1)' }, '75%': { transform: 'rotate(270deg) scale(0.85)' }, '100%': { transform: 'rotate(360deg) scale(1)' } },
+                        driftLeft: { '0%,100%': { transform: 'translate(0,0) rotate(0deg)' }, '33%': { transform: 'translate(-18px,-15px) rotate(-12deg)' }, '66%': { transform: 'translate(12px,-25px) rotate(8deg)' } },
+                        driftRight: { '0%,100%': { transform: 'translate(0,0) rotate(0deg)' }, '33%': { transform: 'translate(18px,-12px) rotate(10deg)' }, '66%': { transform: 'translate(-10px,-22px) rotate(-8deg)' } },
                     }
                 }
             }
@@ -494,78 +507,149 @@
 
         // --- DEKORASI IDUL FITRI ---
         const RamadhanDecor = () => {
-            const floatingEmojis = ['🌙','⭐','✨','🎊','🌸','🎉','💫','🌺','🌟','🎈','🍃','🫙'];
-            const hangItems = [
-                { emoji: '🫙', side: 'left-3 md:left-14', lineH: 'h-16 md:h-28', anim: 'animate-swing', delay: '0s', lineColor: 'bg-yellow-500/60' },
-                { emoji: '🪔', side: 'left-20 md:left-44', lineH: 'h-20 md:h-36', anim: 'animate-sway', delay: '0.4s', lineColor: 'bg-orange-400/50' },
-                { emoji: '🌙', side: 'left-[32%] hidden md:block', lineH: 'h-14', anim: 'animate-swing-slow', delay: '0.8s', lineColor: 'bg-yellow-400/40' },
-                { emoji: '🕌', side: 'left-[52%] hidden lg:block', lineH: 'h-16', anim: 'animate-sway-slow', delay: '1.2s', lineColor: 'bg-teal-400/40' },
-                { emoji: '🫙', side: 'right-20 md:right-44', lineH: 'h-20 md:h-36', anim: 'animate-sway-slow', delay: '0.6s', lineColor: 'bg-green-400/50' },
-                { emoji: '⭐', side: 'right-3 md:right-14', lineH: 'h-16 md:h-28', anim: 'animate-swing', delay: '0.2s', lineColor: 'bg-yellow-500/60' },
+            // Simbol Idul Fitri melayang
+            const fitriSymbols = React.useMemo(() => {
+                const syms = ['🌙','⭐','✨','🌟','💫','🌙','⭐','✨','🌟','💫',
+                               '🌙','⭐','✨','🌟','💫','🌙','⭐','✨','🌟','💫',
+                               '🌙','⭐','✨','🌟','💫','🌙','⭐','✨','🌟','💫'];
+                return syms.map((s, i) => ({
+                    id: i, sym: s,
+                    left: (i * 3.4 + 1) % 99,
+                    size: 10 + (i % 8) * 2,
+                    dur: 5 + (i % 6),
+                    delay: -(i * 0.85),
+                }));
+            }, []);
+
+            // Big floating emojis scattered
+            const bigEmojis = [
+                { e:'🌙', x:5,  y:15, dur:4.5, delay:0,    anim:'driftLeft',  size:28 },
+                { e:'⭐', x:18, y:55, dur:3.8, delay:0.5,  anim:'popBounce',  size:24 },
+                { e:'🫙', x:88, y:20, dur:5,   delay:0.3,  anim:'driftRight', size:26 },
+                { e:'✨', x:78, y:60, dur:3.5, delay:1.0,  anim:'popBounce',  size:22 },
+                { e:'🎊', x:50, y:8,  dur:4,   delay:0.7,  anim:'popBounce',  size:26 },
+                { e:'🕌', x:92, y:45, dur:6,   delay:0.2,  anim:'driftLeft',  size:30 },
+                { e:'🌟', x:3,  y:70, dur:4.2, delay:1.2,  anim:'driftRight', size:22 },
+                { e:'💫', x:63, y:75, dur:3.9, delay:0.9,  anim:'popBounce',  size:20 },
+                { e:'🎉', x:35, y:72, dur:4.8, delay:0.4,  anim:'driftLeft',  size:24 },
+                { e:'🌸', x:72, y:12, dur:5.5, delay:1.5,  anim:'driftRight', size:20 },
+                { e:'🪔', x:25, y:30, dur:4.0, delay:0.8,  anim:'popBounce',  size:24 },
+                { e:'🎈', x:82, y:82, dur:5.2, delay:0.1,  anim:'driftLeft',  size:22 },
             ];
-            const marqueeText = [
-                '🌙 Selamat Hari Raya Idul Fitri 1446 H',
-                '🎊 Minal Aidin Wal Faizin',
-                '✨ Mohon Maaf Lahir & Batin',
-                '🫙 Ketupatnya udah mateng belum? 🫙',
-                '🕌 تَقَبَّلَ اللهُ مِنَّا وَمِنْكُمْ',
-                '🎉 Terima kasih sudah pakai Sistem Kasir Husna!',
-                '🌟 Semoga berkah di hari yang fitri ini',
-                '😄 Maaf kalau aplikasinya pernah error ya~ 🙏',
-                '🍃 Lebaran tiba, dompet menipis, tapi hati senang!',
+
+            // Glowing blobs background
+            const blobs = [
+                { color:'#facc1520', x:'-5%', y:'10%',  w:320, h:320, dur:8,  delay:0   },
+                { color:'#22d3ee18', x:'70%', y:'5%',   w:280, h:280, dur:10, delay:2   },
+                { color:'#4ade8018', x:'40%', y:'60%',  w:350, h:350, dur:9,  delay:1   },
+                { color:'#ec489915', x:'85%', y:'65%',  w:240, h:240, dur:7,  delay:3   },
+                { color:'#a78bfa18', x:'15%', y:'75%',  w:300, h:300, dur:11, delay:1.5 },
             ];
-            const fullText = marqueeText.join('  •  ');
-            const doubleText = fullText + '  •  ' + fullText;
+
+            const marqueeItems = [
+                '🌙 Taqobbalallahu Minna Wa Minkum',
+                '🎊 Minal Aidzin Wal Faizin',
+                '🙏 Mohon Maaf Lahir & Batin',
+                '⭐ Selamat Hari Raya Idul Fitri 1446 H',
+                '🫙 Ketupatnya udah mateng belum?',
+                '✨ تَقَبَّلَ اللهُ مِنَّا وَمِنْكُمْ ✨',
+                '🎉 Maaf kalau aplikasinya pernah error ya~ 😄',
+                '🌟 Semoga hari raya ini penuh berkah!',
+                '🪔 Dompet boleh menipis, hati tetap senang!',
+            ];
+            const fullMarquee = marqueeItems.join('   ✦   ');
+            const doubleMarquee = fullMarquee + '   ✦   ' + fullMarquee;
+
             return (
                 <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{zIndex: -1}}>
-                    {/* Confetti partikel emoji melayang */}
-                    <div className="absolute inset-0 z-0">
-                        {floatingEmojis.map((em, i) => (
-                            <div key={i} className="absolute opacity-0 animate-float-up select-none"
-                                 style={{
-                                     left: (i * 8.3 + 2) + '%',
-                                     animationDelay: (i * 1.4) + 's',
-                                     animationDuration: (13 + i * 1.5) + 's',
-                                     fontSize: (13 + (i % 5) * 3) + 'px',
-                                 }}>{em}</div>
-                        ))}
-                    </div>
 
-                    {/* Bintang-bintang berkelip */}
-                    {['⭐','🌟','✨','💫','⭐','🌟','✨'].map((s, i) => (
-                        <div key={i} className="absolute animate-twinkle select-none pointer-events-none"
+                    {/* === GLOWING BLOBS latar === */}
+                    {blobs.map((b,i) => (
+                        <div key={i} className="absolute rounded-full"
                              style={{
-                                 top: [10, 38, 5, 22, 30, 9, 18][i] + '%',
-                                 left: [7, 43, 74, 17, 62, 87, 31][i] + '%',
-                                 fontSize: [10, 15, 12, 8, 17, 10, 13][i] + 'px',
-                                 animationDelay: (i * 0.65) + 's',
+                                 background: b.color,
+                                 left: b.x, top: b.y,
+                                 width: b.w, height: b.h,
+                                 filter: 'blur(60px)',
+                                 animation: `glowPulse ${b.dur}s ease-in-out ${b.delay}s infinite`,
+                             }} />
+                    ))}
+
+                    {/* === SIMBOL IDUL FITRI MELAYANG DARI BAWAH === */}
+                    {fitriSymbols.map(p => (
+                        <div key={p.id}
+                             style={{
+                                 position: 'absolute',
+                                 left: p.left + '%',
+                                 top: '0',
+                                 fontSize: p.size + 'px',
+                                 userSelect: 'none',
+                                 animation: `confettiFall ${p.dur}s ${p.delay}s linear infinite`,
                                  opacity: 0.55,
+                             }}>{p.sym}</div>
+                    ))}
+
+                    {/* === BIG FLOATING EMOJIS === */}
+                    {bigEmojis.map((em, i) => (
+                        <div key={i}
+                             style={{
+                                 position: 'absolute',
+                                 left: em.x + '%',
+                                 top: em.y + '%',
+                                 fontSize: em.size + 'px',
+                                 userSelect: 'none',
+                                 animation: `${em.anim} ${em.dur}s ease-in-out ${em.delay}s infinite`,
+                                 opacity: 0.55,
+                                 filter: 'drop-shadow(0 0 6px rgba(250,204,21,0.4))',
+                             }}>{em.e}</div>
+                    ))}
+
+                    {/* === SPARKLE-SPARKLE di tepi kiri & kanan === */}
+                    {['✨','⭐','💫','🌟','✨','⭐','💫','🌟'].map((s,i) => (
+                        <div key={i} className="absolute animate-twinkle"
+                             style={{
+                                 top: (8 + i*11) + '%',
+                                 left: i%2===0 ? (1 + (i%3)*2) + '%' : (91 + (i%4)*2) + '%',
+                                 fontSize: (10 + i%7) + 'px',
+                                 animationDelay: (i*0.4) + 's',
+                                 opacity: 0.6,
+                                 userSelect: 'none',
                              }}>{s}</div>
                     ))}
 
-                    {/* Gantungan dekorasi */}
-                    {hangItems.map((item, i) => (
-                        <div key={i} className={`absolute -top-8 ${item.side} z-0 ${item.anim} origin-top`} style={{animationDelay: item.delay}}>
-                            <div className={`${item.lineH} w-px ${item.lineColor} mx-auto`}></div>
-                            <div className="text-2xl md:text-5xl text-center leading-none select-none animate-bounce-emoji" style={{animationDelay: item.delay}}>{item.emoji}</div>
-                        </div>
-                    ))}
-
-                    {/* Siluet masjid bawah */}
-                    <div className="absolute bottom-0 left-0 right-0 h-32 opacity-[0.07] pointer-events-none flex items-end justify-center overflow-hidden">
-                        <div className="text-slate-800 text-[150px] md:text-[200px] leading-none -mb-10"><Icon name="mosque" /></div>
-                        <div className="text-slate-800 text-[100px] md:text-[140px] leading-none -mb-8 -ml-10"><Icon name="mosque" /></div>
-                        <div className="text-slate-800 text-[100px] md:text-[140px] leading-none -mb-8 -mr-10 order-first"><Icon name="mosque" /></div>
+                    {/* === SILUET MASJID BAWAH === */}
+                    <div className="absolute bottom-0 left-0 right-0 h-36 pointer-events-none flex items-end justify-center overflow-hidden"
+                         style={{opacity: 0.06}}>
+                        <div className="text-slate-700 leading-none -mb-10" style={{fontSize:'200px'}}><Icon name="mosque" /></div>
+                        <div className="text-slate-700 leading-none -mb-8 -ml-12 order-first" style={{fontSize:'140px'}}><Icon name="mosque" /></div>
+                        <div className="text-slate-700 leading-none -mb-8 -mr-12" style={{fontSize:'140px'}}><Icon name="mosque" /></div>
                     </div>
 
-                    {/* === RUNNING TEXT / MARQUEE === */}
-                    <div className="absolute top-0 left-0 right-0 overflow-hidden select-none" style={{background: 'linear-gradient(90deg, #064e3b, #065f46, #047857, #065f46, #064e3b)', paddingTop: '3px', paddingBottom: '3px'}}>
-                        <div className="flex animate-marquee whitespace-nowrap" style={{width: 'max-content'}}>
-                            <span className="text-white text-[11px] md:text-xs font-bold tracking-wide px-4 flex items-center gap-3">
-                                {doubleText}
-                            </span>
+                    {/* === RUNNING TEXT ATAS === */}
+                    <div className="absolute top-0 left-0 right-0 overflow-hidden select-none"
+                         style={{
+                             background: 'linear-gradient(90deg, #7c3aed, #db2777, #ea580c, #d97706, #16a34a, #0284c7, #7c3aed)',
+                             backgroundSize: '200% 100%',
+                             animation: 'marquee 28s linear infinite, glowPulse 3s ease-in-out infinite',
+                             padding: '4px 0',
+                         }}>
+                        <div style={{
+                            display: 'flex',
+                            width: 'max-content',
+                            animation: 'marquee 30s linear infinite',
+                            whiteSpace: 'nowrap',
+                        }}>
+                            <span style={{
+                                color: 'white',
+                                fontSize: '11px',
+                                fontWeight: '800',
+                                letterSpacing: '0.04em',
+                                padding: '0 16px',
+                                textShadow: '0 1px 4px rgba(0,0,0,0.4)',
+                            }}>{doubleMarquee}</span>
                         </div>
                     </div>
+
                 </div>
             );
         };
@@ -7979,23 +8063,32 @@
 
             return (
                 <div className="space-y-6 fade-in pb-24 md:pb-0">
-                    <div className="rounded-3xl p-5 md:p-6 text-white relative overflow-hidden shadow-2xl border border-emerald-700/50 group" style={{background: 'linear-gradient(135deg, #064e3b 0%, #065f46 40%, #0d4f3c 70%, #0f172a 100%)'}}>
-                        {/* Lingkaran dekor */}
-                        <div className="absolute right-0 top-0 w-56 h-56 bg-yellow-400 opacity-10 rounded-full blur-3xl -translate-y-1/3 translate-x-1/3 pointer-events-none"></div>
-                        <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-emerald-300 opacity-10 rounded-full blur-2xl pointer-events-none"></div>
-                        {/* Emoji dekor pojok */}
-                        <div className="absolute top-3 right-4 flex gap-2 text-xl md:text-2xl select-none">
-                            <span className="animate-bounce-emoji" style={{animationDelay:'0s'}}>🌙</span>
-                            <span className="animate-bounce-emoji" style={{animationDelay:'0.3s'}}>⭐</span>
-                            <span className="animate-bounce-emoji" style={{animationDelay:'0.6s'}}>🫙</span>
+                    <div className="rounded-3xl p-5 md:p-6 text-white relative overflow-hidden shadow-2xl group" style={{background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 25%, #4c1d95 50%, #064e3b 75%, #0f172a 100%)'}}>
+                        {/* Blob dekor */}
+                        <div className="absolute -top-8 -right-8 w-48 h-48 rounded-full pointer-events-none" style={{background:'radial-gradient(circle, #facc1540 0%, transparent 70%)', animation:'glowPulse 4s ease-in-out infinite'}}></div>
+                        <div className="absolute -bottom-8 -left-8 w-40 h-40 rounded-full pointer-events-none" style={{background:'radial-gradient(circle, #4ade8030 0%, transparent 70%)', animation:'glowPulse 5s ease-in-out 1s infinite'}}></div>
+                        {/* Ornamen bintang & bulan kecil di dalam card */}
+                        {[{e:'⭐',x:68,y:8},{e:'🌙',x:78,y:35},{e:'✨',x:88,y:62},{e:'💫',x:62,y:72},{e:'🌟',x:73,y:48}].map((orn,oi)=>(
+                            <div key={oi} className="absolute pointer-events-none select-none" style={{left:orn.x+'%', top:orn.y+'%', fontSize:'12px', animation:`popBounce ${2+oi*0.4}s ease-in-out ${oi*0.3}s infinite`, opacity:0.6}}>{orn.e}</div>
+                        ))}
+                        {/* Emoji kanan besar */}
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-1 text-2xl md:text-4xl select-none">
+                            <span style={{animation:'driftLeft 3s ease-in-out 0s infinite', display:'block'}}>🌙</span>
+                            <span style={{animation:'popBounce 2.5s ease-in-out 0.4s infinite', display:'block'}}>⭐</span>
+                            <span style={{animation:'driftRight 4s ease-in-out 0.8s infinite', display:'block'}}>🫙</span>
                         </div>
-                        <div className="relative z-10">
-                            <h3 className="font-arab text-2xl md:text-3xl text-yellow-300 mb-1 drop-shadow-lg">عيد الفطر مبارك</h3>
-                            <p className="text-sm md:text-base text-emerald-200 font-bold">🎊 Selamat Hari Raya Idul Fitri 1446 H 🎊</p>
-                            <p className="text-xs text-emerald-300/80 mt-0.5 font-medium">Minal Aidin Wal Faizin • Mohon Maaf Lahir & Batin 🙏</p>
+                        <div className="relative z-10 pr-20">
+                            <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xl" style={{animation:'popBounce 2s ease-in-out infinite'}}>🎊</span>
+                                <h3 className="font-arab text-xl md:text-2xl text-yellow-300 drop-shadow-lg leading-none">عيد الفطر مبارك</h3>
+                                <span className="text-xl" style={{animation:'popBounce 2s ease-in-out 0.5s infinite'}}>🎊</span>
+                            </div>
+                            <p className="text-sm md:text-base font-extrabold text-white leading-snug">Selamat Hari Raya Idul Fitri 1446 H</p>
+                            <p className="text-xs font-bold mt-0.5" style={{color:'#86efac'}}>Taqobbalallahu Minna Wa Minkum 🙏</p>
+                            <p className="text-[11px] font-semibold" style={{color:'#fde68a', opacity:0.9}}>Minal Aidzin Wal Faizin • Mohon Maaf Lahir &amp; Batin</p>
                             <div className="mt-3 flex flex-wrap items-center gap-2">
-                                <div className="inline-flex items-center gap-2 bg-green-500/20 px-3 py-1 rounded-full backdrop-blur-sm border border-green-500/30"><div className="w-2 h-2 rounded-full bg-green-300 animate-pulse"></div><span className="text-[10px] font-bold tracking-wide text-green-300">ONLINE (FIREBASE)</span></div>
-                                <div className="inline-flex items-center gap-1.5 bg-yellow-400/15 px-3 py-1 rounded-full border border-yellow-400/30"><span className="text-[10px] font-bold text-yellow-300">🍃 Semoga berkah hari raya ini!</span></div>
+                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border" style={{background:'rgba(74,222,128,0.15)', borderColor:'rgba(74,222,128,0.35)'}}><div className="w-2 h-2 rounded-full bg-green-300 animate-pulse"></div><span className="text-[10px] font-bold text-green-300 tracking-wide">ONLINE (FIREBASE)</span></div>
+                                <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full border" style={{background:'rgba(250,204,21,0.12)', borderColor:'rgba(250,204,21,0.3)'}}><span className="text-[10px] font-bold text-yellow-300">🌟 Semoga penuh berkah!</span></div>
                             </div>
                         </div>
                     </div>
