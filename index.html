@@ -253,6 +253,14 @@
         @keyframes starTwinkle2 { 0%, 100% { opacity: 0.25; transform: scale(0.75) rotate(0deg); } 50% { opacity: 0.9; transform: scale(1.15) rotate(20deg); } }
         @keyframes floatFirefly { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(8px, -14px); } 50% { transform: translate(-5px, -22px); } 75% { transform: translate(-12px, -10px); } }
         .forest-leaf { animation: leafBreeze 4s ease-in-out infinite; transform-origin: bottom center; }
+
+        /* ===== RUNNING TEXT IDUL FITRI ===== */
+        @keyframes marqueeScroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+        @keyframes runningTextGlow { 0%,100% { box-shadow: 0 0 14px rgba(250,204,21,0.35), inset 0 0 20px rgba(250,204,21,0.07); } 50% { box-shadow: 0 0 30px rgba(250,204,21,0.65), inset 0 0 30px rgba(250,204,21,0.14); } }
+        @keyframes badgePop { 0%,100% { transform: scale(1) rotate(-2deg); } 50% { transform: scale(1.1) rotate(2deg); } }
+        .marquee-track { display: flex; width: max-content; animation: marqueeScroll 32s linear infinite; }
+        .marquee-track:hover { animation-play-state: paused; }
+        .running-text-bar { animation: runningTextGlow 4s ease-in-out infinite; }
     </style>
 </head>
 <body class="islamic-pattern relative">
@@ -825,6 +833,82 @@
                     <div className="absolute" style={{width:'350px',height:'350px',borderRadius:'50%',background:'radial-gradient(circle,rgba(34,197,94,0.09) 0%,transparent 70%)',bottom:'8%',left:'3%',filter:'blur(35px)',animation:'glowOrb 7s ease-in-out infinite'}}/>
                     <div className="absolute" style={{width:'280px',height:'280px',borderRadius:'50%',background:'radial-gradient(circle,rgba(250,204,21,0.07) 0%,transparent 70%)',top:'2%',right:'15%',filter:'blur(45px)',animation:'glowOrb 9s ease-in-out infinite',animationDelay:'3s'}}/>
                     <div className="absolute" style={{width:'200px',height:'200px',borderRadius:'50%',background:'radial-gradient(circle,rgba(168,85,247,0.06) 0%,transparent 70%)',top:'30%',left:'40%',filter:'blur(30px)',animation:'glowOrb 8s ease-in-out infinite',animationDelay:'1.5s'}}/>
+                </div>
+            );
+        };
+
+        // --- RUNNING TEXT IDUL FITRI ---
+        const RunningTextFitri = () => {
+            const items = [
+                { icon: '🌙', text: 'Taqabbalallahu Minna Wa Minkum' },
+                { icon: '✨', text: 'Minal Aidin Wal Faizin' },
+                { icon: '🕌', text: 'Selamat Hari Raya Idul Fitri 1446 H' },
+                { icon: '🌿', text: 'Mohon Maaf Lahir dan Batin' },
+                { icon: '⭐', text: 'عيد الفطر مبارك' },
+                { icon: '🎁', text: 'Semoga Amal Ibadah Kita Diterima Allah SWT' },
+                { icon: '🦋', text: 'Selamat Merayakan Kemenangan' },
+                { icon: '🌺', text: 'Taqabbalallahu Minna Wa Minkum' },
+                { icon: '✨', text: 'Minal Aidin Wal Faizin' },
+                { icon: '🕌', text: 'Selamat Hari Raya Idul Fitri 1446 H' },
+                { icon: '🌿', text: 'Mohon Maaf Lahir dan Batin' },
+                { icon: '⭐', text: 'عيد الفطر مبارك' },
+                { icon: '🎁', text: 'Semoga Amal Ibadah Kita Diterima Allah SWT' },
+                { icon: '🦋', text: 'Selamat Merayakan Kemenangan' },
+            ];
+            return (
+                <div className="fixed bottom-0 left-0 right-0 z-50 running-text-bar"
+                     style={{
+                         background: 'linear-gradient(90deg, #052e16 0%, #14532d 20%, #166534 50%, #14532d 80%, #052e16 100%)',
+                         borderTop: '1.5px solid rgba(250,204,21,0.45)',
+                         borderBottom: 'none',
+                         padding: '0',
+                         overflow: 'hidden',
+                     }}>
+                    {/* Garis dekorasi atas */}
+                    <div style={{height:'2px',background:'linear-gradient(90deg,transparent,rgba(250,204,21,0.7),rgba(255,255,255,0.4),rgba(250,204,21,0.7),transparent)'}}/>
+                    <div style={{display:'flex',alignItems:'center',height:'36px',position:'relative'}}>
+                        {/* Badge kiri */}
+                        <div style={{
+                            flexShrink:0, zIndex:2,
+                            background:'linear-gradient(135deg,#facc15,#f59e0b)',
+                            color:'#052e16', fontWeight:800, fontSize:'10px',
+                            padding:'4px 12px 4px 10px', borderRadius:'0 18px 18px 0',
+                            display:'flex', alignItems:'center', gap:'5px',
+                            boxShadow:'2px 0 12px rgba(250,204,21,0.5)',
+                            animation:'badgePop 3s ease-in-out infinite',
+                            letterSpacing:'0.5px', whiteSpace:'nowrap',
+                            fontFamily:'Fredoka One, cursive',
+                        }}>
+                            🌙 IDUL FITRI
+                        </div>
+                        {/* Mask fade kiri */}
+                        <div style={{position:'absolute',left:'90px',top:0,bottom:0,width:'28px',background:'linear-gradient(to right,#0d3d1f,transparent)',zIndex:1,pointerEvents:'none'}}/>
+                        {/* Track berjalan */}
+                        <div style={{flex:1,overflow:'hidden',position:'relative'}}>
+                            <div className="marquee-track">
+                                {items.map((item, i) => (
+                                    <span key={i} style={{
+                                        display:'inline-flex', alignItems:'center', gap:'7px',
+                                        padding:'0 22px', whiteSpace:'nowrap',
+                                        fontSize: item.text.match(/[\u0600-\u06FF]/) ? '14px' : '12.5px',
+                                        fontFamily: item.text.match(/[\u0600-\u06FF]/) ? 'Amiri, serif' : 'Fredoka One, cursive',
+                                        fontWeight: item.text.match(/[\u0600-\u06FF]/) ? 700 : 400,
+                                        color: i % 4 === 0 ? '#fde047' : i % 4 === 1 ? '#86efac' : i % 4 === 2 ? '#fda4af' : '#ffffff',
+                                        letterSpacing: '0.3px',
+                                        textShadow: '0 0 10px currentColor',
+                                    }}>
+                                        <span style={{fontSize:'14px'}}>{item.icon}</span>
+                                        {item.text}
+                                        <span style={{color:'rgba(250,204,21,0.5)',marginLeft:'4px'}}>✦</span>
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                        {/* Mask fade kanan */}
+                        <div style={{position:'absolute',right:'0',top:0,bottom:0,width:'28px',background:'linear-gradient(to left,#052e16,transparent)',zIndex:1,pointerEvents:'none'}}/>
+                    </div>
+                    {/* Garis dekorasi bawah */}
+                    <div style={{height:'2px',background:'linear-gradient(90deg,transparent,rgba(250,204,21,0.5),rgba(134,239,172,0.4),rgba(250,204,21,0.5),transparent)'}}/>
                 </div>
             );
         };
@@ -12727,7 +12811,7 @@
 
             return (
                 <div className={`min-h-screen flex flex-col md:flex-row bg-sky-50/50 transition-colors duration-500 ${activeStoreId === 'all_stores' ? 'theme-all-stores' : ''}`}>
-                    <RamadhanDecor /> <Toast show={toast.show} message={toast.message} type={toast.type} /> {isSidebarOpen && (<div className="fixed inset-0 bg-slate-900/50 z-40 md:hidden backdrop-blur-sm fade-in" onClick={() => setIsSidebarOpen(false)}></div>)}
+                    <RamadhanDecor /> <RunningTextFitri /> <Toast show={toast.show} message={toast.message} type={toast.type} /> {isSidebarOpen && (<div className="fixed inset-0 bg-slate-900/50 z-40 md:hidden backdrop-blur-sm fade-in" onClick={() => setIsSidebarOpen(false)}></div>)}
                     
                     {/* HIDDEN RECEIPT CONTAINER (UPDATED FOR DYNAMIC STORE) */}
                     {receiptToPrint && ( <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', zIndex: -1 }}> 
