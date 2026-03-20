@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sistem Kasir Toko Husna (V57 - Dekorasi Syawal)</title>
+    <title>Sistem Kasir Toko Husna (V52 - Tambah Shift & Tanggal Merah)</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -25,12 +25,21 @@
                         'sway-slow': 'sway 5s ease-in-out infinite alternate-reverse',
                         'swing': 'swing 3s ease-in-out infinite alternate',
                         'swing-slow': 'swing 4.5s ease-in-out infinite alternate',
-                        'twinkle': 'twinkle 4s ease-in-out infinite',
+                        'twinkle': 'twinkle 2s ease-in-out infinite',
                         'float': 'float 6s ease-in-out infinite',
                         'float-up': 'floatUp 10s linear infinite',
                         'type-reveal': 'typeReveal 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards',
                         'pop-in': 'popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
                         'falling-star': 'fallingStar 4s linear infinite',
+                        'spin-slow': 'spinSlow 8s linear infinite',
+                        'spin-fast': 'spinFast 4s linear infinite',
+                        'hang-bounce': 'hangBounce 4s ease-in-out infinite',
+                        'balloon-rise': 'balloonRise 14s linear infinite',
+                        'balloon-sway': 'balloonSway 2.5s ease-in-out infinite',
+                        'confetti-fall': 'confettiFall 8s linear infinite',
+                        'ribbon-swing': 'ribbonSwing 1s ease-in-out infinite',
+                        'ribbon-wave': 'ribbonWave 1s ease-in-out infinite',
+                        'float-ud': 'floatUpDown 4s ease-in-out infinite',
                     },
                     keyframes: {
                         sway: { from: { transform: 'rotate(-5deg)' }, to: { transform: 'rotate(5deg)' } },
@@ -38,7 +47,16 @@
                         typeReveal: { '0%': { width: '0%', opacity: '0' }, '100%': { width: '100%', opacity: '1' } },
                         popIn: { '0%': { opacity: '0', transform: 'scale(0.5)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
                         fallingStar: { '0%': { transform: 'translate(0, 0) rotate(35deg)', opacity: 0 }, '20%': { opacity: 1 }, '100%': { transform: 'translate(-200px, 200px) rotate(35deg)', opacity: 0 } },
-                        floatUp: { '0%': { transform: 'translateY(100vh) scale(0.5)', opacity: 0 }, '20%': { opacity: 0.6 }, '80%': { opacity: 0.6 }, '100%': { transform: 'translateY(-10vh) scale(1)', opacity: 0 } }
+                        floatUp: { '0%': { transform: 'translateY(100vh) scale(0.5)', opacity: 0 }, '20%': { opacity: 0.6 }, '80%': { opacity: 0.6 }, '100%': { transform: 'translateY(-10vh) scale(1)', opacity: 0 } },
+                        spinSlow: { from: { transform: 'rotate(0deg)' }, to: { transform: 'rotate(360deg)' } },
+                        spinFast: { from: { transform: 'rotate(0deg)' }, to: { transform: 'rotate(-360deg)' } },
+                        hangBounce: { '0%,100%': { transform: 'rotate(-4deg) translateY(0)' }, '50%': { transform: 'rotate(4deg) translateY(-8px)' } },
+                        balloonRise: { '0%': { transform: 'translateY(110vh) scale(0.7)', opacity: 0 }, '10%': { opacity: 1 }, '90%': { opacity: 1 }, '100%': { transform: 'translateY(-120vh) scale(1)', opacity: 0 } },
+                        balloonSway: { '0%,100%': { transform: 'rotate(-6deg)' }, '50%': { transform: 'rotate(6deg)' } },
+                        confettiFall: { '0%': { transform: 'translateY(-20px) rotate(0deg)', opacity: 1 }, '80%': { opacity: 1 }, '100%': { transform: 'translateY(110vh) rotate(720deg)', opacity: 0 } },
+                        ribbonSwing: { '0%,100%': { transform: 'rotate(-15deg) scaleY(1)' }, '50%': { transform: 'rotate(15deg) scaleY(1.15)' } },
+                        ribbonWave: { '0%,100%': { transform: 'skewX(-5deg)' }, '50%': { transform: 'skewX(5deg)' } },
+                        floatUpDown: { '0%,100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-14px)' } },
                     }
                 }
             }
@@ -130,24 +148,126 @@
         @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
         .card-hover:hover { transform: translateY(-2px); box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05); }
         
-        /* Syawal Decorations Animations */
-        @keyframes twinkle { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
-        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-        @keyframes lanternGlow { 0%, 100% { filter: drop-shadow(0 0 4px #facc15); } 50% { filter: drop-shadow(0 0 12px #f97316); } }
-        
-        .islamic-pattern {
-            background-color: #f0f9ff;
-            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%230ea5e9' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-        }
-        
-        .font-arab { font-family: 'Amiri', serif; }
+        /* ===== CARNIVAL / PESTA DEKORASI ANIMATIONS ===== */
 
-        /* Ketupat Style — Syawal */
-        .ketupat { width: 30px; height: 30px; background-color: #bbf7d0; border: 2px solid #15803d; transform: rotate(45deg); position: relative; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(234,179,8,0.2); }
-        .ketupat::before, .ketupat::after { content: ''; position: absolute; background-color: #22c55e; opacity: 0.35; }
-        .ketupat::before { width: 100%; height: 50%; top: 0; left: 0; border-bottom: 1px solid #15803d; }
-        .ketupat::after { width: 50%; height: 100%; top: 0; left: 0; border-right: 1px solid #15803d; }
-        .lantern-glow { animation: lanternGlow 2.5s ease-in-out infinite; }
+        /* Confetti falling */
+        @keyframes confettiFall {
+            0%   { transform: translateY(-20px) rotate(0deg) scale(1); opacity: 1; }
+            80%  { opacity: 1; }
+            100% { transform: translateY(110vh) rotate(720deg) scale(0.5); opacity: 0; }
+        }
+        /* Confetti wiggle while falling */
+        @keyframes confettiWiggle {
+            0%   { margin-left: 0; }
+            25%  { margin-left: 18px; }
+            50%  { margin-left: -12px; }
+            75%  { margin-left: 20px; }
+            100% { margin-left: 0; }
+        }
+
+        /* Balloon floating up */
+        @keyframes balloonFloat {
+            0%   { transform: translateY(0) rotate(-3deg) scale(1); }
+            30%  { transform: translateY(-18px) rotate(4deg) scale(1.03); }
+            60%  { transform: translateY(-8px) rotate(-2deg) scale(0.98); }
+            100% { transform: translateY(0) rotate(-3deg) scale(1); }
+        }
+        @keyframes balloonSway {
+            0%,100% { transform: rotate(-6deg); }
+            50%      { transform: rotate(6deg); }
+        }
+        @keyframes balloonRise {
+            0%   { transform: translateY(110vh) scale(0.7); opacity: 0; }
+            10%  { opacity: 1; }
+            90%  { opacity: 1; }
+            100% { transform: translateY(-120vh) scale(1); opacity: 0; }
+        }
+
+        /* Twinkle sparkles */
+        @keyframes twinkle { 0%,100% { opacity: 0.2; transform: scale(0.6) rotate(0deg); } 50% { opacity: 1; transform: scale(1.3) rotate(20deg); } }
+
+        /* Stars burst / pop */
+        @keyframes starPop {
+            0%   { transform: scale(0) rotate(0deg); opacity: 0; }
+            40%  { transform: scale(1.4) rotate(180deg); opacity: 1; }
+            70%  { transform: scale(0.9) rotate(270deg); opacity: 0.8; }
+            100% { transform: scale(1.1) rotate(360deg); opacity: 0; }
+        }
+
+        /* Ribbon streamer swing */
+        @keyframes ribbonSwing {
+            0%,100% { transform: rotate(-15deg) scaleY(1); }
+            50%      { transform: rotate(15deg) scaleY(1.15); }
+        }
+        @keyframes ribbonWave {
+            0%,100% { transform: skewX(-5deg) scaleX(1); }
+            50%      { transform: skewX(5deg) scaleX(1.05); }
+        }
+
+        /* Pulse glow ring */
+        @keyframes glowRing {
+            0%,100% { box-shadow: 0 0 0 0 rgba(251,191,36,0.5); transform: scale(1); }
+            50%      { box-shadow: 0 0 0 12px rgba(251,191,36,0); transform: scale(1.05); }
+        }
+
+        /* Spiral spin */
+        @keyframes spinSlow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes spinFast { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+
+        /* Bounce up gantungan */
+        @keyframes hangBounce {
+            0%,100% { transform: rotate(-4deg) translateY(0); }
+            50%      { transform: rotate(4deg) translateY(-8px); }
+        }
+
+        /* Float gentle up down */
+        @keyframes floatUpDown {
+            0%,100% { transform: translateY(0); }
+            50%      { transform: translateY(-14px); }
+        }
+
+        /* Carnival utility classes */
+        .animate-confetti-fall  { animation: confettiFall linear infinite; }
+        .animate-confetti-wig   { animation: confettiWiggle ease-in-out infinite; }
+        .animate-balloon-float  { animation: balloonFloat ease-in-out infinite; }
+        .animate-balloon-sway   { animation: balloonSway ease-in-out infinite; }
+        .animate-balloon-rise   { animation: balloonRise linear infinite; }
+        .animate-twinkle        { animation: twinkle ease-in-out infinite; }
+        .animate-star-pop       { animation: starPop ease-in-out infinite; }
+        .animate-ribbon-swing   { animation: ribbonSwing ease-in-out infinite; }
+        .animate-ribbon-wave    { animation: ribbonWave ease-in-out infinite; }
+        .animate-spin-slow      { animation: spinSlow linear infinite; }
+        .animate-spin-fast      { animation: spinFast linear infinite; }
+        .animate-hang-bounce    { animation: hangBounce ease-in-out infinite; }
+        .animate-float-ud       { animation: floatUpDown ease-in-out infinite; }
+
+        /* Balloon shape */
+        .balloon {
+            width: 34px; height: 42px;
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            position: relative;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: inset -4px -6px 0 rgba(0,0,0,0.15);
+        }
+        .balloon::after {
+            content: '';
+            position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%);
+            width: 1px; height: 10px;
+            background: rgba(0,0,0,0.3);
+        }
+        .balloon::before {
+            content: '';
+            position: absolute; bottom: -3px; left: 50%; transform: translateX(-50%);
+            width: 6px; height: 4px;
+            background: inherit;
+            border-radius: 0 0 50% 50%;
+            filter: brightness(0.8);
+        }
+
+        /* Confetti shapes */
+        .confetti-rect  { border-radius: 2px; }
+        .confetti-round { border-radius: 50%; }
+        .confetti-tri   { clip-path: polygon(50% 0%, 0% 100%, 100% 100%); border-radius: 0; }
 
         /* FIREWORKS STYLE */
         .firework-particle { position: fixed; pointer-events: none; border-radius: 50%; z-index: 9999; animation: firework-fade 0.8s ease-out forwards; }
@@ -488,73 +608,132 @@
 
 
 
-        // --- DEKORASI IDUL FITRI ---
-        const SyawalDecor = () => (
-            <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{zIndex: -1}}>
-                {/* Partikel confetti Syawal melayang */}
-                <div className="absolute inset-0 z-0">
-                    {[...Array(18)].map((_, i) => (
-                        <div key={i} className="absolute rounded-full opacity-0 animate-float-up"
+        // --- DEKORASI PESTA WARNA-WARNI (CARNIVAL) ---
+        const CONFETTI_COLORS = ['#f43f5e','#f97316','#facc15','#22c55e','#06b6d4','#8b5cf6','#ec4899','#10b981','#3b82f6','#a855f7'];
+        const BALLOON_COLORS  = ['#f43f5e','#f97316','#facc15','#22c55e','#06b6d4','#8b5cf6','#ec4899','#a3e635'];
+        const CONFETTI_SHAPES = ['confetti-rect','confetti-round','confetti-tri'];
+
+        const RamadhanDecor = () => {
+            const confetti = React.useMemo(() => [...Array(38)].map((_,i) => ({
+                id: i,
+                color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+                shape: CONFETTI_SHAPES[i % 3],
+                size:  Math.random() * 8 + 5,
+                left:  Math.random() * 100,
+                delay: Math.random() * 12,
+                dur:   Math.random() * 7 + 6,
+                wigDur: Math.random() * 3 + 2,
+            })), []);
+
+            const risingBalloons = React.useMemo(() => [...Array(6)].map((_,i) => ({
+                id: i,
+                color: BALLOON_COLORS[i % BALLOON_COLORS.length],
+                left: 5 + i * 16,
+                delay: i * 2.2,
+                dur: Math.random() * 8 + 12,
+            })), []);
+
+            const hangItems = [
+                { pos: 'left-2 md:left-10',   color: '#f43f5e', icon: '🎉', stringH: 'h-24 md:h-36', dur: '4200ms' },
+                { pos: 'left-16 md:left-40',  color: '#facc15', icon: '⭐', stringH: 'h-32 md:h-48', dur: '5600ms' },
+                { pos: 'left-[28%]',           color: '#06b6d4', icon: '🎊', stringH: 'h-20 md:h-28', dur: '3800ms', hidden: 'hidden md:block' },
+                { pos: 'left-[50%]',           color: '#a855f7', icon: '🌟', stringH: 'h-28 md:h-40', dur: '4800ms', hidden: 'hidden md:block' },
+                { pos: 'right-[28%]',          color: '#22c55e', icon: '🎈', stringH: 'h-20 md:h-32', dur: '5000ms', hidden: 'hidden md:block' },
+                { pos: 'right-16 md:right-40', color: '#f97316', icon: '🎁', stringH: 'h-32 md:h-44', dur: '4500ms' },
+                { pos: 'right-2 md:right-10',  color: '#ec4899', icon: '✨', stringH: 'h-24 md:h-36', dur: '3900ms' },
+            ];
+
+            return (
+                <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{zIndex: -1}}>
+
+                    {/* ── CONFETTI RAIN ── */}
+                    {confetti.map(c => (
+                        <div key={c.id}
+                             className={`absolute top-0 ${c.shape} animate-confetti-fall animate-confetti-wig`}
                              style={{
-                                 background: i % 4 === 0 ? '#facc15' : i % 4 === 1 ? '#86efac' : i % 4 === 2 ? '#fb923c' : '#fde68a',
-                                 width: Math.random() * 5 + 2 + 'px',
-                                 height: Math.random() * 5 + 2 + 'px',
-                                 left: Math.random() * 100 + '%',
-                                 animationDelay: Math.random() * 10 + 's',
-                                 animationDuration: Math.random() * 10 + 10 + 's'
-                             }}></div>
+                                 background: c.color,
+                                 width: c.size + 'px',
+                                 height: c.shape === 'confetti-tri' ? c.size + 'px' : c.size * (c.shape === 'confetti-rect' ? 0.45 : 1) + 'px',
+                                 left: c.left + '%',
+                                 animationDuration: c.dur + 's,' + c.wigDur + 's',
+                                 animationDelay: c.delay + 's,' + (c.delay * 0.4) + 's',
+                                 opacity: 0.85,
+                             }} />
                     ))}
-                </div>
 
-                {/* Bulan sabit & bintang berkelip — simbol Syawal */}
-                <div className="absolute top-8 left-[8%] text-amber-400 text-[14px] animate-twinkle delay-100 opacity-70"><Icon name="moon" /></div>
-                <div className="absolute top-28 left-[38%] text-gold-300 text-[8px] animate-twinkle delay-700 opacity-40"><Icon name="star" /></div>
-                <div className="absolute top-4 right-[12%] text-amber-500 text-[11px] animate-twinkle delay-300 opacity-65"><Icon name="star" /></div>
-                <div className="absolute top-14 right-[33%] text-yellow-300 text-[9px] animate-twinkle delay-500 opacity-50"><Icon name="moon" /></div>
-                <div className="absolute -top-10 right-10 w-20 h-0.5 bg-gradient-to-l from-transparent to-amber-300 opacity-40 animate-falling-star"></div>
+                    {/* ── RISING BALLOONS ── */}
+                    {risingBalloons.map(b => (
+                        <div key={b.id} className="absolute bottom-0 animate-balloon-rise"
+                             style={{ left: b.left + '%', animationDuration: b.dur + 's', animationDelay: b.delay + 's' }}>
+                            <div className="balloon animate-balloon-sway"
+                                 style={{ background: b.color, animationDuration: '2.4s', animationDelay: b.delay * 0.3 + 's' }}>
+                                <span style={{ fontSize: '10px' }}>🎈</span>
+                            </div>
+                        </div>
+                    ))}
 
-                {/* Gantungan kiri: Lentera Syawal */}
-                <div className="absolute -top-8 left-2 md:left-12 z-0 animate-swing origin-top duration-[4000ms]">
-                    <div className="h-20 md:h-32 w-[1px] bg-amber-400/60 mx-auto"></div>
-                    <div className="lantern-glow text-amber-500 text-4xl md:text-6xl relative z-10 text-center"><Icon name="fire" /></div>
-                </div>
+                    {/* ── HANGING DECORATIONS ── */}
+                    {hangItems.map((h, i) => (
+                        <div key={i} className={`absolute -top-10 ${h.pos} ${h.hidden || ''} z-0 animate-hang-bounce origin-top`}
+                             style={{ animationDuration: h.dur, animationDelay: (i * 0.3) + 's' }}>
+                            <div className={`${h.stringH} w-[1.5px] mx-auto`} style={{ background: `linear-gradient(to bottom, ${h.color}80, ${h.color}20)` }}></div>
+                            <div className="text-center animate-float-ud" style={{ animationDuration: h.dur, animationDelay: (i * 0.5) + 's', fontSize: '28px', lineHeight: 1 }}>
+                                {h.icon}
+                            </div>
+                        </div>
+                    ))}
 
-                {/* Gantungan ketupat kiri */}
-                <div className="absolute -top-14 left-20 md:left-40 z-0 animate-sway origin-top duration-[5500ms]">
-                    <div className="h-28 md:h-44 w-[1px] bg-amber-400/40 mx-auto"></div>
-                    <div className="ketupat mx-auto shadow-lg"></div>
-                    <div className="h-4 w-[1px] bg-amber-400/40 mx-auto"></div>
-                    <div className="text-green-600 text-[10px] text-center"><Icon name="leaf" /></div>
-                </div>
+                    {/* ── SPINNING STAR BURSTS (corner accents) ── */}
+                    <div className="absolute top-16 left-[8%] animate-spin-slow opacity-40" style={{ animationDuration: '8s', fontSize: '22px' }}>✳️</div>
+                    <div className="absolute top-24 left-[22%] animate-spin-fast opacity-30" style={{ animationDuration: '5s', fontSize: '14px' }}>💫</div>
+                    <div className="absolute top-10 right-[12%] animate-spin-slow opacity-40" style={{ animationDuration: '6s', fontSize: '18px' }}>✨</div>
+                    <div className="absolute top-32 right-[25%] animate-spin-fast opacity-35" style={{ animationDuration: '4s', fontSize: '12px' }}>⭐</div>
+                    <div className="absolute top-20 left-[55%] animate-spin-slow opacity-30 hidden md:block" style={{ animationDuration: '9s', fontSize: '16px' }}>🌟</div>
 
-                {/* Gantungan tengah: bulan sabit emas */}
-                <div className="absolute -top-12 left-[30%] hidden md:block z-0 animate-swing-slow origin-top duration-[4500ms]">
-                    <div className="h-20 w-[1px] bg-amber-400/40 mx-auto"></div>
-                    <div className="text-amber-400 text-2xl drop-shadow-md animate-pulse"><Icon name="moon" /></div>
-                </div>
+                    {/* ── TWINKLING SPARKLES ── */}
+                    {[...Array(10)].map((_,i) => (
+                        <div key={i} className="absolute animate-twinkle"
+                             style={{
+                                 top: Math.random() * 60 + '%',
+                                 left: Math.random() * 100 + '%',
+                                 fontSize: (Math.random() * 8 + 7) + 'px',
+                                 animationDuration: (Math.random() * 2.5 + 1.5) + 's',
+                                 animationDelay: (Math.random() * 4) + 's',
+                                 color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+                                 opacity: 0.7,
+                             }}>★</div>
+                    ))}
 
-                {/* Gantungan kanan: lentera emas besar */}
-                <div className="absolute -top-8 right-4 md:right-12 z-0 animate-swing origin-top duration-[4000ms]">
-                    <div className="h-20 md:h-32 w-[1px] bg-amber-400/60 mx-auto"></div>
-                    <div className="lantern-glow text-amber-500 text-4xl md:text-6xl relative z-10 text-center"><Icon name="fire" /></div>
-                </div>
+                    {/* ── BOTTOM: Pita / Streamer horizontal ── */}
+                    <div className="absolute bottom-0 left-0 right-0 h-6 overflow-hidden flex">
+                        {[...Array(20)].map((_,i) => (
+                            <div key={i} className="animate-ribbon-wave flex-1 opacity-40"
+                                 style={{
+                                     background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+                                     height: (Math.random() * 14 + 8) + 'px',
+                                     alignSelf: 'flex-end',
+                                     animationDuration: (Math.random() * 1.5 + 1) + 's',
+                                     animationDelay: (i * 0.12) + 's',
+                                 }} />
+                        ))}
+                    </div>
 
-                {/* Gantungan ketupat kanan */}
-                <div className="absolute -top-14 right-20 md:right-40 z-0 animate-sway origin-top duration-[5500ms]">
-                    <div className="h-28 md:h-44 w-[1px] bg-amber-400/40 mx-auto"></div>
-                    <div className="ketupat mx-auto shadow-lg" style={{backgroundColor:'#fef9c3', borderColor:'#ca8a04'}}></div>
-                    <div className="h-4 w-[1px] bg-amber-400/40 mx-auto"></div>
-                    <div className="text-amber-600 text-[10px] text-center"><Icon name="star" /></div>
-                </div>
+                    {/* ── TOP RIBBON BANNER ── */}
+                    <div className="absolute top-0 left-0 right-0 h-3 flex overflow-hidden">
+                        {[...Array(30)].map((_,i) => (
+                            <div key={i} className="flex-1 animate-ribbon-swing"
+                                 style={{
+                                     background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+                                     opacity: 0.6,
+                                     animationDuration: (Math.random() * 1.2 + 0.8) + 's',
+                                     animationDelay: (i * 0.08) + 's',
+                                 }} />
+                        ))}
+                    </div>
 
-                {/* Siluet masjid bawah — Idul Fitri / Syawal */}
-                <div className="absolute bottom-0 left-0 right-0 h-32 opacity-10 pointer-events-none flex items-end justify-center overflow-hidden">
-                    <div className="text-slate-800 text-[150px] md:text-[200px] leading-none -mb-10"><Icon name="mosque" /></div>
-                    <div className="text-slate-800 text-[100px] md:text-[140px] leading-none -mb-8 -ml-10"><Icon name="mosque" /></div>
-                    <div className="text-slate-800 text-[100px] md:text-[140px] leading-none -mb-8 -mr-10 order-first"><Icon name="mosque" /></div>
                 </div>
-            </div>
-        );
+            );
+        };
 
         // --- UTILS ---
         const safeNumber = (val) => { if (!val) return 0; const num = parseFloat(val); return isNaN(num) ? 0 : num; };
@@ -7966,8 +8145,8 @@
                     <div className="bg-gradient-to-r from-night-900 to-sky-900 rounded-3xl p-5 md:p-6 text-white relative overflow-hidden shadow-2xl border border-slate-700 group">
                         <div className="absolute right-0 top-0 w-48 h-48 bg-gold-400 opacity-10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
                         <div className="relative z-10 flex items-center justify-between">
-                            <div><h3 className="font-arab text-2xl md:text-3xl text-amber-400 mb-1">تَقَبَّلَ اللّٰهُ مِنَّا وَمِنكُم</h3><p className="text-xs md:text-sm text-slate-300 font-medium opacity-90">Selamat Idul Fitri 1446 H — Minal Aidin Wal Faizin 🌙🪔</p><div className="mt-3 inline-flex items-center gap-2 bg-green-500/20 px-3 py-1 rounded-full backdrop-blur-sm border border-green-500/30"><div className="w-2 h-2 rounded-full bg-green-50 animate-pulse"></div><span className="text-[10px] font-bold tracking-wide text-green-300">ONLINE (FIREBASE)</span></div></div>
-                            <div className="text-4xl text-amber-500/80 animate-pulse"><Icon name="moon" /></div>
+                            <div><h3 className="font-bold text-2xl md:text-3xl text-yellow-300 mb-1 drop-shadow-md">🎉 Selamat Berpesta! 🎊</h3><p className="text-xs md:text-sm text-slate-300 font-medium opacity-90">Semangat kerja & terus raih target — kita bisa! 🚀🌈</p><div className="mt-3 inline-flex items-center gap-2 bg-green-500/20 px-3 py-1 rounded-full backdrop-blur-sm border border-green-500/30"><div className="w-2 h-2 rounded-full bg-green-50 animate-pulse"></div><span className="text-[10px] font-bold tracking-wide text-green-300">ONLINE (FIREBASE)</span></div></div>
+                            <div className="text-4xl animate-spin-slow" style={{animationDuration:'6s'}}>🎡</div>
                         </div>
                     </div>
                     
@@ -9728,13 +9907,12 @@
                     <div className="auth-orb" style={{width:'300px',height:'300px',background:'rgba(250,204,21,0.1)',bottom:'50px',right:'-80px'}}></div>
                     <div className="auth-orb" style={{width:'200px',height:'200px',background:'rgba(34,197,94,0.1)',top:'40%',right:'5%'}}></div>
                     
-                    {/* Bintang & Bulan Sabit — Syawal */}
+                    {/* Stars */}
                     {[...Array(8)].map((_,i) => (
-                        <div key={i} className="auth-floating-star" style={{
-                            color: i % 3 === 0 ? '#fbbf24' : i % 3 === 1 ? '#86efac' : '#fb923c',
+                        <div key={i} className="auth-floating-star text-yellow-300" style={{
                             top: Math.random()*80+'%', left: Math.random()*95+'%',
-                            fontSize: (Math.random()*8+6)+'px', animationDelay: i*0.5+'s', opacity:0.45
-                        }}><Icon name={i % 3 === 0 ? 'moon' : 'star'} /></div>
+                            fontSize: (Math.random()*8+6)+'px', animationDelay: i*0.5+'s', opacity:0.4
+                        }}><Icon name="star" /></div>
                     ))}
 
                     <div className="auth-card auth-fade-in w-full max-w-md relative z-10">
@@ -12455,7 +12633,7 @@
 
             return (
                 <div className={`min-h-screen flex flex-col md:flex-row bg-sky-50/50 transition-colors duration-500 ${activeStoreId === 'all_stores' ? 'theme-all-stores' : ''}`}>
-                    <SyawalDecor /> <Toast show={toast.show} message={toast.message} type={toast.type} /> {isSidebarOpen && (<div className="fixed inset-0 bg-slate-900/50 z-40 md:hidden backdrop-blur-sm fade-in" onClick={() => setIsSidebarOpen(false)}></div>)}
+                    <RamadhanDecor /> <Toast show={toast.show} message={toast.message} type={toast.type} /> {isSidebarOpen && (<div className="fixed inset-0 bg-slate-900/50 z-40 md:hidden backdrop-blur-sm fade-in" onClick={() => setIsSidebarOpen(false)}></div>)}
                     
                     {/* HIDDEN RECEIPT CONTAINER (UPDATED FOR DYNAMIC STORE) */}
                     {receiptToPrint && ( <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', zIndex: -1 }}> 
