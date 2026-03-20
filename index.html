@@ -8142,13 +8142,90 @@
 
             return (
                 <div className="space-y-6 fade-in pb-24 md:pb-0">
-                    <div className="bg-gradient-to-r from-night-900 to-sky-900 rounded-3xl p-5 md:p-6 text-white relative overflow-hidden shadow-2xl border border-slate-700 group">
-                        <div className="absolute right-0 top-0 w-48 h-48 bg-gold-400 opacity-10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-                        <div className="relative z-10 flex items-center justify-between">
-                            <div><h3 className="font-bold text-2xl md:text-3xl text-yellow-300 mb-1 drop-shadow-md">🎉 Selamat Berpesta! 🎊</h3><p className="text-xs md:text-sm text-slate-300 font-medium opacity-90">Semangat kerja & terus raih target — kita bisa! 🚀🌈</p><div className="mt-3 inline-flex items-center gap-2 bg-green-500/20 px-3 py-1 rounded-full backdrop-blur-sm border border-green-500/30"><div className="w-2 h-2 rounded-full bg-green-50 animate-pulse"></div><span className="text-[10px] font-bold tracking-wide text-green-300">ONLINE (FIREBASE)</span></div></div>
-                            <div className="text-4xl animate-spin-slow" style={{animationDuration:'6s'}}>🎡</div>
-                        </div>
-                    </div>
+                    {(() => {
+                        const bannerMessages = [
+                            { emoji: '🐱', title: 'Nyam nyam... stok obatnya aman!', sub: 'Kucing pun senang kalau kasirnya rajin input data 😸', bg: 'from-violet-600 via-purple-600 to-fuchsia-600', accent: '#f0abfc' },
+                            { emoji: '🦆', title: 'Kwek kwek! Transaksinya lancar?', sub: 'Bebek bilang: catat semua, jangan sampai ketinggalan! 🪴', bg: 'from-yellow-500 via-amber-500 to-orange-500', accent: '#fef08a' },
+                            { emoji: '🐸', title: 'Ribbit! Stok jangan sampai habis ya~', sub: 'Kata katak: lebih baik restock awal daripada kelimpungan 🌿', bg: 'from-emerald-500 via-green-500 to-teal-500', accent: '#bbf7d0' },
+                            { emoji: '🐙', title: 'Halo dari Gurita 8 Tangan!', sub: 'Kamu urus kasir, stok, karyawan, laporan... dan masih senyum? HEBAT! 🎊', bg: 'from-sky-500 via-blue-600 to-indigo-600', accent: '#bae6fd' },
+                            { emoji: '🦊', title: 'Hai hai~ Selamat kerja keras!', sub: 'Rubah bilang: yang rajin update stok, rezekinya lancar! 🍀', bg: 'from-orange-500 via-red-500 to-rose-500', accent: '#fed7aa' },
+                            { emoji: '🐼', title: 'Panda udah sarapan, kamu udah input data?', sub: 'Jangan lupa istirahat juga ya, Panda aja perlu tidur 🎋', bg: 'from-slate-600 via-gray-700 to-slate-800', accent: '#e2e8f0' },
+                            { emoji: '🦋', title: 'Semangat! Hari ini pasti cuan!', sub: 'Kupu-kupu bermetamorfosis, kasir makin mahir dari hari ke hari 🌸', bg: 'from-pink-500 via-rose-500 to-fuchsia-500', accent: '#fbcfe8' },
+                        ];
+                        const [msgIdx, setMsgIdx] = React.useState(() => Math.floor(Math.random() * bannerMessages.length));
+                        const [fading, setFading] = React.useState(false);
+                        const [wobble, setWobble] = React.useState(false);
+
+                        React.useEffect(() => {
+                            const timer = setInterval(() => {
+                                setFading(true);
+                                setTimeout(() => {
+                                    setMsgIdx(i => (i + 1) % bannerMessages.length);
+                                    setFading(false);
+                                }, 400);
+                            }, 5000);
+                            return () => clearInterval(timer);
+                        }, []);
+
+                        React.useEffect(() => {
+                            setWobble(true);
+                            const t = setTimeout(() => setWobble(false), 600);
+                            return () => clearTimeout(t);
+                        }, [msgIdx]);
+
+                        const m = bannerMessages[msgIdx];
+                        return (
+                            <div className={`bg-gradient-to-r ${m.bg} rounded-3xl p-5 md:p-6 text-white relative overflow-hidden shadow-2xl cursor-pointer select-none`}
+                                 onClick={() => { setFading(true); setTimeout(() => { setMsgIdx(i => (i+1)%bannerMessages.length); setFading(false); }, 300); }}
+                                 title="Klik untuk ganti pesan!">
+                                {/* Decorative blobs */}
+                                <div className="absolute -right-6 -top-6 w-32 h-32 rounded-full opacity-20" style={{background: m.accent, filter:'blur(24px)'}}></div>
+                                <div className="absolute -left-4 -bottom-4 w-24 h-24 rounded-full opacity-15" style={{background: m.accent, filter:'blur(20px)'}}></div>
+                                {/* Dot pattern overlay */}
+                                <div className="absolute inset-0 opacity-10" style={{backgroundImage:'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize:'20px 20px'}}></div>
+
+                                <div className="relative z-10 flex items-center justify-between gap-4">
+                                    <div style={{opacity: fading ? 0 : 1, transform: fading ? 'translateY(8px)' : 'translateY(0)', transition:'opacity 0.35s ease, transform 0.35s ease'}}>
+                                        <h3 className="font-black text-xl md:text-2xl mb-1 leading-tight drop-shadow-md" style={{color: m.accent}}>
+                                            {m.title}
+                                        </h3>
+                                        <p className="text-xs md:text-sm text-white/80 font-medium leading-relaxed">{m.sub}</p>
+                                        <div className="mt-3 flex items-center gap-3 flex-wrap">
+                                            <div className="inline-flex items-center gap-2 bg-white/15 px-3 py-1 rounded-full backdrop-blur-sm border border-white/20">
+                                                <div className="w-2 h-2 rounded-full bg-green-300 animate-pulse"></div>
+                                                <span className="text-[10px] font-bold tracking-wide text-green-200">ONLINE (FIREBASE)</span>
+                                            </div>
+                                            <span className="text-[9px] text-white/40 font-medium hidden md:inline">👆 klik untuk ganti</span>
+                                        </div>
+                                    </div>
+                                    {/* Big emoji mascot */}
+                                    <div className="flex-shrink-0 flex flex-col items-center gap-1">
+                                        <div style={{
+                                            fontSize: '52px', lineHeight: 1,
+                                            display:'inline-block',
+                                            transform: wobble ? 'rotate(-15deg) scale(1.25)' : 'rotate(0deg) scale(1)',
+                                            transition:'transform 0.3s cubic-bezier(0.175,0.885,0.32,1.5)',
+                                            filter:'drop-shadow(0 4px 8px rgba(0,0,0,0.25))',
+                                            opacity: fading ? 0.3 : 1,
+                                        }}>
+                                            {m.emoji}
+                                        </div>
+                                        {/* Dot indicators */}
+                                        <div className="flex gap-1 mt-1">
+                                            {bannerMessages.map((_,i) => (
+                                                <div key={i} style={{
+                                                    width: i===msgIdx ? '14px' : '5px', height:'5px',
+                                                    borderRadius:'9999px',
+                                                    background: i===msgIdx ? m.accent : 'rgba(255,255,255,0.3)',
+                                                    transition:'all 0.3s ease',
+                                                }}/>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
                     
                     <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 relative z-10">
                         <div className="bg-white/80 backdrop-blur-sm p-5 rounded-3xl shadow-soft border border-white relative overflow-hidden group hover:bg-white transition-all">
