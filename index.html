@@ -8172,12 +8172,13 @@
 
                 if (allItems.length === 0) return { fast: [], normal: [], slow: [], dead: [], total: 0 };
 
-                // STOK MATI: tidak terjual sama sekali dalam periode DAN masih ada stok fisik
+                // ── STOK MATI: sama sekali tidak terjual dalam periode (qty berapapun)
+                // Ini mencakup: stok ada tapi tak laku, MAUPUN stok sudah habis tapi tak ada penjualan baru
                 const dead = allItems
-                    .filter(i => i.sold === 0 && i.qty > 0)
+                    .filter(i => i.sold === 0)
                     .sort((a, b) => b.qty - a.qty); // urut stok terbanyak di atas
 
-                // Barang yang terjual di periode ini
+                // ── BARANG YANG TERJUAL → dibagi Fast/Normal/Slow berdasarkan persentil
                 const soldItems = allItems.filter(i => i.sold > 0);
                 soldItems.sort((a, b) => b.sold - a.sold);
 
@@ -8194,7 +8195,7 @@
                     normal = [soldItems[1]];
                     slow = [soldItems[2]];
                 } else if (n >= 4) {
-                    // Top 25% Fast, Bottom 25% Slow, Tengah Normal
+                    // Top 25% → Fast, Bottom 25% → Slow, Tengah → Normal
                     const fastCount = Math.max(1, Math.round(n * 0.25));
                     const slowCount = Math.max(1, Math.round(n * 0.25));
                     const safeSlow = Math.min(slowCount, n - fastCount);
@@ -8203,6 +8204,7 @@
                     normal = soldItems.slice(fastCount, n - safeSlow);
                 }
 
+                // Verifikasi: fast + normal + slow + dead harus = allItems.length
                 return { fast, normal, slow, dead, total: allItems.length };
             }, [fsmTransactions, fsmPeriod, items]);
 
@@ -8303,9 +8305,10 @@
                             {!fsmLoading && (
                                 <div className="mb-3 p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-[9px] text-slate-500 leading-relaxed">
                                     <span className="font-bold text-slate-600">Cara hitung: </span>
-                                    Dari barang yang terjual dalam {fsmPeriod} hari → Top 25% = <span className="text-green-600 font-bold">Fast</span>, Tengah = <span className="text-blue-600 font-bold">Normal</span>, Bottom 25% = <span className="text-orange-500 font-bold">Slow</span>.
-                                    Barang dengan stok ada tapi <span className="font-bold text-red-500">tidak terjual sama sekali</span> = <span className="text-red-600 font-bold">Stok Mati</span>.
-                                    {' '}Total terhitung: <b>{fsmData.fast.length + fsmData.normal.length + fsmData.slow.length + fsmData.dead.length}</b> dari <b>{fsmData.total}</b> item.
+                                    <span className="font-bold text-slate-600">Cara hitung:</span>{' '}
+                                    Barang yang <b>tidak terjual sama sekali</b> dalam {fsmPeriod} hari = <span className="text-red-600 font-bold">Stok Mati</span> (termasuk stok habis).{' '}
+                                    Sisanya (yang terjual) dibagi: Top 25% = <span className="text-green-600 font-bold">Fast</span>, Tengah = <span className="text-blue-600 font-bold">Normal</span>, Bottom 25% = <span className="text-orange-500 font-bold">Slow</span>.{' '}
+                                    ✅ Total: <b>{fsmData.fast.length + fsmData.normal.length + fsmData.slow.length + fsmData.dead.length}</b> = <b>{fsmData.total}</b> item (semua terhitung).
                                 </div>
                             )}
 
@@ -8371,7 +8374,13 @@
                                                             <h4 className="text-xs font-bold text-slate-700 truncate">{item.name}</h4>
                                                             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
                                                                 <span className="text-[9px] text-slate-400"><Icon name="location-dot" className="text-[8px]" /> {item.rack || '-'}</span>
-                                                                <span className="text-[9px] text-slate-400">Stok: <b>{item.qty}</b></span>
+                                                                {fsmActiveTab === 'dead' ? (
+                                                                    item.qty > 0
+                                                                        ? <span className="text-[9px] text-red-500 font-bold">Stok: {item.qty} (menumpuk)</span>
+                                                                        : <span className="text-[9px] text-slate-400 font-bold">Stok habis</span>
+                                                                ) : (
+                                                                    <span className="text-[9px] text-slate-400">Stok: <b>{item.qty}</b></span>
+                                                                )}
                                                                 {nilaiStokMati && <span className="text-[9px] text-red-400 font-bold">≈ {formatRupiah(nilaiStokMati)}</span>}
                                                             </div>
                                                         </div>
@@ -8392,15 +8401,28 @@
                             );
                         })()}
                         {!fsmLoading && fsmActiveTab === 'dead' && fsmData.dead.length > 0 && (
-                            <div className="px-4 pb-3 pt-1 border-t border-red-50">
+                            <div className="px-4 pb-3 pt-2 border-t border-red-50 space-y-1">
                                 {(() => {
-                                    const totalNilai = fsmData.dead.reduce((s, i) => s + (i.costPrice > 0 ? i.costPrice * i.qty : 0), 0);
-                                    const totalUnit  = fsmData.dead.reduce((s, i) => s + i.qty, 0);
+                                    const deadWithStock  = fsmData.dead.filter(i => i.qty > 0);
+                                    const deadNoStock    = fsmData.dead.filter(i => i.qty === 0);
+                                    const totalNilai     = deadWithStock.reduce((s, i) => s + (i.costPrice > 0 ? i.costPrice * i.qty : 0), 0);
+                                    const totalUnit      = deadWithStock.reduce((s, i) => s + i.qty, 0);
                                     return (
-                                        <div className="flex items-center justify-between py-1">
-                                            <span className="text-[9px] text-red-500 font-bold flex items-center gap-1"><Icon name="triangle-exclamation" className="text-[8px]" /> Total stok mati: {totalUnit} unit</span>
-                                            {totalNilai > 0 && <span className="text-[9px] font-black text-red-600">≈ {formatRupiah(totalNilai)}</span>}
-                                        </div>
+                                        <>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[9px] text-red-500 font-bold flex items-center gap-1">
+                                                    <Icon name="skull" className="text-[8px]" /> Stok menumpuk: {deadWithStock.length} item ({totalUnit} unit)
+                                                </span>
+                                                {totalNilai > 0 && <span className="text-[9px] font-black text-red-600">≈ {formatRupiah(totalNilai)}</span>}
+                                            </div>
+                                            {deadNoStock.length > 0 && (
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-[9px] text-slate-400 font-bold flex items-center gap-1">
+                                                        <Icon name="box-open" className="text-[8px]" /> Stok habis & tak terjual: {deadNoStock.length} item
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </>
                                     );
                                 })()}
                             </div>
