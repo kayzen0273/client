@@ -712,6 +712,27 @@
 
         // --- UTILS ---
         const safeNumber = (val) => { if (!val) return 0; const num = parseFloat(val); return isNaN(num) ? 0 : num; };
+        // Helper PPN mode: 'incl_11' | 'excl_11' | 'incl_12' | 'excl_12' | '' | backward-compat '11'/'12'
+        const parsePpnMode = (mode) => {
+            if (!mode) return { persen: 0, inclusive: false };
+            const m = String(mode).match(/^(incl|excl)_(\d+)$/);
+            if (m) return { persen: parseInt(m[2]), inclusive: m[1] === 'incl' };
+            const p = parseInt(mode); // backward compat lama (11 atau 12)
+            if (p > 0) return { persen: p, inclusive: false };
+            return { persen: 0, inclusive: false };
+        };
+        const calcPpnNom = (dpp, mode) => {
+            const { persen, inclusive } = parsePpnMode(mode);
+            if (!persen) return 0;
+            if (inclusive) return Math.round(dpp - Math.round(dpp * 100 / (100 + persen)));
+            return Math.floor(dpp * persen / 100);
+        };
+        const ppnModeLabel = (mode) => {
+            if (!mode) return '';
+            const { persen, inclusive } = parsePpnMode(mode);
+            if (!persen) return '';
+            return inclusive ? `Termasuk PPN ${persen}%` : `Belum Termasuk PPN ${persen}%`;
+        };
         const formatRupiah = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(safeNumber(angka)).replace(/,00$/, '');
         const isNewItem = (createdAt) => {
             if (!createdAt) return false;
@@ -3480,10 +3501,11 @@
                 
                 setSubmitting(true);
                 const subtotal = safeNumber(invoiceData.total); 
-                const ppn = safeNumber(invoiceData.ppn); 
+                const ppnMode = invoiceData.ppn || '';
                 const numDiskon = parseInt(diskon.replace(/\D/g,'')) || 0;
                 const diskonNominal = diskonType === 'percent' ? Math.floor(subtotal * numDiskon / 100) : numDiskon;
                 const dpp = subtotal - diskonNominal;
+                const ppn = calcPpnNom(dpp, ppnMode);
                 const numMaterai = parseInt(materai.replace(/\D/g,'')) || 0;
                 const numPengiriman = parseInt(pengiriman.replace(/\D/g,'')) || 0;
                 const numPembulatan = parseInt(pembulatan.replace(/\D/g,'')) || 0;
@@ -3558,6 +3580,7 @@
                         pengiriman: numPengiriman,
                         pembulatan: numPembulatan,
                         ppn: ppn, 
+                        ppnMode: ppnMode,
                         paymentMethod: invoiceData.paymentMethod, 
                         date: invoiceData.date ? new Date(invoiceData.date).toISOString() : new Date().toISOString(),
                         receivedDate: invoiceData.receivedDate || new Date().toISOString().slice(0,10),
@@ -3810,7 +3833,7 @@
                     receivedTime: purchase.receivedTime || '',
                     dueDate: purchase.dueDate ? new Date(purchase.dueDate).toISOString().slice(0,10) : '',
                     total: purchase.subtotal !== undefined ? purchase.subtotal.toString() : (purchase.total || '').toString(),
-                    ppn: purchase.ppn ? purchase.ppn.toString() : '',
+                    ppn: purchase.ppnMode || (purchase.ppn ? (purchase.ppn === 11 || purchase.ppn === '11' ? 'excl_11' : purchase.ppn === 12 || purchase.ppn === '12' ? 'excl_12' : '') : ''),
                     paymentMethod: purchase.paymentMethod || 'Kredit',
                     isPaid: purchase.isPaid || false,
                     isConsignment: purchase.isConsignment || false,
@@ -4190,9 +4213,11 @@
                                         <div>
                                             <label className="block text-[11.5px] text-gray-500 mb-1">PPN</label>
                                             <select className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs bg-white outline-none focus:border-teal-500" value={invoiceData.ppn} onChange={e => setInvoiceData({...invoiceData, ppn: e.target.value})}>
-                                                <option value="">Tidak ada PPN</option>
-                                                <option value="11">PPN 11%</option>
-                                                <option value="12">PPN 12%</option>
+                                                <option value="">Tanpa PPN</option>
+                                                <option value="incl_11">Harga termasuk PPN 11%</option>
+                                                <option value="excl_11">Harga belum termasuk PPN 11%</option>
+                                                <option value="incl_12">Harga termasuk PPN 12%</option>
+                                                <option value="excl_12">Harga belum termasuk PPN 12%</option>
                                             </select>
                                         </div>
                                         <div className="flex items-center gap-2 pt-1">
@@ -4494,8 +4519,8 @@
                                         const numDiskon = parseInt((diskon || '0').replace(/\D/g,'')) || 0;
                                         const diskonNom = diskonType === 'percent' ? Math.floor(subtotal * numDiskon / 100) : numDiskon;
                                         const dpp = subtotal - diskonNom;
-                                        const ppnPersen = parseInt(invoiceData.ppn) || 0;
-                                        const ppnNom = Math.floor(dpp * ppnPersen / 100);
+                                        const ppnPersen = parsePpnMode(invoiceData.ppn).persen;
+                                        const ppnNom = calcPpnNom(dpp, invoiceData.ppn);
                                         const numMat = parseInt((materai || '0').replace(/\D/g,'')) || 0;
                                         const numPeng = parseInt((pengiriman || '0').replace(/\D/g,'')) || 0;
                                         const numPemb = parseInt((pembulatan || '0').replace(/\D/g,'')) || 0;
@@ -4523,7 +4548,7 @@
                                                 </div>
                                                 {ppnPersen > 0 && (
                                                     <div className="flex justify-between items-center text-xs py-1">
-                                                        <span className="text-gray-600">PPN {ppnPersen}%</span>
+                                                        <span className="text-gray-600">{ppnModeLabel(invoiceData.ppn)}</span>
                                                         <span className="font-medium">{fmt(ppnNom)}</span>
                                                     </div>
                                                 )}
@@ -4646,7 +4671,7 @@
                                         {[
                                             ['Subtotal', selectedPurchase.subtotal || selectedPurchase.total],
                                             selectedPurchase.diskon > 0 && ['Diskon', -selectedPurchase.diskon],
-                                            selectedPurchase.ppn > 0 && ['PPN', selectedPurchase.ppn],
+                                            selectedPurchase.ppn > 0 && [ppnModeLabel(selectedPurchase.ppnMode) || `PPN`, selectedPurchase.ppn],
                                             selectedPurchase.materai > 0 && ['Biaya Meterai', selectedPurchase.materai],
                                             selectedPurchase.pengiriman > 0 && ['Biaya Pengiriman', selectedPurchase.pengiriman],
                                             selectedPurchase.pembulatan > 0 && ['Pembulatan', selectedPurchase.pembulatan],
@@ -9612,7 +9637,7 @@
         // ==================== END PAPAN CATATAN ====================
 
         // ==================== STOCK OPNAME VIEW ====================
-        const StockOpnameView = ({ items, user, showToast, currentProfile, readOnly }) => {
+        const StockOpnameView = ({ items, user, showToast, currentProfile, readOnly, isOwner }) => {
             const [physicalCounts, setPhysicalCounts] = useState({});
             const [sessions, setSessions] = useState([]);
             const [activeSession, setActiveSession] = useState(null);
@@ -9622,6 +9647,7 @@
             const [saving, setSaving] = useState(false);
             const [showHistory, setShowHistory] = useState(false);
             const [showFinishModal, setShowFinishModal] = useState(false);
+            const [showCancelModal, setShowCancelModal] = useState(false);
             const [historyDetail, setHistoryDetail] = useState(null);
 
             const profileId = currentProfile?.id || 'default';
@@ -9728,6 +9754,21 @@
                     showToast('Stock Opname selesai! Stok barang telah diperbarui.');
                     setShowFinishModal(false);
                 } catch (e) { showToast('Gagal menyelesaikan sesi', 'error'); }
+                setSaving(false);
+            };
+
+            const cancelSession = async () => {
+                if (!sessionId) return;
+                setSaving(true);
+                try {
+                    await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'stock_opname', sessionId), {
+                        status: 'cancelled',
+                        cancelledAt: window.serverTimestamp(),
+                        cancelledBy: user?.uid || 'owner',
+                    });
+                    showToast('Sesi Stock Opname dibatalkan.', 'info');
+                    setShowCancelModal(false);
+                } catch (e) { showToast('Gagal membatalkan sesi', 'error'); }
                 setSaving(false);
             };
 
@@ -9999,6 +10040,11 @@
                                 <div className="flex items-center justify-between mt-3 gap-2 flex-wrap">
                                     <p className="text-[10px] text-slate-400">Sesi dimulai: {formatDate(activeSession.createdAt)}</p>
                                     <div className="flex gap-2">
+                                        {isOwner && (
+                                            <button onClick={() => setShowCancelModal(true)} className="text-xs bg-red-50 hover:bg-red-100 text-red-500 font-bold px-3 py-1.5 rounded-lg border border-red-200 transition-all">
+                                                <Icon name="ban" className="mr-1" />Batalkan
+                                            </button>
+                                        )}
                                         <button onClick={saveProgress} disabled={saving} className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold px-3 py-1.5 rounded-lg transition-all">{saving ? '...' : ' Simpan'}</button>
                                         <button onClick={() => setShowFinishModal(true)} className="text-xs bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm transition-all"> Selesaikan</button>
                                     </div>
@@ -10080,6 +10126,23 @@
                                 <div className="flex gap-3">
                                     <button onClick={() => setShowFinishModal(false)} className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-600 font-bold text-sm hover:bg-slate-200">Batal</button>
                                     <button onClick={finishSession} disabled={saving} className="flex-1 py-3 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 shadow-md">{saving ? 'Menyimpan...' : 'Ya, Selesaikan'}</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {showCancelModal && (
+                        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm fade-in" onClick={() => setShowCancelModal(false)}>
+                            <div className="bg-white rounded-2xl shadow-2xl p-7 w-full max-w-sm pop-in" onClick={e => e.stopPropagation()}>
+                                <div className="text-center mb-5">
+                                    <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-3"><Icon name="ban" className="text-red-500 text-2xl" /></div>
+                                    <h3 className="font-black text-slate-800 text-lg">Batalkan Sesi Opname?</h3>
+                                    <p className="text-slate-500 text-sm mt-2">Sesi akan dibatalkan dan <strong>stok tidak akan diubah</strong>. Semua data penghitungan yang sudah diisi akan dihapus.</p>
+                                    <p className="text-xs text-red-400 font-bold mt-3">⚠️ Hanya Owner yang dapat melakukan ini.</p>
+                                </div>
+                                <div className="flex gap-3">
+                                    <button onClick={() => setShowCancelModal(false)} className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-600 font-bold text-sm hover:bg-slate-200">Tidak</button>
+                                    <button onClick={cancelSession} disabled={saving} className="flex-1 py-3 rounded-xl bg-red-500 text-white font-bold text-sm hover:bg-red-600 shadow-md">{saving ? 'Membatalkan...' : 'Ya, Batalkan'}</button>
                                 </div>
                             </div>
                         </div>
@@ -13312,7 +13375,7 @@
                         {activeTab === 'list' && (<ListView items={inventoryData} loading={loading} settings={settingsData} searchQuery={searchQuery} setSearchQuery={setSearchQuery} showOnlyLowStock={showOnlyLowStock} setShowOnlyLowStock={setShowOnlyLowStock} selectedRacks={selectedRacks} setSelectedRacks={setSelectedRacks} uniqueRacksData={uniqueRacksData} onCopySuccess={showToast} onEdit={(item) => { setFormData({...item}); setEditingItem(item); setActiveTab('add'); }} onDelete={(item) => setDeleteModal({ show: true, item: item })} onDeleteRack={(rackName) => setDeleteRackModal({ show: true, rackName })} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='list')?.readOnly} isOwner={isOwner} />)}
                         {activeTab === 'add' && (<FormView formData={formData} setFormData={setFormData} onSubmit={handleSubmit} isEditing={!!editingItem} submitting={submitting} onCancel={() => { setEditingItem(null); setFormData({name:'', qty:'', unit:'Pcs', exp:'', rack:'', price:'', costPrice:'', minStock: '', defaultDiscount: '', defaultDiscountType: '%'}); setActiveTab('list'); }} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='add')?.readOnly} />)}
                         {activeTab === 'import' && (<BulkImportView user={user} onImportComplete={(count) => { showToast(`${count} Barang berhasil diimport`); setActiveTab('list'); }} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='import')?.readOnly} />)}
-                        {activeTab === 'stock_opname' && (<StockOpnameView items={inventoryData} user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='stock_opname')?.readOnly} />)}
+                        {activeTab === 'stock_opname' && (<StockOpnameView items={inventoryData} user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='stock_opname')?.readOnly} isOwner={isOwner} />)}
                         {activeTab === 'rekam_medis' && (<RekamMedisView user={user} showToast={showToast} readOnly={menuItems.find(m=>m.id==='rekam_medis')?.readOnly} />)}
                         {activeTab === 'settings' && (<SettingsView settings={settingsData} onSave={handleSaveSettings} loading={submitting} authSession={authSession} onUpdateSession={(newSession) => { setAuthSession(newSession); saveSession(newSession); }} />)}
                         {activeTab === 'pengguna_akun' && (<PenggunaAkunView authSession={authSession} onUpdateSession={(newSession) => { setAuthSession(newSession); saveSession(newSession); }} showToast={showToast} />)}
