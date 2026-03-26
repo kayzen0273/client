@@ -748,7 +748,7 @@
             const bgClass = type === "error" ? "bg-red-500" : "bg-slate-800";
             const iconName = type === "error" ? "circle-xmark" : "circle-check";
             return (
-                <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 z-[110] ${bgClass} text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 fade-in animate-bounce border-2 border-white/10`}>
+                <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[110] ${bgClass} text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 fade-in border-2 border-white/10`}>
                     <Icon name={iconName} className={type === "error" ? "text-white" : "text-brand-400"} />
                     <span className="font-medium text-sm">{message}</span>
                 </div>
