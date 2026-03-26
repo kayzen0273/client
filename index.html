@@ -748,7 +748,7 @@
             const bgClass = type === "error" ? "bg-red-500" : "bg-slate-800";
             const iconName = type === "error" ? "circle-xmark" : "circle-check";
             return (
-                <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[110] ${bgClass} text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 fade-in border-2 border-white/10`}>
+                <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 z-[110] ${bgClass} text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 fade-in animate-bounce border-2 border-white/10`}>
                     <Icon name={iconName} className={type === "error" ? "text-white" : "text-brand-400"} />
                     <span className="font-medium text-sm">{message}</span>
                 </div>
@@ -9648,6 +9648,7 @@
             const [showHistory, setShowHistory] = useState(false);
             const [showFinishModal, setShowFinishModal] = useState(false);
             const [showCancelModal, setShowCancelModal] = useState(false);
+            const [showEmployeeCancelInfo, setShowEmployeeCancelInfo] = useState(false);
             const [historyDetail, setHistoryDetail] = useState(null);
 
             const profileId = currentProfile?.id || 'default';
@@ -10043,7 +10044,7 @@
                                                 if (isOwner) {
                                                     setShowCancelModal(true);
                                                 } else {
-                                                    showToast('Untuk membatalkan sesi Stock Opname, hubungi Owner.', 'error');
+                                                    setShowEmployeeCancelInfo(true);
                                                 }
                                             }}
                                             title={isOwner ? 'Batalkan sesi ini' : 'Hanya Owner yang bisa membatalkan sesi'}
@@ -10154,6 +10155,102 @@
                                     <button onClick={() => setShowCancelModal(false)} className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-600 font-bold text-sm hover:bg-slate-200">Kembali</button>
                                     <button onClick={cancelSession} disabled={saving} className="flex-1 py-3 rounded-xl bg-red-500 text-white font-bold text-sm hover:bg-red-600 shadow-md flex items-center justify-center gap-2">
                                         {saving ? 'Membatalkan...' : <><i className="fa-solid fa-ban"></i> Ya, Batalkan</>}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Modal notif karyawan: tidak bisa batalkan sesi */}
+                    {showEmployeeCancelInfo && (
+                        <div
+                            className="fixed inset-0 z-50 flex items-center justify-center p-5"
+                            style={{ background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(6px)' }}
+                            onClick={() => setShowEmployeeCancelInfo(false)}
+                        >
+                            <div
+                                className="relative w-full max-w-xs pop-in"
+                                onClick={e => e.stopPropagation()}
+                                style={{
+                                    background: 'linear-gradient(145deg, #1e293b 0%, #0f172a 100%)',
+                                    borderRadius: '24px',
+                                    boxShadow: '0 25px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06)',
+                                    overflow: 'hidden',
+                                }}
+                            >
+                                {/* Top decorative bar */}
+                                <div style={{ height: '4px', background: 'linear-gradient(90deg, #f59e0b, #ef4444, #f59e0b)', backgroundSize: '200% 100%' }} />
+
+                                {/* Body */}
+                                <div className="p-7 text-center">
+                                    {/* Icon lock dengan efek ring */}
+                                    <div className="relative mx-auto mb-5" style={{ width: '72px', height: '72px' }}>
+                                        <div style={{
+                                            position: 'absolute', inset: 0, borderRadius: '50%',
+                                            background: 'rgba(245,158,11,0.15)',
+                                            animation: 'ping 1.8s cubic-bezier(0,0,0.2,1) infinite',
+                                        }} />
+                                        <div style={{
+                                            position: 'relative', width: '72px', height: '72px',
+                                            background: 'linear-gradient(135deg, #f59e0b22, #ef444422)',
+                                            border: '1.5px solid rgba(245,158,11,0.35)',
+                                            borderRadius: '50%',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        }}>
+                                            <i className="fa-solid fa-lock" style={{ fontSize: '28px', color: '#f59e0b' }} />
+                                        </div>
+                                    </div>
+
+                                    {/* Title */}
+                                    <p style={{
+                                        fontFamily: 'Nunito, sans-serif', fontWeight: 900,
+                                        fontSize: '18px', color: '#f8fafc', marginBottom: '10px', letterSpacing: '-0.3px',
+                                    }}>Akses Terbatas</p>
+
+                                    {/* Subtitle */}
+                                    <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: 1.7, marginBottom: '20px' }}>
+                                        Membatalkan sesi <strong style={{ color: '#fbbf24' }}>Stock Opname</strong> hanya dapat dilakukan oleh Owner toko.
+                                    </p>
+
+                                    {/* Info box */}
+                                    <div style={{
+                                        background: 'rgba(245,158,11,0.1)',
+                                        border: '1px solid rgba(245,158,11,0.25)',
+                                        borderRadius: '14px',
+                                        padding: '12px 14px',
+                                        marginBottom: '22px',
+                                        display: 'flex', alignItems: 'center', gap: '10px',
+                                    }}>
+                                        <div style={{
+                                            width: '34px', height: '34px', flexShrink: 0,
+                                            background: 'rgba(245,158,11,0.2)',
+                                            borderRadius: '10px',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        }}>
+                                            <i className="fa-solid fa-crown" style={{ color: '#f59e0b', fontSize: '14px' }} />
+                                        </div>
+                                        <p style={{ fontSize: '12px', color: '#fbbf24', fontWeight: 700, textAlign: 'left', lineHeight: 1.5 }}>
+                                            Hubungi <span style={{ color: '#fde68a' }}>Owner</span> untuk membatalkan sesi ini
+                                        </p>
+                                    </div>
+
+                                    {/* Tombol mengerti */}
+                                    <button
+                                        onClick={() => setShowEmployeeCancelInfo(false)}
+                                        style={{
+                                            width: '100%', padding: '13px',
+                                            background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                                            border: 'none', borderRadius: '14px',
+                                            color: '#fff', fontWeight: 800, fontSize: '14px',
+                                            cursor: 'pointer', letterSpacing: '0.2px',
+                                            boxShadow: '0 4px 16px rgba(245,158,11,0.4)',
+                                            transition: 'transform 0.1s, box-shadow 0.1s',
+                                            fontFamily: 'Nunito, sans-serif',
+                                        }}
+                                        onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.97)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(245,158,11,0.3)'; }}
+                                        onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(245,158,11,0.4)'; }}
+                                    >
+                                        Mengerti
                                     </button>
                                 </div>
                             </div>
