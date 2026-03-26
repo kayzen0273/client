@@ -9648,6 +9648,7 @@
             const [showHistory, setShowHistory] = useState(false);
             const [showFinishModal, setShowFinishModal] = useState(false);
             const [showCancelModal, setShowCancelModal] = useState(false);
+            const [showCancelOwnerNotif, setShowCancelOwnerNotif] = useState(false);
             const [historyDetail, setHistoryDetail] = useState(null);
 
             const profileId = currentProfile?.id || 'default';
@@ -9773,9 +9774,6 @@
             };
 
             const formatDate = (ts) => {
-                if (!ts) return '-';
-                const d = ts.toDate ? ts.toDate() : new Date(ts);
-                return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
             };
 
             const exportHistoryToExcel = async (detail) => {
@@ -10040,11 +10038,13 @@
                                 <div className="flex items-center justify-between mt-3 gap-2 flex-wrap">
                                     <p className="text-[10px] text-slate-400">Sesi dimulai: {formatDate(activeSession.createdAt)}</p>
                                     <div className="flex gap-2">
-                                        {isOwner && (
-                                            <button onClick={() => setShowCancelModal(true)} className="text-xs bg-red-50 hover:bg-red-100 text-red-500 font-bold px-3 py-1.5 rounded-lg border border-red-200 transition-all">
-                                                <Icon name="ban" className="mr-1" />Batalkan
-                                            </button>
-                                        )}
+                                        <button
+                                            onClick={() => { if (isOwner) { setShowCancelModal(true); } else { setShowCancelOwnerNotif(true); } }}
+                                            className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all border ${isOwner ? 'bg-red-50 hover:bg-red-100 text-red-500 border-red-200 active:scale-95' : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed'}`}
+                                            title={isOwner ? 'Batalkan sesi ini' : 'Hanya Owner yang dapat membatalkan sesi'}
+                                        >
+                                            <Icon name="xmark" className="mr-1" />Batalkan
+                                        </button>
                                         <button onClick={saveProgress} disabled={saving} className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold px-3 py-1.5 rounded-lg transition-all">{saving ? '...' : ' Simpan'}</button>
                                         <button onClick={() => setShowFinishModal(true)} className="text-xs bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm transition-all"> Selesaikan</button>
                                     </div>
@@ -10131,19 +10131,49 @@
                         </div>
                     )}
 
+                    {/* Modal konfirmasi batalkan sesi — hanya muncul jika Owner */}
                     {showCancelModal && (
                         <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm fade-in" onClick={() => setShowCancelModal(false)}>
                             <div className="bg-white rounded-2xl shadow-2xl p-7 w-full max-w-sm pop-in" onClick={e => e.stopPropagation()}>
                                 <div className="text-center mb-5">
-                                    <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-3"><Icon name="ban" className="text-red-500 text-2xl" /></div>
+                                    <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                                        <Icon name="triangle-exclamation" className="text-red-500 text-2xl" />
+                                    </div>
                                     <h3 className="font-black text-slate-800 text-lg">Batalkan Sesi Opname?</h3>
-                                    <p className="text-slate-500 text-sm mt-2">Sesi akan dibatalkan dan <strong>stok tidak akan diubah</strong>. Semua data penghitungan yang sudah diisi akan dihapus.</p>
-                                    <p className="text-xs text-red-400 font-bold mt-3">⚠️ Hanya Owner yang dapat melakukan ini.</p>
+                                    <p className="text-slate-500 text-sm mt-1">Semua data yang sudah diinput dalam sesi ini akan <strong className="text-red-500">hilang</strong> dan sesi akan ditutup tanpa mengubah stok.</p>
+                                </div>
+                                <div className="bg-red-50 border border-red-100 rounded-xl p-3 mb-5 text-xs text-red-600 font-medium text-center">
+                                    ⚠️ Tindakan ini tidak bisa dibatalkan!
                                 </div>
                                 <div className="flex gap-3">
-                                    <button onClick={() => setShowCancelModal(false)} className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-600 font-bold text-sm hover:bg-slate-200">Tidak</button>
-                                    <button onClick={cancelSession} disabled={saving} className="flex-1 py-3 rounded-xl bg-red-500 text-white font-bold text-sm hover:bg-red-600 shadow-md">{saving ? 'Membatalkan...' : 'Ya, Batalkan'}</button>
+                                    <button onClick={() => setShowCancelModal(false)} className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-600 font-bold text-sm hover:bg-slate-200 transition-all">Kembali</button>
+                                    <button onClick={cancelSession} disabled={saving} className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold text-sm shadow-md transition-all active:scale-95">
+                                        {saving ? 'Membatalkan...' : 'Ya, Batalkan'}
+                                    </button>
                                 </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Notif untuk karyawan saat klik tombol Batalkan */}
+                    {showCancelOwnerNotif && (
+                        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm fade-in" onClick={() => setShowCancelOwnerNotif(false)}>
+                            <div className="bg-white rounded-2xl shadow-2xl p-7 w-full max-w-sm pop-in" onClick={e => e.stopPropagation()}>
+                                <div className="text-center mb-5">
+                                    <div className="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                                        <Icon name="lock" className="text-amber-500 text-2xl" />
+                                    </div>
+                                    <h3 className="font-black text-slate-800 text-lg">Akses Terbatas</h3>
+                                    <p className="text-slate-500 text-sm mt-2 leading-relaxed">
+                                        Pembatalan sesi Stock Opname hanya bisa dilakukan oleh <strong className="text-slate-700">Owner</strong>.
+                                    </p>
+                                    <p className="text-slate-400 text-xs mt-2">
+                                        Hubungi Owner untuk membatalkan sesi ini.
+                                    </p>
+                                </div>
+                                <button onClick={() => setShowCancelOwnerNotif(false)} className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm shadow-md transition-all active:scale-95">
+                                    Mengerti
+                                </button>
                             </div>
                         </div>
                     )}
