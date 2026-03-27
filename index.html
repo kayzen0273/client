@@ -1099,12 +1099,19 @@
 
         // ==================== AKSES TOKO TAB ====================
         const AksesTokoTab = ({ users, loadingUsers, storeProfiles, showToast }) => {
+            const [mode, setMode] = useState('global'); // 'global' | 'per_karyawan'
             const [selectedUser, setSelectedUser] = useState(null);
-            const [allowedStores, setAllowedStores] = useState([]); // [] = semua diizinkan
-            const [isAllStores, setIsAllStores] = useState(true); // true = akses semua toko
+            const [allowedStores, setAllowedStores] = useState([]);
+            const [isAllStores, setIsAllStores] = useState(true);
             const [loadingAccess, setLoadingAccess] = useState(false);
             const [saving, setSaving] = useState(false);
             const [searchKaryawan, setSearchKaryawan] = useState('');
+
+            // Global state
+            const [globalMode, setGlobalMode] = useState('all'); // 'all' | 'limited'
+            const [globalStores, setGlobalStores] = useState([]);
+            const [loadingGlobal, setLoadingGlobal] = useState(true);
+            const [savingGlobal, setSavingGlobal] = useState(false);
 
             const realProfiles = storeProfiles.filter(p => p.id !== 'all_stores');
             const activeUsers = users.filter(u => u.isActive !== false);
@@ -1113,6 +1120,44 @@
                 u.namaLengkap?.toLowerCase().includes(searchKaryawan.toLowerCase()) ||
                 u.username?.toLowerCase().includes(searchKaryawan.toLowerCase())
             );
+
+            // Load global store access from Firestore
+            useEffect(() => {
+                const loadGlobal = async () => {
+                    setLoadingGlobal(true);
+                    try {
+                        const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'settings', 'globalStoreAccess');
+                        const snap = await window.getDoc(ref);
+                        if (snap.exists()) {
+                            const d = snap.data();
+                            setGlobalMode(d.mode || 'all');
+                            setGlobalStores(d.allowedStores || realProfiles.map(p => p.id));
+                        } else {
+                            setGlobalMode('all');
+                            setGlobalStores(realProfiles.map(p => p.id));
+                        }
+                    } catch (e) {
+                        setGlobalMode('all');
+                        setGlobalStores(realProfiles.map(p => p.id));
+                    }
+                    setLoadingGlobal(false);
+                };
+                loadGlobal();
+            }, [realProfiles.length]);
+
+            const handleSaveGlobal = async () => {
+                setSavingGlobal(true);
+                try {
+                    const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'settings', 'globalStoreAccess');
+                    await window.setDoc(ref, { mode: globalMode, allowedStores: globalMode === 'all' ? [] : globalStores, updatedAt: window.serverTimestamp() });
+                    showToast('Pengaturan global akses toko berhasil disimpan!');
+                } catch (e) { showToast('Gagal menyimpan pengaturan global'); }
+                setSavingGlobal(false);
+            };
+
+            const toggleGlobalStore = (storeId) => {
+                setGlobalStores(prev => prev.includes(storeId) ? prev.filter(id => id !== storeId) : [...prev, storeId]);
+            };
 
             const handleSelectUser = async (usr) => {
                 setSelectedUser(usr);
@@ -1153,8 +1198,8 @@
                 setSaving(true);
                 try {
                     const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'users', selectedUser.id);
-                    await window.updateDoc(ref, { allowedStores: [] });
-                    showToast(`Akses toko "${selectedUser.namaLengkap}" direset ke semua toko`);
+                    await window.updateDoc(ref, { allowedStores: null });
+                    showToast(`Akses toko "${selectedUser.namaLengkap}" direset ke pengaturan global`);
                     setIsAllStores(true);
                     setAllowedStores(realProfiles.map(p => p.id));
                 } catch (e) { showToast('Gagal mereset'); }
@@ -1162,13 +1207,7 @@
             };
 
             const toggleStore = (storeId) => {
-                setAllowedStores(prev => {
-                    if (prev.includes(storeId)) {
-                        const next = prev.filter(id => id !== storeId);
-                        return next;
-                    }
-                    return [...prev, storeId];
-                });
+                setAllowedStores(prev => prev.includes(storeId) ? prev.filter(id => id !== storeId) : [...prev, storeId]);
             };
 
             if (realProfiles.length <= 1) {
@@ -1185,13 +1224,91 @@
 
             return (
                 <div className="p-4 space-y-3">
-                    <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl">
-                        <p className="text-xs text-teal-800 font-semibold"><Icon name="circle-info" className="mr-1" />Atur toko mana saja yang bisa diakses setiap karyawan. Karyawan hanya bisa berpindah ke toko yang diizinkan.</p>
+                    {/* Mode switcher */}
+                    <div className="flex gap-1 p-1 bg-slate-100 rounded-xl">
+                        <button onClick={() => { setMode('global'); setSelectedUser(null); }}
+                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${mode === 'global' ? 'bg-white text-teal-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                            <Icon name="globe" /> Global (Semua)
+                        </button>
+                        <button onClick={() => setMode('per_karyawan')}
+                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${mode === 'per_karyawan' ? 'bg-white text-teal-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                            <Icon name="user-gear" /> Per Karyawan
+                        </button>
                     </div>
 
-                    {/* Pilih karyawan */}
-                    {!selectedUser && (
+                    {/* ── GLOBAL MODE ── */}
+                    {mode === 'global' && (
+                        <div className="space-y-3">
+                            <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl">
+                                <p className="text-xs text-teal-800 font-semibold"><Icon name="circle-info" className="mr-1" />Pengaturan ini berlaku untuk semua karyawan yang tidak punya pengaturan akses toko khusus.</p>
+                            </div>
+                            {loadingGlobal ? (
+                                <div className="text-center py-8 text-slate-400 text-sm flex flex-col items-center gap-2">
+                                    <div className="flex gap-1"><span className="typing-dot"></span><span className="typing-dot"></span><span className="typing-dot"></span></div>
+                                    Memuat pengaturan global...
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-3">
+                                        <p className="font-bold text-slate-700 text-xs">Mode Akses Default</p>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => setGlobalMode('all')}
+                                                className={`flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all ${globalMode === 'all' ? 'bg-teal-500 text-white border-teal-500 shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'}`}>
+                                                <Icon name="store" /> Semua Toko
+                                            </button>
+                                            <button onClick={() => { setGlobalMode('limited'); if (globalStores.length === 0) setGlobalStores(realProfiles.map(p => p.id)); }}
+                                                className={`flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all ${globalMode === 'limited' ? 'bg-amber-500 text-white border-amber-500 shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:border-amber-300'}`}>
+                                                <Icon name="lock" /> Terbatas
+                                            </button>
+                                        </div>
+                                        {globalMode === 'all' && <p className="text-[10px] text-teal-700 bg-teal-50 px-3 py-2 rounded-lg font-medium"><Icon name="circle-check" className="mr-1" />Semua karyawan (tanpa pengaturan khusus) bisa mengakses seluruh toko.</p>}
+                                        {globalMode === 'limited' && <p className="text-[10px] text-amber-700 bg-amber-50 px-3 py-2 rounded-lg font-medium"><Icon name="circle-exclamation" className="mr-1" />Hanya toko yang dipilih di bawah yang bisa diakses secara default.</p>}
+                                    </div>
+
+                                    {globalMode === 'limited' && (
+                                        <div className="space-y-2">
+                                            <p className="text-xs font-bold text-slate-600 px-1">Pilih Toko yang Dapat Diakses Secara Default:</p>
+                                            {realProfiles.map(profile => {
+                                                const checked = globalStores.includes(profile.id);
+                                                return (
+                                                    <div key={profile.id} onClick={() => toggleGlobalStore(profile.id)}
+                                                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${checked ? 'bg-teal-50 border-teal-300' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
+                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${checked ? 'bg-teal-500' : 'bg-slate-100'}`}>
+                                                            <Icon name="shop" className={`text-sm ${checked ? 'text-white' : 'text-slate-400'}`} />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className={`font-bold text-sm ${checked ? 'text-teal-900' : 'text-slate-600'}`}>{profile.name}</p>
+                                                            {profile.address && <p className="text-[10px] text-slate-400 truncate">{profile.address}</p>}
+                                                        </div>
+                                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${checked ? 'bg-teal-500 border-teal-500' : 'border-slate-300'}`}>
+                                                            {checked && <Icon name="check" className="text-white text-[9px]" />}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                            {globalStores.length === 0 && (
+                                                <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
+                                                    <p className="text-xs text-red-700 font-semibold"><Icon name="triangle-exclamation" className="mr-1" />Minimal 1 toko harus dipilih.</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <button onClick={handleSaveGlobal} disabled={savingGlobal || (globalMode === 'limited' && globalStores.length === 0)}
+                                        className="w-full py-3.5 bg-teal-500 hover:bg-teal-600 text-white rounded-xl font-bold shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-sm">
+                                        {savingGlobal ? <><span className="typing-dot bg-white"></span><span className="typing-dot bg-white"></span><span className="typing-dot bg-white"></span></> : <><Icon name="floppy-disk" /> Simpan Pengaturan Global</>}
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ── PER KARYAWAN: daftar ── */}
+                    {mode === 'per_karyawan' && !selectedUser && (
                         <div className="space-y-2">
+                            <div className="p-3 bg-sky-50 border border-sky-200 rounded-xl">
+                                <p className="text-xs text-sky-800 font-semibold"><Icon name="circle-info" className="mr-1" />Pilih karyawan untuk mengatur akses toko khusus. Jika belum diatur, karyawan mengikuti pengaturan Global.</p>
+                            </div>
                             <div className="relative">
                                 <Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
                                 <input className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-teal-400 bg-slate-50" placeholder="Cari karyawan..." value={searchKaryawan} onChange={e => setSearchKaryawan(e.target.value)} />
@@ -1205,7 +1322,8 @@
                             )}
                             {filteredUsers.map(usr => {
                                 const storedStores = usr.allowedStores;
-                                const hasRestriction = storedStores && storedStores.length > 0;
+                                const hasCustom = storedStores !== null && storedStores !== undefined;
+                                const hasRestriction = hasCustom && storedStores.length > 0;
                                 const accessCount = hasRestriction ? storedStores.length : realProfiles.length;
                                 return (
                                     <button key={usr.id} onClick={() => handleSelectUser(usr)}
@@ -1217,9 +1335,11 @@
                                             <p className="font-bold text-slate-800 text-sm truncate">{usr.namaLengkap}</p>
                                             <p className="text-[10px] text-slate-400 truncate">@{usr.username}</p>
                                         </div>
-                                        <div className={`flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold border ${hasRestriction ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>
-                                            <Icon name={hasRestriction ? 'lock' : 'store'} className="text-[9px]" />
-                                            {hasRestriction ? `${accessCount} toko` : 'Semua toko'}
+                                        <div className="flex-shrink-0">
+                                            {hasCustom
+                                                ? <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-black rounded-full border border-amber-200">Akses Khusus</span>
+                                                : <span className="px-1.5 py-0.5 bg-slate-100 text-slate-500 text-[9px] font-bold rounded-full">Ikut Global</span>
+                                            }
                                         </div>
                                         <Icon name="chevron-right" className="text-slate-300 text-xs flex-shrink-0" />
                                     </button>
@@ -1228,10 +1348,9 @@
                         </div>
                     )}
 
-                    {/* Detail akses toko */}
-                    {selectedUser && (
+                    {/* ── PER KARYAWAN: Detail user ── */}
+                    {mode === 'per_karyawan' && selectedUser && (
                         <div className="space-y-3">
-                            {/* Back + user info */}
                             <div className="flex items-center gap-2">
                                 <button onClick={() => setSelectedUser(null)} className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-all active:scale-95 flex-shrink-0">
                                     <Icon name="arrow-left" className="text-sm" />
@@ -1251,7 +1370,6 @@
 
                             {!loadingAccess && (
                                 <>
-                                    {/* Toggle akses semua / terbatas */}
                                     <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-3">
                                         <p className="font-bold text-slate-700 text-xs">Mode Akses Toko</p>
                                         <div className="flex gap-2">
@@ -1268,7 +1386,6 @@
                                         {!isAllStores && <p className="text-[10px] text-amber-700 bg-amber-50 px-3 py-2 rounded-lg font-medium"><Icon name="circle-exclamation" className="mr-1" />Pilih toko yang boleh diakses. Toko yang tidak dipilih akan disembunyikan.</p>}
                                     </div>
 
-                                    {/* Daftar toko (hanya tampil jika mode terbatas) */}
                                     {!isAllStores && (
                                         <div className="space-y-2">
                                             <p className="text-xs font-bold text-slate-600 px-1">Pilih Toko yang Dapat Diakses:</p>
@@ -1298,17 +1415,16 @@
                                         </div>
                                     )}
 
-                                    {/* Tombol simpan & reset */}
                                     <div className="flex gap-2 pt-1">
                                         <button onClick={handleReset} disabled={saving}
                                             className="px-4 py-3 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold hover:bg-slate-200 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-1.5">
-                                            <Icon name="rotate-left" /> Reset
+                                            <Icon name="rotate-left" /> Reset ke Global
                                         </button>
                                         <button onClick={handleSave} disabled={saving || (!isAllStores && allowedStores.length === 0)}
                                             className="flex-1 py-3 rounded-xl bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold shadow-md transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5">
                                             {saving
                                                 ? <><span className="typing-dot bg-white"></span><span className="typing-dot bg-white"></span><span className="typing-dot bg-white"></span></>
-                                                : <><Icon name="floppy-disk" /> Simpan Akses Toko</>
+                                                : <><Icon name="floppy-disk" /> Simpan Akses Khusus</>
                                             }
                                         </button>
                                     </div>
