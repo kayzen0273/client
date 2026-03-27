@@ -10103,8 +10103,8 @@
                                                         borderTop: idx === 0 ? 'none' : '1px solid #f1f5f9',
                                                         background: isSelisih ? 'rgba(254,242,242,0.5)' : isOk ? 'rgba(240,253,244,0.5)' : 'transparent',
                                                     }}>
-                                                        <td style={{padding:'6px 6px 6px 12px', fontWeight:600, fontSize:'11px', color:'#334155', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{item.name}</td>
-                                                        <td style={{padding:'6px 4px', fontSize:'10px', color:'#94a3b8', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{item.rack || '—'}</td>
+                                                        <td style={{padding:'6px 6px 6px 12px', fontWeight:600, fontSize:'11px', color:'#334155', wordBreak:'break-word', lineHeight:'1.4'}}>{item.name}</td>
+                                                        <td style={{padding:'6px 4px', fontSize:'10px', color:'#94a3b8', wordBreak:'break-word', lineHeight:'1.4'}}>{item.rack || '—'}</td>
                                                         <td style={{padding:'6px 4px', textAlign:'center', fontWeight:700, fontSize:'11px', color:'#475569'}}>
                                                             {item.qty}<span style={{fontSize:'8px', color:'#94a3b8', marginLeft:'1px'}}>{item.unit}</span>
                                                         </td>
