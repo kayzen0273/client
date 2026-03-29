@@ -5269,7 +5269,7 @@
                                     </div>
 
                                     <div><label className="text-[10px] font-bold text-slate-400 uppercase">Disetor Ke Owner</label><input type="number" placeholder="0" value={revForm.deposited} onChange={e => setRevForm({...revForm, deposited: e.target.value})} required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-green-500 focus:ring-1 focus:ring-green-500" /></div>
-                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase">Keterangan</label><input type="text" placeholder="Catatan tambahan (opsional)..." value={revForm.keterangan} onChange={e => setRevForm({...revForm, keterangan: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-purple-400 focus:ring-1 focus:ring-purple-400 outline-none" /></div>
+                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase">Keterangan</label><textarea placeholder="Catatan tambahan (opsional)..." value={revForm.keterangan} onChange={e => setRevForm({...revForm, keterangan: e.target.value})} rows={3} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-purple-400 focus:ring-1 focus:ring-purple-400 outline-none resize-none" /></div>
                                     <div className="bg-purple-50 p-3 rounded-xl border border-purple-100 flex justify-between items-center mt-2"><span className="text-xs font-bold text-purple-700">Sisa Belum Disetor:</span><span className={`text-lg font-black ${currentRevRemaining < 0 ? 'text-red-600' : 'text-slate-800'}`}>{formatRupiah(currentRevRemaining)}</span></div>
                                     <button type="submit" disabled={isRevSubmitting} className="w-full py-3 bg-purple-600 text-white rounded-xl font-bold shadow-lg shadow-purple-200 mt-2 active:scale-95 transition-all">{isRevSubmitting ? 'Menyimpan...' : 'Simpan Laporan'}</button>
                                 </form>
@@ -5302,7 +5302,7 @@
                                             {log.keterangan && (
                                                 <div className="col-span-2 mt-1 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 flex items-start gap-2">
                                                     <span className="text-amber-500 mt-0.5"><Icon name="note-sticky" /></span>
-                                                    <p className="text-xs text-amber-800 font-medium">{log.keterangan}</p>
+                                                    <p className="text-xs text-amber-800 font-medium whitespace-pre-line">{log.keterangan}</p>
                                                 </div>
                                             )}
                                         </div>
