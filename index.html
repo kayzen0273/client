@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sistem Kasir Toko Husna (V65 - Total Nilai Stok Modal)</title>
+    <title>Sistem Kasir Toko Husna (V66 - Buku Kas Gradient Card)</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -5180,97 +5180,63 @@
             return (
                 <div className="max-w-4xl mx-auto space-y-4">
                     
-                    {/* Header */}
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-200">
-                            <Icon name="book-open" className="text-white text-sm" />
-                        </div>
-                        <div>
-                            <h1 className="text-base font-extrabold text-slate-800 leading-tight">Buku Kas</h1>
-                            <p className="text-[10px] text-slate-400 font-semibold">{currentProfile.name}</p>
-                        </div>
-                    </div>
+                    <div><h1 className="text-lg font-bold text-slate-800">Buku Kas</h1><p className="text-[10px] text-slate-500 font-bold">{currentProfile.name}</p></div>
                     
-                    {/* Tab Toggle */}
-                    <div className="flex bg-slate-100 p-1 rounded-2xl gap-1">
-                        <button onClick={() => setViewMode('operational')} className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${viewMode === 'operational' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
-                            <Icon name="wallet" /> Operasional
-                        </button>
-                        <button onClick={() => setViewMode('revenue')} className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${viewMode === 'revenue' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
-                            <Icon name="money-bill-trend-up" /> Setoran Harian
-                        </button>
+                    <div className="flex bg-white p-1.5 rounded-xl shadow-sm border border-slate-100">
+                        <button onClick={() => setViewMode('operational')} className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'operational' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400'}`}><Icon name="wallet" className="mr-1" /> Operasional Harian</button>
+                        <button onClick={() => setViewMode('revenue')} className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'revenue' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400'}`}><Icon name="money-bill-trend-up" className="mr-1" /> Rekap Setoran</button>
                     </div>
 
                     {viewMode === 'operational' ? (
                         <>
-                            {/* Summary Cards */}
-                            <div className="grid grid-cols-3 gap-2.5">
-                                <div className="bg-gradient-to-br from-emerald-50 to-green-100 p-3.5 rounded-2xl border border-green-200">
-                                    <div className="flex items-center gap-1.5 mb-2">
-                                        <div className="w-6 h-6 rounded-lg bg-green-500 flex items-center justify-center shadow-sm">
-                                            <Icon name="arrow-down" className="text-white text-[10px]" />
-                                        </div>
-                                        <span className="text-[9px] font-bold text-green-700 uppercase tracking-wide">Masuk</span>
-                                    </div>
-                                    <p className="text-sm font-extrabold text-green-800 leading-tight">{formatRupiah(opStats.totalIn)}</p>
+                            {/* Kartu Saldo Operasional - Gradient Card */}
+                            <div className="relative rounded-2xl overflow-hidden shadow-lg" style={{background: 'linear-gradient(135deg, #3b5bdb 0%, #4c6ef5 40%, #5c7cfa 70%, #748ffc 100%)'}}>
+                                {/* Decorative circles background */}
+                                <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                                    <div className="absolute -right-8 -bottom-8 w-40 h-40 rounded-full" style={{background: 'rgba(255,255,255,0.08)'}}></div>
+                                    <div className="absolute -right-2 -bottom-12 w-28 h-28 rounded-full" style={{background: 'rgba(255,255,255,0.06)'}}></div>
                                 </div>
-                                <div className="bg-gradient-to-br from-red-50 to-rose-100 p-3.5 rounded-2xl border border-red-200">
-                                    <div className="flex items-center gap-1.5 mb-2">
-                                        <div className="w-6 h-6 rounded-lg bg-red-500 flex items-center justify-center shadow-sm">
-                                            <Icon name="arrow-up" className="text-white text-[10px]" />
+                                {/* Decorative card shape bottom-right */}
+                                <div className="absolute bottom-4 right-4 w-16 h-10 rounded-lg opacity-20" style={{background: 'rgba(255,255,255,0.4)', border: '1.5px solid rgba(255,255,255,0.5)', transform: 'rotate(-8deg)'}}></div>
+                                <div className="absolute bottom-6 right-8 w-14 h-9 rounded-lg opacity-10" style={{background: 'rgba(255,255,255,0.4)', border: '1.5px solid rgba(255,255,255,0.5)', transform: 'rotate(-4deg)'}}></div>
+
+                                <div className="relative p-5">
+                                    <p className="text-blue-200 text-xs font-semibold mb-1 tracking-wide">Saldo Operasional</p>
+                                    <p className={`text-white font-black mb-4 leading-none ${opStats.balance >= 1000000 ? 'text-2xl' : 'text-3xl'}`}>{formatRupiah(opStats.balance)}</p>
+                                    <div className="flex gap-6">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
+                                                <Icon name="arrow-down" className="text-white text-xs" />
+                                            </div>
+                                            <div>
+                                                <p className="text-blue-200 text-[9px] font-bold tracking-widest uppercase">Masuk</p>
+                                                <p className="text-white font-bold text-sm">{formatRupiah(opStats.totalIn)}</p>
+                                            </div>
                                         </div>
-                                        <span className="text-[9px] font-bold text-red-700 uppercase tracking-wide">Keluar</span>
-                                    </div>
-                                    <p className="text-sm font-extrabold text-red-800 leading-tight">{formatRupiah(opStats.totalOut)}</p>
-                                </div>
-                                <div className="bg-gradient-to-br from-blue-50 to-indigo-100 p-3.5 rounded-2xl border border-blue-200">
-                                    <div className="flex items-center gap-1.5 mb-2">
-                                        <div className="w-6 h-6 rounded-lg bg-blue-600 flex items-center justify-center shadow-sm">
-                                            <Icon name="coins" className="text-white text-[10px]" />
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
+                                                <Icon name="arrow-up" className="text-white text-xs" />
+                                            </div>
+                                            <div>
+                                                <p className="text-blue-200 text-[9px] font-bold tracking-widest uppercase">Keluar</p>
+                                                <p className="text-white font-bold text-sm">{formatRupiah(opStats.totalOut)}</p>
+                                            </div>
                                         </div>
-                                        <span className="text-[9px] font-bold text-blue-700 uppercase tracking-wide">Saldo</span>
                                     </div>
-                                    <p className={`text-sm font-extrabold leading-tight ${opStats.balance < 0 ? 'text-red-600' : 'text-blue-900'}`}>{formatRupiah(opStats.balance)}</p>
                                 </div>
                             </div>
                             
-                            {/* Transaction List */}
                             <div className="space-y-2 pb-20">
-                                {entries.length === 0 && (
-                                    <div className="bg-white p-10 rounded-2xl text-center border border-dashed border-slate-200">
-                                        <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                                            <Icon name="receipt" className="text-slate-300 text-xl" />
-                                        </div>
-                                        <p className="text-slate-400 text-sm font-medium">Belum ada transaksi</p>
-                                        <p className="text-slate-300 text-xs mt-1">Tekan tombol + untuk menambah</p>
-                                    </div>
-                                )}
+                                {entries.length === 0 && (<div className="bg-white p-8 rounded-2xl text-center border border-dashed border-slate-200"><p className="text-slate-400 text-sm">Belum ada transaksi</p></div>)}
                                 {entries.map(t => (
-                                    <div key={t.id} className={`bg-white rounded-xl border overflow-hidden shadow-sm flex items-stretch ${t.type === 'in' ? 'border-green-100' : 'border-red-100'}`}>
-                                        <div className={`w-1 flex-shrink-0 ${t.type === 'in' ? 'bg-green-400' : 'bg-red-400'}`}></div>
-                                        <div className="flex-1 px-3.5 py-3 flex justify-between items-center">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${t.type === 'in' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}>
-                                                    <Icon name={t.type === 'in' ? 'arrow-down' : 'arrow-up'} className="text-xs" />
-                                                </div>
-                                                <div>
-                                                    <p className="font-bold text-slate-800 text-sm leading-tight">{t.description}</p>
-                                                    <p className="text-[10px] text-slate-400 font-medium mt-0.5">{formatDateIndo(t.date)}</p>
-                                                </div>
-                                            </div>
-                                            <div className="text-right flex items-center gap-2">
-                                                <div>
-                                                    <p className={`font-extrabold text-sm ${t.type === 'in' ? 'text-green-600' : 'text-red-500'}`}>
-                                                        {t.type === 'in' ? '+' : '-'}{formatRupiah(t.amount)}
-                                                    </p>
-                                                    <p className={`text-[9px] font-bold uppercase tracking-wide ${t.type === 'in' ? 'text-green-400' : 'text-red-400'}`}>{t.type === 'in' ? 'Pemasukan' : 'Pengeluaran'}</p>
-                                                </div>
-                                                {!readOnly && (
-                                                    <button onClick={() => handleOpDelete(t.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-200 hover:text-red-500 hover:bg-red-50 transition-colors ml-1">
-                                                        <Icon name="trash" className="text-[10px]" />
-                                                    </button>
-                                                )}
-                                            </div>
+                                    <div key={t.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${t.type === 'in' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}><Icon name={t.type === 'in' ? 'arrow-down' : 'arrow-up'} /></div>
+                                            <div><p className="font-bold text-slate-800 text-sm">{t.description}</p><p className="text-[10px] text-slate-400">{formatDateIndo(t.date)}</p></div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className={`font-bold text-sm ${t.type === 'in' ? 'text-green-600' : 'text-red-600'}`}>{t.type === 'in' ? '+' : '-'} {formatRupiah(t.amount)}</p>
+                                            {!readOnly && <button onClick={() => handleOpDelete(t.id)} className="text-slate-300 hover:text-red-500 text-[10px] p-1"><Icon name="trash" /></button>}
                                         </div>
                                     </div>
                                 ))}
@@ -5333,86 +5299,29 @@
                             </div>
 
                             <div className="space-y-3">
-                                <h3 className="font-bold text-slate-700 text-sm px-1 flex items-center gap-2">
-                                    <Icon name="clock-rotate-left" className="text-slate-400" /> Riwayat Setoran
-                                </h3>
-                                {revenueLogs.length === 0 && (
-                                    <div className="bg-white p-10 rounded-2xl text-center border border-dashed border-slate-200">
-                                        <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                                            <Icon name="calendar-xmark" className="text-slate-300 text-xl" />
-                                        </div>
-                                        <p className="text-slate-400 text-sm font-medium">Belum ada riwayat setoran</p>
-                                    </div>
-                                )}
+                                <h3 className="font-bold text-slate-700 text-sm px-1">Riwayat Setoran</h3>
                                 {revenueLogs.map(log => (
-                                    <div key={log.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                                        {/* Card Header */}
-                                        <div className="flex justify-between items-center px-4 py-3 bg-slate-50 border-b border-slate-100">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-6 h-6 rounded-lg bg-purple-100 flex items-center justify-center">
-                                                    <Icon name="calendar-day" className="text-purple-600 text-[10px]" />
-                                                </div>
-                                                <span className="text-xs font-bold text-slate-700">{formatDateFull(log.date)}</span>
-                                            </div>
-                                            <div className="flex gap-2 items-center">
-                                                <button onClick={() => handleCopyRevenueToWA(log)} className="flex items-center gap-1 text-[10px] font-bold bg-[#25D366] text-white px-2.5 py-1.5 rounded-lg hover:bg-[#128C7E] transition-colors shadow-sm">
-                                                    <Icon name="whatsapp" type="brands" /> Salin WA
-                                                </button>
-                                                <button onClick={() => handleRevDelete(log.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors">
-                                                    <Icon name="trash" className="text-[10px]" />
-                                                </button>
+                                    <div key={log.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 relative group">
+                                        <div className="flex justify-between items-start mb-2 border-b border-dashed border-slate-100 pb-2">
+                                            <div><span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{formatDateFull(log.date)}</span></div>
+                                            <div className="flex gap-2">
+                                                <button onClick={() => handleCopyRevenueToWA(log)} className="flex items-center gap-1 text-[10px] font-bold bg-[#25D366] text-white px-2 py-1 rounded hover:bg-[#128C7E] transition-colors"><Icon name="whatsapp" type="brands" /> Salin WA</button>
+                                                <button onClick={() => handleRevDelete(log.id)} className="w-6 h-6 flex items-center justify-center rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"><Icon name="trash" /></button>
                                             </div>
                                         </div>
-
-                                        {/* Card Body */}
-                                        <div className="px-4 py-3 space-y-3">
-                                            {/* Row 1: Sisa Kemarin + Pendapatan */}
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div className="bg-slate-50 rounded-xl p-2.5">
-                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mb-1">Sisa Kemarin</p>
-                                                    <p className="font-extrabold text-slate-700 text-sm">{formatRupiah(log.previousBalance)}</p>
-                                                </div>
-                                                <div className="bg-green-50 rounded-xl p-2.5 border border-green-100">
-                                                    <p className="text-[9px] font-bold text-green-500 uppercase tracking-wide mb-1">Pendapatan</p>
-                                                    <p className="font-extrabold text-green-700 text-sm">{formatRupiah(log.totalRevenue)}</p>
-                                                </div>
-                                            </div>
-
-                                            {/* Pengeluaran */}
+                                        <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
+                                            <div><p className="text-slate-400 font-medium">Sisa Kemarin</p><p className="font-bold text-slate-600">{formatRupiah(log.previousBalance)}</p></div>
+                                            <div className="text-right"><p className="text-slate-400 font-medium">Pendapatan</p><p className="font-bold text-slate-800">{formatRupiah(log.totalRevenue)}</p></div>
                                             {safeNumber(log.expenseAmount) > 0 && (
-                                                <div className="bg-red-50 rounded-xl p-2.5 border border-red-100">
-                                                    <div className="flex justify-between items-center mb-1.5">
-                                                        <span className="text-[9px] font-bold text-red-600 uppercase tracking-wide flex items-center gap-1">
-                                                            <Icon name="arrow-trend-down" /> Pengeluaran
-                                                        </span>
-                                                        <span className="text-xs font-extrabold text-red-600">-{formatRupiah(log.expenseAmount)}</span>
-                                                    </div>
+                                                <div className="col-span-2 bg-red-50 p-2 rounded border border-red-100 my-1">
+                                                    <div className="flex justify-between items-center mb-1"><span className="text-[10px] text-red-600 font-bold">Total Pengeluaran</span><span className="text-xs font-bold text-red-600">-{formatRupiah(log.expenseAmount)}</span></div>
                                                     {log.expenses && log.expenses.length > 0 ? (
-                                                        <div className="space-y-1">
-                                                            {log.expenses.map((exp, i) => (
-                                                                <div key={i} className="flex justify-between items-center text-[10px] text-slate-600 border-t border-red-100 pt-1 first:border-0 first:pt-0">
-                                                                    <span className="font-medium">{i+1}. {exp.name}</span>
-                                                                    <span className="font-bold text-red-500">{formatRupiah(exp.amount)}</span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    ) : (
-                                                        <p className="text-[9px] text-slate-500 italic">{log.expenseNote || 'Tanpa Keterangan'}</p>
-                                                    )}
+                                                        <ul className="list-disc list-inside pl-1 space-y-0.5">{log.expenses.map((exp, i) => (<li key={i} className="text-[9px] text-slate-600 flex justify-between"><span>{exp.name}</span><span>{formatRupiah(exp.amount)}</span></li>))}</ul>
+                                                    ) : (<p className="text-[9px] text-slate-500 italic">{log.expenseNote || 'Tanpa Keterangan'}</p>)}
                                                 </div>
                                             )}
-
-                                            {/* Row 2: Disetor + Sisa Laci */}
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div className="bg-blue-50 rounded-xl p-2.5 border border-blue-100">
-                                                    <p className="text-[9px] font-bold text-blue-500 uppercase tracking-wide mb-1">Disetor</p>
-                                                    <p className="font-extrabold text-blue-700 text-sm">{formatRupiah(log.deposited)}</p>
-                                                </div>
-                                                <div className="bg-purple-50 rounded-xl p-2.5 border border-purple-200">
-                                                    <p className="text-[9px] font-bold text-purple-500 uppercase tracking-wide mb-1">Sisa Di Laci</p>
-                                                    <p className="font-extrabold text-purple-700 text-sm">{formatRupiah(log.remaining)}</p>
-                                                </div>
-                                            </div>
+                                            <div><p className="text-slate-400 font-medium">Disetor</p><p className="font-bold text-green-600">{formatRupiah(log.deposited)}</p></div>
+                                            <div className="text-right"><p className="text-slate-400 font-medium">Sisa Di Laci</p><p className="font-black text-purple-600 text-sm">{formatRupiah(log.remaining)}</p></div>
                                         </div>
                                     </div>
                                 ))}
