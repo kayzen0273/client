@@ -5189,44 +5189,18 @@
 
                     {viewMode === 'operational' ? (
                         <>
-                            {/* Kartu Saldo Operasional - Gradient Card */}
-                            <div className="relative rounded-2xl overflow-hidden shadow-lg" style={{background: 'linear-gradient(135deg, #3b5bdb 0%, #4c6ef5 40%, #5c7cfa 70%, #748ffc 100%)'}}>
-                                {/* Decorative circles background */}
-                                <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                                    <div className="absolute -right-8 -bottom-8 w-40 h-40 rounded-full" style={{background: 'rgba(255,255,255,0.08)'}}></div>
-                                    <div className="absolute -right-2 -bottom-12 w-28 h-28 rounded-full" style={{background: 'rgba(255,255,255,0.06)'}}></div>
-                                </div>
-                                {/* Decorative card shape bottom-right */}
-                                <div className="absolute bottom-4 right-4 w-16 h-10 rounded-lg opacity-20" style={{background: 'rgba(255,255,255,0.4)', border: '1.5px solid rgba(255,255,255,0.5)', transform: 'rotate(-8deg)'}}></div>
-                                <div className="absolute bottom-6 right-8 w-14 h-9 rounded-lg opacity-10" style={{background: 'rgba(255,255,255,0.4)', border: '1.5px solid rgba(255,255,255,0.5)', transform: 'rotate(-4deg)'}}></div>
-
-                                <div className="relative p-5">
-                                    <p className="text-blue-200 text-xs font-semibold mb-1 tracking-wide">Saldo Operasional</p>
-                                    <p className={`text-white font-black mb-4 leading-none ${opStats.balance >= 1000000 ? 'text-2xl' : 'text-3xl'}`}>{formatRupiah(opStats.balance)}</p>
-                                    <div className="flex gap-6">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
-                                                <Icon name="arrow-down" className="text-white text-xs" />
-                                            </div>
-                                            <div>
-                                                <p className="text-blue-200 text-[9px] font-bold tracking-widest uppercase">Masuk</p>
-                                                <p className="text-white font-bold text-sm">{formatRupiah(opStats.totalIn)}</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
-                                                <Icon name="arrow-up" className="text-white text-xs" />
-                                            </div>
-                                            <div>
-                                                <p className="text-blue-200 text-[9px] font-bold tracking-widest uppercase">Keluar</p>
-                                                <p className="text-white font-bold text-sm">{formatRupiah(opStats.totalOut)}</p>
-                                            </div>
-                                        </div>
-                                    </div>
+                            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-xl shadow-blue-200 relative overflow-hidden">
+                                <Icon name="wallet" className="absolute -right-4 -bottom-4 text-9xl text-white opacity-10 rotate-12" />
+                                <p className="text-blue-100 text-sm mb-1 opacity-90">Saldo Operasional</p>
+                                <h2 className="text-3xl font-bold mb-4 tracking-tight">{formatRupiah(opStats.balance)}</h2>
+                                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-blue-400/30">
+                                    <div><div className="flex items-center gap-1 text-green-200 text-[10px] font-bold uppercase"><Icon name="circle-arrow-down" /> Masuk</div><p className="font-semibold">{formatRupiah(opStats.totalIn)}</p></div>
+                                    <div><div className="flex items-center gap-1 text-red-200 text-[10px] font-bold uppercase"><Icon name="circle-arrow-up" /> Keluar</div><p className="font-semibold">{formatRupiah(opStats.totalOut)}</p></div>
                                 </div>
                             </div>
                             
                             <div className="space-y-2 pb-20">
+                                <h3 className="font-bold text-slate-700 text-sm">Riwayat Operasional</h3>
                                 {entries.length === 0 && (<div className="bg-white p-8 rounded-2xl text-center border border-dashed border-slate-200"><p className="text-slate-400 text-sm">Belum ada transaksi</p></div>)}
                                 {entries.map(t => (
                                     <div key={t.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center">
