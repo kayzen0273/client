@@ -5003,7 +5003,8 @@
                 total: '', 
                 deposited: '', 
                 prevBalance: 0, 
-                expenses: [] // Array of { name: '', amount: 0 }
+                expenses: [], // Array of { name: '', amount: 0 }
+                keterangan: ''
             });
             const [tempExpName, setTempExpName] = useState('');
             const [tempExpAmount, setTempExpAmount] = useState('');
@@ -5118,6 +5119,7 @@
                         expenses: revForm.expenses, // Save array
                         expenseAmount: totalExpense, // Save total for quick stats
                         expenseNote: revForm.expenses.map(e => e.name).join(', '), // Save joined string for legacy
+                        keterangan: revForm.keterangan || '',
                         user: user.email, 
                         updatedAt: window.serverTimestamp()
                     };
@@ -5130,7 +5132,7 @@
                         await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'daily_revenue'), data);
                         showToast("Data setoran disimpan");
                     }
-                    setRevForm(prev => ({ ...prev, total: '', deposited: '', expenses: [] }));
+                    setRevForm(prev => ({ ...prev, total: '', deposited: '', expenses: [], keterangan: '' }));
                 } catch(err) { showToast("Gagal simpan setoran", "error"); } finally { setIsRevSubmitting(false); }
             };
 
@@ -5165,7 +5167,7 @@
 
                 const expSection = expenseLines ? '\n' + expenseLines : '-';
 
-                const text = `*LAPORAN SETORAN HARIAN*\n${storeName} \u2013 ${dateLabel}\n\nSisa kemarin : ${formatRupiah(prev)}\nPendapatan : ${formatRupiah(income)}\nPengeluaran : ${expSection}\n---------------------------------------------\n*Total :  ${formatRupiah(total)}*\nSetor : ${formatRupiah(deposited)} \u2705\nSisa : ${formatRupiah(remaining)}`;
+                const text = `*LAPORAN SETORAN HARIAN*\n${storeName} \u2013 ${dateLabel}\n\nSisa kemarin : ${formatRupiah(prev)}\nPendapatan : ${formatRupiah(income)}\nPengeluaran : ${expSection}\n---------------------------------------------\n*Total :  ${formatRupiah(total)}*\nSetor : ${formatRupiah(deposited)} \u2705\nSisa : ${formatRupiah(remaining)}${log.keterangan ? '\n\nCatatan : ' + log.keterangan : ''}`;
 
                 navigator.clipboard.writeText(text);
                 showToast("Salin teks untuk WA!");
@@ -5267,6 +5269,7 @@
                                     </div>
 
                                     <div><label className="text-[10px] font-bold text-slate-400 uppercase">Disetor Ke Owner</label><input type="number" placeholder="0" value={revForm.deposited} onChange={e => setRevForm({...revForm, deposited: e.target.value})} required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-green-500 focus:ring-1 focus:ring-green-500" /></div>
+                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase">Keterangan</label><input type="text" placeholder="Catatan tambahan (opsional)..." value={revForm.keterangan} onChange={e => setRevForm({...revForm, keterangan: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-purple-400 focus:ring-1 focus:ring-purple-400 outline-none" /></div>
                                     <div className="bg-purple-50 p-3 rounded-xl border border-purple-100 flex justify-between items-center mt-2"><span className="text-xs font-bold text-purple-700">Sisa Belum Disetor:</span><span className={`text-lg font-black ${currentRevRemaining < 0 ? 'text-red-600' : 'text-slate-800'}`}>{formatRupiah(currentRevRemaining)}</span></div>
                                     <button type="submit" disabled={isRevSubmitting} className="w-full py-3 bg-purple-600 text-white rounded-xl font-bold shadow-lg shadow-purple-200 mt-2 active:scale-95 transition-all">{isRevSubmitting ? 'Menyimpan...' : 'Simpan Laporan'}</button>
                                 </form>
@@ -5296,6 +5299,12 @@
                                             )}
                                             <div><p className="text-slate-400 font-medium">Disetor</p><p className="font-bold text-green-600">{formatRupiah(log.deposited)}</p></div>
                                             <div className="text-right"><p className="text-slate-400 font-medium">Sisa Di Laci</p><p className="font-black text-purple-600 text-sm">{formatRupiah(log.remaining)}</p></div>
+                                            {log.keterangan && (
+                                                <div className="col-span-2 mt-1 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 flex items-start gap-2">
+                                                    <span className="text-amber-500 mt-0.5"><Icon name="note-sticky" /></span>
+                                                    <p className="text-xs text-amber-800 font-medium">{log.keterangan}</p>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
