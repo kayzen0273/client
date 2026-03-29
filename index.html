@@ -5004,10 +5004,13 @@
                 deposited: '', 
                 prevBalance: 0, 
                 expenses: [], // Array of { name: '', amount: 0 }
+                revenues: [], // Array of { name: '', amount: 0 }
                 keterangan: ''
             });
             const [tempExpName, setTempExpName] = useState('');
             const [tempExpAmount, setTempExpAmount] = useState('');
+            const [tempRevName, setTempRevName] = useState('');
+            const [tempRevAmount, setTempRevAmount] = useState('');
             const [isRevSubmitting, setIsRevSubmitting] = useState(false);
 
             useEffect(() => {
@@ -5078,6 +5081,20 @@
                 try { await window.deleteDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'cashflow', id)); showToast("Transaksi dihapus"); } catch(err) { showToast("Gagal menghapus", "error"); }
             };
 
+            // ADD REVENUE TO LIST
+            const addRevenueItem = () => {
+                if (!tempRevName || !tempRevAmount) return;
+                const newRev = { name: tempRevName, amount: safeNumber(tempRevAmount) };
+                setRevForm(prev => ({ ...prev, revenues: [...prev.revenues, newRev] }));
+                setTempRevName('');
+                setTempRevAmount('');
+            };
+
+            // REMOVE REVENUE FROM LIST
+            const removeRevenueItem = (index) => {
+                setRevForm(prev => ({ ...prev, revenues: prev.revenues.filter((_, i) => i !== index) }));
+            };
+
             // ADD EXPENSE TO LIST
             const addExpenseItem = () => {
                 if (!tempExpName || !tempExpAmount) return;
@@ -5094,10 +5111,13 @@
 
             const handleRevSubmit = async (e) => {
                 e.preventDefault();
-                if(!revForm.total || !revForm.date) return;
+                if((!revForm.total && revForm.revenues.length === 0) || !revForm.date) return;
                 setIsRevSubmitting(true);
                 
-                const total = safeNumber(revForm.total);
+                // Calculate total revenue from array (or fallback to single field)
+                const totalRevenue = revForm.revenues.length > 0
+                    ? revForm.revenues.reduce((acc, curr) => acc + safeNumber(curr.amount), 0)
+                    : safeNumber(revForm.total);
                 const deposited = safeNumber(revForm.deposited);
                 const prev = safeNumber(revForm.prevBalance);
                 
@@ -5105,14 +5125,15 @@
                 const totalExpense = revForm.expenses.reduce((acc, curr) => acc + safeNumber(curr.amount), 0);
                 
                 // Remaining logic: (Prev + Revenue) - Expense - Deposited
-                const remaining = (prev + total) - totalExpense - deposited;
+                const remaining = (prev + totalRevenue) - totalExpense - deposited;
 
                 try {
                     const existing = revenueLogs.find(l => l.date === revForm.date);
                     const data = {
                         date: revForm.date,
                         storeId: currentProfile.id === 'all_stores' ? 'default' : currentProfile.id,
-                        totalRevenue: total, 
+                        totalRevenue: totalRevenue, 
+                        revenues: revForm.revenues, // Save revenue array
                         deposited, 
                         remaining, 
                         previousBalance: prev,
@@ -5132,7 +5153,7 @@
                         await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'daily_revenue'), data);
                         showToast("Data setoran disimpan");
                     }
-                    setRevForm(prev => ({ ...prev, total: '', deposited: '', expenses: [], keterangan: '' }));
+                    setRevForm(prev => ({ ...prev, total: '', deposited: '', expenses: [], revenues: [], keterangan: '' }));
                 } catch(err) { showToast("Gagal simpan setoran", "error"); } finally { setIsRevSubmitting(false); }
             };
 
@@ -5154,6 +5175,12 @@
                 const dateObj = new Date(log.date + 'T00:00:00');
                 const dateLabel = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
 
+                // Build revenue lines
+                let revenueLines = '';
+                if (log.revenues && log.revenues.length > 1) {
+                    revenueLines = log.revenues.map((rev, i) => `${i+1}. ${rev.name} : ${formatRupiah(rev.amount)}`).join('\n');
+                }
+
                 // Build expense lines
                 let expenseLines = '';
                 if (log.expenses && log.expenses.length > 0) {
@@ -5166,8 +5193,9 @@
                 const total = prev + income - totalExp;
 
                 const expSection = expenseLines ? '\n' + expenseLines : '-';
+                const revSection = revenueLines ? `${formatRupiah(income)}\n` + revenueLines : formatRupiah(income);
 
-                const text = `*LAPORAN SETORAN HARIAN*\n${storeName} \u2013 ${dateLabel}\n\nSisa kemarin : ${formatRupiah(prev)}\nPendapatan : ${formatRupiah(income)}\nPengeluaran : ${expSection}\n---------------------------------------------\n*Total :  ${formatRupiah(total)}*\nSetor : ${formatRupiah(deposited)} \u2705\nSisa : ${formatRupiah(remaining)}${log.keterangan ? '\n\nCatatan : ' + log.keterangan : ''}`;
+                const text = `*LAPORAN SETORAN HARIAN*\n${storeName} \u2013 ${dateLabel}\n\nSisa kemarin : ${formatRupiah(prev)}\nPendapatan : ${revSection}\nPengeluaran : ${expSection}\n---------------------------------------------\n*Total :  ${formatRupiah(total)}*\nSetor : ${formatRupiah(deposited)} \u2705\nSisa : ${formatRupiah(remaining)}${log.keterangan ? '\n\nCatatan : ' + log.keterangan : ''}`;
 
                 navigator.clipboard.writeText(text);
                 showToast("Salin teks untuk WA!");
@@ -5175,7 +5203,10 @@
 
             // Compute derived values
             const currentTotalExpense = revForm.expenses.reduce((acc, curr) => acc + safeNumber(curr.amount), 0);
-            const currentRevRemaining = (safeNumber(revForm.prevBalance) + safeNumber(revForm.total)) - currentTotalExpense - safeNumber(revForm.deposited);
+            const currentTotalRevenue = revForm.revenues.length > 0
+                ? revForm.revenues.reduce((acc, curr) => acc + safeNumber(curr.amount), 0)
+                : safeNumber(revForm.total);
+            const currentRevRemaining = (safeNumber(revForm.prevBalance) + currentTotalRevenue) - currentTotalExpense - safeNumber(revForm.deposited);
 
             if (loading) return <div className="flex justify-center items-center min-h-[70vh]"><div className="typing-dot bg-sky-600"></div></div>;
 
@@ -5242,7 +5273,29 @@
                                         <div><label className="text-[10px] font-bold text-slate-400 uppercase">Tanggal</label><input type="date" value={revForm.date} onChange={e => setRevForm({...revForm, date: e.target.value})} className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold" /></div>
                                         <div><label className="text-[10px] font-bold text-slate-400 uppercase">Sisa Kemarin</label><input type="number" value={revForm.prevBalance} onChange={e => setRevForm({...revForm, prevBalance: e.target.value})} className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-600" /></div>
                                     </div>
-                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase">Total Pendapatan</label><input type="number" placeholder="0" value={revForm.total} onChange={e => setRevForm({...revForm, total: e.target.value})} required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-purple-500 focus:ring-1 focus:ring-purple-500" /></div>
+                                    <div className="p-3 bg-green-50 rounded-xl border border-green-100 space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <h4 className="text-xs font-bold text-green-800 flex items-center gap-1"><Icon name="arrow-trend-up" /> Daftar Pendapatan</h4>
+                                            <span className="text-xs font-black text-green-600">{formatRupiah(currentTotalRevenue)}</span>
+                                        </div>
+                                        {revForm.revenues.length > 0 && (
+                                            <div className="space-y-1 mb-2 bg-white rounded-lg p-2 border border-green-100">
+                                                {revForm.revenues.map((rev, idx) => (
+                                                    <div key={idx} className="flex justify-between items-center text-xs border-b border-dashed border-slate-100 last:border-0 py-1">
+                                                        <span className="font-medium text-slate-600 truncate flex-1">{idx+1}. {rev.name}</span>
+                                                        <div className="flex items-center gap-2"><span className="font-bold text-slate-800">{formatRupiah(rev.amount)}</span><button type="button" onClick={() => removeRevenueItem(idx)} className="text-red-400 hover:text-red-600"><Icon name="xmark" /></button></div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <div className="flex gap-2 items-end">
+                                            <div className="flex-1">
+                                                <input type="text" placeholder="Sumber (ex: Tunai, Qris)" value={tempRevName} onChange={e => setTempRevName(e.target.value)} className="w-full p-2 bg-white border border-green-200 rounded-lg text-xs font-medium mb-1 outline-none" />
+                                                <input type="number" placeholder="Rp" value={tempRevAmount} onChange={e => setTempRevAmount(e.target.value)} className="w-full p-2 bg-white border border-green-200 rounded-lg text-xs font-bold outline-none" />
+                                            </div>
+                                            <button type="button" onClick={addRevenueItem} disabled={!tempRevName || !tempRevAmount} className="bg-green-500 text-white w-8 h-16 rounded-lg flex items-center justify-center hover:bg-green-600 disabled:opacity-50 transition-colors shadow-sm"><Icon name="plus" /></button>
+                                        </div>
+                                    </div>
                                     
                                     <div className="p-3 bg-red-50 rounded-xl border border-red-100 space-y-2">
                                         <div className="flex justify-between items-center">
@@ -5289,6 +5342,11 @@
                                         <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
                                             <div><p className="text-slate-400 font-medium">Sisa Kemarin</p><p className="font-bold text-slate-600">{formatRupiah(log.previousBalance)}</p></div>
                                             <div className="text-right"><p className="text-slate-400 font-medium">Pendapatan</p><p className="font-bold text-slate-800">{formatRupiah(log.totalRevenue)}</p></div>
+                                            {log.revenues && log.revenues.length > 1 && (
+                                                <div className="col-span-2 bg-green-50 p-2 rounded border border-green-100 my-1">
+                                                    <ul className="list-disc list-inside pl-1 space-y-0.5">{log.revenues.map((rev, i) => (<li key={i} className="text-[9px] text-slate-600 flex justify-between"><span>{rev.name}</span><span>{formatRupiah(rev.amount)}</span></li>))}</ul>
+                                                </div>
+                                            )}
                                             {safeNumber(log.expenseAmount) > 0 && (
                                                 <div className="col-span-2 bg-red-50 p-2 rounded border border-red-100 my-1">
                                                     <div className="flex justify-between items-center mb-1"><span className="text-[10px] text-red-600 font-bold">Total Pengeluaran</span><span className="text-xs font-bold text-red-600">-{formatRupiah(log.expenseAmount)}</span></div>
