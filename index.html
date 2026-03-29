@@ -5265,102 +5265,128 @@
                             )}
                         </>
                     ) : (
-                        <div className="space-y-6 pb-20">
-                            <div className="bg-white p-5 rounded-2xl shadow-sm border border-purple-100">
-                                <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="pen-to-square" className="text-purple-600" /> Input Setoran Harian</h3>
-                                <form onSubmit={handleRevSubmit} className="space-y-3">
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div><label className="text-[10px] font-bold text-slate-400 uppercase">Tanggal</label><input type="date" value={revForm.date} onChange={e => setRevForm({...revForm, date: e.target.value})} className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold" /></div>
-                                        <div><label className="text-[10px] font-bold text-slate-400 uppercase">Sisa Kemarin</label><input type="number" value={revForm.prevBalance} onChange={e => setRevForm({...revForm, prevBalance: e.target.value})} className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-600" /></div>
+                        <div className="space-y-3 pb-20">
+                            <div className="bg-white p-4 rounded-2xl shadow-sm border border-purple-100">
+                                <h3 className="font-bold text-slate-800 mb-3 text-sm flex items-center gap-2"><Icon name="pen-to-square" className="text-purple-600" /> Input Setoran Harian</h3>
+                                <form onSubmit={handleRevSubmit} className="space-y-2">
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div><label className="text-[9px] font-bold text-slate-400 uppercase">Tanggal</label><input type="date" value={revForm.date} onChange={e => setRevForm({...revForm, date: e.target.value})} className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold" /></div>
+                                        <div><label className="text-[9px] font-bold text-slate-400 uppercase">Sisa Kemarin</label><input type="number" value={revForm.prevBalance} onChange={e => setRevForm({...revForm, prevBalance: e.target.value})} className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-600" /></div>
                                     </div>
-                                    <div className="p-3 bg-green-50 rounded-xl border border-green-100 space-y-2">
-                                        <div className="flex justify-between items-center">
-                                            <h4 className="text-xs font-bold text-green-800 flex items-center gap-1"><Icon name="arrow-trend-up" /> Daftar Pendapatan</h4>
-                                            <span className="text-xs font-black text-green-600">{formatRupiah(currentTotalRevenue)}</span>
+
+                                    {/* PENDAPATAN */}
+                                    <div className="bg-green-50 rounded-xl border border-green-100 overflow-hidden">
+                                        <div className="flex justify-between items-center px-3 py-1.5 border-b border-green-100">
+                                            <span className="text-[10px] font-bold text-green-800 flex items-center gap-1"><Icon name="arrow-trend-up" /> Pendapatan</span>
+                                            <span className="text-[10px] font-black text-green-600">{formatRupiah(currentTotalRevenue)}</span>
                                         </div>
                                         {revForm.revenues.length > 0 && (
-                                            <div className="space-y-1 mb-2 bg-white rounded-lg p-2 border border-green-100">
+                                            <div className="px-3 py-1 space-y-0.5">
                                                 {revForm.revenues.map((rev, idx) => (
-                                                    <div key={idx} className="flex justify-between items-center text-xs border-b border-dashed border-slate-100 last:border-0 py-1">
-                                                        <span className="font-medium text-slate-600 truncate flex-1">{idx+1}. {rev.name}</span>
-                                                        <div className="flex items-center gap-2"><span className="font-bold text-slate-800">{formatRupiah(rev.amount)}</span><button type="button" onClick={() => removeRevenueItem(idx)} className="text-red-400 hover:text-red-600"><Icon name="xmark" /></button></div>
+                                                    <div key={idx} className="flex justify-between items-center text-[10px] py-0.5 border-b border-dashed border-green-100 last:border-0">
+                                                        <span className="text-slate-600 truncate flex-1">{idx+1}. {rev.name}</span>
+                                                        <div className="flex items-center gap-1.5 ml-2"><span className="font-bold text-slate-800">{formatRupiah(rev.amount)}</span><button type="button" onClick={() => removeRevenueItem(idx)} className="text-red-400 hover:text-red-600 text-[9px]"><Icon name="xmark" /></button></div>
                                                     </div>
                                                 ))}
                                             </div>
                                         )}
-                                        <div className="flex gap-2 items-end">
-                                            <div className="flex-1">
-                                                <input type="text" placeholder="Sumber (ex: Tunai, Qris)" value={tempRevName} onChange={e => setTempRevName(e.target.value)} className="w-full p-2 bg-white border border-green-200 rounded-lg text-xs font-medium mb-1 outline-none" />
-                                                <input type="number" placeholder="Rp" value={tempRevAmount} onChange={e => setTempRevAmount(e.target.value)} className="w-full p-2 bg-white border border-green-200 rounded-lg text-xs font-bold outline-none" />
-                                            </div>
-                                            <button type="button" onClick={addRevenueItem} disabled={!tempRevName || !tempRevAmount} className="bg-green-500 text-white w-8 h-16 rounded-lg flex items-center justify-center hover:bg-green-600 disabled:opacity-50 transition-colors shadow-sm"><Icon name="plus" /></button>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="p-3 bg-red-50 rounded-xl border border-red-100 space-y-2">
-                                        <div className="flex justify-between items-center">
-                                            <h4 className="text-xs font-bold text-red-800 flex items-center gap-1"><Icon name="arrow-trend-down" /> Daftar Pengeluaran</h4>
-                                            <span className="text-xs font-black text-red-600">{formatRupiah(currentTotalExpense)}</span>
-                                        </div>
-                                        {revForm.expenses.length > 0 && (
-                                            <div className="space-y-1 mb-2 bg-white rounded-lg p-2 border border-red-100">
-                                                {revForm.expenses.map((exp, idx) => (
-                                                    <div key={idx} className="flex justify-between items-center text-xs border-b border-dashed border-slate-100 last:border-0 py-1">
-                                                        <span className="font-medium text-slate-600 truncate flex-1">{idx+1}. {exp.name}</span>
-                                                        <div className="flex items-center gap-2"><span className="font-bold text-slate-800">{formatRupiah(exp.amount)}</span><button type="button" onClick={() => removeExpenseItem(idx)} className="text-red-400 hover:text-red-600"><Icon name="xmark" /></button></div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                        <div className="flex gap-2 items-end">
-                                            <div className="flex-1">
-                                                <input type="text" placeholder="Ket. (ex: Listrik)" value={tempExpName} onChange={e => setTempExpName(e.target.value)} className="w-full p-2 bg-white border border-red-200 rounded-lg text-xs font-medium mb-1 outline-none" />
-                                                <input type="number" placeholder="Rp" value={tempExpAmount} onChange={e => setTempExpAmount(e.target.value)} className="w-full p-2 bg-white border border-red-200 rounded-lg text-xs font-bold outline-none" />
-                                            </div>
-                                            <button type="button" onClick={addExpenseItem} disabled={!tempExpName || !tempExpAmount} className="bg-red-500 text-white w-8 h-16 rounded-lg flex items-center justify-center hover:bg-red-600 disabled:opacity-50 transition-colors shadow-sm"><Icon name="plus" /></button>
+                                        <div className="flex gap-1.5 items-center px-3 py-2">
+                                            <input type="text" placeholder="Sumber (Tunai, Qris...)" value={tempRevName} onChange={e => setTempRevName(e.target.value)} className="flex-1 min-w-0 p-1.5 bg-white border border-green-200 rounded-lg text-[10px] outline-none" />
+                                            <input type="number" placeholder="Rp" value={tempRevAmount} onChange={e => setTempRevAmount(e.target.value)} className="w-24 p-1.5 bg-white border border-green-200 rounded-lg text-[10px] font-bold outline-none" />
+                                            <button type="button" onClick={addRevenueItem} disabled={!tempRevName || !tempRevAmount} className="bg-green-500 text-white w-7 h-7 rounded-lg flex items-center justify-center hover:bg-green-600 disabled:opacity-40 transition-colors flex-shrink-0"><Icon name="plus" /></button>
                                         </div>
                                     </div>
 
-                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase">Disetor Ke Owner</label><input type="number" placeholder="0" value={revForm.deposited} onChange={e => setRevForm({...revForm, deposited: e.target.value})} required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-green-500 focus:ring-1 focus:ring-green-500" /></div>
-                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase">Keterangan</label><textarea placeholder="Catatan tambahan (opsional)..." value={revForm.keterangan} onChange={e => setRevForm({...revForm, keterangan: e.target.value})} rows={3} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-purple-400 focus:ring-1 focus:ring-purple-400 outline-none resize-none" /></div>
-                                    <div className="bg-purple-50 p-3 rounded-xl border border-purple-100 flex justify-between items-center mt-2"><span className="text-xs font-bold text-purple-700">Sisa Belum Disetor:</span><span className={`text-lg font-black ${currentRevRemaining < 0 ? 'text-red-600' : 'text-slate-800'}`}>{formatRupiah(currentRevRemaining)}</span></div>
-                                    <button type="submit" disabled={isRevSubmitting} className="w-full py-3 bg-purple-600 text-white rounded-xl font-bold shadow-lg shadow-purple-200 mt-2 active:scale-95 transition-all">{isRevSubmitting ? 'Menyimpan...' : 'Simpan Laporan'}</button>
+                                    {/* PENGELUARAN */}
+                                    <div className="bg-red-50 rounded-xl border border-red-100 overflow-hidden">
+                                        <div className="flex justify-between items-center px-3 py-1.5 border-b border-red-100">
+                                            <span className="text-[10px] font-bold text-red-800 flex items-center gap-1"><Icon name="arrow-trend-down" /> Pengeluaran</span>
+                                            <span className="text-[10px] font-black text-red-600">{formatRupiah(currentTotalExpense)}</span>
+                                        </div>
+                                        {revForm.expenses.length > 0 && (
+                                            <div className="px-3 py-1 space-y-0.5">
+                                                {revForm.expenses.map((exp, idx) => (
+                                                    <div key={idx} className="flex justify-between items-center text-[10px] py-0.5 border-b border-dashed border-red-100 last:border-0">
+                                                        <span className="text-slate-600 truncate flex-1">{idx+1}. {exp.name}</span>
+                                                        <div className="flex items-center gap-1.5 ml-2"><span className="font-bold text-slate-800">{formatRupiah(exp.amount)}</span><button type="button" onClick={() => removeExpenseItem(idx)} className="text-red-400 hover:text-red-600 text-[9px]"><Icon name="xmark" /></button></div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <div className="flex gap-1.5 items-center px-3 py-2">
+                                            <input type="text" placeholder="Keterangan (Listrik...)" value={tempExpName} onChange={e => setTempExpName(e.target.value)} className="flex-1 min-w-0 p-1.5 bg-white border border-red-200 rounded-lg text-[10px] outline-none" />
+                                            <input type="number" placeholder="Rp" value={tempExpAmount} onChange={e => setTempExpAmount(e.target.value)} className="w-24 p-1.5 bg-white border border-red-200 rounded-lg text-[10px] font-bold outline-none" />
+                                            <button type="button" onClick={addExpenseItem} disabled={!tempExpName || !tempExpAmount} className="bg-red-500 text-white w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-600 disabled:opacity-40 transition-colors flex-shrink-0"><Icon name="plus" /></button>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div><label className="text-[9px] font-bold text-slate-400 uppercase">Disetor Ke Owner</label><input type="number" placeholder="0" value={revForm.deposited} onChange={e => setRevForm({...revForm, deposited: e.target.value})} required className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold outline-none" /></div>
+                                        <div className="bg-purple-50 rounded-lg border border-purple-100 flex flex-col justify-center px-3 py-1">
+                                            <span className="text-[9px] font-bold text-purple-500 uppercase">Sisa Di Laci</span>
+                                            <span className={`text-sm font-black ${currentRevRemaining < 0 ? 'text-red-600' : 'text-purple-700'}`}>{formatRupiah(currentRevRemaining)}</span>
+                                        </div>
+                                    </div>
+
+                                    <textarea placeholder="Keterangan (opsional)..." value={revForm.keterangan} onChange={e => setRevForm({...revForm, keterangan: e.target.value})} rows={2} className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:border-purple-400 focus:ring-1 focus:ring-purple-400 outline-none resize-none" />
+                                    <button type="submit" disabled={isRevSubmitting} className="w-full py-2.5 bg-purple-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-purple-200 active:scale-95 transition-all">{isRevSubmitting ? 'Menyimpan...' : 'Simpan Laporan'}</button>
                                 </form>
                             </div>
 
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 <h3 className="font-bold text-slate-700 text-sm px-1">Riwayat Setoran</h3>
                                 {revenueLogs.map(log => (
-                                    <div key={log.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 relative group">
-                                        <div className="flex justify-between items-start mb-2 border-b border-dashed border-slate-100 pb-2">
-                                            <div><span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{formatDateFull(log.date)}</span></div>
-                                            <div className="flex gap-2">
-                                                <button onClick={() => handleCopyRevenueToWA(log)} className="flex items-center gap-1 text-[10px] font-bold bg-[#25D366] text-white px-2 py-1 rounded hover:bg-[#128C7E] transition-colors"><Icon name="whatsapp" type="brands" /> Salin WA</button>
-                                                <button onClick={() => handleRevDelete(log.id)} className="w-6 h-6 flex items-center justify-center rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"><Icon name="trash" /></button>
+                                    <div key={log.id} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                                        {/* Header */}
+                                        <div className="flex justify-between items-center px-3 py-2 bg-slate-50 border-b border-slate-100">
+                                            <span className="text-[10px] font-bold text-slate-600">{formatDateFull(log.date)}</span>
+                                            <div className="flex gap-1.5">
+                                                <button onClick={() => handleCopyRevenueToWA(log)} className="flex items-center gap-1 text-[9px] font-bold bg-[#25D366] text-white px-2 py-0.5 rounded hover:bg-[#128C7E] transition-colors"><Icon name="whatsapp" type="brands" /> WA</button>
+                                                <button onClick={() => handleRevDelete(log.id)} className="w-5 h-5 flex items-center justify-center rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors text-[10px]"><Icon name="trash" /></button>
                                             </div>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
-                                            <div><p className="text-slate-400 font-medium">Sisa Kemarin</p><p className="font-bold text-slate-600">{formatRupiah(log.previousBalance)}</p></div>
-                                            <div className="text-right"><p className="text-slate-400 font-medium">Pendapatan</p><p className="font-bold text-slate-800">{formatRupiah(log.totalRevenue)}</p></div>
+                                        {/* Body */}
+                                        <div className="px-3 py-2 space-y-1.5 text-[10px]">
+                                            {/* Row 1: Sisa kemarin + Pendapatan */}
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-400">Sisa kemarin</span><span className="font-bold text-slate-600">{formatRupiah(log.previousBalance)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-400">Pendapatan</span><span className="font-bold text-slate-800">{formatRupiah(log.totalRevenue)}</span>
+                                            </div>
                                             {log.revenues && log.revenues.length > 1 && (
-                                                <div className="col-span-2 bg-green-50 p-2 rounded border border-green-100 my-1">
-                                                    <ul className="list-disc list-inside pl-1 space-y-0.5">{log.revenues.map((rev, i) => (<li key={i} className="text-[9px] text-slate-600 flex justify-between"><span>{rev.name}</span><span>{formatRupiah(rev.amount)}</span></li>))}</ul>
+                                                <div className="pl-3 space-y-0.5 border-l-2 border-green-200">
+                                                    {log.revenues.map((rev, i) => (
+                                                        <div key={i} className="flex justify-between text-slate-500">
+                                                            <span>{rev.name}</span><span>{formatRupiah(rev.amount)}</span>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             )}
-                                            {safeNumber(log.expenseAmount) > 0 && (
-                                                <div className="col-span-2 bg-red-50 p-2 rounded border border-red-100 my-1">
-                                                    <div className="flex justify-between items-center mb-1"><span className="text-[10px] text-red-600 font-bold">Total Pengeluaran</span><span className="text-xs font-bold text-red-600">-{formatRupiah(log.expenseAmount)}</span></div>
-                                                    {log.expenses && log.expenses.length > 0 ? (
-                                                        <ul className="list-disc list-inside pl-1 space-y-0.5">{log.expenses.map((exp, i) => (<li key={i} className="text-[9px] text-slate-600 flex justify-between"><span>{exp.name}</span><span>{formatRupiah(exp.amount)}</span></li>))}</ul>
-                                                    ) : (<p className="text-[9px] text-slate-500 italic">{log.expenseNote || 'Tanpa Keterangan'}</p>)}
+                                            {safeNumber(log.expenseAmount) > 0 && (<>
+                                                <div className="flex justify-between text-red-500">
+                                                    <span>Pengeluaran</span><span className="font-bold">-{formatRupiah(log.expenseAmount)}</span>
                                                 </div>
-                                            )}
-                                            <div><p className="text-slate-400 font-medium">Disetor</p><p className="font-bold text-green-600">{formatRupiah(log.deposited)}</p></div>
-                                            <div className="text-right"><p className="text-slate-400 font-medium">Sisa Di Laci</p><p className="font-black text-purple-600 text-sm">{formatRupiah(log.remaining)}</p></div>
+                                                {log.expenses && log.expenses.length > 0 && (
+                                                    <div className="pl-3 space-y-0.5 border-l-2 border-red-200">
+                                                        {log.expenses.map((exp, i) => (
+                                                            <div key={i} className="flex justify-between text-slate-500">
+                                                                <span>{exp.name}</span><span>{formatRupiah(exp.amount)}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </>)}
+                                            <div className="border-t border-dashed border-slate-100 pt-1.5 flex justify-between">
+                                                <span className="text-slate-400">Disetor</span><span className="font-bold text-green-600">{formatRupiah(log.deposited)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-400">Sisa Di Laci</span><span className="font-black text-purple-600 text-xs">{formatRupiah(log.remaining)}</span>
+                                            </div>
                                             {log.keterangan && (
-                                                <div className="col-span-2 mt-1 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 flex items-start gap-2">
-                                                    <span className="text-amber-500 mt-0.5"><Icon name="note-sticky" /></span>
-                                                    <p className="text-xs text-amber-800 font-medium whitespace-pre-line">{log.keterangan}</p>
+                                                <div className="bg-amber-50 border border-amber-100 rounded-lg px-2 py-1.5 flex items-start gap-1.5 mt-1">
+                                                    <span className="text-amber-400 text-[9px] mt-0.5"><Icon name="note-sticky" /></span>
+                                                    <p className="text-[10px] text-amber-800 whitespace-pre-line leading-snug">{log.keterangan}</p>
                                                 </div>
                                             )}
                                         </div>
