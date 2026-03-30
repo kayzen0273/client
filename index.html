@@ -6707,211 +6707,70 @@
                         return (
                             <div className="fixed inset-0 z-[90] bg-white flex flex-col fade-in">
                                 {/* Header */}
-                                <div className="flex items-center justify-between px-4 md:px-6 border-b border-slate-200 bg-white flex-shrink-0" style={{paddingTop: 'calc(env(safe-area-inset-top, 0px) + 68px)', paddingBottom: '12px'}}>
-                                    <button onClick={() => { setShowRacikanPage(false); setRacikanItemSearch(''); setEditingRacikanCartId(null); }} className="flex items-center gap-2 text-slate-500 hover:text-slate-700 transition-colors group">
-                                        <div className="w-8 h-8 flex items-center justify-center text-slate-400 group-hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
-                                            <Icon name="xmark" className="text-base" />
-                                        </div>
-                                        <span className="text-sm font-medium text-slate-500 group-hover:text-slate-700 hidden md:inline">Tutup</span>
+                                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white" style={{paddingTop: 'calc(env(safe-area-inset-top, 0px) + 68px)'}}>
+                                    <button onClick={() => { setShowRacikanPage(false); setRacikanItemSearch(''); setEditingRacikanCartId(null); }} className="w-8 h-8 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                                        <Icon name="xmark" className="text-xl" />
                                     </button>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-7 h-7 bg-teal-100 rounded-lg flex items-center justify-center hidden md:flex">
-                                            <span className="text-teal-700 font-black text-xs">R/</span>
-                                        </div>
-                                        <span className="text-sm font-black text-slate-700 hidden md:inline">Pelayanan Resep Dokter</span>
-                                        <span className="text-xs font-bold text-slate-400 hidden md:inline">·</span>
-                                        <span className="text-xs font-semibold text-slate-400">#{new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'2-digit'}).replace(/\//g,'')+Math.floor(Math.random()*9000+1000)}</span>
-                                    </div>
-                                    <button onClick={simpanRacikan} className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-xl shadow-md shadow-teal-200 active:scale-95 transition-all flex items-center gap-2">
-                                        <Icon name="floppy-disk" className="hidden md:inline" /> Simpan
+                                    <span className="text-sm font-bold text-slate-600">#{new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'2-digit'}).replace(/\//g,'')+Math.floor(Math.random()*9000+1000)}</span>
+                                    <button onClick={simpanRacikan} className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-lg shadow active:scale-95 transition-all">
+                                        Simpan
                                     </button>
                                 </div>
 
                                 {/* Scrollable body */}
-                                {/* ===== BODY: Two-column on desktop, single-column on mobile ===== */}
-                                <div className="flex-1 overflow-y-auto md:overflow-hidden md:flex md:flex-row">
+                                <div className="flex-1 overflow-y-auto">
+                                    {/* Title */}
+                                    <div className="px-5 pt-10 pb-3">
+                                        <h1 className="text-2xl font-black text-slate-800">{editingRacikanCartId ? 'Edit Racikan' : `Racikan ${cart.filter(c=>c.isRacikanGroup).length + 1}`}</h1>
+                                    </div>
 
-                                    {/* ===== LEFT PANEL: Info Resep + Form Fields ===== */}
-                                    <div className="md:w-[400px] md:flex-shrink-0 md:flex md:flex-col md:overflow-y-auto md:border-r md:border-slate-100 md:bg-white">
-                                        <div className="flex-1">
-                                            {/* Title */}
-                                            <div className="px-5 pt-8 pb-3 border-b border-slate-50 md:border-b-0">
-                                                <div className="flex items-center gap-3 mb-1">
-                                                    <div className="w-8 h-8 bg-teal-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                                                        <span className="text-teal-700 font-black text-sm">R/</span>
-                                                    </div>
-                                                    <h1 className="text-xl font-black text-slate-800">{editingRacikanCartId ? 'Edit Racikan' : `Racikan ${cart.filter(c=>c.isRacikanGroup).length + 1}`}</h1>
+                                    {/* Info R/ */}
+                                    <div className="px-5 pb-2">
+                                        <h2 className="text-base font-bold text-slate-800 mb-3">Info R/</h2>
+                                        <div className="divide-y divide-slate-100 border-t border-b border-slate-100">
+                                            <button onClick={() => { setDokterSearch(''); setDokterInput(''); setShowDokterPicker(true); }} className="w-full flex items-center justify-between py-3.5 hover:bg-teal-50 rounded-lg transition-colors px-1 -mx-1">
+                                                <span className="text-sm font-medium text-slate-700">Dokter</span>
+                                                <div className="flex items-center gap-1">
+                                                    {racikanForm.dokter
+                                                        ? <span className="text-sm font-bold text-teal-600">{racikanForm.dokter}</span>
+                                                        : <span className="text-sm text-slate-400">Pilih</span>
+                                                    }
+                                                    <Icon name="chevron-right" className="text-teal-500 text-sm" />
                                                 </div>
-                                                <p className="text-xs text-slate-400 ml-11">Isi info resep dan tambahkan obat</p>
-                                            </div>
-
-                                            {/* Info R/ — Dokter & Pasien */}
-                                            <div className="px-5 pt-4 pb-1">
-                                                <h2 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Info Resep</h2>
-                                                <div className="bg-slate-50 rounded-2xl overflow-hidden border border-slate-100">
-                                                    <button onClick={() => { setDokterSearch(''); setDokterInput(''); setShowDokterPicker(true); }} className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-teal-50 transition-colors border-b border-slate-100">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-7 h-7 bg-white border border-slate-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                                <Icon name="user-doctor" className="text-teal-600 text-xs" />
-                                                            </div>
-                                                            <span className="text-sm font-semibold text-slate-600">Dokter</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-1.5">
-                                                            {racikanForm.dokter
-                                                                ? <span className="text-sm font-bold text-teal-600 truncate max-w-[140px]">{racikanForm.dokter}</span>
-                                                                : <span className="text-sm text-slate-400">Pilih</span>
-                                                            }
-                                                            <Icon name="chevron-right" className="text-slate-300 text-xs flex-shrink-0" />
-                                                        </div>
-                                                    </button>
-                                                    <button onClick={() => { setPasienSearch(''); setPasienInput(''); setPasienAge(''); setShowPasienPicker(true); }} className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-teal-50 transition-colors">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-7 h-7 bg-white border border-slate-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                                <Icon name="user" className="text-sky-500 text-xs" />
-                                                            </div>
-                                                            <span className="text-sm font-semibold text-slate-600">Pasien</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-1.5">
-                                                            {racikanForm.pasien
-                                                                ? <span className="text-sm font-bold text-teal-600 truncate max-w-[140px]">{racikanForm.pasien}</span>
-                                                                : <span className="text-sm text-slate-400">Pilih</span>
-                                                            }
-                                                            <Icon name="chevron-right" className="text-slate-300 text-xs flex-shrink-0" />
-                                                        </div>
-                                                    </button>
+                                            </button>
+                                            <button onClick={() => { setPasienSearch(''); setPasienInput(''); setPasienAge(''); setShowPasienPicker(true); }} className="w-full flex items-center justify-between py-3.5 hover:bg-teal-50 rounded-lg transition-colors px-1 -mx-1">
+                                                <span className="text-sm font-medium text-slate-700">Pasien</span>
+                                                <div className="flex items-center gap-1">
+                                                    {racikanForm.pasien
+                                                        ? <span className="text-sm font-bold text-teal-600">{racikanForm.pasien}</span>
+                                                        : <span className="text-sm text-slate-400">Pilih</span>
+                                                    }
+                                                    <Icon name="chevron-right" className="text-teal-500 text-sm" />
                                                 </div>
-                                            </div>
-
-                                            {/* Signa */}
-                                            <div className="px-5 pt-4 pb-1">
-                                                <h2 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Aturan Pakai</h2>
-                                                <div className="bg-slate-50 rounded-2xl border border-slate-100 px-4 py-1">
-                                                    <div className="flex items-center gap-3 py-3 border-b border-slate-100">
-                                                        <label className="text-sm font-semibold text-slate-600 w-16 flex-shrink-0">Signa</label>
-                                                        <input type="text" value={racikanForm.signa}
-                                                            onChange={e => setRacikanForm(f => ({...f, signa: e.target.value}))}
-                                                            className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-200 text-slate-800 font-medium"
-                                                            placeholder="cth: 3×1 sesudah makan"
-                                                        />
-                                                    </div>
-                                                    {/* Catatan */}
-                                                    <div className="flex gap-3 py-3">
-                                                        <label className="text-sm font-semibold text-slate-600 w-16 flex-shrink-0 pt-2">Catatan</label>
-                                                        <div className="flex-1">
-                                                            <textarea rows={3} value={racikanForm.catatan}
-                                                                onChange={e => setRacikanForm(f => ({...f, catatan: e.target.value.slice(0,100)}))}
-                                                                placeholder="Contoh: dikocok dahulu, obat luar, dll"
-                                                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-200 text-slate-800 resize-none placeholder:text-slate-400"
-                                                            />
-                                                            <div className="flex justify-between mt-1">
-                                                                <span className="text-[11px] text-slate-400">Tampil di etiket</span>
-                                                                <span className="text-[11px] text-slate-400">{racikanForm.catatan.length}/100</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* BUD + Atur Pengingat */}
-                                            <div className="px-5 pt-4 pb-1">
-                                                <h2 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Kadaluarsa & Pengingat</h2>
-                                                <div className="bg-slate-50 rounded-2xl border border-slate-100 px-4 py-1">
-                                                    <div className="flex items-center gap-3 py-3 border-b border-slate-100">
-                                                        <label className="text-sm font-semibold text-slate-600 w-16 flex-shrink-0">BUD</label>
-                                                        <div className="flex gap-2 flex-1">
-                                                            <input type="text" inputMode="numeric" placeholder="DD" maxLength={2}
-                                                                value={racikanForm.budD} onChange={e => setRacikanForm(f => ({...f, budD: e.target.value.replace(/[^0-9]/g,'')}))}
-                                                                className="w-14 bg-white border border-slate-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-teal-500 text-center font-medium text-slate-700"
-                                                            />
-                                                            <input type="text" inputMode="numeric" placeholder="MM" maxLength={2}
-                                                                value={racikanForm.budM} onChange={e => setRacikanForm(f => ({...f, budM: e.target.value.replace(/[^0-9]/g,'')}))}
-                                                                className="w-14 bg-white border border-slate-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-teal-500 text-center font-medium text-slate-700"
-                                                            />
-                                                            <input type="text" inputMode="numeric" placeholder="YYYY" maxLength={4}
-                                                                value={racikanForm.budY} onChange={e => setRacikanForm(f => ({...f, budY: e.target.value.replace(/[^0-9]/g,'')}))}
-                                                                className="w-20 bg-white border border-slate-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-teal-500 text-center font-medium text-slate-700"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center justify-between py-3">
-                                                        <span className="text-sm font-semibold text-slate-600">Pengingat obat habis</span>
-                                                        <button className="flex items-center gap-1 text-teal-600 font-bold text-sm hover:text-teal-700 transition-colors">
-                                                            Atur <Icon name="calendar-days" className="text-sm" />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Subtotal & Uang R/ & Total */}
-                                            <div className="px-5 pt-4 pb-2">
-                                                <h2 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Ringkasan</h2>
-                                                <div className="bg-teal-50 rounded-2xl border border-teal-100 px-4 divide-y divide-teal-100">
-                                                    <div className="flex items-center justify-between py-3">
-                                                        <span className="text-sm font-medium text-slate-600">Subtotal</span>
-                                                        <span className="text-sm font-bold text-slate-800">{racikanSubtotal > 0 ? formatRupiah(racikanSubtotal) : '—'}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-3 py-3">
-                                                        <span className="text-sm font-medium text-slate-600 w-20 flex-shrink-0">Uang R/</span>
-                                                        <div className="flex gap-2 flex-1 items-center">
-                                                            <span className="text-sm font-bold text-slate-500 px-1">Rp</span>
-                                                            <input type="text" inputMode="numeric" value={racikanForm.uangR}
-                                                                onChange={e => setRacikanForm(f => ({...f, uangR: e.target.value.replace(/[^0-9]/g,'')}))}
-                                                                placeholder="0"
-                                                                className="flex-1 bg-white border border-teal-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 font-bold text-slate-800 text-right"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center justify-between py-3.5">
-                                                        <span className="text-sm font-bold text-slate-800">Total</span>
-                                                        <span className="text-lg font-black text-teal-700">{racikanTotal > 0 ? formatRupiah(racikanTotal) : '—'}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Bottom: Hapus — sticky inside left panel */}
-                                        <div className="px-5 py-4 border-t border-slate-100 bg-white">
-                                            <button onClick={() => {
-                                                if (editingRacikanCartId) {
-                                                    setCart(prev => prev.filter(c => c.racikanCartId !== editingRacikanCartId));
-                                                    setEditingRacikanCartId(null);
-                                                    showToast("Racikan dihapus dari keranjang", "success");
-                                                }
-                                                setRacikanForm({ dokter:'', pasien:'', signa:'', catatan:'', budD:'', budM:'', budY:'', uangR:'', items:[] });
-                                                setRacikanItemSearch('');
-                                                setShowRacikanPage(false);
-                                            }}
-                                                className="flex items-center gap-2 text-red-500 font-bold text-sm hover:text-red-700 transition-colors">
-                                                <Icon name="trash" /> {editingRacikanCartId ? 'Hapus Racikan dari Keranjang' : 'Bersihkan Form'}
                                             </button>
                                         </div>
                                     </div>
 
-                                    {/* ===== RIGHT PANEL: Daftar Barang / Obat ===== */}
-                                    <div className="md:flex-1 md:overflow-y-auto md:bg-slate-50/40 px-5 md:px-6 pt-5 md:pt-6 pb-6">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <h2 className="text-base font-black text-slate-800">Daftar Obat / Barang</h2>
-                                            {racikanForm.items.length > 0 && (
-                                                <span className="text-xs font-bold bg-teal-100 text-teal-700 px-2.5 py-1 rounded-full">{racikanForm.items.length} item</span>
-                                            )}
-                                        </div>
+                                    {/* Daftar Barang */}
+                                    <div className="px-5 pt-5 pb-2">
+                                        <h2 className="text-base font-bold text-slate-800 mb-3">Daftar Barang</h2>
 
                                         {/* Search */}
                                         <div className="relative mb-3">
                                             <Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
                                             <input
                                                 type="text"
-                                                placeholder="Ketik nama obat / barang..."
+                                                placeholder="Cari barang"
                                                 value={racikanItemSearch}
                                                 onChange={e => setRacikanItemSearch(e.target.value)}
-                                                className="w-full pl-9 pr-4 py-3 rounded-xl border border-slate-200 bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none text-sm text-slate-700 placeholder:text-slate-400 shadow-sm"
+                                                className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none text-sm text-slate-700 placeholder:text-slate-400"
                                             />
                                             {racikanItemSearch && <button onClick={() => setRacikanItemSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"><Icon name="xmark" /></button>}
                                         </div>
 
                                         {/* Search results dropdown */}
                                         {racikanItemSearch && (
-                                            <div className="mb-3 border border-slate-200 rounded-xl overflow-hidden shadow-lg bg-white">
+                                            <div className="mb-3 border border-slate-200 rounded-xl overflow-hidden shadow-lg">
                                                 {racikanSearchResults.length === 0
                                                     ? <div className="p-4 text-center text-sm text-slate-400">Barang tidak ditemukan</div>
                                                     : racikanSearchResults.map(item => (
@@ -6921,55 +6780,50 @@
                                                                 <p className="font-bold text-sm text-slate-800 truncate">{item.name}</p>
                                                                 <p className="text-[11px] text-slate-400">Stok {item.qty} {item.unit} · {formatRupiah(item.price)}</p>
                                                             </div>
-                                                            <span className="text-xs font-bold text-teal-600 flex-shrink-0 bg-teal-50 px-2 py-1 rounded-lg">+ Tambah</span>
+                                                            <span className="text-xs font-bold text-teal-600 flex-shrink-0">+ Tambah</span>
                                                         </button>
                                                     ))
                                                 }
                                             </div>
                                         )}
 
-                                        {/* Item list */}
-                                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                                        {/* Table header */}
+                                        <div className="flex justify-between px-1 mb-1">
+                                            <span className="text-xs font-bold text-slate-700">Barang</span>
+                                            <span className="text-xs font-bold text-slate-700">Subtotal</span>
+                                        </div>
+                                        <div className="border border-slate-200 rounded-xl overflow-hidden">
                                             {racikanForm.items.length === 0 ? (
-                                                <div className="py-14 px-4 flex flex-col items-center justify-center gap-2 text-slate-300">
-                                                    <div className="flex gap-2 text-5xl opacity-30 mb-2">
+                                                <div className="py-10 px-4 flex flex-col items-center justify-center gap-2 text-slate-300">
+                                                    <div className="flex gap-2 text-4xl opacity-40">
                                                         <Icon name="circle-half-stroke" />
                                                         <Icon name="leaf" />
                                                     </div>
-                                                    <p className="text-sm font-bold text-slate-400">Belum ada barang pada resep ini</p>
-                                                    <p className="text-xs text-slate-300 mb-2">Gunakan kolom pencarian di atas</p>
+                                                    <p className="text-sm font-bold text-slate-400 mt-1">Belum ada barang pada resep ini</p>
                                                     <button onClick={() => { const el = document.querySelector('.racikan-search-input'); if(el) el.focus(); setRacikanItemSearch(' '); setTimeout(() => setRacikanItemSearch(''), 10); }}
-                                                        className="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-xl active:scale-95 transition-all flex items-center gap-2 shadow-md">
-                                                        <Icon name="plus" /> Tambah Barang
+                                                        className="mt-2 px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-lg active:scale-95 transition-all flex items-center gap-2">
+                                                        <Icon name="plus" /> Barang
                                                     </button>
                                                 </div>
                                             ) : (
-                                                <div>
-                                                    {/* Table header */}
-                                                    <div className="flex items-center px-4 py-2.5 bg-slate-50 border-b border-slate-100">
-                                                        <span className="text-xs font-bold text-slate-500 flex-1">Nama Barang</span>
-                                                        <span className="text-xs font-bold text-slate-500 w-24 text-right">Subtotal</span>
-                                                        <span className="w-7"></span>
-                                                    </div>
-                                                    <div className="divide-y divide-slate-100">
-                                                        {racikanForm.items.map((ri, idx) => (
-                                                            <div key={ri.id + idx} className="flex items-center gap-2 px-4 py-3 hover:bg-slate-50 transition-colors">
-                                                                <div className="flex-1 min-w-0">
-                                                                    <p className="font-bold text-sm text-slate-800 truncate">{ri.name}</p>
-                                                                    <p className="text-[11px] text-slate-400 mt-0.5">{formatRupiah(ri.price)} × {ri.qty} {ri.selectedUnit}</p>
-                                                                </div>
-                                                                <span className="text-sm font-bold text-slate-700 flex-shrink-0 w-24 text-right">{formatRupiah(ri.price * ri.qty)}</span>
-                                                                <button onClick={() => setRacikanForm(f => ({ ...f, items: f.items.filter((_,i) => i !== idx) }))}
-                                                                    className="w-7 h-7 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg flex-shrink-0 transition-colors">
-                                                                    <Icon name="xmark" className="text-xs" />
-                                                                </button>
+                                                <div className="divide-y divide-slate-100">
+                                                    {racikanForm.items.map((ri, idx) => (
+                                                        <div key={ri.id + idx} className="flex items-center gap-2 px-3 py-2.5">
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="font-bold text-sm text-slate-800 truncate">{ri.name}</p>
+                                                                <p className="text-[11px] text-slate-400">{formatRupiah(ri.price)} × {ri.qty} {ri.selectedUnit}</p>
                                                             </div>
-                                                        ))}
-                                                    </div>
-                                                    <div className="px-4 py-3 border-t border-dashed border-slate-200 bg-slate-50/50">
+                                                            <span className="text-sm font-bold text-slate-700 flex-shrink-0">{formatRupiah(ri.price * ri.qty)}</span>
+                                                            <button onClick={() => setRacikanForm(f => ({ ...f, items: f.items.filter((_,i) => i !== idx) }))}
+                                                                className="w-6 h-6 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 rounded flex-shrink-0">
+                                                                <Icon name="xmark" className="text-xs" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                    <div className="px-3 py-2">
                                                         <button onClick={() => setRacikanItemSearch(' ')}
-                                                            className="w-full py-2.5 border-2 border-dashed border-teal-300 text-teal-600 font-bold text-sm rounded-xl hover:bg-teal-50 transition-colors flex items-center justify-center gap-1.5">
-                                                            <Icon name="plus" /> Tambah Barang
+                                                            className="w-full py-2 border border-dashed border-teal-300 text-teal-600 font-bold text-sm rounded-lg hover:bg-teal-50 transition-colors flex items-center justify-center gap-1">
+                                                            <Icon name="plus" /> Barang
                                                         </button>
                                                     </div>
                                                 </div>
@@ -6977,6 +6831,111 @@
                                         </div>
                                     </div>
 
+                                    {/* Signa */}
+                                    <div className="px-5 pt-4 pb-2">
+                                        <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+                                            <label className="text-sm font-medium text-slate-700 w-20 flex-shrink-0">Signa</label>
+                                            <input type="text" value={racikanForm.signa}
+                                                onChange={e => setRacikanForm(f => ({...f, signa: e.target.value}))}
+                                                className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-200 text-slate-800 font-medium"
+                                                placeholder=""
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Catatan */}
+                                    <div className="px-5 pt-2 pb-2">
+                                        <div className="flex gap-3 border-b border-slate-100 pb-3">
+                                            <label className="text-sm font-medium text-slate-700 w-20 flex-shrink-0 pt-2">Catatan</label>
+                                            <div className="flex-1">
+                                                <textarea rows={3} value={racikanForm.catatan}
+                                                    onChange={e => setRacikanForm(f => ({...f, catatan: e.target.value.slice(0,100)}))}
+                                                    placeholder="Contoh: obat luar, dikocok dahulu sebelum diminum, dll"
+                                                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-200 text-slate-800 resize-none placeholder:text-slate-400"
+                                                />
+                                                <div className="flex items-center gap-1 mt-1">
+                                                    <Icon name="circle-info" className="text-teal-500 text-xs" />
+                                                    <span className="text-[11px] text-slate-400 flex-1">Keterangan dipakai dalam etiket</span>
+                                                    <span className="text-[11px] text-slate-400">{racikanForm.catatan.length}/100</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* BUD */}
+                                    <div className="px-5 pt-2 pb-2">
+                                        <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+                                            <label className="text-sm font-medium text-slate-700 w-20 flex-shrink-0">BUD</label>
+                                            <div className="flex gap-2 flex-1">
+                                                <input type="text" inputMode="numeric" placeholder="DD" maxLength={2}
+                                                    value={racikanForm.budD} onChange={e => setRacikanForm(f => ({...f, budD: e.target.value.replace(/[^0-9]/g,'')}))}
+                                                    className="w-14 border border-slate-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-teal-500 text-center font-medium text-slate-700"
+                                                />
+                                                <input type="text" inputMode="numeric" placeholder="MM" maxLength={2}
+                                                    value={racikanForm.budM} onChange={e => setRacikanForm(f => ({...f, budM: e.target.value.replace(/[^0-9]/g,'')}))}
+                                                    className="w-14 border border-slate-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-teal-500 text-center font-medium text-slate-700"
+                                                />
+                                                <input type="text" inputMode="numeric" placeholder="YYYY" maxLength={4}
+                                                    value={racikanForm.budY} onChange={e => setRacikanForm(f => ({...f, budY: e.target.value.replace(/[^0-9]/g,'')}))}
+                                                    className="w-20 border border-slate-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-teal-500 text-center font-medium text-slate-700"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Atur pengingat */}
+                                    <div className="px-5 pt-2 pb-2">
+                                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                                            <span className="text-sm font-medium text-slate-700">Atur pengingat obat habis</span>
+                                            <button className="flex items-center gap-1 text-teal-600 font-bold text-sm">
+                                                Atur <Icon name="calendar-days" className="text-sm" />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Subtotal & Uang R/ & Total */}
+                                    <div className="px-5 pt-2 pb-4 divide-y divide-slate-100">
+                                        <div className="flex items-center justify-between py-3">
+                                            <span className="text-sm font-medium text-slate-700">Subtotal</span>
+                                            <span className="text-sm font-bold text-slate-800">{racikanSubtotal > 0 ? formatRupiah(racikanSubtotal) : '0'}</span>
+                                        </div>
+                                        <div className="flex items-center gap-3 py-3">
+                                            <span className="text-sm font-medium text-slate-700 w-20 flex-shrink-0">Uang R/</span>
+                                            <div className="flex gap-2 flex-1 items-center">
+                                                <div className="flex items-center gap-1 border border-slate-200 rounded-lg px-3 py-2 bg-white">
+                                                    <span className="text-sm font-bold text-slate-600">Rp</span>
+                                                    <Icon name="chevron-down" className="text-slate-400 text-xs" />
+                                                </div>
+                                                <input type="text" inputMode="numeric" value={racikanForm.uangR}
+                                                    onChange={e => setRacikanForm(f => ({...f, uangR: e.target.value.replace(/[^0-9]/g,'')}))}
+                                                    placeholder="0"
+                                                    className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 font-bold text-slate-800 text-right"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-between py-3">
+                                            <span className="text-sm font-bold text-slate-800">Total</span>
+                                            <span className="text-base font-black text-slate-800">{racikanTotal > 0 ? formatRupiah(racikanTotal) : '0'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Bottom: Hapus */}
+                                <div className="px-5 py-4 border-t border-slate-100">
+                                    <button onClick={() => {
+                                        if (editingRacikanCartId) {
+                                            // Hapus racikan dari keranjang
+                                            setCart(prev => prev.filter(c => c.racikanCartId !== editingRacikanCartId));
+                                            setEditingRacikanCartId(null);
+                                            showToast("Racikan dihapus dari keranjang", "success");
+                                        }
+                                        setRacikanForm({ dokter:'', pasien:'', signa:'', catatan:'', budD:'', budM:'', budY:'', uangR:'', items:[] });
+                                        setRacikanItemSearch('');
+                                        setShowRacikanPage(false);
+                                    }}
+                                        className="flex items-center gap-2 text-red-500 font-bold text-sm hover:text-red-700 transition-colors">
+                                        <Icon name="trash" /> {editingRacikanCartId ? 'Hapus Racikan dari Keranjang' : 'Bersihkan Form'}
+                                    </button>
                                 </div>
                             </div>
                         );
@@ -12918,8 +12877,7 @@
             const [submitting, setSubmitting] = useState(false);
             const [user, setUser] = useState(null);
             const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-            const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(() => localStorage.getItem('desktopSidebar') !== 'false');
-            const toggleDesktopSidebar = () => setDesktopSidebarOpen(prev => { const next = !prev; localStorage.setItem('desktopSidebar', next); return next; });
+            const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
             const [receiptToPrint, setReceiptToPrint] = useState(null);
             const [isGeneratingImage, setIsGeneratingImage] = useState(false);
             const [activeStoreId, setActiveStoreId] = useState(localStorage.getItem('activeStoreId') || 'default');
@@ -13407,7 +13365,7 @@
             const handleSaveSettings = async (newSettings) => { if(!user) return; setSubmitting(true); try { const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'settings', 'global'); await window.setDoc(docRef, newSettings); showToast("Pengaturan disimpan"); } catch(error) { console.error(error); showToast("Gagal simpan pengaturan", "error"); } finally { setSubmitting(false); } };
             const handleDelete = async () => { if (!deleteModal.item || !user) return; try { const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', deleteModal.item.id); await window.deleteDoc(docRef); showToast("Barang dihapus (dari semua toko)"); } catch (error) { showToast("Gagal menghapus", "error"); } finally { setDeleteModal({ show: false, item: null }); } };
             const handleConfirmDeleteRack = async () => { if (!deleteRackModal.rackName || !user) return; const rackName = deleteRackModal.rackName; try { const batch = window.writeBatch(window.db); const itemsToUpdate = inventoryData.filter(item => item.rack && item.rack.includes(rackName)); if (itemsToUpdate.length === 0) { showToast("Tidak ada item di rak ini"); setDeleteRackModal({ show: false, rackName: null }); return; } itemsToUpdate.forEach(item => { const newRacks = item.rack.split(',').map(r => r.trim()).filter(r => r !== rackName); const newRackString = newRacks.length > 0 ? newRacks.join(', ') : '-'; const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', item.id); batch.update(docRef, { rack: newRackString }); }); await batch.commit(); showToast(`Rak "${rackName}" berhasil dihapus`); setSelectedRacks([]); } catch (err) { console.error("Failed delete rack", err); showToast("Gagal menghapus rak", "error"); } finally { setDeleteRackModal({ show: false, rackName: null }); } };
-            const handleNavClick = (tabId, event) => { setActiveTab(tabId); if (tabId !== 'list') setShowOnlyLowStock(false); setIsSidebarOpen(false); setDesktopSidebarOpen(false); };
+            const handleNavClick = (tabId, event) => { setActiveTab(tabId); if (tabId !== 'list') setShowOnlyLowStock(false); setIsSidebarOpen(false); };
             
             const handleLogout = () => {
                 clearSession();
@@ -13468,15 +13426,7 @@
 
             return (
                 <div className={`min-h-screen flex flex-col md:flex-row bg-sky-50/50 transition-colors duration-500 ${activeStoreId === 'all_stores' ? 'theme-all-stores' : ''}`}>
-                    <RamadhanDecor /> <Toast show={toast.show} message={toast.message} type={toast.type} />
-                    {/* Overlay — klik di luar sidebar untuk menutup (berlaku di mobile & desktop) */}
-                    {(isSidebarOpen || desktopSidebarOpen) && (
-                        <div
-                            className="fixed inset-0 z-40 fade-in"
-                            style={{background: 'rgba(15,23,42,0.35)', backdropFilter: 'blur(2px)'}}
-                            onClick={() => { setIsSidebarOpen(false); setDesktopSidebarOpen(false); }}
-                        />
-                    )}
+                    <RamadhanDecor /> <Toast show={toast.show} message={toast.message} type={toast.type} /> {isSidebarOpen && (<div className="fixed inset-0 bg-slate-900/50 z-40 md:hidden backdrop-blur-sm fade-in" onClick={() => setIsSidebarOpen(false)}></div>)}
                     
                     {/* HIDDEN RECEIPT CONTAINER (UPDATED FOR DYNAMIC STORE) */}
                     {receiptToPrint && ( <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', zIndex: -1 }}> 
@@ -13529,7 +13479,7 @@
                         </div> 
                     </div> )}
 
-                    <aside className={`fixed top-0 left-0 h-full z-50 w-72 md:w-80 bg-white border-r border-slate-200 shadow-2xl transform transition-transform duration-300 ease-in-out ${(isSidebarOpen || desktopSidebarOpen) ? 'translate-x-0' : '-translate-x-full'}`}>
+                    <aside className={`fixed top-0 left-0 h-full z-50 w-72 md:w-80 bg-white/95 backdrop-blur-xl md:backdrop-blur-md md:bg-white border-r border-slate-200 md:border-white/20 shadow-2xl md:shadow-soft transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:min-h-screen ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} ${!isDesktopSidebarOpen ? 'md:hidden' : ''}`}>
                         <div className="p-4 pb-3 h-full flex flex-col">
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-3 relative z-50">
@@ -13571,14 +13521,7 @@
                                             )}
                                         </button>
                                     </div>
-                                    {/* Tombol ☰ — tutup sidebar, tampil di semua ukuran layar */}
-                                    <button
-                                        onClick={() => { setIsSidebarOpen(false); setDesktopSidebarOpen(false); }}
-                                        title="Sembunyikan sidebar"
-                                        className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 border border-slate-200 transition-all active:scale-95"
-                                    >
-                                        <Icon name="bars" className="text-base" />
-                                    </button>
+                                    <button onClick={() => { setIsSidebarOpen(false); setIsDesktopSidebarOpen(false); }} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"><Icon name="xmark" className="text-xl" /></button>
                                 </div>
                             </div>
                             <nav className="space-y-0.5 flex-1 overflow-y-auto min-h-0 pr-1">{visibleMenuItems.map(menu => (<button key={menu.id} onClick={(e) => handleNavClick(menu.id, e)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative overflow-hidden group ${activeTab === menu.id ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100'}`}><div className="relative w-5 flex-shrink-0"><Icon name={menu.icon} className={`text-base ${activeTab === menu.id ? 'text-white' : 'text-slate-400'}`} />{menu.badge > 0 && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center leading-none shadow-sm animate-pulse">{menu.badge > 9 ? '9+' : menu.badge}</span>}</div><span className="flex-1 text-left">{menu.label}</span>{menu.readOnly && activeTab !== menu.id && <Icon name="eye" className="text-[9px] text-slate-300 flex-shrink-0" title="Lihat saja" />}{menu.badge > 0 && activeTab !== menu.id && <span className="text-[9px] bg-red-100 text-red-600 font-black px-1.5 py-0.5 rounded-full border border-red-200">{menu.badge} baru</span>}</button>))}</nav>
@@ -13607,16 +13550,15 @@
                             </div>
                         </div>
                     </aside>
-                    <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full mb-0">
-                        {/* Desktop: floating hamburger untuk buka sidebar saat tertutup */}
-                        {!desktopSidebarOpen && (
-                            <button
-                                onClick={() => setDesktopSidebarOpen(true)}
-                                title="Tampilkan sidebar"
-                                className="hidden md:flex fixed top-4 left-4 z-30 w-10 h-10 items-center justify-center bg-white border border-slate-200 rounded-xl shadow-md text-slate-500 hover:text-sky-600 hover:border-sky-300 hover:bg-sky-50 active:scale-95 transition-all fade-in"
-                            >
-                                <Icon name="bars" className="text-sm" />
-                            </button>
+                    <main className="flex-1 md:ml-0 p-4 md:p-8 max-w-7xl mx-auto w-full mb-0">
+                        {/* Desktop sidebar toggle button — muncul saat sidebar disembunyikan */}
+                        {!isDesktopSidebarOpen && (
+                            <div className="hidden md:flex mb-4 items-center gap-3">
+                                <button onClick={() => setIsDesktopSidebarOpen(true)} className="bg-white border border-slate-200 hover:border-sky-400 hover:bg-sky-50 px-3 py-2 rounded-xl text-slate-600 hover:text-sky-600 font-bold text-sm shadow-sm transition-all flex items-center gap-2">
+                                    <Icon name="bars" className="text-sky-600" />
+                                    <span className="text-xs font-bold text-slate-500">Tampilkan Menu</span>
+                                </button>
+                            </div>
                         )}
                         <div className="md:hidden mb-6 flex items-center justify-between gap-4 relative z-30">
                             <div className="flex items-center gap-2">
