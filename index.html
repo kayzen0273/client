@@ -13407,7 +13407,7 @@
             const handleSaveSettings = async (newSettings) => { if(!user) return; setSubmitting(true); try { const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'settings', 'global'); await window.setDoc(docRef, newSettings); showToast("Pengaturan disimpan"); } catch(error) { console.error(error); showToast("Gagal simpan pengaturan", "error"); } finally { setSubmitting(false); } };
             const handleDelete = async () => { if (!deleteModal.item || !user) return; try { const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', deleteModal.item.id); await window.deleteDoc(docRef); showToast("Barang dihapus (dari semua toko)"); } catch (error) { showToast("Gagal menghapus", "error"); } finally { setDeleteModal({ show: false, item: null }); } };
             const handleConfirmDeleteRack = async () => { if (!deleteRackModal.rackName || !user) return; const rackName = deleteRackModal.rackName; try { const batch = window.writeBatch(window.db); const itemsToUpdate = inventoryData.filter(item => item.rack && item.rack.includes(rackName)); if (itemsToUpdate.length === 0) { showToast("Tidak ada item di rak ini"); setDeleteRackModal({ show: false, rackName: null }); return; } itemsToUpdate.forEach(item => { const newRacks = item.rack.split(',').map(r => r.trim()).filter(r => r !== rackName); const newRackString = newRacks.length > 0 ? newRacks.join(', ') : '-'; const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', item.id); batch.update(docRef, { rack: newRackString }); }); await batch.commit(); showToast(`Rak "${rackName}" berhasil dihapus`); setSelectedRacks([]); } catch (err) { console.error("Failed delete rack", err); showToast("Gagal menghapus rak", "error"); } finally { setDeleteRackModal({ show: false, rackName: null }); } };
-            const handleNavClick = (tabId, event) => { setActiveTab(tabId); if (tabId !== 'list') setShowOnlyLowStock(false); setIsSidebarOpen(false); };
+            const handleNavClick = (tabId, event) => { setActiveTab(tabId); if (tabId !== 'list') setShowOnlyLowStock(false); setIsSidebarOpen(false); setDesktopSidebarOpen(false); };
             
             const handleLogout = () => {
                 clearSession();
@@ -13469,10 +13469,14 @@
             return (
                 <div className={`min-h-screen flex flex-col md:flex-row bg-sky-50/50 transition-colors duration-500 ${activeStoreId === 'all_stores' ? 'theme-all-stores' : ''}`}>
                     <RamadhanDecor /> <Toast show={toast.show} message={toast.message} type={toast.type} />
-                    {/* Mobile overlay */}
-                    {isSidebarOpen && (<div className="fixed inset-0 bg-slate-900/50 z-40 md:hidden backdrop-blur-sm fade-in" onClick={() => setIsSidebarOpen(false)}></div>)}
-                    {/* Desktop overlay (when sidebar floats over content) */}
-                    {!desktopSidebarOpen && false && (<div className="fixed inset-0 bg-black/10 z-40 hidden md:block" onClick={() => setDesktopSidebarOpen(true)}></div>)}
+                    {/* Overlay — klik di luar sidebar untuk menutup (berlaku di mobile & desktop) */}
+                    {(isSidebarOpen || desktopSidebarOpen) && (
+                        <div
+                            className="fixed inset-0 z-40 fade-in"
+                            style={{background: 'rgba(15,23,42,0.35)', backdropFilter: 'blur(2px)'}}
+                            onClick={() => { setIsSidebarOpen(false); setDesktopSidebarOpen(false); }}
+                        />
+                    )}
                     
                     {/* HIDDEN RECEIPT CONTAINER (UPDATED FOR DYNAMIC STORE) */}
                     {receiptToPrint && ( <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', zIndex: -1 }}> 
@@ -13525,7 +13529,7 @@
                         </div> 
                     </div> )}
 
-                    <aside className={`fixed top-0 left-0 h-full z-50 w-72 md:w-80 bg-white/95 backdrop-blur-xl md:backdrop-blur-md md:bg-white border-r border-slate-200 md:border-white/20 shadow-2xl md:shadow-soft transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} ${desktopSidebarOpen ? 'md:translate-x-0 md:static md:min-h-screen' : 'md:-translate-x-full md:fixed'}`}>
+                    <aside className={`fixed top-0 left-0 h-full z-50 w-72 md:w-80 bg-white border-r border-slate-200 shadow-2xl transform transition-transform duration-300 ease-in-out ${(isSidebarOpen || desktopSidebarOpen) ? 'translate-x-0' : '-translate-x-full'}`}>
                         <div className="p-4 pb-3 h-full flex flex-col">
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-3 relative z-50">
@@ -13567,7 +13571,14 @@
                                             )}
                                         </button>
                                     </div>
-                                    <button onClick={() => setIsSidebarOpen(false)} className="md:hidden w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"><Icon name="xmark" className="text-xl" /></button>
+                                    {/* Tombol ☰ — tutup sidebar, tampil di semua ukuran layar */}
+                                    <button
+                                        onClick={() => { setIsSidebarOpen(false); setDesktopSidebarOpen(false); }}
+                                        title="Sembunyikan sidebar"
+                                        className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 border border-slate-200 transition-all active:scale-95"
+                                    >
+                                        <Icon name="bars" className="text-base" />
+                                    </button>
                                 </div>
                             </div>
                             <nav className="space-y-0.5 flex-1 overflow-y-auto min-h-0 pr-1">{visibleMenuItems.map(menu => (<button key={menu.id} onClick={(e) => handleNavClick(menu.id, e)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative overflow-hidden group ${activeTab === menu.id ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100'}`}><div className="relative w-5 flex-shrink-0"><Icon name={menu.icon} className={`text-base ${activeTab === menu.id ? 'text-white' : 'text-slate-400'}`} />{menu.badge > 0 && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center leading-none shadow-sm animate-pulse">{menu.badge > 9 ? '9+' : menu.badge}</span>}</div><span className="flex-1 text-left">{menu.label}</span>{menu.readOnly && activeTab !== menu.id && <Icon name="eye" className="text-[9px] text-slate-300 flex-shrink-0" title="Lihat saja" />}{menu.badge > 0 && activeTab !== menu.id && <span className="text-[9px] bg-red-100 text-red-600 font-black px-1.5 py-0.5 rounded-full border border-red-200">{menu.badge} baru</span>}</button>))}</nav>
@@ -13596,23 +13607,17 @@
                             </div>
                         </div>
                     </aside>
-                    <main className="flex-1 md:ml-0 p-4 md:p-8 max-w-7xl mx-auto w-full mb-0">
-                        {/* Desktop topbar — hanya tampil di md+ */}
-                        <div className="hidden md:flex items-center gap-3 mb-6">
+                    <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full mb-0">
+                        {/* Desktop: floating hamburger untuk buka sidebar saat tertutup */}
+                        {!desktopSidebarOpen && (
                             <button
-                                onClick={toggleDesktopSidebar}
-                                title={desktopSidebarOpen ? 'Sembunyikan sidebar' : 'Tampilkan sidebar'}
-                                className="w-9 h-9 rounded-xl bg-white border border-slate-200 shadow-sm text-slate-500 hover:text-sky-600 hover:border-sky-300 hover:bg-sky-50 active:scale-95 transition-all flex items-center justify-center flex-shrink-0"
+                                onClick={() => setDesktopSidebarOpen(true)}
+                                title="Tampilkan sidebar"
+                                className="hidden md:flex fixed top-4 left-4 z-30 w-10 h-10 items-center justify-center bg-white border border-slate-200 rounded-xl shadow-md text-slate-500 hover:text-sky-600 hover:border-sky-300 hover:bg-sky-50 active:scale-95 transition-all fade-in"
                             >
                                 <Icon name="bars" className="text-sm" />
                             </button>
-                            {!desktopSidebarOpen && (
-                                <div className="flex items-center gap-2 fade-in">
-                                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs ${activeStoreId === 'all_stores' ? 'bg-indigo-600' : 'bg-sky-600'} shadow-sm`}><Icon name="shop" /></div>
-                                    <span className="font-bold text-slate-700 text-sm">{currentProfile.name}</span>
-                                </div>
-                            )}
-                        </div>
+                        )}
                         <div className="md:hidden mb-6 flex items-center justify-between gap-4 relative z-30">
                             <div className="flex items-center gap-2">
                                 <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white ${activeStoreId === 'all_stores' ? 'bg-indigo-600' : 'bg-sky-600'} shadow-md`}><Icon name="shop" /></div>
