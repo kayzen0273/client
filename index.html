@@ -5003,14 +5003,10 @@
                 total: '', 
                 deposited: '', 
                 prevBalance: 0, 
-                expenses: [], // Array of { name: '', amount: 0 }
-                revenues: [], // Array of { name: '', amount: 0 }
-                keterangan: ''
+                expenses: [] // Array of { name: '', amount: 0 }
             });
             const [tempExpName, setTempExpName] = useState('');
             const [tempExpAmount, setTempExpAmount] = useState('');
-            const [tempRevName, setTempRevName] = useState('');
-            const [tempRevAmount, setTempRevAmount] = useState('');
             const [isRevSubmitting, setIsRevSubmitting] = useState(false);
 
             useEffect(() => {
@@ -5081,20 +5077,6 @@
                 try { await window.deleteDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'cashflow', id)); showToast("Transaksi dihapus"); } catch(err) { showToast("Gagal menghapus", "error"); }
             };
 
-            // ADD REVENUE TO LIST
-            const addRevenueItem = () => {
-                if (!tempRevName || !tempRevAmount) return;
-                const newRev = { name: tempRevName, amount: safeNumber(tempRevAmount) };
-                setRevForm(prev => ({ ...prev, revenues: [...prev.revenues, newRev] }));
-                setTempRevName('');
-                setTempRevAmount('');
-            };
-
-            // REMOVE REVENUE FROM LIST
-            const removeRevenueItem = (index) => {
-                setRevForm(prev => ({ ...prev, revenues: prev.revenues.filter((_, i) => i !== index) }));
-            };
-
             // ADD EXPENSE TO LIST
             const addExpenseItem = () => {
                 if (!tempExpName || !tempExpAmount) return;
@@ -5111,13 +5093,10 @@
 
             const handleRevSubmit = async (e) => {
                 e.preventDefault();
-                if((!revForm.total && revForm.revenues.length === 0) || !revForm.date) return;
+                if(!revForm.total || !revForm.date) return;
                 setIsRevSubmitting(true);
                 
-                // Calculate total revenue from array (or fallback to single field)
-                const totalRevenue = revForm.revenues.length > 0
-                    ? revForm.revenues.reduce((acc, curr) => acc + safeNumber(curr.amount), 0)
-                    : safeNumber(revForm.total);
+                const total = safeNumber(revForm.total);
                 const deposited = safeNumber(revForm.deposited);
                 const prev = safeNumber(revForm.prevBalance);
                 
@@ -5125,22 +5104,20 @@
                 const totalExpense = revForm.expenses.reduce((acc, curr) => acc + safeNumber(curr.amount), 0);
                 
                 // Remaining logic: (Prev + Revenue) - Expense - Deposited
-                const remaining = (prev + totalRevenue) - totalExpense - deposited;
+                const remaining = (prev + total) - totalExpense - deposited;
 
                 try {
                     const existing = revenueLogs.find(l => l.date === revForm.date);
                     const data = {
                         date: revForm.date,
                         storeId: currentProfile.id === 'all_stores' ? 'default' : currentProfile.id,
-                        totalRevenue: totalRevenue, 
-                        revenues: revForm.revenues, // Save revenue array
+                        totalRevenue: total, 
                         deposited, 
                         remaining, 
                         previousBalance: prev,
                         expenses: revForm.expenses, // Save array
                         expenseAmount: totalExpense, // Save total for quick stats
                         expenseNote: revForm.expenses.map(e => e.name).join(', '), // Save joined string for legacy
-                        keterangan: revForm.keterangan || '',
                         user: user.email, 
                         updatedAt: window.serverTimestamp()
                     };
@@ -5153,7 +5130,7 @@
                         await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'daily_revenue'), data);
                         showToast("Data setoran disimpan");
                     }
-                    setRevForm(prev => ({ ...prev, total: '', deposited: '', expenses: [], revenues: [], keterangan: '' }));
+                    setRevForm(prev => ({ ...prev, total: '', deposited: '', expenses: [] }));
                 } catch(err) { showToast("Gagal simpan setoran", "error"); } finally { setIsRevSubmitting(false); }
             };
 
@@ -5175,12 +5152,6 @@
                 const dateObj = new Date(log.date + 'T00:00:00');
                 const dateLabel = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
 
-                // Build revenue lines
-                let revenueLines = '';
-                if (log.revenues && log.revenues.length > 1) {
-                    revenueLines = log.revenues.map((rev, i) => `${i+1}. ${rev.name} : ${formatRupiah(rev.amount)}`).join('\n');
-                }
-
                 // Build expense lines
                 let expenseLines = '';
                 if (log.expenses && log.expenses.length > 0) {
@@ -5193,9 +5164,8 @@
                 const total = prev + income - totalExp;
 
                 const expSection = expenseLines ? '\n' + expenseLines : '-';
-                const revSection = revenueLines ? `${formatRupiah(income)}\n` + revenueLines : formatRupiah(income);
 
-                const text = `*LAPORAN SETORAN HARIAN*\n${storeName} \u2013 ${dateLabel}\n\nSisa kemarin : ${formatRupiah(prev)}\nPendapatan : ${revSection}\nPengeluaran : ${expSection}\n---------------------------------------------\n*Total :  ${formatRupiah(total)}*\nSetor : ${formatRupiah(deposited)} \u2705\nSisa : ${formatRupiah(remaining)}${log.keterangan ? '\n\nCatatan : ' + log.keterangan : ''}`;
+                const text = `*LAPORAN SETORAN HARIAN*\n${storeName} \u2013 ${dateLabel}\n\nSisa kemarin : ${formatRupiah(prev)}\nPendapatan : ${formatRupiah(income)}\nPengeluaran : ${expSection}\n---------------------------------------------\n*Total :  ${formatRupiah(total)}*\nSetor : ${formatRupiah(deposited)} \u2705\nSisa : ${formatRupiah(remaining)}`;
 
                 navigator.clipboard.writeText(text);
                 showToast("Salin teks untuk WA!");
@@ -5203,10 +5173,7 @@
 
             // Compute derived values
             const currentTotalExpense = revForm.expenses.reduce((acc, curr) => acc + safeNumber(curr.amount), 0);
-            const currentTotalRevenue = revForm.revenues.length > 0
-                ? revForm.revenues.reduce((acc, curr) => acc + safeNumber(curr.amount), 0)
-                : safeNumber(revForm.total);
-            const currentRevRemaining = (safeNumber(revForm.prevBalance) + currentTotalRevenue) - currentTotalExpense - safeNumber(revForm.deposited);
+            const currentRevRemaining = (safeNumber(revForm.prevBalance) + safeNumber(revForm.total)) - currentTotalExpense - safeNumber(revForm.deposited);
 
             if (loading) return <div className="flex justify-center items-center min-h-[70vh]"><div className="typing-dot bg-sky-600"></div></div>;
 
@@ -5265,130 +5232,70 @@
                             )}
                         </>
                     ) : (
-                        <div className="space-y-3 pb-20">
-                            <div className="bg-white p-4 rounded-2xl shadow-sm border border-purple-100">
-                                <h3 className="font-bold text-slate-800 mb-3 text-sm flex items-center gap-2"><Icon name="pen-to-square" className="text-purple-600" /> Input Setoran Harian</h3>
-                                <form onSubmit={handleRevSubmit} className="space-y-2">
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div><label className="text-[9px] font-bold text-slate-400 uppercase">Tanggal</label><input type="date" value={revForm.date} onChange={e => setRevForm({...revForm, date: e.target.value})} className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold" /></div>
-                                        <div><label className="text-[9px] font-bold text-slate-400 uppercase">Sisa Kemarin</label><input type="number" value={revForm.prevBalance} onChange={e => setRevForm({...revForm, prevBalance: e.target.value})} className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-600" /></div>
+                        <div className="space-y-6 pb-20">
+                            <div className="bg-white p-5 rounded-2xl shadow-sm border border-purple-100">
+                                <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="pen-to-square" className="text-purple-600" /> Input Setoran Harian</h3>
+                                <form onSubmit={handleRevSubmit} className="space-y-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div><label className="text-[10px] font-bold text-slate-400 uppercase">Tanggal</label><input type="date" value={revForm.date} onChange={e => setRevForm({...revForm, date: e.target.value})} className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold" /></div>
+                                        <div><label className="text-[10px] font-bold text-slate-400 uppercase">Sisa Kemarin</label><input type="number" value={revForm.prevBalance} onChange={e => setRevForm({...revForm, prevBalance: e.target.value})} className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-600" /></div>
                                     </div>
-
-                                    {/* PENDAPATAN */}
-                                    <div className="bg-green-50 rounded-xl border border-green-100 overflow-hidden">
-                                        <div className="flex justify-between items-center px-3 py-1.5 border-b border-green-100">
-                                            <span className="text-[10px] font-bold text-green-800 flex items-center gap-1"><Icon name="arrow-trend-up" /> Pendapatan</span>
-                                            <span className="text-[10px] font-black text-green-600">{formatRupiah(currentTotalRevenue)}</span>
-                                        </div>
-                                        {revForm.revenues.length > 0 && (
-                                            <div className="px-3 py-1 space-y-0.5">
-                                                {revForm.revenues.map((rev, idx) => (
-                                                    <div key={idx} className="flex justify-between items-center text-[10px] py-0.5 border-b border-dashed border-green-100 last:border-0">
-                                                        <span className="text-slate-600 truncate flex-1">{idx+1}. {rev.name}</span>
-                                                        <div className="flex items-center gap-1.5 ml-2"><span className="font-bold text-slate-800">{formatRupiah(rev.amount)}</span><button type="button" onClick={() => removeRevenueItem(idx)} className="text-red-400 hover:text-red-600 text-[9px]"><Icon name="xmark" /></button></div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                        <div className="flex gap-1.5 items-center px-3 py-2">
-                                            <input type="text" placeholder="Sumber (Tunai, Qris...)" value={tempRevName} onChange={e => setTempRevName(e.target.value)} className="flex-1 min-w-0 p-1.5 bg-white border border-green-200 rounded-lg text-[10px] outline-none" />
-                                            <input type="number" placeholder="Rp" value={tempRevAmount} onChange={e => setTempRevAmount(e.target.value)} className="w-24 p-1.5 bg-white border border-green-200 rounded-lg text-[10px] font-bold outline-none" />
-                                            <button type="button" onClick={addRevenueItem} disabled={!tempRevName || !tempRevAmount} className="bg-green-500 text-white w-7 h-7 rounded-lg flex items-center justify-center hover:bg-green-600 disabled:opacity-40 transition-colors flex-shrink-0"><Icon name="plus" /></button>
-                                        </div>
-                                    </div>
-
-                                    {/* PENGELUARAN */}
-                                    <div className="bg-red-50 rounded-xl border border-red-100 overflow-hidden">
-                                        <div className="flex justify-between items-center px-3 py-1.5 border-b border-red-100">
-                                            <span className="text-[10px] font-bold text-red-800 flex items-center gap-1"><Icon name="arrow-trend-down" /> Pengeluaran</span>
-                                            <span className="text-[10px] font-black text-red-600">{formatRupiah(currentTotalExpense)}</span>
+                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase">Total Pendapatan</label><input type="number" placeholder="0" value={revForm.total} onChange={e => setRevForm({...revForm, total: e.target.value})} required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-purple-500 focus:ring-1 focus:ring-purple-500" /></div>
+                                    
+                                    <div className="p-3 bg-red-50 rounded-xl border border-red-100 space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <h4 className="text-xs font-bold text-red-800 flex items-center gap-1"><Icon name="arrow-trend-down" /> Daftar Pengeluaran</h4>
+                                            <span className="text-xs font-black text-red-600">{formatRupiah(currentTotalExpense)}</span>
                                         </div>
                                         {revForm.expenses.length > 0 && (
-                                            <div className="px-3 py-1 space-y-0.5">
+                                            <div className="space-y-1 mb-2 bg-white rounded-lg p-2 border border-red-100">
                                                 {revForm.expenses.map((exp, idx) => (
-                                                    <div key={idx} className="flex justify-between items-center text-[10px] py-0.5 border-b border-dashed border-red-100 last:border-0">
-                                                        <span className="text-slate-600 truncate flex-1">{idx+1}. {exp.name}</span>
-                                                        <div className="flex items-center gap-1.5 ml-2"><span className="font-bold text-slate-800">{formatRupiah(exp.amount)}</span><button type="button" onClick={() => removeExpenseItem(idx)} className="text-red-400 hover:text-red-600 text-[9px]"><Icon name="xmark" /></button></div>
+                                                    <div key={idx} className="flex justify-between items-center text-xs border-b border-dashed border-slate-100 last:border-0 py-1">
+                                                        <span className="font-medium text-slate-600 truncate flex-1">{idx+1}. {exp.name}</span>
+                                                        <div className="flex items-center gap-2"><span className="font-bold text-slate-800">{formatRupiah(exp.amount)}</span><button type="button" onClick={() => removeExpenseItem(idx)} className="text-red-400 hover:text-red-600"><Icon name="xmark" /></button></div>
                                                     </div>
                                                 ))}
                                             </div>
                                         )}
-                                        <div className="flex gap-1.5 items-center px-3 py-2">
-                                            <input type="text" placeholder="Keterangan (Listrik...)" value={tempExpName} onChange={e => setTempExpName(e.target.value)} className="flex-1 min-w-0 p-1.5 bg-white border border-red-200 rounded-lg text-[10px] outline-none" />
-                                            <input type="number" placeholder="Rp" value={tempExpAmount} onChange={e => setTempExpAmount(e.target.value)} className="w-24 p-1.5 bg-white border border-red-200 rounded-lg text-[10px] font-bold outline-none" />
-                                            <button type="button" onClick={addExpenseItem} disabled={!tempExpName || !tempExpAmount} className="bg-red-500 text-white w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-600 disabled:opacity-40 transition-colors flex-shrink-0"><Icon name="plus" /></button>
+                                        <div className="flex gap-2 items-end">
+                                            <div className="flex-1">
+                                                <input type="text" placeholder="Ket. (ex: Listrik)" value={tempExpName} onChange={e => setTempExpName(e.target.value)} className="w-full p-2 bg-white border border-red-200 rounded-lg text-xs font-medium mb-1 outline-none" />
+                                                <input type="number" placeholder="Rp" value={tempExpAmount} onChange={e => setTempExpAmount(e.target.value)} className="w-full p-2 bg-white border border-red-200 rounded-lg text-xs font-bold outline-none" />
+                                            </div>
+                                            <button type="button" onClick={addExpenseItem} disabled={!tempExpName || !tempExpAmount} className="bg-red-500 text-white w-8 h-16 rounded-lg flex items-center justify-center hover:bg-red-600 disabled:opacity-50 transition-colors shadow-sm"><Icon name="plus" /></button>
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div><label className="text-[9px] font-bold text-slate-400 uppercase">Disetor Ke Owner</label><input type="number" placeholder="0" value={revForm.deposited} onChange={e => setRevForm({...revForm, deposited: e.target.value})} required className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold outline-none" /></div>
-                                        <div className="bg-purple-50 rounded-lg border border-purple-100 flex flex-col justify-center px-3 py-1">
-                                            <span className="text-[9px] font-bold text-purple-500 uppercase">Sisa Di Laci</span>
-                                            <span className={`text-sm font-black ${currentRevRemaining < 0 ? 'text-red-600' : 'text-purple-700'}`}>{formatRupiah(currentRevRemaining)}</span>
-                                        </div>
-                                    </div>
-
-                                    <textarea placeholder="Keterangan (opsional)..." value={revForm.keterangan} onChange={e => setRevForm({...revForm, keterangan: e.target.value})} rows={2} className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:border-purple-400 focus:ring-1 focus:ring-purple-400 outline-none resize-none" />
-                                    <button type="submit" disabled={isRevSubmitting} className="w-full py-2.5 bg-purple-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-purple-200 active:scale-95 transition-all">{isRevSubmitting ? 'Menyimpan...' : 'Simpan Laporan'}</button>
+                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase">Disetor Ke Owner</label><input type="number" placeholder="0" value={revForm.deposited} onChange={e => setRevForm({...revForm, deposited: e.target.value})} required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-green-500 focus:ring-1 focus:ring-green-500" /></div>
+                                    <div className="bg-purple-50 p-3 rounded-xl border border-purple-100 flex justify-between items-center mt-2"><span className="text-xs font-bold text-purple-700">Sisa Belum Disetor:</span><span className={`text-lg font-black ${currentRevRemaining < 0 ? 'text-red-600' : 'text-slate-800'}`}>{formatRupiah(currentRevRemaining)}</span></div>
+                                    <button type="submit" disabled={isRevSubmitting} className="w-full py-3 bg-purple-600 text-white rounded-xl font-bold shadow-lg shadow-purple-200 mt-2 active:scale-95 transition-all">{isRevSubmitting ? 'Menyimpan...' : 'Simpan Laporan'}</button>
                                 </form>
                             </div>
 
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                                 <h3 className="font-bold text-slate-700 text-sm px-1">Riwayat Setoran</h3>
                                 {revenueLogs.map(log => (
-                                    <div key={log.id} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-                                        {/* Header */}
-                                        <div className="flex justify-between items-center px-3 py-2 bg-slate-50 border-b border-slate-100">
-                                            <span className="text-[10px] font-bold text-slate-600">{formatDateFull(log.date)}</span>
-                                            <div className="flex gap-1.5">
-                                                <button onClick={() => handleCopyRevenueToWA(log)} className="flex items-center gap-1 text-[9px] font-bold bg-[#25D366] text-white px-2 py-0.5 rounded hover:bg-[#128C7E] transition-colors"><Icon name="whatsapp" type="brands" /> WA</button>
-                                                <button onClick={() => handleRevDelete(log.id)} className="w-5 h-5 flex items-center justify-center rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors text-[10px]"><Icon name="trash" /></button>
+                                    <div key={log.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 relative group">
+                                        <div className="flex justify-between items-start mb-2 border-b border-dashed border-slate-100 pb-2">
+                                            <div><span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{formatDateFull(log.date)}</span></div>
+                                            <div className="flex gap-2">
+                                                <button onClick={() => handleCopyRevenueToWA(log)} className="flex items-center gap-1 text-[10px] font-bold bg-[#25D366] text-white px-2 py-1 rounded hover:bg-[#128C7E] transition-colors"><Icon name="whatsapp" type="brands" /> Salin WA</button>
+                                                <button onClick={() => handleRevDelete(log.id)} className="w-6 h-6 flex items-center justify-center rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"><Icon name="trash" /></button>
                                             </div>
                                         </div>
-                                        {/* Body */}
-                                        <div className="px-3 py-2 space-y-1.5 text-[10px]">
-                                            {/* Row 1: Sisa kemarin + Pendapatan */}
-                                            <div className="flex justify-between">
-                                                <span className="text-slate-400">Sisa kemarin</span><span className="font-bold text-slate-600">{formatRupiah(log.previousBalance)}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-slate-400">Pendapatan</span><span className="font-bold text-slate-800">{formatRupiah(log.totalRevenue)}</span>
-                                            </div>
-                                            {log.revenues && log.revenues.length > 1 && (
-                                                <div className="pl-3 space-y-0.5 border-l-2 border-green-200">
-                                                    {log.revenues.map((rev, i) => (
-                                                        <div key={i} className="flex justify-between text-slate-500">
-                                                            <span>{rev.name}</span><span>{formatRupiah(rev.amount)}</span>
-                                                        </div>
-                                                    ))}
+                                        <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
+                                            <div><p className="text-slate-400 font-medium">Sisa Kemarin</p><p className="font-bold text-slate-600">{formatRupiah(log.previousBalance)}</p></div>
+                                            <div className="text-right"><p className="text-slate-400 font-medium">Pendapatan</p><p className="font-bold text-slate-800">{formatRupiah(log.totalRevenue)}</p></div>
+                                            {safeNumber(log.expenseAmount) > 0 && (
+                                                <div className="col-span-2 bg-red-50 p-2 rounded border border-red-100 my-1">
+                                                    <div className="flex justify-between items-center mb-1"><span className="text-[10px] text-red-600 font-bold">Total Pengeluaran</span><span className="text-xs font-bold text-red-600">-{formatRupiah(log.expenseAmount)}</span></div>
+                                                    {log.expenses && log.expenses.length > 0 ? (
+                                                        <ul className="list-disc list-inside pl-1 space-y-0.5">{log.expenses.map((exp, i) => (<li key={i} className="text-[9px] text-slate-600 flex justify-between"><span>{exp.name}</span><span>{formatRupiah(exp.amount)}</span></li>))}</ul>
+                                                    ) : (<p className="text-[9px] text-slate-500 italic">{log.expenseNote || 'Tanpa Keterangan'}</p>)}
                                                 </div>
                                             )}
-                                            {safeNumber(log.expenseAmount) > 0 && (<>
-                                                <div className="flex justify-between text-red-500">
-                                                    <span>Pengeluaran</span><span className="font-bold">-{formatRupiah(log.expenseAmount)}</span>
-                                                </div>
-                                                {log.expenses && log.expenses.length > 0 && (
-                                                    <div className="pl-3 space-y-0.5 border-l-2 border-red-200">
-                                                        {log.expenses.map((exp, i) => (
-                                                            <div key={i} className="flex justify-between text-slate-500">
-                                                                <span>{exp.name}</span><span>{formatRupiah(exp.amount)}</span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </>)}
-                                            <div className="border-t border-dashed border-slate-100 pt-1.5 flex justify-between">
-                                                <span className="text-slate-400">Disetor</span><span className="font-bold text-green-600">{formatRupiah(log.deposited)}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-slate-400">Sisa Di Laci</span><span className="font-black text-purple-600 text-xs">{formatRupiah(log.remaining)}</span>
-                                            </div>
-                                            {log.keterangan && (
-                                                <div className="bg-amber-50 border border-amber-100 rounded-lg px-2 py-1.5 flex items-start gap-1.5 mt-1">
-                                                    <span className="text-amber-400 text-[9px] mt-0.5"><Icon name="note-sticky" /></span>
-                                                    <p className="text-[10px] text-amber-800 whitespace-pre-line leading-snug">{log.keterangan}</p>
-                                                </div>
-                                            )}
+                                            <div><p className="text-slate-400 font-medium">Disetor</p><p className="font-bold text-green-600">{formatRupiah(log.deposited)}</p></div>
+                                            <div className="text-right"><p className="text-slate-400 font-medium">Sisa Di Laci</p><p className="font-black text-purple-600 text-sm">{formatRupiah(log.remaining)}</p></div>
                                         </div>
                                     </div>
                                 ))}
@@ -6800,70 +6707,211 @@
                         return (
                             <div className="fixed inset-0 z-[90] bg-white flex flex-col fade-in">
                                 {/* Header */}
-                                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white" style={{paddingTop: 'calc(env(safe-area-inset-top, 0px) + 68px)'}}>
-                                    <button onClick={() => { setShowRacikanPage(false); setRacikanItemSearch(''); setEditingRacikanCartId(null); }} className="w-8 h-8 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                                        <Icon name="xmark" className="text-xl" />
+                                <div className="flex items-center justify-between px-4 md:px-6 border-b border-slate-200 bg-white flex-shrink-0" style={{paddingTop: 'calc(env(safe-area-inset-top, 0px) + 68px)', paddingBottom: '12px'}}>
+                                    <button onClick={() => { setShowRacikanPage(false); setRacikanItemSearch(''); setEditingRacikanCartId(null); }} className="flex items-center gap-2 text-slate-500 hover:text-slate-700 transition-colors group">
+                                        <div className="w-8 h-8 flex items-center justify-center text-slate-400 group-hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                                            <Icon name="xmark" className="text-base" />
+                                        </div>
+                                        <span className="text-sm font-medium text-slate-500 group-hover:text-slate-700 hidden md:inline">Tutup</span>
                                     </button>
-                                    <span className="text-sm font-bold text-slate-600">#{new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'2-digit'}).replace(/\//g,'')+Math.floor(Math.random()*9000+1000)}</span>
-                                    <button onClick={simpanRacikan} className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-lg shadow active:scale-95 transition-all">
-                                        Simpan
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-7 h-7 bg-teal-100 rounded-lg flex items-center justify-center hidden md:flex">
+                                            <span className="text-teal-700 font-black text-xs">R/</span>
+                                        </div>
+                                        <span className="text-sm font-black text-slate-700 hidden md:inline">Pelayanan Resep Dokter</span>
+                                        <span className="text-xs font-bold text-slate-400 hidden md:inline">·</span>
+                                        <span className="text-xs font-semibold text-slate-400">#{new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'2-digit'}).replace(/\//g,'')+Math.floor(Math.random()*9000+1000)}</span>
+                                    </div>
+                                    <button onClick={simpanRacikan} className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-xl shadow-md shadow-teal-200 active:scale-95 transition-all flex items-center gap-2">
+                                        <Icon name="floppy-disk" className="hidden md:inline" /> Simpan
                                     </button>
                                 </div>
 
                                 {/* Scrollable body */}
-                                <div className="flex-1 overflow-y-auto">
-                                    {/* Title */}
-                                    <div className="px-5 pt-10 pb-3">
-                                        <h1 className="text-2xl font-black text-slate-800">{editingRacikanCartId ? 'Edit Racikan' : `Racikan ${cart.filter(c=>c.isRacikanGroup).length + 1}`}</h1>
-                                    </div>
+                                {/* ===== BODY: Two-column on desktop, single-column on mobile ===== */}
+                                <div className="flex-1 overflow-y-auto md:overflow-hidden md:flex md:flex-row">
 
-                                    {/* Info R/ */}
-                                    <div className="px-5 pb-2">
-                                        <h2 className="text-base font-bold text-slate-800 mb-3">Info R/</h2>
-                                        <div className="divide-y divide-slate-100 border-t border-b border-slate-100">
-                                            <button onClick={() => { setDokterSearch(''); setDokterInput(''); setShowDokterPicker(true); }} className="w-full flex items-center justify-between py-3.5 hover:bg-teal-50 rounded-lg transition-colors px-1 -mx-1">
-                                                <span className="text-sm font-medium text-slate-700">Dokter</span>
-                                                <div className="flex items-center gap-1">
-                                                    {racikanForm.dokter
-                                                        ? <span className="text-sm font-bold text-teal-600">{racikanForm.dokter}</span>
-                                                        : <span className="text-sm text-slate-400">Pilih</span>
-                                                    }
-                                                    <Icon name="chevron-right" className="text-teal-500 text-sm" />
+                                    {/* ===== LEFT PANEL: Info Resep + Form Fields ===== */}
+                                    <div className="md:w-[400px] md:flex-shrink-0 md:flex md:flex-col md:overflow-y-auto md:border-r md:border-slate-100 md:bg-white">
+                                        <div className="flex-1">
+                                            {/* Title */}
+                                            <div className="px-5 pt-8 pb-3 border-b border-slate-50 md:border-b-0">
+                                                <div className="flex items-center gap-3 mb-1">
+                                                    <div className="w-8 h-8 bg-teal-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                                                        <span className="text-teal-700 font-black text-sm">R/</span>
+                                                    </div>
+                                                    <h1 className="text-xl font-black text-slate-800">{editingRacikanCartId ? 'Edit Racikan' : `Racikan ${cart.filter(c=>c.isRacikanGroup).length + 1}`}</h1>
                                                 </div>
-                                            </button>
-                                            <button onClick={() => { setPasienSearch(''); setPasienInput(''); setPasienAge(''); setShowPasienPicker(true); }} className="w-full flex items-center justify-between py-3.5 hover:bg-teal-50 rounded-lg transition-colors px-1 -mx-1">
-                                                <span className="text-sm font-medium text-slate-700">Pasien</span>
-                                                <div className="flex items-center gap-1">
-                                                    {racikanForm.pasien
-                                                        ? <span className="text-sm font-bold text-teal-600">{racikanForm.pasien}</span>
-                                                        : <span className="text-sm text-slate-400">Pilih</span>
-                                                    }
-                                                    <Icon name="chevron-right" className="text-teal-500 text-sm" />
+                                                <p className="text-xs text-slate-400 ml-11">Isi info resep dan tambahkan obat</p>
+                                            </div>
+
+                                            {/* Info R/ — Dokter & Pasien */}
+                                            <div className="px-5 pt-4 pb-1">
+                                                <h2 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Info Resep</h2>
+                                                <div className="bg-slate-50 rounded-2xl overflow-hidden border border-slate-100">
+                                                    <button onClick={() => { setDokterSearch(''); setDokterInput(''); setShowDokterPicker(true); }} className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-teal-50 transition-colors border-b border-slate-100">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-7 h-7 bg-white border border-slate-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                                <Icon name="user-doctor" className="text-teal-600 text-xs" />
+                                                            </div>
+                                                            <span className="text-sm font-semibold text-slate-600">Dokter</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5">
+                                                            {racikanForm.dokter
+                                                                ? <span className="text-sm font-bold text-teal-600 truncate max-w-[140px]">{racikanForm.dokter}</span>
+                                                                : <span className="text-sm text-slate-400">Pilih</span>
+                                                            }
+                                                            <Icon name="chevron-right" className="text-slate-300 text-xs flex-shrink-0" />
+                                                        </div>
+                                                    </button>
+                                                    <button onClick={() => { setPasienSearch(''); setPasienInput(''); setPasienAge(''); setShowPasienPicker(true); }} className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-teal-50 transition-colors">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-7 h-7 bg-white border border-slate-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                                <Icon name="user" className="text-sky-500 text-xs" />
+                                                            </div>
+                                                            <span className="text-sm font-semibold text-slate-600">Pasien</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5">
+                                                            {racikanForm.pasien
+                                                                ? <span className="text-sm font-bold text-teal-600 truncate max-w-[140px]">{racikanForm.pasien}</span>
+                                                                : <span className="text-sm text-slate-400">Pilih</span>
+                                                            }
+                                                            <Icon name="chevron-right" className="text-slate-300 text-xs flex-shrink-0" />
+                                                        </div>
+                                                    </button>
                                                 </div>
+                                            </div>
+
+                                            {/* Signa */}
+                                            <div className="px-5 pt-4 pb-1">
+                                                <h2 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Aturan Pakai</h2>
+                                                <div className="bg-slate-50 rounded-2xl border border-slate-100 px-4 py-1">
+                                                    <div className="flex items-center gap-3 py-3 border-b border-slate-100">
+                                                        <label className="text-sm font-semibold text-slate-600 w-16 flex-shrink-0">Signa</label>
+                                                        <input type="text" value={racikanForm.signa}
+                                                            onChange={e => setRacikanForm(f => ({...f, signa: e.target.value}))}
+                                                            className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-200 text-slate-800 font-medium"
+                                                            placeholder="cth: 3×1 sesudah makan"
+                                                        />
+                                                    </div>
+                                                    {/* Catatan */}
+                                                    <div className="flex gap-3 py-3">
+                                                        <label className="text-sm font-semibold text-slate-600 w-16 flex-shrink-0 pt-2">Catatan</label>
+                                                        <div className="flex-1">
+                                                            <textarea rows={3} value={racikanForm.catatan}
+                                                                onChange={e => setRacikanForm(f => ({...f, catatan: e.target.value.slice(0,100)}))}
+                                                                placeholder="Contoh: dikocok dahulu, obat luar, dll"
+                                                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-200 text-slate-800 resize-none placeholder:text-slate-400"
+                                                            />
+                                                            <div className="flex justify-between mt-1">
+                                                                <span className="text-[11px] text-slate-400">Tampil di etiket</span>
+                                                                <span className="text-[11px] text-slate-400">{racikanForm.catatan.length}/100</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* BUD + Atur Pengingat */}
+                                            <div className="px-5 pt-4 pb-1">
+                                                <h2 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Kadaluarsa & Pengingat</h2>
+                                                <div className="bg-slate-50 rounded-2xl border border-slate-100 px-4 py-1">
+                                                    <div className="flex items-center gap-3 py-3 border-b border-slate-100">
+                                                        <label className="text-sm font-semibold text-slate-600 w-16 flex-shrink-0">BUD</label>
+                                                        <div className="flex gap-2 flex-1">
+                                                            <input type="text" inputMode="numeric" placeholder="DD" maxLength={2}
+                                                                value={racikanForm.budD} onChange={e => setRacikanForm(f => ({...f, budD: e.target.value.replace(/[^0-9]/g,'')}))}
+                                                                className="w-14 bg-white border border-slate-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-teal-500 text-center font-medium text-slate-700"
+                                                            />
+                                                            <input type="text" inputMode="numeric" placeholder="MM" maxLength={2}
+                                                                value={racikanForm.budM} onChange={e => setRacikanForm(f => ({...f, budM: e.target.value.replace(/[^0-9]/g,'')}))}
+                                                                className="w-14 bg-white border border-slate-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-teal-500 text-center font-medium text-slate-700"
+                                                            />
+                                                            <input type="text" inputMode="numeric" placeholder="YYYY" maxLength={4}
+                                                                value={racikanForm.budY} onChange={e => setRacikanForm(f => ({...f, budY: e.target.value.replace(/[^0-9]/g,'')}))}
+                                                                className="w-20 bg-white border border-slate-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-teal-500 text-center font-medium text-slate-700"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center justify-between py-3">
+                                                        <span className="text-sm font-semibold text-slate-600">Pengingat obat habis</span>
+                                                        <button className="flex items-center gap-1 text-teal-600 font-bold text-sm hover:text-teal-700 transition-colors">
+                                                            Atur <Icon name="calendar-days" className="text-sm" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Subtotal & Uang R/ & Total */}
+                                            <div className="px-5 pt-4 pb-2">
+                                                <h2 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Ringkasan</h2>
+                                                <div className="bg-teal-50 rounded-2xl border border-teal-100 px-4 divide-y divide-teal-100">
+                                                    <div className="flex items-center justify-between py-3">
+                                                        <span className="text-sm font-medium text-slate-600">Subtotal</span>
+                                                        <span className="text-sm font-bold text-slate-800">{racikanSubtotal > 0 ? formatRupiah(racikanSubtotal) : '—'}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 py-3">
+                                                        <span className="text-sm font-medium text-slate-600 w-20 flex-shrink-0">Uang R/</span>
+                                                        <div className="flex gap-2 flex-1 items-center">
+                                                            <span className="text-sm font-bold text-slate-500 px-1">Rp</span>
+                                                            <input type="text" inputMode="numeric" value={racikanForm.uangR}
+                                                                onChange={e => setRacikanForm(f => ({...f, uangR: e.target.value.replace(/[^0-9]/g,'')}))}
+                                                                placeholder="0"
+                                                                className="flex-1 bg-white border border-teal-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 font-bold text-slate-800 text-right"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center justify-between py-3.5">
+                                                        <span className="text-sm font-bold text-slate-800">Total</span>
+                                                        <span className="text-lg font-black text-teal-700">{racikanTotal > 0 ? formatRupiah(racikanTotal) : '—'}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Bottom: Hapus — sticky inside left panel */}
+                                        <div className="px-5 py-4 border-t border-slate-100 bg-white">
+                                            <button onClick={() => {
+                                                if (editingRacikanCartId) {
+                                                    setCart(prev => prev.filter(c => c.racikanCartId !== editingRacikanCartId));
+                                                    setEditingRacikanCartId(null);
+                                                    showToast("Racikan dihapus dari keranjang", "success");
+                                                }
+                                                setRacikanForm({ dokter:'', pasien:'', signa:'', catatan:'', budD:'', budM:'', budY:'', uangR:'', items:[] });
+                                                setRacikanItemSearch('');
+                                                setShowRacikanPage(false);
+                                            }}
+                                                className="flex items-center gap-2 text-red-500 font-bold text-sm hover:text-red-700 transition-colors">
+                                                <Icon name="trash" /> {editingRacikanCartId ? 'Hapus Racikan dari Keranjang' : 'Bersihkan Form'}
                                             </button>
                                         </div>
                                     </div>
 
-                                    {/* Daftar Barang */}
-                                    <div className="px-5 pt-5 pb-2">
-                                        <h2 className="text-base font-bold text-slate-800 mb-3">Daftar Barang</h2>
+                                    {/* ===== RIGHT PANEL: Daftar Barang / Obat ===== */}
+                                    <div className="md:flex-1 md:overflow-y-auto md:bg-slate-50/40 px-5 md:px-6 pt-5 md:pt-6 pb-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h2 className="text-base font-black text-slate-800">Daftar Obat / Barang</h2>
+                                            {racikanForm.items.length > 0 && (
+                                                <span className="text-xs font-bold bg-teal-100 text-teal-700 px-2.5 py-1 rounded-full">{racikanForm.items.length} item</span>
+                                            )}
+                                        </div>
 
                                         {/* Search */}
                                         <div className="relative mb-3">
                                             <Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
                                             <input
                                                 type="text"
-                                                placeholder="Cari barang"
+                                                placeholder="Ketik nama obat / barang..."
                                                 value={racikanItemSearch}
                                                 onChange={e => setRacikanItemSearch(e.target.value)}
-                                                className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none text-sm text-slate-700 placeholder:text-slate-400"
+                                                className="w-full pl-9 pr-4 py-3 rounded-xl border border-slate-200 bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none text-sm text-slate-700 placeholder:text-slate-400 shadow-sm"
                                             />
                                             {racikanItemSearch && <button onClick={() => setRacikanItemSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"><Icon name="xmark" /></button>}
                                         </div>
 
                                         {/* Search results dropdown */}
                                         {racikanItemSearch && (
-                                            <div className="mb-3 border border-slate-200 rounded-xl overflow-hidden shadow-lg">
+                                            <div className="mb-3 border border-slate-200 rounded-xl overflow-hidden shadow-lg bg-white">
                                                 {racikanSearchResults.length === 0
                                                     ? <div className="p-4 text-center text-sm text-slate-400">Barang tidak ditemukan</div>
                                                     : racikanSearchResults.map(item => (
@@ -6873,50 +6921,55 @@
                                                                 <p className="font-bold text-sm text-slate-800 truncate">{item.name}</p>
                                                                 <p className="text-[11px] text-slate-400">Stok {item.qty} {item.unit} · {formatRupiah(item.price)}</p>
                                                             </div>
-                                                            <span className="text-xs font-bold text-teal-600 flex-shrink-0">+ Tambah</span>
+                                                            <span className="text-xs font-bold text-teal-600 flex-shrink-0 bg-teal-50 px-2 py-1 rounded-lg">+ Tambah</span>
                                                         </button>
                                                     ))
                                                 }
                                             </div>
                                         )}
 
-                                        {/* Table header */}
-                                        <div className="flex justify-between px-1 mb-1">
-                                            <span className="text-xs font-bold text-slate-700">Barang</span>
-                                            <span className="text-xs font-bold text-slate-700">Subtotal</span>
-                                        </div>
-                                        <div className="border border-slate-200 rounded-xl overflow-hidden">
+                                        {/* Item list */}
+                                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
                                             {racikanForm.items.length === 0 ? (
-                                                <div className="py-10 px-4 flex flex-col items-center justify-center gap-2 text-slate-300">
-                                                    <div className="flex gap-2 text-4xl opacity-40">
+                                                <div className="py-14 px-4 flex flex-col items-center justify-center gap-2 text-slate-300">
+                                                    <div className="flex gap-2 text-5xl opacity-30 mb-2">
                                                         <Icon name="circle-half-stroke" />
                                                         <Icon name="leaf" />
                                                     </div>
-                                                    <p className="text-sm font-bold text-slate-400 mt-1">Belum ada barang pada resep ini</p>
+                                                    <p className="text-sm font-bold text-slate-400">Belum ada barang pada resep ini</p>
+                                                    <p className="text-xs text-slate-300 mb-2">Gunakan kolom pencarian di atas</p>
                                                     <button onClick={() => { const el = document.querySelector('.racikan-search-input'); if(el) el.focus(); setRacikanItemSearch(' '); setTimeout(() => setRacikanItemSearch(''), 10); }}
-                                                        className="mt-2 px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-lg active:scale-95 transition-all flex items-center gap-2">
-                                                        <Icon name="plus" /> Barang
+                                                        className="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-xl active:scale-95 transition-all flex items-center gap-2 shadow-md">
+                                                        <Icon name="plus" /> Tambah Barang
                                                     </button>
                                                 </div>
                                             ) : (
-                                                <div className="divide-y divide-slate-100">
-                                                    {racikanForm.items.map((ri, idx) => (
-                                                        <div key={ri.id + idx} className="flex items-center gap-2 px-3 py-2.5">
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className="font-bold text-sm text-slate-800 truncate">{ri.name}</p>
-                                                                <p className="text-[11px] text-slate-400">{formatRupiah(ri.price)} × {ri.qty} {ri.selectedUnit}</p>
+                                                <div>
+                                                    {/* Table header */}
+                                                    <div className="flex items-center px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+                                                        <span className="text-xs font-bold text-slate-500 flex-1">Nama Barang</span>
+                                                        <span className="text-xs font-bold text-slate-500 w-24 text-right">Subtotal</span>
+                                                        <span className="w-7"></span>
+                                                    </div>
+                                                    <div className="divide-y divide-slate-100">
+                                                        {racikanForm.items.map((ri, idx) => (
+                                                            <div key={ri.id + idx} className="flex items-center gap-2 px-4 py-3 hover:bg-slate-50 transition-colors">
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="font-bold text-sm text-slate-800 truncate">{ri.name}</p>
+                                                                    <p className="text-[11px] text-slate-400 mt-0.5">{formatRupiah(ri.price)} × {ri.qty} {ri.selectedUnit}</p>
+                                                                </div>
+                                                                <span className="text-sm font-bold text-slate-700 flex-shrink-0 w-24 text-right">{formatRupiah(ri.price * ri.qty)}</span>
+                                                                <button onClick={() => setRacikanForm(f => ({ ...f, items: f.items.filter((_,i) => i !== idx) }))}
+                                                                    className="w-7 h-7 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg flex-shrink-0 transition-colors">
+                                                                    <Icon name="xmark" className="text-xs" />
+                                                                </button>
                                                             </div>
-                                                            <span className="text-sm font-bold text-slate-700 flex-shrink-0">{formatRupiah(ri.price * ri.qty)}</span>
-                                                            <button onClick={() => setRacikanForm(f => ({ ...f, items: f.items.filter((_,i) => i !== idx) }))}
-                                                                className="w-6 h-6 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 rounded flex-shrink-0">
-                                                                <Icon name="xmark" className="text-xs" />
-                                                            </button>
-                                                        </div>
-                                                    ))}
-                                                    <div className="px-3 py-2">
+                                                        ))}
+                                                    </div>
+                                                    <div className="px-4 py-3 border-t border-dashed border-slate-200 bg-slate-50/50">
                                                         <button onClick={() => setRacikanItemSearch(' ')}
-                                                            className="w-full py-2 border border-dashed border-teal-300 text-teal-600 font-bold text-sm rounded-lg hover:bg-teal-50 transition-colors flex items-center justify-center gap-1">
-                                                            <Icon name="plus" /> Barang
+                                                            className="w-full py-2.5 border-2 border-dashed border-teal-300 text-teal-600 font-bold text-sm rounded-xl hover:bg-teal-50 transition-colors flex items-center justify-center gap-1.5">
+                                                            <Icon name="plus" /> Tambah Barang
                                                         </button>
                                                     </div>
                                                 </div>
@@ -6924,111 +6977,6 @@
                                         </div>
                                     </div>
 
-                                    {/* Signa */}
-                                    <div className="px-5 pt-4 pb-2">
-                                        <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
-                                            <label className="text-sm font-medium text-slate-700 w-20 flex-shrink-0">Signa</label>
-                                            <input type="text" value={racikanForm.signa}
-                                                onChange={e => setRacikanForm(f => ({...f, signa: e.target.value}))}
-                                                className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-200 text-slate-800 font-medium"
-                                                placeholder=""
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Catatan */}
-                                    <div className="px-5 pt-2 pb-2">
-                                        <div className="flex gap-3 border-b border-slate-100 pb-3">
-                                            <label className="text-sm font-medium text-slate-700 w-20 flex-shrink-0 pt-2">Catatan</label>
-                                            <div className="flex-1">
-                                                <textarea rows={3} value={racikanForm.catatan}
-                                                    onChange={e => setRacikanForm(f => ({...f, catatan: e.target.value.slice(0,100)}))}
-                                                    placeholder="Contoh: obat luar, dikocok dahulu sebelum diminum, dll"
-                                                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-200 text-slate-800 resize-none placeholder:text-slate-400"
-                                                />
-                                                <div className="flex items-center gap-1 mt-1">
-                                                    <Icon name="circle-info" className="text-teal-500 text-xs" />
-                                                    <span className="text-[11px] text-slate-400 flex-1">Keterangan dipakai dalam etiket</span>
-                                                    <span className="text-[11px] text-slate-400">{racikanForm.catatan.length}/100</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* BUD */}
-                                    <div className="px-5 pt-2 pb-2">
-                                        <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
-                                            <label className="text-sm font-medium text-slate-700 w-20 flex-shrink-0">BUD</label>
-                                            <div className="flex gap-2 flex-1">
-                                                <input type="text" inputMode="numeric" placeholder="DD" maxLength={2}
-                                                    value={racikanForm.budD} onChange={e => setRacikanForm(f => ({...f, budD: e.target.value.replace(/[^0-9]/g,'')}))}
-                                                    className="w-14 border border-slate-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-teal-500 text-center font-medium text-slate-700"
-                                                />
-                                                <input type="text" inputMode="numeric" placeholder="MM" maxLength={2}
-                                                    value={racikanForm.budM} onChange={e => setRacikanForm(f => ({...f, budM: e.target.value.replace(/[^0-9]/g,'')}))}
-                                                    className="w-14 border border-slate-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-teal-500 text-center font-medium text-slate-700"
-                                                />
-                                                <input type="text" inputMode="numeric" placeholder="YYYY" maxLength={4}
-                                                    value={racikanForm.budY} onChange={e => setRacikanForm(f => ({...f, budY: e.target.value.replace(/[^0-9]/g,'')}))}
-                                                    className="w-20 border border-slate-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-teal-500 text-center font-medium text-slate-700"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Atur pengingat */}
-                                    <div className="px-5 pt-2 pb-2">
-                                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                                            <span className="text-sm font-medium text-slate-700">Atur pengingat obat habis</span>
-                                            <button className="flex items-center gap-1 text-teal-600 font-bold text-sm">
-                                                Atur <Icon name="calendar-days" className="text-sm" />
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Subtotal & Uang R/ & Total */}
-                                    <div className="px-5 pt-2 pb-4 divide-y divide-slate-100">
-                                        <div className="flex items-center justify-between py-3">
-                                            <span className="text-sm font-medium text-slate-700">Subtotal</span>
-                                            <span className="text-sm font-bold text-slate-800">{racikanSubtotal > 0 ? formatRupiah(racikanSubtotal) : '0'}</span>
-                                        </div>
-                                        <div className="flex items-center gap-3 py-3">
-                                            <span className="text-sm font-medium text-slate-700 w-20 flex-shrink-0">Uang R/</span>
-                                            <div className="flex gap-2 flex-1 items-center">
-                                                <div className="flex items-center gap-1 border border-slate-200 rounded-lg px-3 py-2 bg-white">
-                                                    <span className="text-sm font-bold text-slate-600">Rp</span>
-                                                    <Icon name="chevron-down" className="text-slate-400 text-xs" />
-                                                </div>
-                                                <input type="text" inputMode="numeric" value={racikanForm.uangR}
-                                                    onChange={e => setRacikanForm(f => ({...f, uangR: e.target.value.replace(/[^0-9]/g,'')}))}
-                                                    placeholder="0"
-                                                    className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-teal-500 font-bold text-slate-800 text-right"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center justify-between py-3">
-                                            <span className="text-sm font-bold text-slate-800">Total</span>
-                                            <span className="text-base font-black text-slate-800">{racikanTotal > 0 ? formatRupiah(racikanTotal) : '0'}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Bottom: Hapus */}
-                                <div className="px-5 py-4 border-t border-slate-100">
-                                    <button onClick={() => {
-                                        if (editingRacikanCartId) {
-                                            // Hapus racikan dari keranjang
-                                            setCart(prev => prev.filter(c => c.racikanCartId !== editingRacikanCartId));
-                                            setEditingRacikanCartId(null);
-                                            showToast("Racikan dihapus dari keranjang", "success");
-                                        }
-                                        setRacikanForm({ dokter:'', pasien:'', signa:'', catatan:'', budD:'', budM:'', budY:'', uangR:'', items:[] });
-                                        setRacikanItemSearch('');
-                                        setShowRacikanPage(false);
-                                    }}
-                                        className="flex items-center gap-2 text-red-500 font-bold text-sm hover:text-red-700 transition-colors">
-                                        <Icon name="trash" /> {editingRacikanCartId ? 'Hapus Racikan dari Keranjang' : 'Bersihkan Form'}
-                                    </button>
                                 </div>
                             </div>
                         );
