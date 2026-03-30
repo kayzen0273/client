@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sistem Kasir Apotek Rafa Medica (V66 - Buku Kas Gradient Card)</title>
+    <title>Sistem Kasir Apotek Rafa Medica (V67)</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -14,7 +14,7 @@
                     colors: {
                         brand: { 50: '#f0fdf4', 100: '#dcfce7', 500: '#22c55e', 600: '#16a34a', 700: '#15803d', 900: '#14532d' },
                         gold: { 100: '#fef9c3', 200: '#fef08a', 300: '#fde047', 400: '#facc15', 500: '#eab308', 600: '#ca8a04', 700: '#a16207' },
-                        husna: { light: '#0ea5e9', dark: '#0284c7', bg: '#f0f9ff' },
+                        rafa: { light: '#0ea5e9', dark: '#0284c7', bg: '#f0f9ff' },
                         night: { 800: '#1e293b', 900: '#0f172a' },
                         ketupat: { light: '#86efac', dark: '#15803d' }
                     },
@@ -79,11 +79,11 @@
         const userConfig = {
             apiKey: "AIzaSyCG8PQL8h2z8O5ebRW3_Mdm1ovgNSdUwC4",
             authDomain: "rafa-medica.firebaseapp.com",
+            databaseURL: "https://rafa-medica-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "rafa-medica",
             storageBucket: "rafa-medica.firebasestorage.app",
             messagingSenderId: "550088541296",
             appId: "1:550088541296:web:7b520c90d5c6723ebfe0b5",
-            databaseURL: "https://rafa-medica-default-rtdb.asia-southeast1.firebasedatabase.app",
             measurementId: "G-7V2PLLQEKY"
         };
 
@@ -453,8 +453,8 @@
                 ]
             },
         ];
-        const CHANGELOG_STORAGE_KEY = 'husna_read_changelogs';
-        const CHANGELOG_DATA_KEY   = 'husna_changelog_data';
+        const CHANGELOG_STORAGE_KEY = 'rafa_medica_read_changelogs';
+        const CHANGELOG_DATA_KEY   = 'rafa_medica_changelog_data';
         // Baca dari localStorage jika ada (dikelola admin panel), fallback ke CHANGELOG hardcode
         function getLiveChangelog() {
             try {
@@ -2246,7 +2246,7 @@
                     const resolvedPhoto = newPhotoData === 'REMOVE' ? null : (newPhotoData || authSession.profilePhoto || null);
                     const resolvedPos = newPhotoData === 'REMOVE' ? null : (authSession.photoPosition || null);
                     const newSession = { ...authSession, namaLengkap: form.namaLengkap.trim(), username: form.username.toLowerCase(), email: form.email.toLowerCase(), whatsapp: form.whatsapp.trim(), profilePhoto: resolvedPhoto, photoPosition: resolvedPos };
-                    localStorage.setItem('husna_auth_session', JSON.stringify(newSession));
+                    localStorage.setItem('rafa_medica_auth_session', JSON.stringify(newSession));
                     if (onUpdateSession) onUpdateSession(newSession);
                     showMsg('success', 'Profil berhasil disimpan!');
                     setNewPhotoData(null);
@@ -8564,7 +8564,7 @@
                     <div className="bg-gradient-to-r from-night-900 to-sky-900 rounded-3xl p-5 md:p-6 text-white relative overflow-hidden shadow-2xl border border-slate-700 group">
                         <div className="absolute right-0 top-0 w-48 h-48 bg-gold-400 opacity-10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
                         <div className="relative z-10 flex items-center justify-between">
-                            <div><h3 className="font-bold text-xl md:text-2xl text-sky-300 mb-1 flex items-center gap-2"><Icon name="cash-register" className="text-sky-400" /> Sistem Kasir Husna</h3><p className="text-xs md:text-sm text-slate-300 font-medium opacity-90">Kelola toko lebih cepat, lebih mudah, lebih akurat ⚡</p><div className="mt-3 inline-flex items-center gap-2 bg-green-500/20 px-3 py-1 rounded-full backdrop-blur-sm border border-green-500/30"><div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div><span className="text-[10px] font-bold tracking-wide text-green-300">ONLINE (FIREBASE)</span></div></div>
+                            <div><h3 className="font-bold text-xl md:text-2xl text-sky-300 mb-1 flex items-center gap-2"><Icon name="cash-register" className="text-sky-400" /> Sistem Kasir Apotek Rafa Medica</h3><p className="text-xs md:text-sm text-slate-300 font-medium opacity-90">Kelola apotek lebih cepat, lebih mudah, lebih akurat ⚡</p><div className="mt-3 inline-flex items-center gap-2 bg-green-500/20 px-3 py-1 rounded-full backdrop-blur-sm border border-green-500/30"><div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div><span className="text-[10px] font-bold tracking-wide text-green-300">ONLINE (FIREBASE)</span></div></div>
                             <div className="text-4xl text-sky-400/80 animate-pulse"><Icon name="store" /></div>
                         </div>
                     </div>
@@ -9998,7 +9998,7 @@
             const exportHistoryToExcel = async (detail) => {
                 try {
                     const workbook = new ExcelJS.Workbook();
-                    workbook.creator = 'Sistem Kasir Husna';
+                    workbook.creator = 'Sistem Kasir Apotek Rafa Medica';
                     workbook.created = new Date();
                     const sheet = workbook.addWorksheet('Stock Opname');
 
@@ -10515,10 +10515,10 @@
         const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
         const getStoredSession = () => {
-            try { const s = localStorage.getItem('husna_auth_session'); return s ? JSON.parse(s) : null; } catch { return null; }
+            try { const s = localStorage.getItem('rafa_medica_auth_session'); return s ? JSON.parse(s) : null; } catch { return null; }
         };
-        const saveSession = (userData) => localStorage.setItem('husna_auth_session', JSON.stringify(userData));
-        const clearSession = () => localStorage.removeItem('husna_auth_session');
+        const saveSession = (userData) => localStorage.setItem('rafa_medica_auth_session', JSON.stringify(userData));
+        const clearSession = () => localStorage.removeItem('rafa_medica_auth_session');
 
         // ==================== AUTH SCREEN ====================
         const AuthScreen = ({ onAuthSuccess }) => {
@@ -10704,7 +10704,7 @@
                                     <Icon name="shop" className="text-white text-2xl" />
                                 </div>
                             </div>
-                            <h1 className="font-black text-2xl text-slate-800 tracking-tight">Husna Group</h1>
+                            <h1 className="font-black text-2xl text-slate-800 tracking-tight">Apotek Rafa Medica</h1>
                             <p className="text-slate-500 text-sm font-medium mt-1">Sistem Kasir & Manajemen Stok</p>
                         </div>
 
@@ -10838,7 +10838,7 @@
 
                         {/* Footer */}
                         <div className="px-8 pb-6 text-center">
-                            <p className="text-xs text-slate-400">© Apotek Rafa Medica • Sistem Kasir V37 <span className="mx-1">•</span> <Icon name="shield-halved" className="text-green-400" /> Aman & Terenkripsi</p>
+                            <p className="text-xs text-slate-400">© Apotek Rafa Medica • Sistem Kasir V67 <span className="mx-1">•</span> <Icon name="shield-halved" className="text-green-400" /> Aman & Terenkripsi</p>
                         </div>
                     </div>
                 </div>
@@ -12987,8 +12987,8 @@
             // ── Presence tracking ──
             // Gunakan sessionId unik per tab browser sebagai doc key presence
             const _sessionId = React.useRef((() => {
-                let sid = sessionStorage.getItem('_husna_sid');
-                if (!sid) { sid = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); sessionStorage.setItem('_husna_sid', sid); }
+                let sid = sessionStorage.getItem('_rafa_sid');
+                if (!sid) { sid = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); sessionStorage.setItem('_rafa_sid', sid); }
                 return sid;
             })());
             useEffect(() => {
