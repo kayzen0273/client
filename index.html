@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sistem Kasir Toko Husna (V66 - Buku Kas Gradient Card)</title>
+    <title>Sistem Kasir Apotek Rafa Medica (V66 - Buku Kas Gradient Card)</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -77,13 +77,14 @@
 
         // Konfigurasi dari User
         const userConfig = {
-            apiKey: "AIzaSyAKhe3ILdMTN7Dn9Ao3MqlzW3s5hHUDB_c",
-            authDomain: "toko-husna-c6415.firebaseapp.com",
-            projectId: "toko-husna-c6415",
-            storageBucket: "toko-husna-c6415.firebasestorage.app",
-            messagingSenderId: "171239564619",
-            appId: "1:171239564619:web:29972d886bd39f1559f4ce",
-            measurementId: "G-4BKNYL5KFC"
+            apiKey: "AIzaSyCG8PQL8h2z8O5ebRW3_Mdm1ovgNSdUwC4",
+            authDomain: "rafa-medica.firebaseapp.com",
+            projectId: "rafa-medica",
+            databaseURL: "https://rafa-medica-default-rtdb.asia-southeast1.firebasedatabase.app",
+            storageBucket: "rafa-medica.firebasestorage.app",
+            messagingSenderId: "550088541296",
+            appId: "1:550088541296:web:7b520c90d5c6723ebfe0b5",
+            measurementId: "G-7V2PLLQEKY"
         };
 
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : userConfig;
@@ -273,7 +274,7 @@
     <!-- React App (Babel) -->
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo, useCallback } = React;
-        const APP_NAME = "Toko Husna";
+        const APP_NAME = "Apotek Rafa Medica";
 
         // --- CHANGELOG / NOTIFIKASI UPDATE ---
         const CHANGELOG = [
@@ -3240,7 +3241,7 @@
                                     {/* TRANSFER */}
                                     <div>
                                         <div className="flex items-center gap-2 mb-3"><Icon name="building-columns" className="text-teal-600 text-base" /><span className="text-sm font-bold text-slate-700">Info Rekening Transfer</span></div>
-                                        <textarea value={localSettings.transferInfo || ''} onChange={(e) => handleChange('transferInfo', e.target.value)} className="w-full p-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-400 outline-none text-sm h-24 transition-colors" placeholder={"Contoh:\nBCA 1234567890\na.n. Toko Husna"} />
+                                        <textarea value={localSettings.transferInfo || ''} onChange={(e) => handleChange('transferInfo', e.target.value)} className="w-full p-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-400 outline-none text-sm h-24 transition-colors" placeholder={"Contoh:\nBCA 1234567890\na.n. Apotek Rafa Medica"} />
                                         <p className="text-[10px] text-slate-400 mt-1">Tulis nama bank dan nomor rekening. Jika kosong, Transfer tidak akan muncul di kasir.</p>
                                     </div>
                                 </div>
@@ -13615,7 +13616,7 @@
                                                     </div>
                                                 </div>
                                             ))}
-                                            <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100"><p className="text-[10px] text-center text-slate-400 font-bold">Sistem Kasir Toko Husna • Selalu diperbarui 🚀</p><p className="text-[10px] text-center text-sky-400 font-bold mt-0.5">💬 Ada masukkan? Gunakan tab <b>Pesan &amp; Lapor</b> untuk hubungi admin!</p></div>
+                                            <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100"><p className="text-[10px] text-center text-slate-400 font-bold">Sistem Kasir Apotek Rafa Medica • Selalu diperbarui 🚀</p><p className="text-[10px] text-center text-sky-400 font-bold mt-0.5">💬 Ada masukkan? Gunakan tab <b>Pesan &amp; Lapor</b> untuk hubungi admin!</p></div>
                                         </div>
                                     )}
 
