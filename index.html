@@ -6417,6 +6417,20 @@
                                 </h2>
                              </div>
 
+                             {/* Tombol Penjualan Baru - compact, di bawah banner */}
+                             <button onClick={() => handleStartSession(cashierName)} className="w-full mb-4 bg-sky-500 hover:bg-sky-600 active:scale-95 text-white rounded-2xl px-4 py-3 flex items-center justify-between shadow-md transition-all group">
+                                 <div className="flex items-center gap-3">
+                                     <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+                                         <Icon name="cart-plus" />
+                                     </div>
+                                     <div className="text-left">
+                                         <p className="font-black text-sm leading-none">+ Penjualan Baru</p>
+                                         <p className="text-[10px] text-sky-100 mt-0.5">👤 {cashierName}</p>
+                                     </div>
+                                 </div>
+                                 <Icon name="chevron-right" className="text-sky-200 text-sm" />
+                             </button>
+
                              {pendingCarts.length > 0 && (
                                 <div className="w-full mb-4 fade-in">
                                     <div className="flex items-center justify-between mb-2 px-0.5">
@@ -13732,4 +13746,4 @@
     </script>
 <audio id="chaching-sound" src="cha-ching.mp3" preload="auto"></audio>
 </body>
-</html>
+</html>ll
