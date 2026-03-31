@@ -1584,6 +1584,7 @@
                 { key: 'enableImport', label: 'Import Masal', icon: 'file-import', desc: 'Import data Excel' },
                 { key: 'enableJadwalShift', label: 'Jadwal Shift', icon: 'calendar-days', desc: 'Jadwal shift karyawan' },
                 { key: 'enableTransferBarang', label: 'Transfer Barang', icon: 'right-left', desc: 'Transfer stok antar toko' },
+                { key: 'enableTagihanFaktur', label: 'Tagihan Faktur', icon: 'file-circle-exclamation', desc: 'Lihat & lunasi tagihan faktur' },
                 { key: 'enableCopyWA', label: 'Salin WhatsApp', icon: 'whatsapp', desc: 'Tombol salin daftar barang ke WA' },
                 { key: 'enableExportExcel', label: 'Export Excel', icon: 'file-excel', desc: 'Tombol export daftar barang ke Excel' },
                 { key: 'requireAbsensiGps', label: 'GPS Wajib Absensi', icon: 'location-dot', desc: 'Wajibkan GPS saat karyawan melakukan absensi' },
@@ -1610,6 +1611,7 @@
                 { key: 'showMenuRekamMedis', label: 'Rekam Medis', icon: 'stethoscope', desc: 'Tampilkan rekam medis (dokter & pasien)' },
                 { key: 'showMenuJadwalShift', label: 'Jadwal Shift', icon: 'calendar-days', desc: 'Tampilkan jadwal shift karyawan' },
                 { key: 'showMenuTransferBarang', label: 'Transfer Barang', icon: 'right-left', desc: 'Tampilkan transfer barang antar toko' },
+                { key: 'showMenuTagihanFaktur', label: 'Tagihan Faktur', icon: 'file-circle-exclamation', desc: 'Tampilkan tagihan faktur belum lunas' },
             ];
             const dashboardVisibilityList = [
                 { key: 'showNilaiStokDashboard', label: 'Total Nilai Stok (Modal)', icon: 'coins', desc: 'Tampilkan total harga beli × stok di dashboard' },
@@ -4980,6 +4982,395 @@
                 </>
             );
         };
+
+        // --- TAGIHAN & KEUANGAN COMPONENT ---
+        const TagihanFakturView = ({ user, showToast, currentProfile, readOnly }) => {
+            const isAllStores = currentProfile?.id === 'all_stores';
+            const storeId = currentProfile?.id || 'default';
+
+            // --- State ---
+            const [activeTab, setActiveTab] = useState('tagihan');
+            const [purchases, setPurchases] = useState([]);
+            const [entries, setEntries] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [showForm, setShowForm] = useState(false);
+            const [formType, setFormType] = useState('pengeluaran'); // 'pengeluaran'|'pemasukan'
+            const [form, setForm] = useState({ date: new Date().toISOString().slice(0,10), category: '', amount: '', note: '' });
+            const [submitting, setSubmitting] = useState(false);
+            const [editingEntry, setEditingEntry] = useState(null);
+            const [deleteModal, setDeleteModal] = useState(null);
+            const [confirmPay, setConfirmPay] = useState(null);
+            const [paying, setPaying] = useState(false);
+            const [filterMonth, setFilterMonth] = useState(new Date().toISOString().slice(0,7));
+            const [searchTagihan, setSearchTagihan] = useState('');
+
+            const EXPENSE_CATS = ['Gaji Karyawan','Listrik & Air','Sewa Tempat','Transportasi','Perlengkapan Toko','Biaya Operasional','Lain-lain'];
+            const INCOME_CATS  = ['Pendapatan Non-Kasir','Sewa Aset','Komisi','Retur Pengeluaran','Lain-lain'];
+
+            // --- Firestore ---
+            useEffect(() => {
+                if (!window.db || !window.appId) return;
+                let q;
+                if (isAllStores) {
+                    q = window.query(
+                        window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'purchases'),
+                        window.where('isPaid', '==', false),
+                        window.orderBy('receivedDate', 'desc')
+                    );
+                } else {
+                    q = window.query(
+                        window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'purchases'),
+                        window.where('storeId', '==', storeId),
+                        window.where('isPaid', '==', false),
+                        window.orderBy('receivedDate', 'desc')
+                    );
+                }
+                const unsub = window.onSnapshot(q, snap => {
+                    setPurchases(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                    setLoading(false);
+                }, () => setLoading(false));
+                return () => unsub();
+            }, [storeId]);
+
+            useEffect(() => {
+                if (!window.db || !window.appId) return;
+                const q = window.query(
+                    window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'finance_entries'),
+                    window.where('storeId', '==', storeId),
+                    window.orderBy('date', 'desc')
+                );
+                const unsub = window.onSnapshot(q, snap => {
+                    setEntries(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                }, () => {});
+                return () => unsub();
+            }, [storeId]);
+
+            // --- Helpers ---
+            const fmt  = n => 'Rp ' + Number(n||0).toLocaleString('id-ID');
+            const fmtD = s => { if (!s) return '—'; const d = new Date(s); return d.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}); };
+            const today = new Date(); today.setHours(0,0,0,0);
+
+            const monthEntries = entries.filter(e => e.date && e.date.startsWith(filterMonth));
+            const totalPengeluaran = monthEntries.filter(e=>e.type==='pengeluaran').reduce((s,e)=>s+Number(e.amount||0),0);
+            const totalPemasukan   = monthEntries.filter(e=>e.type==='pemasukan').reduce((s,e)=>s+Number(e.amount||0),0);
+            const totalTagihan     = purchases.reduce((s,p)=>s+Number(p.total||0),0);
+            const overdueCount     = purchases.filter(p=>p.dueDate && new Date(p.dueDate)<today).length;
+            const saldo = totalPemasukan - totalPengeluaran;
+
+            // --- Actions ---
+            const openAdd = (type) => {
+                setFormType(type);
+                setEditingEntry(null);
+                setForm({ date: new Date().toISOString().slice(0,10), category: type==='pengeluaran' ? EXPENSE_CATS[0] : INCOME_CATS[0], amount: '', note: '' });
+                setShowForm(true);
+            };
+            const openEdit = (e) => {
+                setFormType(e.type);
+                setEditingEntry(e);
+                setForm({ date: e.date, category: e.category, amount: String(e.amount), note: e.note||'' });
+                setShowForm(true);
+            };
+            const handleSave = async () => {
+                if (!form.amount || isNaN(Number(form.amount))) return showToast('Jumlah tidak valid','error');
+                if (!form.category) return showToast('Pilih kategori','error');
+                setSubmitting(true);
+                try {
+                    const payload = { type: formType, category: form.category, amount: Number(form.amount), note: form.note, date: form.date, storeId, createdAt: new Date().toISOString() };
+                    if (editingEntry) {
+                        await window.updateDoc(window.doc(window.db,'artifacts',window.appId,'public','data','finance_entries',editingEntry.id), payload);
+                        showToast('Data diperbarui ✓');
+                    } else {
+                        await window.addDoc(window.collection(window.db,'artifacts',window.appId,'public','data','finance_entries'), payload);
+                        showToast('Data disimpan ✓');
+                    }
+                    setShowForm(false);
+                } catch { showToast('Gagal menyimpan','error'); }
+                setSubmitting(false);
+            };
+            const handleDelete = async () => {
+                if (!deleteModal) return;
+                try {
+                    await window.deleteDoc(window.doc(window.db,'artifacts',window.appId,'public','data','finance_entries',deleteModal.id));
+                    showToast('Dihapus');
+                } catch { showToast('Gagal menghapus','error'); }
+                setDeleteModal(null);
+            };
+            const markPaid = async () => {
+                if (!confirmPay) return;
+                setPaying(true);
+                try {
+                    await window.updateDoc(window.doc(window.db,'artifacts',window.appId,'public','data','purchases',confirmPay.id),{isPaid:true});
+                    showToast('Faktur ditandai lunas ✓');
+                    setConfirmPay(null);
+                } catch { showToast('Gagal','error'); }
+                setPaying(false);
+            };
+
+            const filteredPurchases = purchases.filter(p => {
+                const q = searchTagihan.toLowerCase();
+                return !q || (p.supplier||'').toLowerCase().includes(q) || (p.invoiceNumber||'').toLowerCase().includes(q);
+            });
+            const filteredExpenses = monthEntries.filter(e=>e.type==='pengeluaran').sort((a,b)=>b.date.localeCompare(a.date));
+            const filteredIncomes  = monthEntries.filter(e=>e.type==='pemasukan').sort((a,b)=>b.date.localeCompare(a.date));
+
+            // Month nav
+            const changeMonth = (d) => {
+                const [y,m] = filterMonth.split('-').map(Number);
+                const dt = new Date(y, m-1+d, 1);
+                setFilterMonth(dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0'));
+            };
+            const monthLabel = new Date(filterMonth+'-01').toLocaleDateString('id-ID',{month:'long',year:'numeric'});
+
+            return (
+                <div className="p-4 md:p-6 max-w-2xl mx-auto fade-in">
+                    {/* Header */}
+                    <header className="mb-5">
+                        <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Tagihan & Keuangan</h2>
+                        <p className="text-slate-500 text-xs mt-1">Tagihan faktur, pengeluaran & pemasukan toko</p>
+                    </header>
+
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-2 gap-3 mb-5">
+                        <div className="col-span-2 bg-gradient-to-r from-slate-800 to-slate-700 rounded-2xl p-4 flex items-center justify-between shadow-lg">
+                            <div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Saldo Bulan Ini</p>
+                                <p className={`text-xl font-extrabold mt-0.5 ${saldo>=0?'text-emerald-400':'text-red-400'}`}>{saldo>=0?'+':''}{fmt(saldo)}</p>
+                                <p className="text-[10px] text-slate-500 mt-1">{monthLabel}</p>
+                            </div>
+                            <div className="text-right space-y-1">
+                                <p className="text-[10px] text-emerald-400 font-bold">▲ Masuk {fmt(totalPemasukan)}</p>
+                                <p className="text-[10px] text-red-400 font-bold">▼ Keluar {fmt(totalPengeluaran)}</p>
+                            </div>
+                        </div>
+                        <div className="bg-gradient-to-br from-orange-50 to-red-50 border border-orange-200 rounded-2xl p-4">
+                            <p className="text-[10px] font-bold text-orange-500 uppercase tracking-wide mb-1">Tagihan Belum Lunas</p>
+                            <p className="text-lg font-extrabold text-orange-700">{fmt(totalTagihan)}</p>
+                            <p className="text-[10px] text-orange-400 mt-1">{purchases.length} faktur · {overdueCount>0?<span className="text-red-500 font-black">{overdueCount} telat</span>:'semua ok'}</p>
+                        </div>
+                        <div className="bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200 rounded-2xl p-4">
+                            <p className="text-[10px] font-bold text-violet-500 uppercase tracking-wide mb-1">Pengeluaran Bulan Ini</p>
+                            <p className="text-lg font-extrabold text-violet-700">{fmt(totalPengeluaran)}</p>
+                            <p className="text-[10px] text-violet-400 mt-1">{filteredExpenses.length} transaksi</p>
+                        </div>
+                    </div>
+
+                    {/* Tabs */}
+                    <div className="flex gap-1 mb-4 bg-slate-100 p-1 rounded-2xl">
+                        {[
+                            { id:'tagihan',    label:'Tagihan',     icon:'file-invoice-dollar' },
+                            { id:'pengeluaran',label:'Pengeluaran', icon:'arrow-trend-down'    },
+                            { id:'pemasukan',  label:'Pemasukan',   icon:'arrow-trend-up'      },
+                        ].map(t => (
+                            <button key={t.id} onClick={()=>setActiveTab(t.id)}
+                                className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-all ${activeTab===t.id?'bg-white text-slate-800 shadow-sm':'text-slate-500 hover:text-slate-700'}`}>
+                                <Icon name={t.icon} className="text-sm" />{t.label}
+                                {t.id==='tagihan' && purchases.length>0 && <span className="w-4 h-4 bg-orange-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">{purchases.length>9?'9+':purchases.length}</span>}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* ── TAB: TAGIHAN ── */}
+                    {activeTab==='tagihan' && (
+                        <div>
+                            <div className="relative mb-3">
+                                <Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                                <input className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-teal-400 bg-slate-50"
+                                    placeholder="Cari supplier / no. faktur..." value={searchTagihan} onChange={e=>setSearchTagihan(e.target.value)} />
+                            </div>
+                            {loading ? (
+                                <div className="flex items-center justify-center py-16 text-slate-400"><Icon name="spinner" className="animate-spin mr-2" />Memuat...</div>
+                            ) : filteredPurchases.length===0 ? (
+                                <div className="flex flex-col items-center justify-center py-16 opacity-60">
+                                    <div className="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center mb-3 text-green-400 text-2xl"><Icon name="circle-check" /></div>
+                                    <p className="text-slate-500 font-bold text-sm">Tidak ada tagihan{searchTagihan?' ditemukan':' yang tertunggak!'}</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {filteredPurchases.map(p => {
+                                        const dd = p.dueDate ? new Date(p.dueDate) : null;
+                                        const isOD = dd && dd < today;
+                                        const isSoon = dd && !isOD && (dd-today)/86400000<=7;
+                                        return (
+                                            <div key={p.id} className={`bg-white rounded-2xl border p-4 shadow-sm ${isOD?'border-red-200 bg-red-50/20':isSoon?'border-amber-200':'border-slate-200'}`}>
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <p className="font-extrabold text-slate-800 text-sm">{p.supplier||'Tanpa Supplier'}</p>
+                                                            {isOD && <span className="text-[9px] font-black bg-red-500 text-white px-2 py-0.5 rounded-full">TELAT</span>}
+                                                            {isSoon && <span className="text-[9px] font-black bg-amber-400 text-white px-2 py-0.5 rounded-full">SEGERA</span>}
+                                                        </div>
+                                                        {p.invoiceNumber && <p className="text-[10px] text-slate-400 mt-0.5">No. {p.invoiceNumber}</p>}
+                                                        <div className="flex flex-wrap gap-x-4 mt-1.5 text-[10px] text-slate-500">
+                                                            <span><Icon name="calendar" className="mr-0.5"/>Terima: {fmtD(p.receivedDate)}</span>
+                                                            {p.dueDate && <span className={isOD?'text-red-600 font-bold':isSoon?'text-amber-600 font-bold':''}><Icon name="calendar-xmark" className="mr-0.5"/>Jatuh tempo: {fmtD(p.dueDate)}</span>}
+                                                        </div>
+                                                        {p.paymentMethod && <span className="inline-block mt-1.5 text-[9px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{p.paymentMethod}</span>}
+                                                    </div>
+                                                    <div className="flex-shrink-0 text-right">
+                                                        <p className="font-extrabold text-slate-800 text-sm">{fmt(p.total)}</p>
+                                                        {!readOnly && !isAllStores && (
+                                                            <button onClick={()=>setConfirmPay(p)}
+                                                                className="mt-2 text-[11px] font-bold text-teal-600 border border-teal-300 bg-teal-50 hover:bg-teal-100 px-3 py-1 rounded-full active:scale-95 transition-all">
+                                                                <Icon name="check" className="mr-1"/>Lunasi
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ── TAB: PENGELUARAN / PEMASUKAN ── */}
+                    {(activeTab==='pengeluaran'||activeTab==='pemasukan') && (
+                        <div>
+                            {/* Month Navigator */}
+                            <div className="flex items-center justify-between mb-4 bg-white border border-slate-200 rounded-2xl px-4 py-2.5 shadow-sm">
+                                <button onClick={()=>changeMonth(-1)} className="w-8 h-8 rounded-xl hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-all"><Icon name="chevron-left" /></button>
+                                <p className="font-extrabold text-sm text-slate-700">{monthLabel}</p>
+                                <button onClick={()=>changeMonth(1)} className="w-8 h-8 rounded-xl hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-all"><Icon name="chevron-right" /></button>
+                            </div>
+
+                            {/* Total strip */}
+                            {activeTab==='pengeluaran' && (
+                                <div className="flex items-center justify-between px-4 py-3 bg-red-50 border border-red-200 rounded-xl mb-3">
+                                    <span className="text-xs font-bold text-red-600"><Icon name="arrow-trend-down" className="mr-1"/>Total Pengeluaran</span>
+                                    <span className="font-extrabold text-red-700 text-sm">{fmt(totalPengeluaran)}</span>
+                                </div>
+                            )}
+                            {activeTab==='pemasukan' && (
+                                <div className="flex items-center justify-between px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl mb-3">
+                                    <span className="text-xs font-bold text-emerald-600"><Icon name="arrow-trend-up" className="mr-1"/>Total Pemasukan</span>
+                                    <span className="font-extrabold text-emerald-700 text-sm">{fmt(totalPemasukan)}</span>
+                                </div>
+                            )}
+
+                            {/* Add button */}
+                            {!readOnly && (
+                                <button onClick={()=>openAdd(activeTab)}
+                                    className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm mb-4 transition-all active:scale-95 shadow-md ${activeTab==='pengeluaran'?'bg-red-500 hover:bg-red-600 text-white shadow-red-200':'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-200'}`}>
+                                    <Icon name="plus" /> Catat {activeTab==='pengeluaran'?'Pengeluaran':'Pemasukan'}
+                                </button>
+                            )}
+
+                            {/* List */}
+                            {(activeTab==='pengeluaran'?filteredExpenses:filteredIncomes).length===0 ? (
+                                <div className="flex flex-col items-center justify-center py-14 opacity-60">
+                                    <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mb-3 text-slate-300 text-2xl"><Icon name={activeTab==='pengeluaran'?'receipt':'coins'} /></div>
+                                    <p className="text-slate-500 font-bold text-sm">Belum ada {activeTab==='pengeluaran'?'pengeluaran':'pemasukan'} bulan ini</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2.5">
+                                    {(activeTab==='pengeluaran'?filteredExpenses:filteredIncomes).map(e => (
+                                        <div key={e.id} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex items-center justify-between gap-3">
+                                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-sm ${activeTab==='pengeluaran'?'bg-red-50 text-red-400':'bg-emerald-50 text-emerald-500'}`}>
+                                                    <Icon name={activeTab==='pengeluaran'?'arrow-trend-down':'arrow-trend-up'} />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="font-bold text-slate-800 text-sm truncate">{e.category}</p>
+                                                    {e.note && <p className="text-[10px] text-slate-400 truncate">{e.note}</p>}
+                                                    <p className="text-[10px] text-slate-400 mt-0.5">{fmtD(e.date)}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                <p className={`font-extrabold text-sm ${activeTab==='pengeluaran'?'text-red-600':'text-emerald-600'}`}>{fmt(e.amount)}</p>
+                                                {!readOnly && (
+                                                    <div className="flex flex-col gap-1">
+                                                        <button onClick={()=>openEdit(e)} className="w-7 h-7 rounded-lg bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-all"><Icon name="pen" className="text-[10px]" /></button>
+                                                        <button onClick={()=>setDeleteModal(e)} className="w-7 h-7 rounded-lg bg-slate-50 hover:bg-red-50 flex items-center justify-center text-slate-300 hover:text-red-400 transition-all"><Icon name="trash" className="text-[10px]" /></button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ── MODAL: Tambah/Edit Entri ── */}
+                    {showForm && (
+                        <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm fade-in">
+                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+                                <div className={`px-5 py-4 flex items-center justify-between ${formType==='pengeluaran'?'bg-gradient-to-r from-red-500 to-rose-500':'bg-gradient-to-r from-emerald-500 to-teal-500'}`}>
+                                    <h3 className="font-extrabold text-white text-base">{editingEntry?'Edit':'Catat'} {formType==='pengeluaran'?'Pengeluaran':'Pemasukan'}</h3>
+                                    <button onClick={()=>setShowForm(false)} className="text-white/70 hover:text-white"><Icon name="xmark" className="text-xl" /></button>
+                                </div>
+                                <div className="p-5 space-y-4">
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Tanggal</label>
+                                        <input type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}
+                                            className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-medium outline-none focus:border-teal-400" />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Kategori</label>
+                                        <select value={form.category} onChange={e=>setForm({...form,category:e.target.value})}
+                                            className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-medium outline-none focus:border-teal-400">
+                                            {(formType==='pengeluaran'?EXPENSE_CATS:INCOME_CATS).map(c=><option key={c}>{c}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Jumlah (Rp)</label>
+                                        <input type="number" min="0" placeholder="0" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}
+                                            className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold outline-none focus:border-teal-400" />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Keterangan (opsional)</label>
+                                        <input type="text" placeholder="Misal: Bayar listrik bulan ini..." value={form.note} onChange={e=>setForm({...form,note:e.target.value})}
+                                            className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-medium outline-none focus:border-teal-400" />
+                                    </div>
+                                    <button onClick={handleSave} disabled={submitting}
+                                        className={`w-full py-3.5 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg disabled:opacity-60 ${formType==='pengeluaran'?'bg-red-500 hover:bg-red-600 shadow-red-200':'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-200'}`}>
+                                        {submitting?<><span className="typing-dot bg-white"></span><span className="typing-dot bg-white"></span><span className="typing-dot bg-white"></span></>:<><Icon name="floppy-disk"/> Simpan</>}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── MODAL: Konfirmasi Lunas Tagihan ── */}
+                    {confirmPay && (
+                        <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm fade-in">
+                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center">
+                                <div className="w-14 h-14 bg-teal-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-teal-500 text-2xl"><Icon name="circle-check" /></div>
+                                <h3 className="font-extrabold text-slate-800 text-base mb-1">Tandai Lunas?</h3>
+                                <p className="text-slate-500 text-xs mb-1">{confirmPay.supplier}</p>
+                                <p className="font-extrabold text-teal-600 text-xl mb-5">{fmt(confirmPay.total)}</p>
+                                <div className="flex gap-3">
+                                    <button onClick={()=>setConfirmPay(null)} className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50">Batal</button>
+                                    <button onClick={markPaid} disabled={paying} className="flex-1 py-3 rounded-xl bg-teal-600 text-white font-bold text-sm hover:bg-teal-700 shadow-lg shadow-teal-200 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60">
+                                        {paying?<><span className="typing-dot bg-white"></span><span className="typing-dot bg-white"></span></>:<><Icon name="check"/>Ya, Lunas</>}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── MODAL: Konfirmasi Hapus ── */}
+                    {deleteModal && (
+                        <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm fade-in">
+                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center">
+                                <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-red-400 text-2xl"><Icon name="trash-can" /></div>
+                                <h3 className="font-extrabold text-slate-800 text-base mb-1">Hapus Data?</h3>
+                                <p className="text-slate-500 text-xs mb-1">{deleteModal.category}</p>
+                                <p className="font-extrabold text-red-500 text-lg mb-5">{fmt(deleteModal.amount)}</p>
+                                <div className="flex gap-3">
+                                    <button onClick={()=>setDeleteModal(null)} className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50">Batal</button>
+                                    <button onClick={handleDelete} className="flex-1 py-3 rounded-xl bg-red-500 text-white font-bold text-sm hover:bg-red-600 shadow-lg shadow-red-200 active:scale-95 flex items-center justify-center gap-2">
+                                        <Icon name="trash"/>Hapus
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
 
         // --- CASHBOOK COMPONENT ---
         const CashBookView = ({ user, currentProfile, showToast, readOnly }) => {
@@ -12877,7 +13268,7 @@
             const [isGeneratingImage, setIsGeneratingImage] = useState(false);
             const [activeStoreId, setActiveStoreId] = useState(localStorage.getItem('activeStoreId') || 'default');
             const [showStoreMenu, setShowStoreMenu] = useState(false);
-            const [notifCounts, setNotifCounts] = useState({ pendingCarts: 0, activeCarts: 0 });
+            const [notifCounts, setNotifCounts] = useState({ pendingCarts: 0, activeCarts: 0, unpaidInvoices: 0 });
             const [authSession, setAuthSession] = useState(() => getStoredSession());
             const [personalMenuAccess, setPersonalMenuAccess] = useState(null); // null = follow global
             const [allowedStores, setAllowedStores] = useState(null); // null = semua toko boleh diakses
@@ -13242,7 +13633,16 @@
                     setNotifCounts(prev => ({ ...prev, activeCarts: count }));
                 });
 
-                return () => { unsubPending(); unsubActive(); };
+                const qUnpaid = window.query(
+                    window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'purchases'),
+                    window.where('storeId', '==', storeId),
+                    window.where('isPaid', '==', false)
+                );
+                const unsubUnpaid = window.onSnapshot(qUnpaid, (snap) => {
+                    setNotifCounts(prev => ({ ...prev, unpaidInvoices: snap.size }));
+                });
+
+                return () => { unsubPending(); unsubActive(); unsubUnpaid(); };
             }, [user, activeStoreId, settingsData]);
 
             const uniqueRacksData = useMemo(() => {
@@ -13414,6 +13814,7 @@
                 { id: 'rekam_medis', label: 'Rekam Medis',       icon: 'stethoscope',         enabled: isOwner || showMenu('showMenuRekamMedis', settingsData.showMenuRekamMedis), readOnly: !isOwner && !menuOn('enableRekamMedis', settingsData.enableRekamMedis) },
                 { id: 'jadwal_shift', label: 'Jadwal Shift',     icon: 'calendar-days',       enabled: isOwner || showMenu('showMenuJadwalShift', settingsData.showMenuJadwalShift), readOnly: !isOwner && !menuOn('enableJadwalShift', settingsData.enableJadwalShift) },
                 { id: 'transfer_barang', label: 'Transfer Barang', icon: 'right-left',         enabled: isOwner || showMenu('showMenuTransferBarang', settingsData.showMenuTransferBarang), readOnly: !isOwner && !menuOn('enableTransferBarang', settingsData.enableTransferBarang) },
+                { id: 'tagihan_faktur', label: 'Tagihan & Keuangan', icon: 'wallet', enabled: isOwner || showMenu('showMenuTagihanFaktur', settingsData.showMenuTagihanFaktur), readOnly: !isOwner && !menuOn('enableTagihanFaktur', settingsData.enableTagihanFaktur), badge: notifCounts.unpaidInvoices || 0 },
                 { id: 'pengguna_akun', label: 'Pengguna Akun',   icon: 'users',               enabled: true, readOnly: false },
                 { id: 'settings',    label: 'Pengaturan',        icon: 'gears',               enabled: true, readOnly: false },
             ];
@@ -13735,6 +14136,7 @@
                         {activeTab === 'catatan' && (<PapanCatatan user={user} readOnly={menuItems.find(m=>m.id==='catatan')?.readOnly} />)}
                         {activeTab === 'jadwal_shift' && (<JadwalShiftView user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='jadwal_shift')?.readOnly} isOwner={isOwner} authSession={authSession} settings={settingsData} />)}
                         {activeTab === 'transfer_barang' && (<TransferBarangView user={user} showToast={showToast} rawInventory={rawInventory} settings={settingsData} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='transfer_barang')?.readOnly} authSession={authSession} />)}
+                        {activeTab === 'tagihan_faktur' && (<TagihanFakturView user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='tagihan_faktur')?.readOnly} />)}
                     </main>
                     <ConfirmModal isOpen={deleteModal.show} title="Hapus Barang?" message={`Yakin ingin menghapus permanen "${deleteModal.item?.name}"? Barang ini akan hilang dari SEMUA toko.`} onConfirm={handleDelete} onCancel={() => setDeleteModal({ show: false, item: null })} />
                     <ConfirmModal isOpen={deleteRackModal.show} title="Hapus Rak?" message={`Yakin ingin menghapus rak "${deleteRackModal.rackName}"? Semua barang di rak ini akan menjadi 'No Rack' (-).`} onConfirm={handleConfirmDeleteRack} onCancel={() => setDeleteRackModal({ show: false, rackName: null })} confirmText="Ya, Hapus Rak" />
