@@ -5351,6 +5351,7 @@
             const [showCashierModal, setShowCashierModal] = useState(false);
             const cashierName = authSession?.namaLengkap || authSession?.username || 'Kasir';
             const [activeCartId, setActiveCartId] = useState(null);
+            const [originalCashierName, setOriginalCashierName] = useState(null); // Nama kasir asli pemilik keranjang
             const [activeCarts, setActiveCarts] = useState([]); // Cart real-time dari kasir lain
             const [helpingCart, setHelpingCart] = useState(null);
             const [pendingHelpingCart, setPendingHelpingCart] = useState(null);
@@ -5603,7 +5604,7 @@
                     isSessionActive,
                     activeCartId,
                     grandTotal: cart.reduce((a, i) => a + (safeNumber(i.price) * i.cartQty), 0),
-                    cashierName: cashierName || 'Kasir',
+                    cashierName: originalCashierName || cashierName || 'Kasir',
                     storeProfile: currentProfile.name,
                     storeId: currentProfile.id,
                 };
@@ -5637,6 +5638,7 @@
                     setIsSessionActive(false);
                     setCart([]);
                     setActiveCartId(null);
+                    setOriginalCashierName(null);
                     localStorage.removeItem('activeCartId');
                     showToast('Sesi tidak aktif — keranjang dipindah ke Tertunda ⏸️', 'info');
                 } catch (e) {
@@ -6093,7 +6095,7 @@
                             date: new Date().toISOString(),
                             items: cart,
                             total: grandTotal,
-                            cashierName: cashierName || user.email || 'Kasir',
+                            cashierName: originalCashierName || cashierName || user.email || 'Kasir',
                             device: navigator.userAgent,
                             storeProfile: currentProfile.name, 
                             storeId: currentProfile.id, // SAVE ID TO FILTER LATER
@@ -6119,6 +6121,7 @@
                 setSearch(''); 
                 setCart([]);
                 setActiveCartId(null);
+                setOriginalCashierName(null); // Reset setelah sesi selesai
                 localStorage.removeItem('activeCartId');
                 // cashierName TETAP disimpan untuk sesi berikutnya
             };
@@ -6147,8 +6150,8 @@
                 try {
                     await window.deleteDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'pending_carts', pendingItem.id));
                     
-                    // Set nama kasir dari pending cart
-
+                    // Simpan nama kasir asli agar saat ditunda lagi tetap pakai nama pertama
+                    setOriginalCashierName(pendingItem.cashierName || cashierName || 'Kasir');
                     
                     // Buat active cart baru
                     const cartRef = await window.addDoc(
