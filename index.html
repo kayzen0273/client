@@ -6406,99 +6406,87 @@
             }
 
             if (!isSessionActive) {
+                // Helper: generate nomor sesi dari tanggal (format YYMMDDHHMM)
+                const genNoPendingCart = (dateStr) => {
+                    try {
+                        const d = new Date(dateStr);
+                        const yy = String(d.getFullYear()).slice(2);
+                        const mm = String(d.getMonth()+1).padStart(2,'0');
+                        const dd = String(d.getDate()).padStart(2,'0');
+                        const hh = String(d.getHours()).padStart(2,'0');
+                        const mi = String(d.getMinutes()).padStart(2,'0');
+                        return `${yy}${mm}${dd}${hh}${mi}`;
+                    } catch(e) { return '------'; }
+                };
                 return (
-                    <div className="fade-in h-full overflow-y-auto pb-24 md:pb-0 flex flex-col relative z-10 bg-white">
-                        {/* HEADER — mirip screenshot */}
+                    <div className="fade-in h-full flex flex-col bg-white relative z-10">
+                        {/* ── HEADER ── */}
                         <div className="flex items-center justify-between px-4 pt-5 pb-3">
-                            <div>
-                                <h1 className="text-2xl font-black text-slate-800">Kasir</h1>
-                                <p className="text-xs text-slate-400 font-medium">{currentProfile.name} · {cashierName}</p>
-                            </div>
-                            <button onClick={() => handleStartSession(cashierName)} className="w-11 h-11 bg-white border-2 border-slate-200 hover:border-sky-400 hover:bg-sky-50 rounded-xl flex items-center justify-center text-slate-500 hover:text-sky-600 transition-all active:scale-95 shadow-sm">
-                                <Icon name="plus" className="text-lg" />
+                            <h1 className="text-3xl font-black text-slate-900">Kasir</h1>
+                            <button onClick={() => handleStartSession(cashierName)} className="w-11 h-11 rounded-xl border-2 border-slate-200 bg-white flex items-center justify-center text-slate-700 hover:border-teal-400 hover:text-teal-600 active:scale-95 transition-all shadow-sm text-xl font-bold">
+                                +
                             </button>
                         </div>
 
-                        {/* LIST KERANJANG TERTUNDA */}
-                        {pendingCarts.length > 0 && (
-                            <div className="fade-in">
-                                {pendingCarts.map((pending, idx) => (
-                                    <button key={pending.id} onClick={() => resumeTransaction(pending)} className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 active:bg-slate-100 transition-colors border-b border-slate-100">
-                                        <div className="text-left flex-1 min-w-0">
-                                            <p className="font-black text-slate-800 text-base leading-tight">{formatRupiah(pending.total)}</p>
-                                            <p className="text-xs text-slate-400 font-medium mt-0.5">#{new Date(pending.date).toLocaleDateString('id-ID', {day:'2-digit',month:'2-digit',year:'2-digit'}).replace(/\//g,'')+String(idx).padStart(4,'0')}, {pending.items.length} barang</p>
-                                            <p className="text-xs text-slate-500 font-semibold mt-0.5">{pending.cashierName || 'Kasir'}</p>
-                                        </div>
-                                        <Icon name="chevron-right" className="text-sky-500 text-sm flex-shrink-0 ml-2" />
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* LIST KERANJANG AKTIF (kasir lain) */}
-                        {activeCarts.length > 0 && (
-                            <div className="fade-in">
-                                <div className="px-4 pt-4 pb-1 flex items-center gap-1.5">
-                                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
-                                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Sedang Aktif</p>
-                                    <p className="text-[9px] text-slate-300 ml-1">🤝 Klik untuk bantu scan</p>
+                        {/* ── LIST KERANJANG ── */}
+                        <div className="flex-1 overflow-y-auto">
+                            {(pendingCarts.length === 0 && activeCarts.length === 0) ? (
+                                <div className="flex flex-col items-center justify-center py-20 px-6 text-center opacity-50">
+                                    <div className="text-5xl mb-3">🛒</div>
+                                    <p className="font-bold text-slate-500 text-sm">Belum ada keranjang tertunda</p>
+                                    <p className="text-xs text-slate-400 mt-1">Tekan tombol + untuk mulai penjualan baru</p>
                                 </div>
-                                {activeCarts.map(activeCart => (
-                                    <div key={activeCart.id} className="border-b border-slate-100">
-                                        <button onClick={() => startHelping(activeCart)} className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-emerald-50 active:bg-emerald-100 transition-colors">
-                                            <div className="text-left flex-1 min-w-0">
-                                                <p className="font-black text-slate-800 text-base leading-tight">{formatRupiah(activeCart.total)}</p>
-                                                <p className="text-xs text-slate-400 font-medium mt-0.5">{(activeCart.items||[]).length} barang · <span className="text-emerald-500 font-bold">LIVE</span></p>
-                                                <p className="text-xs text-slate-500 font-semibold mt-0.5">{activeCart.cashierName}</p>
+                            ) : (
+                                <div className="divide-y divide-slate-100">
+                                    {/* Pending carts */}
+                                    {pendingCarts.map(pending => (
+                                        <button key={pending.id} onClick={() => resumeTransaction(pending)}
+                                            className="w-full text-left px-4 py-4 flex items-center justify-between hover:bg-slate-50 active:bg-slate-100 transition-colors">
+                                            <div className="flex-1 min-w-0 pr-3">
+                                                <p className="font-black text-slate-900 text-base leading-tight">
+                                                    {formatRupiah(pending.total)}
+                                                </p>
+                                                <p className="text-sm text-slate-500 mt-0.5">
+                                                    #{genNoPendingCart(pending.date)}, {pending.items.length} barang
+                                                </p>
+                                                <p className="text-sm text-slate-500">{pending.cashierName || 'Kasir'}</p>
                                             </div>
-                                            <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                                                {helpingCart?.id === activeCart.id && (
-                                                    <div className="flex items-center gap-1 px-2 py-1 bg-slate-50 rounded-lg border border-slate-100">
-                                                        {(activeCart.items||[]).slice(0,1).map((item, idx) => (
-                                                            <div key={idx} className="flex items-center gap-1">
-                                                                <button onClick={e => { e.stopPropagation(); updateItemQtyInActiveCart(activeCart.id, 0, -1); }} className="w-4 h-4 flex items-center justify-center text-slate-400 hover:text-red-500 rounded transition-colors"><Icon name="minus" className="text-[8px]" /></button>
-                                                                <span className="text-[10px] font-black text-slate-700 w-3 text-center">{item.cartQty}</span>
-                                                                <button onClick={e => { e.stopPropagation(); updateItemQtyInActiveCart(activeCart.id, 0, 1); }} className="w-4 h-4 flex items-center justify-center text-slate-400 hover:text-green-500 rounded transition-colors"><Icon name="plus" className="text-[8px]" /></button>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                                <Icon name="chevron-right" className="text-emerald-500 text-sm" />
-                                            </div>
+                                            <Icon name="chevron-right" className="text-teal-500 text-lg flex-shrink-0" />
                                         </button>
-                                        {/* Daftar item real-time (collapsed, hanya tampil saat membantu) */}
-                                        {helpingCart?.id === activeCart.id && (activeCart.items||[]).length > 0 && (
-                                            <div className="px-4 pb-2 space-y-1">
-                                                {(activeCart.items||[]).map((item, idx) => (
-                                                    <div key={idx} className="flex items-center gap-2 px-2 py-1 bg-slate-50 rounded-lg">
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className="text-[11px] font-bold text-slate-700 truncate">{item.name}</p>
-                                                            <p className="text-[9px] text-slate-400">{formatRupiah(item.price)} × {item.cartQty}</p>
-                                                        </div>
-                                                        <div className="flex items-center gap-0.5 bg-white rounded border border-slate-200 px-1 py-0.5">
-                                                            <button onClick={() => updateItemQtyInActiveCart(activeCart.id, idx, -1)} className="w-4 h-4 flex items-center justify-center text-slate-400 hover:text-red-500 rounded transition-colors"><Icon name="minus" className="text-[8px]" /></button>
-                                                            <span className="text-[10px] font-black text-slate-700 w-4 text-center">{item.cartQty}</span>
-                                                            <button onClick={() => updateItemQtyInActiveCart(activeCart.id, idx, 1)} className="w-4 h-4 flex items-center justify-center text-slate-400 hover:text-green-500 rounded transition-colors"><Icon name="plus" className="text-[8px]" /></button>
-                                                        </div>
-                                                        <button onClick={() => removeItemFromActiveCart(activeCart.id, idx)} className="w-5 h-5 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors"><Icon name="trash" className="text-[9px]" /></button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                                    ))}
 
-                        {/* TOMBOL + PENJUALAN — besar di bawah, fixed */}
-                        <div className="fixed bottom-16 md:bottom-4 left-0 right-0 px-4 z-20">
-                            <button onClick={() => handleStartSession(cashierName)} className="w-full py-3.5 bg-white border-2 border-slate-200 hover:border-sky-400 hover:bg-sky-50 rounded-2xl flex items-center justify-center gap-2 text-sky-600 font-bold text-sm shadow-lg active:scale-95 transition-all">
-                                <Icon name="plus" className="text-base" /> Penjualan
+                                    {/* Active carts (kasir lain) */}
+                                    {activeCarts.map(activeCart => (
+                                        <button key={activeCart.id} onClick={() => startHelping(activeCart)}
+                                            className="w-full text-left px-4 py-4 flex items-center justify-between hover:bg-emerald-50 active:bg-emerald-100 transition-colors">
+                                            <div className="flex-1 min-w-0 pr-3">
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-black text-slate-900 text-base leading-tight">
+                                                        {formatRupiah(activeCart.total)}
+                                                    </p>
+                                                    <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-black animate-pulse">LIVE</span>
+                                                </div>
+                                                <p className="text-sm text-slate-500 mt-0.5">
+                                                    #{genNoPendingCart(activeCart.updatedAt || new Date().toISOString())}, {(activeCart.items||[]).length} barang
+                                                </p>
+                                                <p className="text-sm text-slate-500">{activeCart.cashierName || 'Kasir'}</p>
+                                            </div>
+                                            <Icon name="chevron-right" className="text-emerald-500 text-lg flex-shrink-0" />
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* ── TOMBOL PENJUALAN (BOTTOM) ── */}
+                        <div className="px-4 pb-6 pt-3 border-t border-slate-100">
+                            <button onClick={() => handleStartSession(cashierName)}
+                                className="w-full py-4 rounded-xl border-2 border-teal-500 text-teal-600 font-bold text-base flex items-center justify-center gap-2 hover:bg-teal-50 active:scale-[0.98] transition-all">
+                                <span className="text-lg font-black">+</span> Penjualan
                             </button>
                         </div>
-                        </div>
-                        
-                        {/* NEW: Modal Input Nama Kasir - Render sebagai overlay */}
+
+                        {/* Modal Konfirmasi Kasir */}
                         {showCashierModal && (
                             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm fade-in">
                                 <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 relative">
