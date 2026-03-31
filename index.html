@@ -1013,9 +1013,27 @@ Sisa : ${formatRupiah(remaining)}`;
                 return { fields };
             };
 
+            const parseFirebaseConfig = (raw) => {
+                // Coba JSON biasa dulu
+                try { return JSON.parse(raw); } catch (_) {}
+                // Fallback: parse format JS object dari Firebase Console
+                // Hapus "const firebaseConfig = ", "var ", "let ", komentar //, dan trailing ;
+                let cleaned = raw
+                    .replace(/\/\/[^\n]*/g, '')           // hapus komentar //
+                    .replace(/\/\*[\s\S]*?\*\//g, '')      // hapus komentar /* */
+                    .replace(/^\s*(const|let|var)\s+\w+\s*=\s*/m, '') // hapus deklarasi variabel
+                    .replace(/;?\s*$/, '')                  // hapus titik koma terakhir
+                    .trim();
+                // Tambahkan tanda kutip pada key yang belum punya kutip
+                cleaned = cleaned.replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)(\s*:)/g, '$1"$2"$3');
+                // Ganti single quote jadi double quote pada value string
+                cleaned = cleaned.replace(/:\s*'([^']*)'/g, ': "$1"');
+                try { return JSON.parse(cleaned); } catch (e) { return null; }
+            };
+
             const handleMigrate = async () => {
-                let config;
-                try { config = JSON.parse(migrateConfig); } catch (e) { showToast("Format JSON tidak valid", "error"); return; }
+                const config = parseFirebaseConfig(migrateConfig);
+                if (!config) { showToast("Format config tidak dikenali. Pastikan format JSON atau JS object.", "error"); return; }
                 const { projectId, apiKey } = config;
                 if (!projectId || !apiKey) { showToast("projectId & apiKey wajib diisi", "error"); return; }
 
@@ -1216,7 +1234,7 @@ Sisa : ${formatRupiah(remaining)}`;
                                                     value={migrateConfig}
                                                     onChange={e => setMigrateConfig(e.target.value)}
                                                     rows={7}
-                                                    placeholder={`{\n  "apiKey": "AIza...",\n  "projectId": "nama-project-tujuan"\n}`}
+                                                    placeholder={`Format JSON:\n{\n  "apiKey": "AIza...",\n  "projectId": "nama-project"\n}\n\nAtau paste langsung dari Firebase Console:\nconst firebaseConfig = {\n  apiKey: "AIza...",\n  projectId: "nama-project",\n  ...\n};`}
                                                     className="w-full p-3 font-mono text-[11px] bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400 resize-none"
                                                     disabled={isMigrating}
                                                 />
