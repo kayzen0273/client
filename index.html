@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sistem Kasir Apotek Rafa Medica (V66 - Buku Kas Gradient Card)</title>
+    <title>Sistem Kasir Apotek Rafa Medica (V68 - Fix Riwayat Setoran Unlimited)</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -5010,11 +5010,6 @@
             const [tempExpAmount, setTempExpAmount] = useState('');
             const [isRevSubmitting, setIsRevSubmitting] = useState(false);
 
-            // Quick Input State
-            const [showQuickInput, setShowQuickInput] = useState(false);
-            const [quickInputText, setQuickInputText] = useState('');
-            const [quickInputError, setQuickInputError] = useState('');
-
             useEffect(() => {
                 if (!user) return;
                 
@@ -5028,7 +5023,7 @@
                 });
 
                 // Revenue Data
-                const qRev = window.query(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'daily_revenue'), window.orderBy('date', 'desc'), window.limit(50));
+                const qRev = window.query(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'daily_revenue'), window.orderBy('date', 'desc'));
                 const unsubRev = window.onSnapshot(qRev, (snapshot) => {
                     const allLogs = snapshot.docs.map(doc => {
                         const data = doc.data();
@@ -5095,146 +5090,6 @@
             // REMOVE EXPENSE FROM LIST
             const removeExpenseItem = (index) => {
                 setRevForm(prev => ({ ...prev, expenses: prev.expenses.filter((_, i) => i !== index) }));
-            };
-
-            // BULK QUICK INPUT STATE
-            const [parsedBulkEntries, setParsedBulkEntries] = useState([]);
-            const [isBulkSaving, setIsBulkSaving] = useState(false);
-
-            // HELPER: parse single block of text into one entry object
-            const parseSingleBlock = (block) => {
-                const parseRp = (str) => {
-                    if (!str) return 0;
-                    return parseInt(str.replace(/\./g, '').replace(/[^0-9]/g, ''), 10) || 0;
-                };
-                const monthMap = { jan:'01',feb:'02',mar:'03',apr:'04',mei:'05',jun:'06',jul:'07',agu:'08',sep:'09',okt:'10',nov:'11',des:'12' };
-
-                const dateMatch = block.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|Mei|Jun|Jul|Agu|Sep|Okt|Nov|Des)\s+(\d{4})/i);
-                if (!dateMatch) return null;
-
-                const day = dateMatch[1].padStart(2, '0');
-                const month = monthMap[dateMatch[2].toLowerCase()] || '01';
-                const year = dateMatch[3];
-                const parsedDate = `${year}-${month}-${day}`;
-
-                const getRp = (label) => {
-                    const re = new RegExp(label + '[\\s\\S]{0,15}?Rp\\s?([\\d.]+)', 'i');
-                    const m = block.match(re);
-                    return m ? parseRp(m[1]) : 0;
-                };
-
-                const prevBalance = getRp('Sisa kemarin');
-                const total = getRp('Pendapatan');
-                const deposited = getRp('Setor');
-
-                // Parse expenses section between "Pengeluaran :" and "Total :"
-                let expenses = [];
-                const expSection = block.match(/Pengeluaran\s*:([\s\S]*?)(?=Total\s*:)/i);
-                if (expSection) {
-                    const expRaw = expSection[1].trim();
-                    if (expRaw && expRaw !== '-') {
-                        const lineItems = [...expRaw.matchAll(/(?:\d+\.\s*)([^:\n\r]+?)\s*:\s*Rp\s*([\d.]+)/gi)];
-                        if (lineItems.length > 0) {
-                            expenses = lineItems.map(m => ({ name: m[1].trim(), amount: parseRp(m[2]) }));
-                        } else {
-                            const rpSimple = expRaw.match(/Rp\s?([\d.]+)/i);
-                            if (rpSimple) expenses = [{ name: 'Pengeluaran', amount: parseRp(rpSimple[1]) }];
-                        }
-                    }
-                }
-
-                const totalExpense = expenses.reduce((a, c) => a + c.amount, 0);
-                const remaining = (prevBalance + total) - totalExpense - deposited;
-
-                return { date: parsedDate, prevBalance, total, deposited, expenses, totalExpense, remaining };
-            };
-
-            // PARSE QUICK INPUT — supports single OR bulk (multiple entries)
-            const parseQuickInput = () => {
-                setQuickInputError('');
-                const text = quickInputText.trim();
-                if (!text) { setQuickInputError('Teks tidak boleh kosong'); return; }
-
-                // Split by separator line "---..." OR by block header "*[N]"
-                const blocks = text
-                    .split(/(?:^|\n)-{5,}(?:\n|$)/)
-                    .map(b => b.trim())
-                    .filter(Boolean);
-
-                const results = [];
-                const failed = [];
-
-                blocks.forEach((block, idx) => {
-                    const entry = parseSingleBlock(block);
-                    if (entry) results.push(entry);
-                    else failed.push(idx + 1);
-                });
-
-                if (results.length === 0) {
-                    setQuickInputError('Tidak ada data valid yang bisa diparsing. Pastikan format tanggal benar (contoh: 7 Feb 2026).');
-                    return;
-                }
-
-                if (results.length === 1) {
-                    // Single entry → langsung isi form
-                    const e = results[0];
-                    setRevForm(prev => ({
-                        ...prev,
-                        date: e.date,
-                        prevBalance: e.prevBalance,
-                        total: String(e.total),
-                        deposited: String(e.deposited),
-                        expenses: e.expenses,
-                    }));
-                    setQuickInputText('');
-                    setShowQuickInput(false);
-                    showToast('Data berhasil diisi dari teks!', 'success');
-                } else {
-                    // Multiple entries → tampilkan preview untuk konfirmasi
-                    setParsedBulkEntries(results);
-                    if (failed.length > 0) setQuickInputError(`${failed.length} blok gagal diparsing dan akan dilewati.`);
-                }
-            };
-
-            // SAVE ALL BULK ENTRIES to Firestore
-            const handleBulkSave = async () => {
-                setIsBulkSaving(true);
-                let saved = 0, skipped = 0;
-                try {
-                    for (const entry of parsedBulkEntries) {
-                        const existing = revenueLogs.find(l => l.date === entry.date);
-                        const data = {
-                            date: entry.date,
-                            storeId: currentProfile.id === 'all_stores' ? 'default' : currentProfile.id,
-                            totalRevenue: entry.total,
-                            deposited: entry.deposited,
-                            remaining: entry.remaining,
-                            previousBalance: entry.prevBalance,
-                            expenses: entry.expenses,
-                            expenseAmount: entry.totalExpense,
-                            expenseNote: entry.expenses.map(e => e.name).join(', '),
-                            user: user.email,
-                            updatedAt: window.serverTimestamp(),
-                        };
-                        if (existing) {
-                            await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'daily_revenue', existing.id), data);
-                            skipped++;
-                        } else {
-                            data.createdAt = window.serverTimestamp();
-                            await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'daily_revenue'), data);
-                            saved++;
-                        }
-                    }
-                    showToast(`✅ ${saved} data disimpan${skipped > 0 ? `, ${skipped} diperbarui` : ''}!`, 'success');
-                    setParsedBulkEntries([]);
-                    setQuickInputText('');
-                    setShowQuickInput(false);
-                    setQuickInputError('');
-                } catch(err) {
-                    showToast('Gagal menyimpan sebagian data', 'error');
-                } finally {
-                    setIsBulkSaving(false);
-                }
             };
 
             const handleRevSubmit = async (e) => {
@@ -5378,101 +5233,9 @@
                             )}
                         </>
                     ) : (
-                        <div className="space-y-6 pb-20">
+                        <div className="space-y-6 pb-36">
                             <div className="bg-white p-5 rounded-2xl shadow-sm border border-purple-100">
                                 <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="pen-to-square" className="text-purple-600" /> Input Setoran Harian</h3>
-
-                                {/* QUICK INPUT SECTION */}
-                                <div className="mb-4">
-                                    <button
-                                        type="button"
-                                        onClick={() => { setShowQuickInput(v => !v); setQuickInputError(''); }}
-                                        className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl font-bold text-xs transition-all border ${showQuickInput ? 'bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-100' : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'}`}
-                                    >
-                                        <span className="flex items-center gap-2">
-                                            <Icon name="bolt" />
-                                            Input Cepat (Paste Format WA)
-                                        </span>
-                                        <Icon name={showQuickInput ? 'chevron-up' : 'chevron-down'} />
-                                    </button>
-                                    {showQuickInput && (
-                                        <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-2 animate-pop-in">
-                                            <p className="text-[10px] text-amber-700 font-semibold">Paste teks laporan harian dari WA. Bisa 1 hari atau <span className="underline font-black">beberapa hari sekaligus</span> (dipisah garis ----).</p>
-                                            <p className="text-[9px] text-slate-400 font-mono bg-white border border-amber-100 rounded-lg p-2 leading-relaxed">
-                                                Contoh:<br/>
-                                                *[1] Sabtu, 7 Feb 2026*<br/>
-                                                Sisa kemarin : Rp 0<br/>
-                                                Pendapatan &nbsp;&nbsp; : Rp 540.500<br/>
-                                                Pengeluaran &nbsp; : &nbsp; -<br/>
-                                                Setor &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; : Rp 500.000 ✅<br/>
-                                                Sisa &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; : Rp 40.500<br/>
-                                                ————————————————<br/>
-                                                *[2] Minggu, 8 Feb 2026*<br/>
-                                                ... dst
-                                            </p>
-
-                                            {/* BULK PREVIEW TABLE */}
-                                            {parsedBulkEntries.length > 0 ? (
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center justify-between">
-                                                        <p className="text-xs font-black text-amber-800 flex items-center gap-1"><Icon name="list-check" /> Preview {parsedBulkEntries.length} Data</p>
-                                                        <button type="button" onClick={() => setParsedBulkEntries([])} className="text-[10px] text-slate-400 hover:text-red-500 font-bold"><Icon name="rotate-left" /> Edit ulang</button>
-                                                    </div>
-                                                    {quickInputError && <p className="text-[10px] text-orange-600 font-bold flex items-center gap-1"><Icon name="triangle-exclamation" /> {quickInputError}</p>}
-                                                    <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
-                                                        {parsedBulkEntries.map((e, i) => (
-                                                            <div key={i} className="bg-white border border-amber-100 rounded-lg p-2.5 text-[10px]">
-                                                                <div className="flex justify-between items-center mb-1">
-                                                                    <span className="font-black text-slate-700">{formatDateFull(e.date)}</span>
-                                                                    <span className={`font-bold px-1.5 py-0.5 rounded-full text-[9px] ${revenueLogs.find(l=>l.date===e.date) ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
-                                                                        {revenueLogs.find(l=>l.date===e.date) ? 'Update' : 'Baru'}
-                                                                    </span>
-                                                                </div>
-                                                                <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-slate-500">
-                                                                    <span>Sisa kemarin: <b className="text-slate-700">{formatRupiah(e.prevBalance)}</b></span>
-                                                                    <span>Pendapatan: <b className="text-slate-700">{formatRupiah(e.total)}</b></span>
-                                                                    <span>Pengeluaran: <b className="text-red-600">{e.totalExpense > 0 ? formatRupiah(e.totalExpense) : '-'}</b></span>
-                                                                    <span>Setor: <b className="text-green-700">{formatRupiah(e.deposited)}</b></span>
-                                                                </div>
-                                                                {e.expenses.length > 0 && (
-                                                                    <div className="mt-1 pl-2 border-l-2 border-red-200 space-y-0.5">
-                                                                        {e.expenses.map((exp, j) => (<p key={j} className="text-[9px] text-slate-500">{exp.name}: {formatRupiah(exp.amount)}</p>))}
-                                                                    </div>
-                                                                )}
-                                                                <div className="mt-1 pt-1 border-t border-dashed border-slate-100 flex justify-between">
-                                                                    <span className="text-slate-400">Sisa di laci:</span>
-                                                                    <b className={e.remaining < 0 ? 'text-red-600' : 'text-purple-700'}>{formatRupiah(e.remaining)}</b>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                    <div className="flex gap-2">
-                                                        <button type="button" onClick={() => { setParsedBulkEntries([]); setQuickInputError(''); }} className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-500 rounded-lg text-xs font-bold">Batal</button>
-                                                        <button type="button" onClick={handleBulkSave} disabled={isBulkSaving} className="flex-[2] py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-md shadow-amber-200">
-                                                            {isBulkSaving ? <><Icon name="spinner" className="animate-spin" /> Menyimpan...</> : <><Icon name="cloud-arrow-up" /> Simpan {parsedBulkEntries.length} Data Sekaligus</>}
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <textarea
-                                                        value={quickInputText}
-                                                        onChange={e => { setQuickInputText(e.target.value); setQuickInputError(''); }}
-                                                        placeholder="Paste teks di sini..."
-                                                        rows={7}
-                                                        className="w-full p-3 bg-white border border-amber-300 rounded-xl text-xs font-mono outline-none focus:border-amber-500 resize-none text-slate-700 placeholder:text-slate-300"
-                                                    />
-                                                    {quickInputError && <p className="text-[10px] text-red-500 font-bold flex items-center gap-1"><Icon name="triangle-exclamation" /> {quickInputError}</p>}
-                                                    <div className="flex gap-2">
-                                                        <button type="button" onClick={() => { setShowQuickInput(false); setQuickInputText(''); setQuickInputError(''); }} className="flex-1 py-2 bg-white border border-slate-200 text-slate-500 rounded-lg text-xs font-bold">Batal</button>
-                                                        <button type="button" onClick={parseQuickInput} disabled={!quickInputText.trim()} className="flex-1 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all active:scale-95"><Icon name="wand-magic-sparkles" /> Proses</button>
-                                                    </div>
-                                                </>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-
                                 <form onSubmit={handleRevSubmit} className="space-y-3">
                                     <div className="grid grid-cols-2 gap-3">
                                         <div><label className="text-[10px] font-bold text-slate-400 uppercase">Tanggal</label><input type="date" value={revForm.date} onChange={e => setRevForm({...revForm, date: e.target.value})} className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold" /></div>
@@ -11721,6 +11484,90 @@
                 setTimeout(()=>{ win.print(); }, 400);
             };
 
+            /* ---------- Download Gambar ---------- */
+            const [downloadingImg, setDownloadingImg] = React.useState(false);
+            const handleDownloadImage = async () => {
+                const el = document.getElementById('shift-print-area');
+                if (!el) return;
+                setDownloadingImg(true);
+                try {
+                    // Buat wrapper dengan header judul untuk gambar
+                    const wrapper = document.createElement('div');
+                    wrapper.style.cssText = 'background:#ffffff;padding:16px 16px 20px 16px;font-family:Arial,sans-serif;display:inline-block;min-width:500px;';
+
+                    // Header judul
+                    const header = document.createElement('div');
+                    header.style.cssText = 'text-align:center;margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid #e2e8f0;';
+                    header.innerHTML = `
+                        <div style="font-size:18px;font-weight:900;color:#1e293b;text-transform:uppercase;letter-spacing:1px;">📅 JADWAL SHIFT</div>
+                        <div style="font-size:13px;font-weight:700;color:#7c3aed;margin-top:2px;">${storeName}</div>
+                        <div style="font-size:11px;color:#94a3b8;margin-top:3px;">${fmtShort(dayDates[0])} – ${fmtShort(dayDates[6])}&nbsp;&nbsp;|&nbsp;&nbsp;${weekLabel}</div>
+                    `;
+                    wrapper.appendChild(header);
+
+                    // Clone tabel
+                    const clone = el.cloneNode(true);
+                    // Hapus print-header hidden di dalam clone
+                    const hiddenHeader = clone.querySelector('#shift-print-header');
+                    if (hiddenHeader) hiddenHeader.style.display = 'none';
+                    wrapper.appendChild(clone);
+
+                    // Footer timestamp
+                    const footer = document.createElement('div');
+                    footer.style.cssText = 'text-align:right;margin-top:10px;font-size:9px;color:#cbd5e1;';
+                    footer.textContent = `Dibuat: ${new Date().toLocaleString('id-ID')}`;
+                    wrapper.appendChild(footer);
+
+                    // Pasang ke body sementara (off-screen)
+                    wrapper.style.position = 'fixed';
+                    wrapper.style.top = '-9999px';
+                    wrapper.style.left = '-9999px';
+                    document.body.appendChild(wrapper);
+
+                    const canvas = await window.html2canvas(wrapper, {
+                        scale: 2.5,
+                        useCORS: true,
+                        backgroundColor: '#ffffff',
+                        logging: false,
+                        width: wrapper.scrollWidth,
+                        height: wrapper.scrollHeight,
+                    });
+                    document.body.removeChild(wrapper);
+
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+                    const tglStr = dayDates[0].toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'-');
+                    const filename = `Jadwal_Shift_${storeName.replace(/\s+/g,'_')}_${tglStr}.jpg`;
+
+                    // Coba Web Share API (mobile)
+                    const blob = await (await fetch(dataUrl)).blob();
+                    const file = new File([blob], filename, { type: 'image/jpeg' });
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        try {
+                            await navigator.share({ files: [file], title: 'Jadwal Shift', text: `${storeName} — ${weekLabel}` });
+                            showToast('✅ Jadwal siap dibagikan!');
+                        } catch(e) {
+                            // User cancel share, fallback ke download
+                            const link = document.createElement('a');
+                            link.href = dataUrl;
+                            link.download = filename;
+                            link.click();
+                            showToast('✅ Gambar jadwal diunduh!');
+                        }
+                    } else {
+                        const link = document.createElement('a');
+                        link.href = dataUrl;
+                        link.download = filename;
+                        link.click();
+                        showToast('✅ Gambar jadwal berhasil diunduh!');
+                    }
+                } catch(e) {
+                    console.error('Download image error:', e);
+                    showToast('Gagal mengunduh gambar', 'error');
+                } finally {
+                    setDownloadingImg(false);
+                }
+            };
+
             const isOpen = pickerTarget !== null;
 
             return (
@@ -11737,6 +11584,19 @@
                             </div>
                         </div>
                         <div className="flex gap-1.5 flex-wrap">
+                            {activeView === 'jadwal' && (
+                                <button
+                                    onClick={handleDownloadImage}
+                                    disabled={downloadingImg}
+                                    className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white text-[11px] font-bold rounded-lg shadow transition-all active:scale-95"
+                                    title="Unduh jadwal sebagai gambar JPG"
+                                >
+                                    {downloadingImg
+                                        ? <><Icon name="spinner" className="animate-spin" /> Proses...</>
+                                        : <><Icon name="image" /> Unduh Gambar</>
+                                    }
+                                </button>
+                            )}
                             {activeView === 'jadwal' && !readOnly && (
                                 <>
                                     <button onClick={() => setModalShift(true)} className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold rounded-lg shadow transition-all active:scale-95">
