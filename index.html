@@ -5055,7 +5055,9 @@
             const totalPemasukan   = monthEntries.filter(e=>e.type==='pemasukan').reduce((s,e)=>s+Number(e.amount||0),0);
             const totalTagihan     = purchases.reduce((s,p)=>s+Number(p.total||0),0);
             const overdueCount     = purchases.filter(p=>p.dueDate && new Date(p.dueDate)<today).length;
-            const saldo = totalPemasukan - totalPengeluaran;
+            const allTimePemasukan   = entries.filter(e=>e.type==='pemasukan').reduce((s,e)=>s+Number(e.amount||0),0);
+            const allTimePengeluaran = entries.filter(e=>e.type==='pengeluaran').reduce((s,e)=>s+Number(e.amount||0),0);
+            const saldo = allTimePemasukan - allTimePengeluaran;
 
             // --- Actions ---
             const openAdd = (type) => {
@@ -5133,13 +5135,13 @@
                     <div className="grid grid-cols-2 gap-3 mb-5">
                         <div className="col-span-2 bg-gradient-to-r from-slate-800 to-slate-700 rounded-2xl p-4 flex items-center justify-between shadow-lg">
                             <div>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Saldo Bulan Ini</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Saldo Saat Ini</p>
                                 <p className={`text-xl font-extrabold mt-0.5 ${saldo>=0?'text-emerald-400':'text-red-400'}`}>{saldo>=0?'+':''}{fmt(saldo)}</p>
-                                <p className="text-[10px] text-slate-500 mt-1">{monthLabel}</p>
+                                <p className="text-[10px] text-slate-500 mt-1">Kumulatif semua waktu</p>
                             </div>
                             <div className="text-right space-y-1">
-                                <p className="text-[10px] text-emerald-400 font-bold">▲ Masuk {fmt(totalPemasukan)}</p>
-                                <p className="text-[10px] text-red-400 font-bold">▼ Keluar {fmt(totalPengeluaran)}</p>
+                                <p className="text-[10px] text-emerald-400 font-bold">▲ Masuk {fmt(allTimePemasukan)}</p>
+                                <p className="text-[10px] text-red-400 font-bold">▼ Keluar {fmt(allTimePengeluaran)}</p>
                             </div>
                         </div>
                         <div className="bg-gradient-to-br from-orange-50 to-red-50 border border-orange-200 rounded-2xl p-4">
