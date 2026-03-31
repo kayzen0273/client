@@ -5097,42 +5097,32 @@
                 setRevForm(prev => ({ ...prev, expenses: prev.expenses.filter((_, i) => i !== index) }));
             };
 
-            // BULK QUICK INPUT STATE
-            const [parsedBulkEntries, setParsedBulkEntries] = useState([]);
-            const [isBulkSaving, setIsBulkSaving] = useState(false);
+            // PARSE QUICK INPUT FORMAT
+            const parseQuickInput = () => {
+                const text = quickInputText;
+                setQuickInputError('');
+                if (!text.trim()) { setQuickInputError('Teks tidak boleh kosong'); return; }
 
-            // HELPER: parse single block of text into one entry object
-            const parseSingleBlock = (block) => {
                 const parseRp = (str) => {
                     if (!str) return 0;
                     return parseInt(str.replace(/\./g, '').replace(/[^0-9]/g, ''), 10) || 0;
                 };
-                const monthMap = {
-                    januari:'01',jan:'01',
-                    februari:'02',feb:'02',
-                    maret:'03',mar:'03',
-                    april:'04',apr:'04',
-                    mei:'05',
-                    juni:'06',jun:'06',
-                    juli:'07',jul:'07',
-                    agustus:'08',agu:'08',agt:'08',
-                    september:'09',sep:'09',
-                    oktober:'10',okt:'10',
-                    november:'11',nov:'11',
-                    desember:'12',des:'12'
-                };
 
-                const dateMatch = block.match(/(\d{1,2})\s+(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember|Jan|Feb|Mar|Apr|Jun|Jul|Agu|Agt|Sep|Okt|Nov|Des)\s+(\d{4})/i);
-                if (!dateMatch) return null;
+                // Parse date: "*[1] Sabtu, 7 Feb 2026*" or "Sabtu, 7 Feb 2026"
+                const dateMatch = text.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|Mei|Jun|Jul|Agu|Sep|Okt|Nov|Des)\s+(\d{4})/i);
+                let parsedDate = new Date().toISOString().slice(0, 10);
+                if (dateMatch) {
+                    const monthMap = { jan:'01',feb:'02',mar:'03',apr:'04',mei:'05',jun:'06',jul:'07',agu:'08',sep:'09',okt:'10',nov:'11',des:'12' };
+                    const day = dateMatch[1].padStart(2, '0');
+                    const month = monthMap[dateMatch[2].toLowerCase()] || '01';
+                    const year = dateMatch[3];
+                    parsedDate = `${year}-${month}-${day}`;
+                } else { setQuickInputError('Format tanggal tidak ditemukan (contoh: 7 Feb 2026)'); return; }
 
-                const day = dateMatch[1].padStart(2, '0');
-                const month = monthMap[dateMatch[2].toLowerCase()] || '01';
-                const year = dateMatch[3];
-                const parsedDate = `${year}-${month}-${day}`;
-
+                // Extract values helper
                 const getRp = (label) => {
-                    const re = new RegExp(label + '[\\s\\S]{0,15}?Rp\\s?([\\d.]+)', 'i');
-                    const m = block.match(re);
+                    const re = new RegExp(label + '[\\s\\S]{0,10}?Rp\\s?([\\d.]+)', 'i');
+                    const m = text.match(re);
                     return m ? parseRp(m[1]) : 0;
                 };
 
@@ -5140,114 +5130,36 @@
                 const total = getRp('Pendapatan');
                 const deposited = getRp('Setor');
 
-                // Parse expenses section between "Pengeluaran :" and "Total :"
+                // Parse pengeluaran - bisa "-" atau "Rp xxx" atau list "1. Nama : Rp xxx"
                 let expenses = [];
-                const expSection = block.match(/Pengeluaran\s*:([\s\S]*?)(?=Total\s*:)/i);
+                const expSection = text.match(/Pengeluaran\s*:\s*([\s\S]*?)(?=Total\s*:|Setor\s*:|$)/i);
                 if (expSection) {
                     const expRaw = expSection[1].trim();
-                    if (expRaw && expRaw !== '-') {
-                        const lineItems = [...expRaw.matchAll(/(?:\d+\.\s*)([^:\n\r]+?)\s*:\s*Rp\s*([\d.]+)/gi)];
+                    if (expRaw !== '-' && expRaw !== '') {
+                        // Cari semua pola "Nama : Rp xxx" atau "1. Nama : Rp xxx"
+                        const lineItems = [...expRaw.matchAll(/(?:\d+\.\s*)?([^:\n\r]+?)\s*:\s*Rp\s*([\d.]+)/gi)];
                         if (lineItems.length > 0) {
                             expenses = lineItems.map(m => ({ name: m[1].trim(), amount: parseRp(m[2]) }));
                         } else {
+                            // Coba ambil Rp langsung
                             const rpSimple = expRaw.match(/Rp\s?([\d.]+)/i);
                             if (rpSimple) expenses = [{ name: 'Pengeluaran', amount: parseRp(rpSimple[1]) }];
                         }
                     }
                 }
 
-                const totalExpense = expenses.reduce((a, c) => a + c.amount, 0);
-                const remaining = (prevBalance + total) - totalExpense - deposited;
-
-                return { date: parsedDate, prevBalance, total, deposited, expenses, totalExpense, remaining };
-            };
-
-            // PARSE QUICK INPUT — supports single OR bulk (multiple entries)
-            const parseQuickInput = () => {
-                setQuickInputError('');
-                const text = quickInputText.trim();
-                if (!text) { setQuickInputError('Teks tidak boleh kosong'); return; }
-
-                // Split by separator line "---..." OR by block header "*[N]"
-                const blocks = text
-                    .split(/(?:^|\n)-{5,}(?:\n|$)/)
-                    .map(b => b.trim())
-                    .filter(Boolean);
-
-                const results = [];
-                const failed = [];
-
-                blocks.forEach((block, idx) => {
-                    const entry = parseSingleBlock(block);
-                    if (entry) results.push(entry);
-                    else failed.push(idx + 1);
-                });
-
-                if (results.length === 0) {
-                    setQuickInputError('Tidak ada data valid yang bisa diparsing. Pastikan format tanggal benar (contoh: 7 Feb 2026).');
-                    return;
-                }
-
-                if (results.length === 1) {
-                    // Single entry → langsung isi form
-                    const e = results[0];
-                    setRevForm(prev => ({
-                        ...prev,
-                        date: e.date,
-                        prevBalance: e.prevBalance,
-                        total: String(e.total),
-                        deposited: String(e.deposited),
-                        expenses: e.expenses,
-                    }));
-                    setQuickInputText('');
-                    setShowQuickInput(false);
-                    showToast('Data berhasil diisi dari teks!', 'success');
-                } else {
-                    // Multiple entries → tampilkan preview untuk konfirmasi
-                    setParsedBulkEntries(results);
-                    if (failed.length > 0) setQuickInputError(`${failed.length} blok gagal diparsing dan akan dilewati.`);
-                }
-            };
-
-            // SAVE ALL BULK ENTRIES to Firestore
-            const handleBulkSave = async () => {
-                setIsBulkSaving(true);
-                let saved = 0, skipped = 0;
-                try {
-                    for (const entry of parsedBulkEntries) {
-                        const existing = revenueLogs.find(l => l.date === entry.date);
-                        const data = {
-                            date: entry.date,
-                            storeId: currentProfile.id === 'all_stores' ? 'default' : currentProfile.id,
-                            totalRevenue: entry.total,
-                            deposited: entry.deposited,
-                            remaining: entry.remaining,
-                            previousBalance: entry.prevBalance,
-                            expenses: entry.expenses,
-                            expenseAmount: entry.totalExpense,
-                            expenseNote: entry.expenses.map(e => e.name).join(', '),
-                            user: user.email,
-                            updatedAt: window.serverTimestamp(),
-                        };
-                        if (existing) {
-                            await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'daily_revenue', existing.id), data);
-                            skipped++;
-                        } else {
-                            data.createdAt = window.serverTimestamp();
-                            await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'daily_revenue'), data);
-                            saved++;
-                        }
-                    }
-                    showToast(`✅ ${saved} data disimpan${skipped > 0 ? `, ${skipped} diperbarui` : ''}!`, 'success');
-                    setParsedBulkEntries([]);
-                    setQuickInputText('');
-                    setShowQuickInput(false);
-                    setQuickInputError('');
-                } catch(err) {
-                    showToast('Gagal menyimpan sebagian data', 'error');
-                } finally {
-                    setIsBulkSaving(false);
-                }
+                // Apply to form
+                setRevForm(prev => ({
+                    ...prev,
+                    date: parsedDate,
+                    prevBalance: prevBalance,
+                    total: total > 0 ? String(total) : prev.total,
+                    deposited: deposited > 0 ? String(deposited) : prev.deposited,
+                    expenses: expenses,
+                }));
+                setQuickInputText('');
+                setShowQuickInput(false);
+                showToast('Data berhasil diisi dari teks!', 'success');
             };
 
             const handleRevSubmit = async (e) => {
@@ -5410,7 +5322,7 @@
                                     </button>
                                     {showQuickInput && (
                                         <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-2 animate-pop-in">
-                                            <p className="text-[10px] text-amber-700 font-semibold">Paste teks laporan harian dari WA. Bisa 1 hari atau <span className="underline font-black">beberapa hari sekaligus</span> (dipisah garis ----).</p>
+                                            <p className="text-[10px] text-amber-700 font-semibold">Paste teks laporan harian dari WA, sistem akan otomatis mengisi form di bawah.</p>
                                             <p className="text-[9px] text-slate-400 font-mono bg-white border border-amber-100 rounded-lg p-2 leading-relaxed">
                                                 Contoh:<br/>
                                                 *[1] Sabtu, 7 Feb 2026*<br/>
@@ -5418,70 +5330,20 @@
                                                 Pendapatan &nbsp;&nbsp; : Rp 540.500<br/>
                                                 Pengeluaran &nbsp; : &nbsp; -<br/>
                                                 Setor &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; : Rp 500.000 ✅<br/>
-                                                Sisa &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; : Rp 40.500<br/>
-                                                ————————————————<br/>
-                                                *[2] Minggu, 8 Feb 2026*<br/>
-                                                ... dst
+                                                Sisa &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; : Rp 40.500
                                             </p>
-
-                                            {/* BULK PREVIEW TABLE */}
-                                            {parsedBulkEntries.length > 0 ? (
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center justify-between">
-                                                        <p className="text-xs font-black text-amber-800 flex items-center gap-1"><Icon name="list-check" /> Preview {parsedBulkEntries.length} Data</p>
-                                                        <button type="button" onClick={() => setParsedBulkEntries([])} className="text-[10px] text-slate-400 hover:text-red-500 font-bold"><Icon name="rotate-left" /> Edit ulang</button>
-                                                    </div>
-                                                    {quickInputError && <p className="text-[10px] text-orange-600 font-bold flex items-center gap-1"><Icon name="triangle-exclamation" /> {quickInputError}</p>}
-                                                    <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
-                                                        {parsedBulkEntries.map((e, i) => (
-                                                            <div key={i} className="bg-white border border-amber-100 rounded-lg p-2.5 text-[10px]">
-                                                                <div className="flex justify-between items-center mb-1">
-                                                                    <span className="font-black text-slate-700">{formatDateFull(e.date)}</span>
-                                                                    <span className={`font-bold px-1.5 py-0.5 rounded-full text-[9px] ${revenueLogs.find(l=>l.date===e.date) ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
-                                                                        {revenueLogs.find(l=>l.date===e.date) ? 'Update' : 'Baru'}
-                                                                    </span>
-                                                                </div>
-                                                                <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-slate-500">
-                                                                    <span>Sisa kemarin: <b className="text-slate-700">{formatRupiah(e.prevBalance)}</b></span>
-                                                                    <span>Pendapatan: <b className="text-slate-700">{formatRupiah(e.total)}</b></span>
-                                                                    <span>Pengeluaran: <b className="text-red-600">{e.totalExpense > 0 ? formatRupiah(e.totalExpense) : '-'}</b></span>
-                                                                    <span>Setor: <b className="text-green-700">{formatRupiah(e.deposited)}</b></span>
-                                                                </div>
-                                                                {e.expenses.length > 0 && (
-                                                                    <div className="mt-1 pl-2 border-l-2 border-red-200 space-y-0.5">
-                                                                        {e.expenses.map((exp, j) => (<p key={j} className="text-[9px] text-slate-500">{exp.name}: {formatRupiah(exp.amount)}</p>))}
-                                                                    </div>
-                                                                )}
-                                                                <div className="mt-1 pt-1 border-t border-dashed border-slate-100 flex justify-between">
-                                                                    <span className="text-slate-400">Sisa di laci:</span>
-                                                                    <b className={e.remaining < 0 ? 'text-red-600' : 'text-purple-700'}>{formatRupiah(e.remaining)}</b>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                    <div className="flex gap-2">
-                                                        <button type="button" onClick={() => { setParsedBulkEntries([]); setQuickInputError(''); }} className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-500 rounded-lg text-xs font-bold">Batal</button>
-                                                        <button type="button" onClick={handleBulkSave} disabled={isBulkSaving} className="flex-[2] py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-md shadow-amber-200">
-                                                            {isBulkSaving ? <><Icon name="spinner" className="animate-spin" /> Menyimpan...</> : <><Icon name="cloud-arrow-up" /> Simpan {parsedBulkEntries.length} Data Sekaligus</>}
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <textarea
-                                                        value={quickInputText}
-                                                        onChange={e => { setQuickInputText(e.target.value); setQuickInputError(''); }}
-                                                        placeholder="Paste teks di sini..."
-                                                        rows={7}
-                                                        className="w-full p-3 bg-white border border-amber-300 rounded-xl text-xs font-mono outline-none focus:border-amber-500 resize-none text-slate-700 placeholder:text-slate-300"
-                                                    />
-                                                    {quickInputError && <p className="text-[10px] text-red-500 font-bold flex items-center gap-1"><Icon name="triangle-exclamation" /> {quickInputError}</p>}
-                                                    <div className="flex gap-2">
-                                                        <button type="button" onClick={() => { setShowQuickInput(false); setQuickInputText(''); setQuickInputError(''); }} className="flex-1 py-2 bg-white border border-slate-200 text-slate-500 rounded-lg text-xs font-bold">Batal</button>
-                                                        <button type="button" onClick={parseQuickInput} disabled={!quickInputText.trim()} className="flex-1 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all active:scale-95"><Icon name="wand-magic-sparkles" /> Proses</button>
-                                                    </div>
-                                                </>
-                                            )}
+                                            <textarea
+                                                value={quickInputText}
+                                                onChange={e => { setQuickInputText(e.target.value); setQuickInputError(''); }}
+                                                placeholder="Paste teks di sini..."
+                                                rows={6}
+                                                className="w-full p-3 bg-white border border-amber-300 rounded-xl text-xs font-mono outline-none focus:border-amber-500 resize-none text-slate-700 placeholder:text-slate-300"
+                                            />
+                                            {quickInputError && <p className="text-[10px] text-red-500 font-bold flex items-center gap-1"><Icon name="triangle-exclamation" /> {quickInputError}</p>}
+                                            <div className="flex gap-2">
+                                                <button type="button" onClick={() => { setShowQuickInput(false); setQuickInputText(''); setQuickInputError(''); }} className="flex-1 py-2 bg-white border border-slate-200 text-slate-500 rounded-lg text-xs font-bold">Batal</button>
+                                                <button type="button" onClick={parseQuickInput} disabled={!quickInputText.trim()} className="flex-1 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all active:scale-95"><Icon name="wand-magic-sparkles" /> Isi Otomatis</button>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
