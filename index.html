@@ -3044,6 +3044,15 @@
                 if (selectedReceiptStoreId === id) setSelectedReceiptStoreId(updatedProfiles[0].id);
             };
 
+            const moveProfile = (idx, dir) => {
+                const newIdx = idx + dir;
+                if (newIdx < 0 || newIdx >= profiles.length) return;
+                const updated = [...profiles];
+                [updated[idx], updated[newIdx]] = [updated[newIdx], updated[idx]];
+                setProfiles(updated);
+                handleChange('storeProfiles', updated);
+            };
+
             // Helpers for Receipt Section specific to selected store
             const currentReceiptProfileIndex = profiles.findIndex(p => p.id === selectedReceiptStoreId);
             const currentReceiptProfile = profiles[currentReceiptProfileIndex] || profiles[0];
@@ -3152,7 +3161,15 @@
                                                 <div className="w-1/3"><label className="text-[10px] text-slate-400 font-bold uppercase block mb-1">ID (Tetap)</label><div className="w-full p-2 bg-slate-50 rounded-lg border border-slate-100 text-[10px] text-slate-500 font-mono truncate select-all">{p.id}</div></div>
                                             </div>
                                             <div><label className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Alamat Toko</label><input type="text" value={p.address} onChange={(e) => handleUpdateProfile(idx, 'address', e.target.value)} className="w-full p-2 rounded-lg border border-slate-200 text-xs text-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500" placeholder="Alamat lengkap..." /></div>
-                                            {idx > 0 && (<button onClick={() => removeProfile(p.id)} className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-red-100 text-red-500 border border-red-200 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors shadow-sm"><Icon name="xmark" /></button>)}
+                                            <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-100">
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-[10px] font-bold text-slate-400 mr-1">Urutan:</span>
+                                                    <button onClick={() => moveProfile(idx, -1)} disabled={idx === 0} className="w-6 h-6 rounded-md bg-sky-50 text-sky-500 border border-sky-200 flex items-center justify-center hover:bg-sky-500 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-xs"><Icon name="chevron-up" /></button>
+                                                    <button onClick={() => moveProfile(idx, 1)} disabled={idx === profiles.length - 1} className="w-6 h-6 rounded-md bg-sky-50 text-sky-500 border border-sky-200 flex items-center justify-center hover:bg-sky-500 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-xs"><Icon name="chevron-down" /></button>
+                                                    <span className="text-[10px] text-slate-300 font-mono ml-1">#{idx + 1}</span>
+                                                </div>
+                                                {idx > 0 && (<button onClick={() => removeProfile(p.id)} className="w-7 h-7 rounded-full bg-red-50 text-red-400 border border-red-200 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors shadow-sm"><Icon name="xmark" /></button>)}
+                                            </div>
                                         </div>
                                     ))}
                                     <div className="pt-3 border-t border-sky-100">
