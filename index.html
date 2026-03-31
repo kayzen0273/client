@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sistem Kasir Apotek Rafa Medica (V68 - Fix Riwayat Setoran Unlimited)</title>
+    <title>Sistem Kasir Apotek Rafa Medica (V68 - Buku Kas Salin WA)</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -5010,6 +5010,13 @@
             const [tempExpAmount, setTempExpAmount] = useState('');
             const [isRevSubmitting, setIsRevSubmitting] = useState(false);
 
+            // Bulk Import State
+            const [showBulkModal, setShowBulkModal] = useState(false);
+            const [bulkText, setBulkText] = useState('');
+            const [bulkParsed, setBulkParsed] = useState([]);
+            const [bulkImporting, setBulkImporting] = useState(false);
+            const [bulkParseError, setBulkParseError] = useState('');
+
             useEffect(() => {
                 if (!user) return;
                 
@@ -5140,6 +5147,96 @@
                 try { await window.deleteDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'daily_revenue', id)); showToast("Dihapus"); } catch(err) { showToast("Gagal hapus", "error"); }
             };
 
+            // PARSE BULK WA TEXT → array of entries
+            const parseBulkText = (text) => {
+                const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, Mei:4, Jun:5, Jul:6, Agu:7, Sep:8, Okt:9, Nov:10, Des:11 };
+                const results = [];
+                const lines = text.split('\n');
+                // Regex: "1. 30 Mar 2026 | ↓ +Rp 1.500.000 – Keterangan"
+                const lineRe = /^\d+\.\s+(\d+)\s+(\w+)\s+(\d{4})\s*\|\s*(↓ \+|↑ -)Rp\s*([\d.,]+)\s*[–-]\s*(.+)$/;
+                lines.forEach(line => {
+                    const m = line.trim().match(lineRe);
+                    if (!m) return;
+                    const day = parseInt(m[1]);
+                    const mon = monthMap[m[2]];
+                    const year = parseInt(m[3]);
+                    if (mon === undefined || isNaN(day) || isNaN(year)) return;
+                    const date = `${year}-${String(mon+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+                    const type = m[4].startsWith('↓') ? 'in' : 'out';
+                    const amount = parseInt(m[5].replace(/[.,]/g, ''));
+                    const description = m[6].trim();
+                    if (!description || isNaN(amount) || amount <= 0) return;
+                    results.push({ date, type, amount, description });
+                });
+                return results;
+            };
+
+            const handleParseBulk = () => {
+                setBulkParseError('');
+                const parsed = parseBulkText(bulkText);
+                if (parsed.length === 0) {
+                    setBulkParseError('Tidak ada data yang bisa dibaca. Pastikan format sesuai dengan "Salin Semua".');
+                    setBulkParsed([]);
+                } else {
+                    setBulkParsed(parsed);
+                }
+            };
+
+            const handleBulkImport = async () => {
+                if (bulkParsed.length === 0) return;
+                setBulkImporting(true);
+                try {
+                    const storeId = currentProfile.id === 'all_stores' ? 'default' : currentProfile.id;
+                    const batch = window.writeBatch(window.db);
+                    bulkParsed.forEach(item => {
+                        const ref = window.doc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'cashflow'));
+                        batch.set(ref, { type: item.type, amount: item.amount, description: item.description, date: item.date, storeId, user: user.email, createdAt: window.serverTimestamp() });
+                    });
+                    await batch.commit();
+                    showToast(`${bulkParsed.length} transaksi berhasil diimport!`);
+                    setShowBulkModal(false);
+                    setBulkText('');
+                    setBulkParsed([]);
+                } catch(err) {
+                    showToast('Gagal import, coba lagi', 'error');
+                } finally {
+                    setBulkImporting(false);
+                }
+            };
+
+            // COPY SINGLE OPERATIONAL ENTRY TO WA
+            const handleCopyOpEntryToWA = (t) => {
+                const dateObj = new Date(t.date + 'T00:00:00');
+                const dateLabel = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
+                const arah = t.type === 'in' ? '✅ Pemasukan' : '❌ Pengeluaran';
+                const text = `*KAS OPERASIONAL*\n${currentProfile.name}\n\n📅 ${dateLabel}\n${arah}: ${formatRupiah(t.amount)}\nKet: ${t.description}`;
+                navigator.clipboard.writeText(text);
+                showToast("Disalin ke clipboard!");
+            };
+
+            // COPY ALL OPERATIONAL ENTRIES TO WA
+            const handleCopyAllOpToWA = () => {
+                const storeName = currentProfile.name;
+                const now = new Date();
+                const nowLabel = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
+
+                let lines = `*REKAP KAS OPERASIONAL*\n${storeName} – ${nowLabel}\n`;
+                lines += `\nSaldo   : ${formatRupiah(opStats.balance)}`;
+                lines += `\nMasuk   : ${formatRupiah(opStats.totalIn)}`;
+                lines += `\nKeluar  : ${formatRupiah(opStats.totalOut)}`;
+                lines += `\n\n─────────────────────────\nRIWAYAT TRANSAKSI:\n`;
+
+                entries.forEach((t, i) => {
+                    const dateObj = new Date(t.date + 'T00:00:00');
+                    const dateLabel = dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+                    const arah = t.type === 'in' ? '↓ +' : '↑ -';
+                    lines += `${i + 1}. ${dateLabel} | ${arah}${formatRupiah(t.amount)} – ${t.description}\n`;
+                });
+
+                navigator.clipboard.writeText(lines.trim());
+                showToast("Rekap kas disalin ke clipboard!");
+            };
+
             // UPDATED COPY TO WA LOGIC
             const handleCopyRevenueToWA = (log) => {
                 const prev = safeNumber(log.previousBalance);
@@ -5200,8 +5297,15 @@
                                 </div>
                             </div>
                             
-                            <div className="space-y-2 pb-20">
-                                <h3 className="font-bold text-slate-700 text-sm">Riwayat Operasional</h3>
+                            <div className="space-y-2 pb-36">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="font-bold text-slate-700 text-sm">Riwayat Operasional</h3>
+                                    {entries.length > 0 && (
+                                        <button onClick={handleCopyAllOpToWA} className="flex items-center gap-1.5 text-[10px] font-bold bg-[#25D366] text-white px-2.5 py-1.5 rounded-lg hover:bg-[#128C7E] transition-colors shadow-sm active:scale-95">
+                                            <Icon name="whatsapp" type="brands" /> Salin Semua
+                                        </button>
+                                    )}
+                                </div>
                                 {entries.length === 0 && (<div className="bg-white p-8 rounded-2xl text-center border border-dashed border-slate-200"><p className="text-slate-400 text-sm">Belum ada transaksi</p></div>)}
                                 {entries.map(t => (
                                     <div key={t.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center">
@@ -5209,14 +5313,20 @@
                                             <div className={`w-8 h-8 rounded-full flex items-center justify-center ${t.type === 'in' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}><Icon name={t.type === 'in' ? 'arrow-down' : 'arrow-up'} /></div>
                                             <div><p className="font-bold text-slate-800 text-sm">{t.description}</p><p className="text-[10px] text-slate-400">{formatDateIndo(t.date)}</p></div>
                                         </div>
-                                        <div className="text-right">
-                                            <p className={`font-bold text-sm ${t.type === 'in' ? 'text-green-600' : 'text-red-600'}`}>{t.type === 'in' ? '+' : '-'} {formatRupiah(t.amount)}</p>
-                                            {!readOnly && <button onClick={() => handleOpDelete(t.id)} className="text-slate-300 hover:text-red-500 text-[10px] p-1"><Icon name="trash" /></button>}
+                                        <div className="flex items-center gap-2">
+                                            <div className="text-right">
+                                                <p className={`font-bold text-sm ${t.type === 'in' ? 'text-green-600' : 'text-red-600'}`}>{t.type === 'in' ? '+' : '-'} {formatRupiah(t.amount)}</p>
+                                                {!readOnly && <button onClick={() => handleOpDelete(t.id)} className="text-slate-300 hover:text-red-500 text-[10px] p-1"><Icon name="trash" /></button>}
+                                            </div>
+                                            <button onClick={() => handleCopyOpEntryToWA(t)} title="Salin ke WA" className="w-7 h-7 flex items-center justify-center bg-[#25D366] text-white rounded-lg hover:bg-[#128C7E] transition-colors flex-shrink-0 active:scale-95">
+                                                <Icon name="whatsapp" type="brands" className="text-xs" />
+                                            </button>
                                         </div>
                                     </div>
                                 ))}
                             </div>
                             {!readOnly && <button onClick={() => setShowModal(true)} className="fixed bottom-24 md:bottom-10 right-6 bg-blue-600 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center z-30"><Icon name="plus" className="text-2xl" /></button>}
+                            {!readOnly && <button onClick={() => { setShowBulkModal(true); setBulkText(''); setBulkParsed([]); setBulkParseError(''); }} className="fixed bottom-24 md:bottom-10 right-24 bg-indigo-500 text-white h-10 px-3 rounded-full shadow-lg flex items-center gap-1.5 z-30 text-xs font-bold hover:bg-indigo-600 active:scale-95 transition-all"><Icon name="file-import" /> Import Massal</button>}
                             {showModal && (
                                 <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm fade-in">
                                     <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl">
@@ -5228,6 +5338,64 @@
                                             <input type="text" placeholder="Keterangan" value={formDesc} onChange={e => setFormDesc(e.target.value)} required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm" />
                                             <div className="flex gap-2 mt-4"><button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold">Batal</button><button type="submit" className="flex-1 py-3 bg-slate-800 text-white rounded-xl font-bold">Simpan</button></div>
                                         </form>
+                                    </div>
+                                </div>
+                            )}
+                            {showBulkModal && (
+                                <div className="fixed inset-0 bg-black/60 z-[100] flex items-end md:items-center justify-center backdrop-blur-sm fade-in">
+                                    <div className="bg-white w-full max-w-lg rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col" style={{maxHeight:'92vh'}}>
+                                        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-100 flex-shrink-0">
+                                            <div>
+                                                <h3 className="font-bold text-slate-800 text-base flex items-center gap-2"><Icon name="file-import" className="text-indigo-500" /> Import Massal Kas</h3>
+                                                <p className="text-[10px] text-slate-400 mt-0.5">Paste teks dari tombol "Salin Semua" WhatsApp</p>
+                                            </div>
+                                            <button onClick={() => setShowBulkModal(false)} className="w-8 h-8 rounded-full bg-slate-100 text-slate-400 hover:bg-slate-200 flex items-center justify-center"><Icon name="xmark" /></button>
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                                            <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3">
+                                                <p className="text-[10px] font-bold text-indigo-700 mb-1">Format yang dikenali (dari Salin Semua):</p>
+                                                <pre className="text-[9px] text-indigo-600 font-mono whitespace-pre-wrap leading-relaxed">{`RIWAYAT TRANSAKSI:\n1. 30 Mar 2026 | ↓ +Rp 2.000.000 – Modal awal\n2. 31 Mar 2026 | ↑ -Rp 500.000 – Beli ATK`}</pre>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Tempel Teks di Sini</label>
+                                                <textarea
+                                                    value={bulkText}
+                                                    onChange={e => { setBulkText(e.target.value); setBulkParsed([]); setBulkParseError(''); }}
+                                                    rows={7}
+                                                    placeholder="Paste teks rekap kas dari WhatsApp..."
+                                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono resize-none outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
+                                                />
+                                            </div>
+                                            <button onClick={handleParseBulk} disabled={!bulkText.trim()} className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold disabled:opacity-40 active:scale-95 transition-all flex items-center justify-center gap-2">
+                                                <Icon name="wand-magic-sparkles" /> Baca &amp; Preview Data
+                                            </button>
+                                            {bulkParseError && (
+                                                <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-600 font-medium">{bulkParseError}</div>
+                                            )}
+                                            {bulkParsed.length > 0 && (
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-700 mb-2"><span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{bulkParsed.length} transaksi</span> siap diimport</p>
+                                                    <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+                                                        {bulkParsed.map((item, i) => (
+                                                            <div key={i} className="flex items-center gap-2 bg-white border border-slate-100 rounded-lg px-3 py-2 text-xs">
+                                                                <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${item.type === 'in' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                                                                    <Icon name={item.type === 'in' ? 'arrow-down' : 'arrow-up'} className="text-[8px]" />
+                                                                </div>
+                                                                <span className="text-slate-400 flex-shrink-0">{item.date}</span>
+                                                                <span className="font-bold text-slate-700 flex-1 truncate">{item.description}</span>
+                                                                <span className={`font-bold flex-shrink-0 ${item.type === 'in' ? 'text-green-600' : 'text-red-600'}`}>{item.type === 'in' ? '+' : '-'}{formatRupiah(item.amount)}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="px-5 pb-6 pt-3 border-t border-slate-100 flex gap-2 flex-shrink-0">
+                                            <button onClick={() => setShowBulkModal(false)} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm">Batal</button>
+                                            <button onClick={handleBulkImport} disabled={bulkParsed.length === 0 || bulkImporting} className="flex-[2] py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm disabled:opacity-40 active:scale-95 transition-all flex items-center justify-center gap-2">
+                                                {bulkImporting ? <><Icon name="spinner" className="animate-spin" /> Menyimpan...</> : <><Icon name="cloud-arrow-up" /> Import {bulkParsed.length > 0 ? `${bulkParsed.length} Data` : ''}</>}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             )}
