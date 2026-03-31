@@ -11484,82 +11484,177 @@
                 setTimeout(()=>{ win.print(); }, 400);
             };
 
-            /* ---------- Download Gambar ---------- */
+            /* ---------- Download Gambar (style seperti referensi) ---------- */
             const [downloadingImg, setDownloadingImg] = React.useState(false);
             const handleDownloadImage = async () => {
-                const el = document.getElementById('shift-print-area');
-                if (!el) return;
                 setDownloadingImg(true);
                 try {
-                    // Buat wrapper dengan header judul untuk gambar
-                    const wrapper = document.createElement('div');
-                    wrapper.style.cssText = 'background:#ffffff;padding:16px 16px 20px 16px;font-family:Arial,sans-serif;display:inline-block;min-width:500px;';
+                    const HARI_FULL = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
+                    const lokasiCols = lokasiList.map(l => l.nama);
+                    const numLokasi  = lokasiCols.length || 1;
 
-                    // Header judul
-                    const header = document.createElement('div');
-                    header.style.cssText = 'text-align:center;margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid #e2e8f0;';
-                    header.innerHTML = `
-                        <div style="font-size:18px;font-weight:900;color:#1e293b;text-transform:uppercase;letter-spacing:1px;">📅 JADWAL SHIFT</div>
-                        <div style="font-size:13px;font-weight:700;color:#7c3aed;margin-top:2px;">${storeName}</div>
-                        <div style="font-size:11px;color:#94a3b8;margin-top:3px;">${fmtShort(dayDates[0])} – ${fmtShort(dayDates[6])}&nbsp;&nbsp;|&nbsp;&nbsp;${weekLabel}</div>
-                    `;
-                    wrapper.appendChild(header);
+                    // Kumpulkan semua shift kecuali 'libur' untuk baris
+                    const activeShifts = SHIFTS.filter(s => s.id !== 'libur');
 
-                    // Clone tabel
-                    const clone = el.cloneNode(true);
-                    // Hapus print-header hidden di dalam clone
-                    const hiddenHeader = clone.querySelector('#shift-print-header');
-                    if (hiddenHeader) hiddenHeader.style.display = 'none';
-                    wrapper.appendChild(clone);
+                    // Warna shift: pagi=kuning, siang=cyan, custom pakai warna aslinya
+                    const shiftBgMap = {
+                        pagi:  { bg: '#FFFF00', text: '#000000' },
+                        siang: { bg: '#00CFFF', text: '#000000' },
+                    };
+                    const getShiftStyle = (shiftId, shiftObj) => {
+                        if (shiftBgMap[shiftId]) return shiftBgMap[shiftId];
+                        return { bg: shiftObj?.bg || '#e2e8f0', text: shiftObj?.text || '#000' };
+                    };
 
-                    // Footer timestamp
-                    const footer = document.createElement('div');
-                    footer.style.cssText = 'text-align:right;margin-top:10px;font-size:9px;color:#cbd5e1;';
-                    footer.textContent = `Dibuat: ${new Date().toLocaleString('id-ID')}`;
-                    wrapper.appendChild(footer);
+                    // Cell width dinamis
+                    const colW   = 110; // px per lokasi
+                    const hariW  = 90;
+                    const shiftW = 85;
+                    const totalW = hariW + shiftW + numLokasi * colW;
+
+                    // Build HTML table
+                    let rows = '';
+                    HARI_FULL.forEach((hari, dayIdx) => {
+                        const tgl       = dayDates[dayIdx];
+                        const tglStr    = tgl.toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'});
+                        const isRedDay  = redDays.includes(dayIdx);
+                        const hariColor = isRedDay ? '#dc2626' : (dayIdx >= 5 ? '#b45309' : '#000000');
+                        const rowCount  = activeShifts.length;
+                        const libur     = SHIFTS.find(s => s.id === 'libur');
+
+                        // Cek apakah ada slot libur terisi di hari ini
+                        let liburNames = [];
+                        lokasiList.forEach(loc => {
+                            const ids = getCell(dayIdx, 'libur', loc.id);
+                            ids.forEach(id => {
+                                if (id) { const k = getKaryawan(id); if (k) liburNames.push(k.nama); }
+                            });
+                        });
+
+                        activeShifts.forEach((shift, si) => {
+                            const { bg: shiftBg, text: shiftText } = getShiftStyle(shift.id, shift);
+                            let cellsTd = '';
+                            lokasiList.forEach(loc => {
+                                const ids = getCell(dayIdx, shift.id, loc.id);
+                                // Kumpulkan nama-nama di cell ini (slot 0 dan 1 jika doubleSlot)
+                                const names = [];
+                                [0,1].forEach(slotIdx => {
+                                    const kId = ids[slotIdx];
+                                    if (kId) { const k = getKaryawan(kId); if (k) names.push(k.nama); }
+                                });
+                                // Cek libur untuk lokasi ini
+                                const liburIds = getCell(dayIdx, 'libur', loc.id);
+                                const liburNames2 = [];
+                                [0,1].forEach(slotIdx => {
+                                    const kId = liburIds[slotIdx];
+                                    if (kId) { const k = getKaryawan(kId); if (k) liburNames2.push(k.nama + ' (L)'); }
+                                });
+                                const allNames = [...names, ...liburNames2];
+                                const cellText = allNames.length > 0
+                                    ? allNames.map(n => `<div style="line-height:1.3;">${n}</div>`).join('')
+                                    : '<span style="color:#bbb;">—</span>';
+                                cellsTd += `<td style="border:1.5px solid #555;padding:5px 8px;text-align:center;font-size:13px;font-weight:600;background:${shiftBg};color:${shiftText};vertical-align:middle;">${cellText}</td>`;
+                            });
+                            if (lokasiList.length === 0) {
+                                cellsTd = `<td style="border:1.5px solid #555;padding:5px 8px;text-align:center;background:${shiftBg};color:${shiftText};">—</td>`;
+                            }
+
+                            // Baris hari hanya di baris pertama shift (rowspan)
+                            const hariTd = si === 0
+                                ? `<td rowspan="${rowCount}" style="border:1.5px solid #555;padding:5px 6px;text-align:center;font-weight:900;font-size:13px;color:${hariColor};vertical-align:middle;background:#f8fafc;">
+                                    <div>${hari.toUpperCase()}</div>
+                                    <div style="font-size:11px;font-weight:600;color:#666;">${tglStr}</div>
+                                    ${isRedDay ? '<div style="font-size:10px;color:#dc2626;">🔴</div>' : ''}
+                                   </td>`
+                                : '';
+
+                            const shiftLabel = shift.label;
+                            const shiftJam = shift.jamMulai && shift.jamSelesai ? `<div style="font-size:10px;font-weight:500;opacity:0.8;">${shift.jamMulai}–${shift.jamSelesai}</div>` : '';
+
+                            rows += `<tr>
+                                ${hariTd}
+                                <td style="border:1.5px solid #555;padding:5px 6px;text-align:center;font-weight:700;font-size:13px;background:${shiftBg};color:${shiftText};vertical-align:middle;">
+                                    ${shiftLabel}${shiftJam}
+                                </td>
+                                ${cellsTd}
+                            </tr>`;
+                        });
+
+                        // Pemisah antar hari (baris kosong tipis) — skip hari terakhir
+                        if (dayIdx < 6) {
+                            rows += `<tr><td colspan="${2 + numLokasi}" style="height:6px;background:#e2e8f0;border:none;padding:0;"></td></tr>`;
+                        }
+                    });
+
+                    // Header lokasi
+                    let lokasiThs = lokasiCols.map(n =>
+                        `<th style="border:1.5px solid #555;padding:6px 8px;text-align:center;font-size:13px;background:#1e293b;color:#fff;font-weight:700;">${n}</th>`
+                    ).join('');
+                    if (lokasiCols.length === 0) lokasiThs = `<th style="border:1.5px solid #555;padding:6px;background:#1e293b;color:#666;">—</th>`;
+
+                    const tableHTML = `
+                    <div style="font-family:Arial,Helvetica,sans-serif;background:#ffffff;padding:0;display:inline-block;">
+                        <table style="border-collapse:collapse;width:${totalW}px;">
+                            <thead>
+                                <tr>
+                                    <th colspan="${2 + numLokasi}" style="padding:10px 8px;text-align:center;font-size:17px;font-weight:900;background:#ffffff;color:#1e293b;border:1.5px solid #555;letter-spacing:0.5px;text-transform:uppercase;">
+                                        JADWAL SHIFT ${storeName.toUpperCase()}
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th colspan="${2 + numLokasi}" style="padding:5px 8px;text-align:center;font-size:13px;font-weight:600;background:#ffffff;color:#444;border:1.5px solid #555;">
+                                        Lokasi Kerja &nbsp;|&nbsp; ${fmtShort(dayDates[0])} – ${fmtShort(dayDates[6])}
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th style="border:1.5px solid #555;padding:6px 8px;text-align:center;font-size:13px;background:#1e293b;color:#fff;font-weight:700;">Hari/tgl</th>
+                                    <th style="border:1.5px solid #555;padding:6px 8px;text-align:center;font-size:13px;background:#1e293b;color:#fff;font-weight:700;">Jam Kerja</th>
+                                    ${lokasiThs}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows}
+                            </tbody>
+                        </table>
+                    </div>`;
 
                     // Pasang ke body sementara (off-screen)
-                    wrapper.style.position = 'fixed';
-                    wrapper.style.top = '-9999px';
-                    wrapper.style.left = '-9999px';
+                    const wrapper = document.createElement('div');
+                    wrapper.style.cssText = 'position:fixed;top:-9999px;left:-9999px;background:#fff;';
+                    wrapper.innerHTML = tableHTML;
                     document.body.appendChild(wrapper);
 
-                    const canvas = await window.html2canvas(wrapper, {
+                    const inner = wrapper.firstElementChild;
+                    const canvas = await window.html2canvas(inner, {
                         scale: 2.5,
                         useCORS: true,
                         backgroundColor: '#ffffff',
                         logging: false,
-                        width: wrapper.scrollWidth,
-                        height: wrapper.scrollHeight,
+                        width: inner.scrollWidth,
+                        height: inner.scrollHeight,
                     });
                     document.body.removeChild(wrapper);
 
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-                    const tglStr = dayDates[0].toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'-');
+                    const dataUrl  = canvas.toDataURL('image/jpeg', 0.97);
+                    const tglStr   = dayDates[0].toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'-');
                     const filename = `Jadwal_Shift_${storeName.replace(/\s+/g,'_')}_${tglStr}.jpg`;
 
                     // Coba Web Share API (mobile)
-                    const blob = await (await fetch(dataUrl)).blob();
-                    const file = new File([blob], filename, { type: 'image/jpeg' });
-                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                        try {
+                    try {
+                        const blob = await (await fetch(dataUrl)).blob();
+                        const file = new File([blob], filename, { type: 'image/jpeg' });
+                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
                             await navigator.share({ files: [file], title: 'Jadwal Shift', text: `${storeName} — ${weekLabel}` });
                             showToast('✅ Jadwal siap dibagikan!');
-                        } catch(e) {
-                            // User cancel share, fallback ke download
-                            const link = document.createElement('a');
-                            link.href = dataUrl;
-                            link.download = filename;
-                            link.click();
-                            showToast('✅ Gambar jadwal diunduh!');
+                            return;
                         }
-                    } else {
-                        const link = document.createElement('a');
-                        link.href = dataUrl;
-                        link.download = filename;
-                        link.click();
-                        showToast('✅ Gambar jadwal berhasil diunduh!');
-                    }
+                    } catch(shareErr) { /* fallback ke download biasa */ }
+
+                    const link = document.createElement('a');
+                    link.href     = dataUrl;
+                    link.download = filename;
+                    link.click();
+                    showToast('✅ Gambar jadwal berhasil diunduh!');
                 } catch(e) {
                     console.error('Download image error:', e);
                     showToast('Gagal mengunduh gambar', 'error');
@@ -13848,4 +13943,4 @@
     </script>
 <audio id="chaching-sound" src="cha-ching.mp3" preload="auto"></audio>
 </body>
-</html>
+</html
