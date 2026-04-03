@@ -6872,7 +6872,7 @@
                             ) : (
                                 <div className="bg-white rounded-xl border border-slate-200 shadow-soft overflow-hidden">
                                     {/* Tab Barang / Paket barang */}
-                                    <div className="flex border-b border-slate-200">
+                                    <div className="flex justify-center border-b border-slate-200">
                                         <button onClick={() => setSearchTab('barang')} className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold border-b-2 transition-colors ${searchTab === 'barang' ? 'border-teal-500 text-slate-800' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
                                             Barang
                                             <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none ${searchTab === 'barang' ? 'bg-rose-500 text-white' : 'bg-slate-200 text-slate-500'}`}>{filteredItems.length}</span>
@@ -6916,9 +6916,7 @@
                                         <div className="px-3 py-2.5 border-t border-slate-100 bg-slate-50/50">
                                             <p className="text-xs font-bold text-slate-600 mb-1">Tidak ketemu?</p>
                                             <div className="flex items-center gap-3">
-                                                <a href="https://farmacare.id/katalog" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-teal-600 text-xs font-semibold">
-                                                    <Icon name="star" className="text-[10px]" /> Katalog Farmacare
-                                                </a>
+
                                                 {!readOnly && (
                                                     <button onClick={() => { setSearch(''); onNavigateToAdd && onNavigateToAdd(); }} className="flex items-center gap-1 text-teal-600 text-xs font-semibold">
                                                         <Icon name="plus" className="text-[10px]" /> Buat barang baru
