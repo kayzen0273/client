@@ -6815,12 +6815,12 @@
                                                 <button key={item.id} onClick={() => addToCart(item)} disabled={isOOS}
                                                     className={`w-full text-left px-3 py-2 flex items-center justify-between gap-2 transition-all active:scale-[0.99] ${isOOS ? 'opacity-50 bg-slate-50' : 'hover:bg-teal-50/60 active:bg-teal-100/50'}`}>
                                                     <div className="flex-1 min-w-0">
-                                                        <p className="text-xs text-slate-700 leading-snug">{highlightName(item.name, search)}{item.isKonsinyasi && <span className="ml-1 inline-block bg-fuchsia-100 text-fuchsia-700 text-[8px] font-black px-1 rounded border border-fuchsia-200">kons.</span>}</p>
+                                                        <p className="text-sm text-slate-700 leading-snug">{highlightName(item.name, search)}{item.isKonsinyasi && <span className="ml-1 inline-block bg-fuchsia-100 text-fuchsia-700 text-[8px] font-black px-1 rounded border border-fuchsia-200">kons.</span>}</p>
                                                     </div>
-                                                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                                                        <span className="text-xs font-bold text-slate-800 whitespace-nowrap">{formatRupiah(item.price)}{item.unit ? `/${item.unit}` : ''}</span>
+                                                    <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                                                        <span className="text-sm font-bold text-slate-800 whitespace-nowrap">{formatRupiah(item.price)}{item.unit ? `/${item.unit}` : ''}</span>
                                                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isOOS ? 'bg-red-500 text-white' : 'bg-green-50 text-green-700 border border-green-300'}`}>
-                                                            {currentStock} {item.unit || ''}
+                                                            stok {currentStock} {item.unit || ''}
                                                         </span>
                                                     </div>
                                                 </button>
