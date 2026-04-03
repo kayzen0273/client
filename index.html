@@ -6881,7 +6881,7 @@
 
                                     {/* TAB: Barang */}
                                     {searchTab === 'barang' && (<>
-                                        <div className="divide-y divide-slate-100 max-h-[260px] overflow-y-auto custom-scrollbar">
+                                        <div className="divide-y divide-slate-100 max-h-[312px] overflow-y-auto custom-scrollbar">
                                             {filteredItems.map(item => {
                                                 const inCart = cart.find(c => c.id === item.id);
                                                 const currentStock = safeNumber(item.qty) - (inCart ? inCart.cartQty : 0);
