@@ -5809,6 +5809,21 @@
             const visibilityTimerRef = useRef(null);
             const autoSaveSnap = useRef(null);
 
+            // Reset ke tampilan awal saat ganti toko
+            const prevProfileId = useRef(currentProfile?.id);
+            useEffect(() => {
+                if (prevProfileId.current && prevProfileId.current !== currentProfile?.id) {
+                    setIsSessionActive(false);
+                    setCart([]);
+                    setSearch('');
+                    setActiveCartId(null);
+                    setCartDiskon('0');
+                    setCartDiskonType('%');
+                    setCartBiayaPengiriman('0');
+                }
+                prevProfileId.current = currentProfile?.id;
+            }, [currentProfile?.id]);
+
             // Sync cart ke Firestore setiap kali cart berubah (outgoing)
             useEffect(() => {
                 if (!isSessionActive || !activeCartId || !cashierName) return;
