@@ -5809,21 +5809,6 @@
             const visibilityTimerRef = useRef(null);
             const autoSaveSnap = useRef(null);
 
-            // Reset ke tampilan awal saat ganti toko
-            const prevProfileId = useRef(currentProfile?.id);
-            useEffect(() => {
-                if (prevProfileId.current && prevProfileId.current !== currentProfile?.id) {
-                    setIsSessionActive(false);
-                    setCart([]);
-                    setSearch('');
-                    setActiveCartId(null);
-                    setCartDiskon('0');
-                    setCartDiskonType('%');
-                    setCartBiayaPengiriman('0');
-                }
-                prevProfileId.current = currentProfile?.id;
-            }, [currentProfile?.id]);
-
             // Sync cart ke Firestore setiap kali cart berubah (outgoing)
             useEffect(() => {
                 if (!isSessionActive || !activeCartId || !cashierName) return;
@@ -5924,6 +5909,19 @@
                 }
             }, []); // eslint-disable-line
 
+            // Ganti toko → langsung simpan ke tertunda lalu reset tampilan
+            const prevProfileId = useRef(currentProfile?.id);
+            useEffect(() => {
+                if (prevProfileId.current && prevProfileId.current !== currentProfile?.id) {
+                    doAutoMoveToTertunda();
+                    setSearch('');
+                    setCartDiskon('0');
+                    setCartDiskonType('%');
+                    setCartBiayaPengiriman('0');
+                }
+                prevProfileId.current = currentProfile?.id;
+            }, [currentProfile?.id, doAutoMoveToTertunda]);
+
             // Reset timer inaktif setiap ada interaksi user
             const resetInactivityTimer = useCallback(() => {
                 clearTimeout(inactivityTimerRef.current);
@@ -5947,9 +5945,9 @@
 
                 const handleVisibility = () => {
                     if (document.hidden) {
-                        // Tab / browser disembunyikan: pindahkan ke tertunda setelah 30 detik
+                        // Tab / browser disembunyikan: langsung pindah ke tertunda
                         clearTimeout(visibilityTimerRef.current);
-                        visibilityTimerRef.current = setTimeout(doAutoMoveToTertunda, 30 * 1000);
+                        doAutoMoveToTertunda();
                     } else {
                         // User kembali: batalkan jadwal visibility & reset timer inaktif
                         clearTimeout(visibilityTimerRef.current);
@@ -5958,9 +5956,16 @@
                 };
                 document.addEventListener('visibilitychange', handleVisibility);
 
+                // Keluar website (tutup tab / reload)
+                const handlePageHide = () => { doAutoMoveToTertunda(); };
+                window.addEventListener('pagehide', handlePageHide);
+                window.addEventListener('beforeunload', handlePageHide);
+
                 return () => {
                     activityEvents.forEach(e => document.removeEventListener(e, resetInactivityTimer));
                     document.removeEventListener('visibilitychange', handleVisibility);
+                    window.removeEventListener('pagehide', handlePageHide);
+                    window.removeEventListener('beforeunload', handlePageHide);
                     clearTimeout(inactivityTimerRef.current);
                     clearTimeout(visibilityTimerRef.current);
                 };
