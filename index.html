@@ -5631,13 +5631,43 @@
             };
 
             const addPaketToCart = (paket) => {
+                const validItems = [];
                 paket.items.forEach(pi => {
                     const item = items.find(it => it.id === pi.itemId);
                     if (!item) return;
-                    const enriched = { ...item, cartQty: pi.qty || 1 };
-                    addToCart(enriched, pi.qty || 1);
+                    const qty = pi.qty || 1;
+                    const finalPrice = item.price || 0;
+                    const selectedUnit = item.unit || 'Pcs';
+                    validItems.push({ item, qty, finalPrice, selectedUnit });
                 });
-                showToast(`Paket "${paket.name}" ditambahkan`);
+
+                if (validItems.length === 0) { showToast('Tidak ada barang valid di paket', 'error'); return; }
+
+                setCart(prev => {
+                    let updated = [...prev];
+                    validItems.forEach(({ item, qty, finalPrice, selectedUnit }) => {
+                        const existing = updated.find(c => c.id === item.id && c.selectedUnit === selectedUnit && c.price === finalPrice);
+                        if (existing) {
+                            updated = updated.map(c =>
+                                (c.id === item.id && c.selectedUnit === selectedUnit && c.price === finalPrice)
+                                    ? { ...c, cartQty: c.cartQty + qty }
+                                    : c
+                            );
+                        } else {
+                            updated = [...updated, {
+                                ...item,
+                                cartQty: qty,
+                                price: finalPrice,
+                                selectedUnit,
+                                originalPrice: finalPrice,
+                                discount: null
+                            }];
+                        }
+                    });
+                    return updated;
+                });
+
+                showToast(`Paket "${paket.name}" ditambahkan (${validItems.length} barang) ✅`);
             };
 
             const saveDokter = async (name, editId = null, alamat = '', hp = '') => {
