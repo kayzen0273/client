@@ -73,7 +73,11 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp, writeBatch, query, orderBy, increment, limit, setDoc, getDoc, getDocs, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import {
+            initializeFirestore, persistentLocalCache, persistentMultipleTabManager, getFirestore,
+            collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp,
+            writeBatch, query, orderBy, increment, limit, setDoc, getDoc, getDocs, where
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Konfigurasi dari User
         const userConfig = {
@@ -90,8 +94,35 @@
         
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        const db = getFirestore(app);
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // ── Firestore dengan IndexedDB Persistent Cache ──────────────────────
+        // Data disimpan di IndexedDB browser. Saat halaman dibuka ulang, data
+        // muncul INSTAN dari cache — tidak perlu tunggu network response dulu.
+        // Network response tetap datang dan meng-update data secara otomatis.
+        let db;
+        try {
+            db = initializeFirestore(app, {
+                localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+            });
+        } catch(e) {
+            // Fallback: jika sudah diinisialisasi tab lain atau IndexedDB tidak tersedia
+            db = getFirestore(app);
+        }
+
+        // ── Mulai Sign-In SEKARANG, sebelum React mount ──────────────────────
+        // Tanpa ini, auth baru mulai setelah React render pertama (~300-500ms terlambat).
+        // Dengan ini, saat React mount & memasang onAuthStateChanged listener,
+        // auth mungkin sudah selesai → user langsung tersedia → listener Firestore
+        // langsung aktif tanpa menunggu round-trip auth tambahan.
+        const _token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        window.initialAuthToken = _token;
+        const _authPromise = _token
+            ? signInWithCustomToken(auth, _token).catch(() => signInAnonymously(auth))
+            : signInAnonymously(auth);
+        // Simpan promise agar React bisa tahu auth sudah mulai
+        window._authPromise = _authPromise;
+        _authPromise.catch(() => {}); // Prevent unhandled rejection
 
         // Expose ke window
         window.db = db;
@@ -116,7 +147,6 @@
         window.increment = increment; 
         window.limit = limit;
         window.appId = appId;
-        window.initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
     </script>
 
     <style>
@@ -13317,11 +13347,20 @@
             }, [allowedStores, settingsData.storeProfiles, settingsData.globalAllowedStores]);
 
             useEffect(() => {
-                const initAuth = async () => { if (window.initialAuthToken) { await window.signInWithCustomToken(window.auth, window.initialAuthToken); } else { await window.signInAnonymously(window.auth); } };
-                if (authSession) initAuth();
-                const unsubscribeAuth = window.onAuthStateChanged(window.auth, (currentUser) => { setUser(currentUser); if (!currentUser) setLoading(true); });
+                // Auth sudah dimulai di module script (window._authPromise) — tinggal listen hasilnya.
+                // Tidak perlu dependency [authSession] agar listener tidak restart saat session berubah.
+                const unsubscribeAuth = window.onAuthStateChanged(window.auth, (currentUser) => {
+                    setUser(currentUser);
+                    if (!currentUser) {
+                        // Fallback: jika entah kenapa belum sign-in, coba lagi
+                        (window.initialAuthToken
+                            ? window.signInWithCustomToken(window.auth, window.initialAuthToken)
+                            : window.signInAnonymously(window.auth)
+                        ).catch(() => {});
+                    }
+                });
                 return () => unsubscribeAuth();
-            }, [authSession]);
+            }, []); // [] = run once on mount saja
 
             useEffect(() => { const globalClickHandler = (e) => { triggerFireworks(e.clientX, e.clientY); }; window.addEventListener('click', globalClickHandler); return () => window.removeEventListener('click', globalClickHandler); }, []);
 
