@@ -6111,36 +6111,21 @@
 
             const addToCart = (item) => {
                 if (safeNumber(item.qty) <= 0) { showToast("Stok Habis di Toko Ini!", "error"); return; }
-
-                const finalPrice = item.price || 0;
-                const selectedUnit = item.unit || 'Pcs';
-                const dv = item.defaultDiscount || 0;
-                const dt = item.defaultDiscountType || '%';
-                let discountedPrice = finalPrice;
-                if (dv > 0) {
-                    discountedPrice = dt === '%' ? finalPrice - (finalPrice * dv / 100) : finalPrice - dv;
-                }
-
-                setCart(prev => {
-                    const existing = prev.find(c => c.id === item.id && c.selectedUnit === selectedUnit && c.price === discountedPrice);
-                    if (existing) {
-                        return prev.map(c =>
-                            (c.id === item.id && c.selectedUnit === selectedUnit && c.price === discountedPrice)
-                                ? { ...c, cartQty: c.cartQty + 1 }
-                                : c
-                        );
-                    }
-                    return [...prev, {
-                        ...item,
-                        cartQty: 1,
-                        price: discountedPrice,
-                        selectedUnit,
-                        originalPrice: finalPrice,
-                        discount: dv > 0 ? { type: dt, value: dv } : null
-                    }];
+                
+                // Set default sesuai barang
+                const defaultPrice = item.price || 0;
+                const defaultUnit = item.unit || 'Pcs';
+                
+                // Buka modal dengan setting default barang
+                setPriceModal({ 
+                    show: true, 
+                    item: item,
+                    selectedPrice: defaultPrice,
+                    selectedUnit: defaultUnit,
+                    qty: 1,
+                    discountType: item.defaultDiscountType || '%',
+                    discountValue: item.defaultDiscount || 0
                 });
-
-                showToast(`${item.name} ditambahkan`);
             };
             
             const editCartItem = (cartItem) => {
@@ -6235,6 +6220,7 @@
                     
                     setEditingCartItem(null);
                     setPriceModal({ show: false, item: null, selectedPrice: 0, selectedUnit: '', qty: 1, discountType: '%', discountValue: 0 });
+                    setSearch('');
                     showToast("Item diperbarui");
                     return;
                 }
@@ -6249,6 +6235,7 @@
                 });
                 
                 setPriceModal({ show: false, item: null, selectedPrice: 0, selectedUnit: '', qty: 1, discountType: '%', discountValue: 0 });
+                setSearch('');
                 showToast("Ditambahkan ke keranjang");
             };
 
