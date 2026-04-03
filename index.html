@@ -73,11 +73,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import {
-            initializeFirestore, persistentLocalCache, persistentMultipleTabManager, getFirestore,
-            collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp,
-            writeBatch, query, orderBy, increment, limit, setDoc, getDoc, getDocs, where
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp, writeBatch, query, orderBy, increment, limit, setDoc, getDoc, getDocs, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Konfigurasi dari User
         const userConfig = {
@@ -94,35 +90,8 @@
         
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+        const db = getFirestore(app);
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-        // ── Firestore dengan IndexedDB Persistent Cache ──────────────────────
-        // Data disimpan di IndexedDB browser. Saat halaman dibuka ulang, data
-        // muncul INSTAN dari cache — tidak perlu tunggu network response dulu.
-        // Network response tetap datang dan meng-update data secara otomatis.
-        let db;
-        try {
-            db = initializeFirestore(app, {
-                localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-            });
-        } catch(e) {
-            // Fallback: jika sudah diinisialisasi tab lain atau IndexedDB tidak tersedia
-            db = getFirestore(app);
-        }
-
-        // ── Mulai Sign-In SEKARANG, sebelum React mount ──────────────────────
-        // Tanpa ini, auth baru mulai setelah React render pertama (~300-500ms terlambat).
-        // Dengan ini, saat React mount & memasang onAuthStateChanged listener,
-        // auth mungkin sudah selesai → user langsung tersedia → listener Firestore
-        // langsung aktif tanpa menunggu round-trip auth tambahan.
-        const _token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        window.initialAuthToken = _token;
-        const _authPromise = _token
-            ? signInWithCustomToken(auth, _token).catch(() => signInAnonymously(auth))
-            : signInAnonymously(auth);
-        // Simpan promise agar React bisa tahu auth sudah mulai
-        window._authPromise = _authPromise;
-        _authPromise.catch(() => {}); // Prevent unhandled rejection
 
         // Expose ke window
         window.db = db;
@@ -147,6 +116,7 @@
         window.increment = increment; 
         window.limit = limit;
         window.appId = appId;
+        window.initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
     </script>
 
     <style>
@@ -6796,7 +6766,91 @@
                         
                         <div className="flex items-center gap-3 mb-4"><button onClick={handleBack} className="w-10 h-10 rounded-xl bg-white text-slate-400 hover:text-sky-600 hover:border-sky-300 border border-slate-200 flex items-center justify-center shadow-sm transition-colors" title="Kembali & Simpan Sementara"><Icon name="arrow-left" /></button><div className="relative group flex-1"><input autoFocus type="text" placeholder="Ketik nama barang disini..." className="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-white border border-slate-200 shadow-soft focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all font-bold text-lg text-slate-700 placeholder:font-normal placeholder:text-slate-400" value={search} onChange={e => setSearch(e.target.value)} /><Icon name="magnifying-glass" className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xl group-focus-within:text-sky-500" /></div><button onClick={() => { setShowRacikanPage(true); setRacikanSearch(''); }} className="flex-shrink-0 px-4 py-3.5 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-black text-sm shadow-lg active:scale-95 transition-all flex items-center gap-1.5" title="Pelayanan Racikan / Resep"><span className="text-base leading-none">R/</span></button></div>
                         <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 pb-2">
-                            {search === '' ? (<div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60"><Icon name="magnifying-glass" className="text-6xl mb-4 text-slate-300" /><p className="font-semibold text-lg">Mulai ketik untuk mencari barang...</p><p className="text-xs mt-1">Stok diambil dari: <b>{currentProfile.name}</b></p></div>) : (<div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">{filteredItems.map(item => { const inCart = cart.find(c => c.id === item.id); const currentStock = safeNumber(item.qty) - (inCart ? inCart.cartQty : 0); const isOOS = currentStock <= 0; return (<button key={item.id} onClick={() => addToCart(item)} disabled={isOOS} className={`text-left p-3 rounded-xl border transition-all relative overflow-hidden group ${isOOS ? 'bg-slate-100 border-slate-200 opacity-70' : 'bg-white border-slate-200 hover:border-sky-300 hover:shadow-md'}`}>{isNewItem(item.createdAt) && !isOOS && <span className="absolute top-0 right-0 bg-rose-500 text-white text-[8px] font-bold px-1.5 rounded-bl-lg">NEW</span>}<h4 className="font-bold text-slate-800 text-xs line-clamp-2 h-8 leading-snug">{item.name}</h4>{item.isKonsinyasi && <span className="inline-block bg-fuchsia-100 text-fuchsia-700 text-[7px] font-black px-1 py-0.5 rounded border border-fuchsia-200 leading-tight mb-0.5">konsinyasi</span>}<div className="mt-2 flex justify-between items-end"><div><p className="text-[10px] text-slate-500 font-medium">{item.unit}</p><p className="text-xs font-bold text-sky-600">{formatRupiah(item.price)}</p></div><div className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${isOOS ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-600'}`}>Stok: {currentStock}</div></div>{!isOOS && <div className="absolute inset-0 bg-sky-500/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Icon name="plus" className="text-sky-600 text-xl" /></div>}</button>)})}{filteredItems.length === 0 && <div className="col-span-full py-10 text-center text-slate-400 text-sm">Barang tidak ditemukan</div>}</div>)}
+                            {search === '' ? (
+                                <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
+                                    <Icon name="magnifying-glass" className="text-6xl mb-4 text-slate-300" />
+                                    <p className="font-semibold text-lg">Mulai ketik untuk mencari barang...</p>
+                                    <p className="text-xs mt-1">Stok diambil dari: <b>{currentProfile.name}</b></p>
+                                </div>
+                            ) : (
+                                <div className="bg-white rounded-2xl border border-slate-200 shadow-soft overflow-hidden">
+                                    {/* Tab Header */}
+                                    <div className="flex border-b border-slate-100">
+                                        <div className="flex items-center gap-2 px-4 py-3 border-b-2 border-teal-600">
+                                            <span className="font-bold text-sm text-teal-700">Barang</span>
+                                            {filteredItems.length > 0 && (
+                                                <span className="bg-rose-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-tight">
+                                                    {filteredItems.length}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Jumlah hasil */}
+                                    {filteredItems.length > 0 && (
+                                        <div className="px-4 py-2 border-b border-slate-50 bg-slate-50/50">
+                                            <p className="text-xs text-slate-400">{filteredItems.length} barang ditemukan</p>
+                                        </div>
+                                    )}
+
+                                    {/* List barang */}
+                                    <div className="divide-y divide-slate-100">
+                                        {filteredItems.map(item => {
+                                            const inCart = cart.find(c => c.id === item.id);
+                                            const currentStock = safeNumber(item.qty) - (inCart ? inCart.cartQty : 0);
+                                            const isOOS = currentStock <= 0;
+                                            return (
+                                                <button
+                                                    key={item.id}
+                                                    onClick={() => addToCart(item)}
+                                                    disabled={isOOS}
+                                                    className={`w-full text-left px-4 py-3.5 flex items-center justify-between gap-3 transition-all active:scale-[0.99] ${isOOS ? 'opacity-60 bg-slate-50' : 'hover:bg-teal-50/40 active:bg-teal-50'}`}
+                                                >
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                                            <h4 className="font-semibold text-sm text-slate-800 leading-snug">
+                                                                {(() => {
+                                                                    const name = item.name;
+                                                                    const idx = name.toLowerCase().indexOf(search.toLowerCase());
+                                                                    if (idx === -1) return name;
+                                                                    return (
+                                                                        <span>
+                                                                            {name.slice(0, idx)}
+                                                                            <span className="font-black text-slate-900">{name.slice(idx, idx + search.length)}</span>
+                                                                            {name.slice(idx + search.length)}
+                                                                        </span>
+                                                                    );
+                                                                })()}
+                                                            </h4>
+                                                            {isNewItem(item.createdAt) && !isOOS && (
+                                                                <span className="bg-rose-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-sm animate-pulse">NEW</span>
+                                                            )}
+                                                            {item.isKonsinyasi && (
+                                                                <span className="bg-fuchsia-100 text-fuchsia-700 text-[8px] font-black px-1.5 py-0.5 rounded border border-fuchsia-200">konsinyasi</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex-shrink-0 text-right flex flex-col items-end gap-1">
+                                                        <p className="text-sm font-bold text-slate-800">
+                                                            {formatRupiah(item.price)}<span className="text-xs font-medium text-slate-400">/{item.unit || 'pcs'}</span>
+                                                        </p>
+                                                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${isOOS ? 'bg-red-600 text-white' : 'bg-green-100 text-green-700 border border-green-200'}`}>
+                                                            stok {currentStock} {item.unit || 'pcs'}
+                                                        </span>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                        {filteredItems.length === 0 && (
+                                            <div className="py-10 text-center">
+                                                <Icon name="box-open" className="text-3xl text-slate-300 mb-2" />
+                                                <p className="text-sm font-semibold text-slate-400">Barang tidak ditemukan</p>
+                                                <p className="text-xs text-slate-400 mt-1">Coba ganti kata kunci pencarian</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                     <div className="w-full md:w-80 lg:w-96 flex flex-col bg-white rounded-3xl shadow-soft border border-slate-100 h-fit md:h-full max-h-[calc(100vh-100px)]">
@@ -13347,20 +13401,11 @@
             }, [allowedStores, settingsData.storeProfiles, settingsData.globalAllowedStores]);
 
             useEffect(() => {
-                // Auth sudah dimulai di module script (window._authPromise) — tinggal listen hasilnya.
-                // Tidak perlu dependency [authSession] agar listener tidak restart saat session berubah.
-                const unsubscribeAuth = window.onAuthStateChanged(window.auth, (currentUser) => {
-                    setUser(currentUser);
-                    if (!currentUser) {
-                        // Fallback: jika entah kenapa belum sign-in, coba lagi
-                        (window.initialAuthToken
-                            ? window.signInWithCustomToken(window.auth, window.initialAuthToken)
-                            : window.signInAnonymously(window.auth)
-                        ).catch(() => {});
-                    }
-                });
+                const initAuth = async () => { if (window.initialAuthToken) { await window.signInWithCustomToken(window.auth, window.initialAuthToken); } else { await window.signInAnonymously(window.auth); } };
+                if (authSession) initAuth();
+                const unsubscribeAuth = window.onAuthStateChanged(window.auth, (currentUser) => { setUser(currentUser); if (!currentUser) setLoading(true); });
                 return () => unsubscribeAuth();
-            }, []); // [] = run once on mount saja
+            }, [authSession]);
 
             useEffect(() => { const globalClickHandler = (e) => { triggerFireworks(e.clientX, e.clientY); }; window.addEventListener('click', globalClickHandler); return () => window.removeEventListener('click', globalClickHandler); }, []);
 
