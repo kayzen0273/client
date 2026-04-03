@@ -5487,7 +5487,7 @@
         };
 
         // --- CASHIER COMPONENT ---
-        const CashierView = ({ items, user, showToast, settings, onGenerateImage, currentProfile, readOnly, authSession }) => {
+        const CashierView = ({ items, user, showToast, settings, onGenerateImage, currentProfile, readOnly, authSession, onNavigateToAdd }) => {
             const [isSessionActive, setIsSessionActive] = useState(false);
             const [search, setSearch] = useState('');
             const [cart, setCart] = useState([]);
@@ -6783,7 +6783,75 @@
                         
                         <div className="flex items-center gap-3 mb-4"><button onClick={handleBack} className="w-10 h-10 rounded-xl bg-white text-slate-400 hover:text-sky-600 hover:border-sky-300 border border-slate-200 flex items-center justify-center shadow-sm transition-colors" title="Kembali & Simpan Sementara"><Icon name="arrow-left" /></button><div className="relative group flex-1"><input autoFocus type="text" placeholder="Ketik nama barang disini..." className="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-white border border-slate-200 shadow-soft focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all font-bold text-lg text-slate-700 placeholder:font-normal placeholder:text-slate-400" value={search} onChange={e => setSearch(e.target.value)} /><Icon name="magnifying-glass" className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xl group-focus-within:text-sky-500" /></div><button onClick={() => { setShowRacikanPage(true); setRacikanSearch(''); }} className="flex-shrink-0 px-4 py-3.5 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-black text-sm shadow-lg active:scale-95 transition-all flex items-center gap-1.5" title="Pelayanan Racikan / Resep"><span className="text-base leading-none">R/</span></button></div>
                         <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 pb-2">
-                            {search === '' ? (<div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60"><Icon name="magnifying-glass" className="text-6xl mb-4 text-slate-300" /><p className="font-semibold text-lg">Mulai ketik untuk mencari barang...</p><p className="text-xs mt-1">Stok diambil dari: <b>{currentProfile.name}</b></p></div>) : (<div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">{filteredItems.map(item => { const inCart = cart.find(c => c.id === item.id); const currentStock = safeNumber(item.qty) - (inCart ? inCart.cartQty : 0); const isOOS = currentStock <= 0; return (<button key={item.id} onClick={() => addToCart(item)} disabled={isOOS} className={`text-left p-3 rounded-xl border transition-all relative overflow-hidden group ${isOOS ? 'bg-slate-100 border-slate-200 opacity-70' : 'bg-white border-slate-200 hover:border-sky-300 hover:shadow-md'}`}>{isNewItem(item.createdAt) && !isOOS && <span className="absolute top-0 right-0 bg-rose-500 text-white text-[8px] font-bold px-1.5 rounded-bl-lg">NEW</span>}<h4 className="font-bold text-slate-800 text-xs line-clamp-2 h-8 leading-snug">{item.name}</h4>{item.isKonsinyasi && <span className="inline-block bg-fuchsia-100 text-fuchsia-700 text-[7px] font-black px-1 py-0.5 rounded border border-fuchsia-200 leading-tight mb-0.5">konsinyasi</span>}<div className="mt-2 flex justify-between items-end"><div><p className="text-[10px] text-slate-500 font-medium">{item.unit}</p><p className="text-xs font-bold text-sky-600">{formatRupiah(item.price)}</p></div><div className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${isOOS ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-600'}`}>Stok: {currentStock}</div></div>{!isOOS && <div className="absolute inset-0 bg-sky-500/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Icon name="plus" className="text-sky-600 text-xl" /></div>}</button>)})}{filteredItems.length === 0 && <div className="col-span-full py-10 text-center text-slate-400 text-sm">Barang tidak ditemukan</div>}</div>)}
+                            {search === '' ? (
+                                <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
+                                    <Icon name="magnifying-glass" className="text-6xl mb-4 text-slate-300" />
+                                    <p className="font-semibold text-lg">Mulai ketik untuk mencari barang...</p>
+                                    <p className="text-xs mt-1">Stok diambil dari: <b>{currentProfile.name}</b></p>
+                                </div>
+                            ) : (
+                                <div className="bg-white rounded-2xl border border-slate-200 shadow-soft overflow-hidden">
+                                    {/* Header tab */}
+                                    <div className="flex border-b border-slate-100">
+                                        <div className="flex items-center gap-2 px-4 py-3 border-b-2 border-teal-500">
+                                            <span className="text-sm font-bold text-teal-600">Barang</span>
+                                            <span className="bg-rose-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[20px] text-center">{filteredItems.length}</span>
+                                        </div>
+                                    </div>
+                                    {/* Jumlah hasil */}
+                                    <div className="px-4 py-2 bg-slate-50 border-b border-slate-100">
+                                        <span className="text-xs text-slate-500">{filteredItems.length} barang ditemukan</span>
+                                    </div>
+                                    {/* Daftar barang */}
+                                    <div className="divide-y divide-slate-100">
+                                        {filteredItems.map(item => {
+                                            const inCart = cart.find(c => c.id === item.id);
+                                            const currentStock = safeNumber(item.qty) - (inCart ? inCart.cartQty : 0);
+                                            const isOOS = currentStock <= 0;
+                                            // Highlight kata yang dicari
+                                            const highlightName = (name, query) => {
+                                                if (!query) return name;
+                                                const idx = name.toLowerCase().indexOf(query.toLowerCase());
+                                                if (idx === -1) return name;
+                                                return (<>{name.slice(0, idx)}<b className="font-black text-slate-900">{name.slice(idx, idx + query.length)}</b>{name.slice(idx + query.length)}</>);
+                                            };
+                                            return (
+                                                <button key={item.id} onClick={() => addToCart(item)} disabled={isOOS}
+                                                    className={`w-full text-left px-4 py-3.5 flex items-center justify-between gap-3 transition-all active:scale-[0.99] ${isOOS ? 'opacity-50 bg-slate-50' : 'hover:bg-teal-50/50 active:bg-teal-100/50'}`}>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm text-slate-700 leading-snug">{highlightName(item.name, search)}</p>
+                                                        {item.isKonsinyasi && <span className="inline-block bg-fuchsia-100 text-fuchsia-700 text-[9px] font-black px-1.5 py-0.5 rounded border border-fuchsia-200 mt-0.5">konsinyasi</span>}
+                                                    </div>
+                                                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                                                        <span className="text-sm font-bold text-slate-800">{formatRupiah(item.price)}{item.unit ? `/${item.unit}` : ''}</span>
+                                                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded border ${isOOS ? 'bg-red-600 text-white border-red-600' : 'bg-white text-green-700 border-green-400'}`}>
+                                                            stok {currentStock} {item.unit || ''}
+                                                        </span>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    {/* Footer: Tidak ketemu */}
+                                    {filteredItems.length === 0 ? (
+                                        <div className="px-4 py-5 text-center text-slate-400 text-sm">Barang tidak ditemukan</div>
+                                    ) : null}
+                                    <div className="px-4 py-4 border-t border-slate-100 bg-slate-50/50">
+                                        <p className="text-sm font-bold text-slate-700 mb-1">Tidak ketemu?</p>
+                                        <p className="text-xs text-slate-400 mb-3">Coba ganti kata kunci pencarian atau tambahkan barang baru.</p>
+                                        <div className="flex flex-col gap-2">
+                                            <a href="https://farmacare.id/katalog" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-teal-600 text-sm font-semibold">
+                                                <Icon name="star" className="text-teal-400 text-sm" /> Katalog barang Farmacare
+                                            </a>
+                                            {!readOnly && (
+                                                <button onClick={() => { setSearch(''); onNavigateToAdd && onNavigateToAdd(); }} className="flex items-center gap-2 text-teal-600 text-sm font-semibold">
+                                                    <Icon name="cube" className="text-teal-400 text-sm" /> Buat barang baru
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                     <div className="w-full md:w-80 lg:w-96 flex flex-col bg-white rounded-3xl shadow-soft border border-slate-100 h-fit md:h-full max-h-[calc(100vh-100px)]">
@@ -13983,7 +14051,7 @@
                             </div>
                         )}
                         {activeTab === 'home' && (<DashboardView items={inventoryData} settings={settingsData} currentProfile={currentProfile} isOwner={isOwner} onShowLowStock={() => { setActiveTab('list'); setShowOnlyLowStock(true); }} />)}
-                        {activeTab === 'cashier' && (<CashierView items={inventoryData} user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='cashier')?.readOnly} authSession={authSession} />)}
+                        {activeTab === 'cashier' && (<CashierView items={inventoryData} user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='cashier')?.readOnly} authSession={authSession} onNavigateToAdd={() => setActiveTab('add')} />)}
                         {activeTab === 'history' && (<HistoryView user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} items={inventoryData} readOnly={menuItems.find(m=>m.id==='history')?.readOnly} isOwner={isOwner} />)}
                         {activeTab === 'purchases' && (<PurchaseView user={user} showToast={showToast} items={inventoryData} currentProfile={currentProfile} settings={settingsData} readOnly={menuItems.find(m=>m.id==='purchases')?.readOnly} />)}
                         {activeTab === 'cashbook' && (<CashBookView user={user} currentProfile={currentProfile} showToast={showToast} readOnly={menuItems.find(m=>m.id==='cashbook')?.readOnly} />)}
