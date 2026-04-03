@@ -6790,25 +6790,21 @@
                                     <p className="text-xs mt-1">Stok diambil dari: <b>{currentProfile.name}</b></p>
                                 </div>
                             ) : (
-                                <div className="bg-white rounded-2xl border border-slate-200 shadow-soft overflow-hidden">
-                                    {/* Header tab */}
-                                    <div className="flex border-b border-slate-100">
-                                        <div className="flex items-center gap-2 px-4 py-3 border-b-2 border-teal-500">
-                                            <span className="text-sm font-bold text-teal-600">Barang</span>
-                                            <span className="bg-rose-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[20px] text-center">{filteredItems.length}</span>
+                                <div className="bg-white rounded-xl border border-slate-200 shadow-soft overflow-hidden">
+                                    {/* Header tab + jumlah */}
+                                    <div className="flex items-center justify-between px-3 py-1.5 border-b border-slate-100 bg-slate-50/60">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-xs font-bold text-teal-600 border-b-2 border-teal-500 pb-0.5">Barang</span>
+                                            <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none">{filteredItems.length}</span>
                                         </div>
+                                        <span className="text-[10px] text-slate-400">{filteredItems.length} ditemukan</span>
                                     </div>
-                                    {/* Jumlah hasil */}
-                                    <div className="px-4 py-2 bg-slate-50 border-b border-slate-100">
-                                        <span className="text-xs text-slate-500">{filteredItems.length} barang ditemukan</span>
-                                    </div>
-                                    {/* Daftar barang */}
+                                    {/* Daftar barang - compact */}
                                     <div className="divide-y divide-slate-100">
                                         {filteredItems.map(item => {
                                             const inCart = cart.find(c => c.id === item.id);
                                             const currentStock = safeNumber(item.qty) - (inCart ? inCart.cartQty : 0);
                                             const isOOS = currentStock <= 0;
-                                            // Highlight kata yang dicari
                                             const highlightName = (name, query) => {
                                                 if (!query) return name;
                                                 const idx = name.toLowerCase().indexOf(query.toLowerCase());
@@ -6817,15 +6813,14 @@
                                             };
                                             return (
                                                 <button key={item.id} onClick={() => addToCart(item)} disabled={isOOS}
-                                                    className={`w-full text-left px-4 py-3.5 flex items-center justify-between gap-3 transition-all active:scale-[0.99] ${isOOS ? 'opacity-50 bg-slate-50' : 'hover:bg-teal-50/50 active:bg-teal-100/50'}`}>
+                                                    className={`w-full text-left px-3 py-2 flex items-center justify-between gap-2 transition-all active:scale-[0.99] ${isOOS ? 'opacity-50 bg-slate-50' : 'hover:bg-teal-50/60 active:bg-teal-100/50'}`}>
                                                     <div className="flex-1 min-w-0">
-                                                        <p className="text-sm text-slate-700 leading-snug">{highlightName(item.name, search)}</p>
-                                                        {item.isKonsinyasi && <span className="inline-block bg-fuchsia-100 text-fuchsia-700 text-[9px] font-black px-1.5 py-0.5 rounded border border-fuchsia-200 mt-0.5">konsinyasi</span>}
+                                                        <p className="text-xs text-slate-700 leading-snug">{highlightName(item.name, search)}{item.isKonsinyasi && <span className="ml-1 inline-block bg-fuchsia-100 text-fuchsia-700 text-[8px] font-black px-1 rounded border border-fuchsia-200">kons.</span>}</p>
                                                     </div>
-                                                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                                                        <span className="text-sm font-bold text-slate-800">{formatRupiah(item.price)}{item.unit ? `/${item.unit}` : ''}</span>
-                                                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded border ${isOOS ? 'bg-red-600 text-white border-red-600' : 'bg-white text-green-700 border-green-400'}`}>
-                                                            stok {currentStock} {item.unit || ''}
+                                                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                                                        <span className="text-xs font-bold text-slate-800 whitespace-nowrap">{formatRupiah(item.price)}{item.unit ? `/${item.unit}` : ''}</span>
+                                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isOOS ? 'bg-red-500 text-white' : 'bg-green-50 text-green-700 border border-green-300'}`}>
+                                                            {currentStock} {item.unit || ''}
                                                         </span>
                                                     </div>
                                                 </button>
@@ -6833,19 +6828,15 @@
                                         })}
                                     </div>
                                     {/* Footer: Tidak ketemu */}
-                                    {filteredItems.length === 0 ? (
-                                        <div className="px-4 py-5 text-center text-slate-400 text-sm">Barang tidak ditemukan</div>
-                                    ) : null}
-                                    <div className="px-4 py-4 border-t border-slate-100 bg-slate-50/50">
-                                        <p className="text-sm font-bold text-slate-700 mb-1">Tidak ketemu?</p>
-                                        <p className="text-xs text-slate-400 mb-3">Coba ganti kata kunci pencarian atau tambahkan barang baru.</p>
-                                        <div className="flex flex-col gap-2">
-                                            <a href="https://farmacare.id/katalog" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-teal-600 text-sm font-semibold">
-                                                <Icon name="star" className="text-teal-400 text-sm" /> Katalog barang Farmacare
+                                    <div className="px-3 py-2.5 border-t border-slate-100 bg-slate-50/50">
+                                        <p className="text-xs font-bold text-slate-600 mb-1">Tidak ketemu?</p>
+                                        <div className="flex items-center gap-3">
+                                            <a href="https://farmacare.id/katalog" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-teal-600 text-xs font-semibold">
+                                                <Icon name="star" className="text-[10px]" /> Katalog Farmacare
                                             </a>
                                             {!readOnly && (
-                                                <button onClick={() => { setSearch(''); onNavigateToAdd && onNavigateToAdd(); }} className="flex items-center gap-2 text-teal-600 text-sm font-semibold">
-                                                    <Icon name="cube" className="text-teal-400 text-sm" /> Buat barang baru
+                                                <button onClick={() => { setSearch(''); onNavigateToAdd && onNavigateToAdd(); }} className="flex items-center gap-1 text-teal-600 text-xs font-semibold">
+                                                    <Icon name="plus" className="text-[10px]" /> Buat barang baru
                                                 </button>
                                             )}
                                         </div>
