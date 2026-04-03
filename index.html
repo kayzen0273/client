@@ -6872,12 +6872,12 @@
                             ) : (
                                 <div className="bg-white rounded-xl border border-slate-200 shadow-soft overflow-hidden">
                                     {/* Tab Barang / Paket barang */}
-                                    <div className="flex justify-center border-b border-slate-200">
-                                        <button onClick={() => setSearchTab('barang')} className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold border-b-2 transition-colors ${searchTab === 'barang' ? 'border-teal-500 text-slate-800' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
+                                    <div className="flex border-b border-slate-200">
+                                        <button onClick={() => setSearchTab('barang')} className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-bold border-b-2 transition-colors ${searchTab === 'barang' ? 'border-teal-500 text-slate-800' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
                                             Barang
                                             <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none ${searchTab === 'barang' ? 'bg-rose-500 text-white' : 'bg-slate-200 text-slate-500'}`}>{filteredItems.length}</span>
                                         </button>
-                                        <button onClick={() => setSearchTab('paket')} className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold border-b-2 transition-colors ${searchTab === 'paket' ? 'border-teal-500 text-teal-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
+                                        <button onClick={() => setSearchTab('paket')} className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-bold border-b-2 transition-colors ${searchTab === 'paket' ? 'border-teal-500 text-teal-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
                                             Paket barang
                                             {paketList.length > 0 && <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none ${searchTab === 'paket' ? 'bg-teal-500 text-white' : 'bg-slate-200 text-slate-500'}`}>{paketList.length}</span>}
                                         </button>
