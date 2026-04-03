@@ -5876,7 +5876,21 @@
             // Fungsi eksekusi auto-pindah ke tertunda (pakai snapshot ref agar tidak stale)
             const doAutoMoveToTertunda = useCallback(async () => {
                 const snap = autoSaveSnap.current;
-                if (!snap || !snap.isSessionActive || snap.cart.length === 0) return;
+                if (!snap || !snap.isSessionActive) return;
+                // Cart kosong: cukup hapus active_cart tanpa simpan ke tertunda
+                if (snap.cart.length === 0) {
+                    if (snap.activeCartId) {
+                        try {
+                            await window.deleteDoc(
+                                window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'active_carts', snap.activeCartId)
+                            );
+                        } catch (e) { console.error('Delete empty active_cart error:', e); }
+                    }
+                    setIsSessionActive(false);
+                    setActiveCartId(null);
+                    localStorage.removeItem('activeCartId');
+                    return;
+                }
                 try {
                     await window.addDoc(
                         window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'pending_carts'),
@@ -5915,24 +5929,26 @@
                 if (prevProfileRef.current?.id && prevProfileRef.current.id !== currentProfile?.id) {
                     // Ambil snapshot cart saat ini dengan profil LAMA sebelum berubah
                     const snap = autoSaveSnap.current;
-                    if (snap && snap.isSessionActive && snap.cart.length > 0) {
+                    if (snap && snap.isSessionActive) {
                         const oldProfile = prevProfileRef.current;
                         (async () => {
                             try {
-                                await window.addDoc(
-                                    window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'pending_carts'),
-                                    {
-                                        date: new Date().toISOString(),
-                                        items: snap.cart,
-                                        total: snap.grandTotal,
-                                        cashierName: snap.cashierName,
-                                        device: navigator.userAgent,
-                                        storeProfile: oldProfile.name,
-                                        storeId: oldProfile.id,
-                                        createdAt: window.serverTimestamp(),
-                                        autoSaved: true,
-                                    }
-                                );
+                                if (snap.cart.length > 0) {
+                                    await window.addDoc(
+                                        window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'pending_carts'),
+                                        {
+                                            date: new Date().toISOString(),
+                                            items: snap.cart,
+                                            total: snap.grandTotal,
+                                            cashierName: snap.cashierName,
+                                            device: navigator.userAgent,
+                                            storeProfile: oldProfile.name,
+                                            storeId: oldProfile.id,
+                                            createdAt: window.serverTimestamp(),
+                                            autoSaved: true,
+                                        }
+                                    );
+                                }
                                 if (snap.activeCartId) {
                                     await window.deleteDoc(
                                         window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'active_carts', snap.activeCartId)
