@@ -5595,6 +5595,9 @@
             const [selectedPembeli, setSelectedPembeli] = useState('');
             const [pembeliInput, setPembeliInput] = useState('');
             const [showPembeliModal, setShowPembeliModal] = useState(false);
+            const [showAddPembeliForm, setShowAddPembeliForm] = useState(false);
+            const [newPembeliNameInput, setNewPembeliNameInput] = useState('');
+            const [savingPembeli, setSavingPembeli] = useState(false);
             const [registeredUsers, setRegisteredUsers] = useState([]);
 
             // Fetch semua akun terdaftar untuk pilihan Sales
@@ -7081,17 +7084,79 @@
                         })()}
                         {/* Modal Pembeli */}
                         {showPembeliModal && (
-                            <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowPembeliModal(false)}>
-                                <div className="bg-white w-full max-w-sm rounded-t-3xl p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
-                                    <h3 className="font-bold text-slate-800 mb-3">Nama Pembeli</h3>
-                                    <input autoFocus type="text" value={pembeliInput} onChange={e => setPembeliInput(e.target.value)} placeholder="Ketik nama pembeli..." className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-100 mb-3" />
-                                    {pasienList.filter(p => !pembeliInput || p.name?.toLowerCase().includes(pembeliInput.toLowerCase())).slice(0,5).map(p => (
-                                        <button key={p.id} onClick={() => { setSelectedPembeli(p.name); setPembeliInput(p.name); setShowPembeliModal(false); }} className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold bg-slate-50 hover:bg-teal-50 text-slate-700 mb-1.5 transition-all">{p.name}</button>
-                                    ))}
-                                    <div className="flex gap-2 mt-2">
-                                        <button onClick={() => { setSelectedPembeli(''); setPembeliInput(''); setShowPembeliModal(false); }} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-all">Reset</button>
-                                        <button onClick={() => { setSelectedPembeli(pembeliInput.trim()); setShowPembeliModal(false); }} className="flex-1 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all active:scale-95">Simpan</button>
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm" onClick={() => { setShowPembeliModal(false); setShowAddPembeliForm(false); setNewPembeliNameInput(''); }}>
+                                <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl mx-4" onClick={e => e.stopPropagation()}>
+                                    {/* Header */}
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="font-black text-slate-800 text-lg">{showAddPembeliForm ? '+ Tambah Pembeli' : 'Pilih Pembeli'}</h3>
+                                        <div className="flex items-center gap-2">
+                                            {!showAddPembeliForm && selectedPembeli && (
+                                                <button onClick={() => { setSelectedPembeli(''); setPembeliInput(''); }} className="text-[10px] font-bold text-red-400 hover:text-red-600 border border-red-200 px-2 py-1 rounded-lg transition-all">Reset</button>
+                                            )}
+                                            <button onClick={() => { setShowAddPembeliForm(!showAddPembeliForm); setNewPembeliNameInput(showAddPembeliForm ? '' : pembeliInput); }}
+                                                className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 ${showAddPembeliForm ? 'bg-slate-100 text-slate-500 hover:bg-slate-200' : 'bg-teal-600 text-white hover:bg-teal-700'}`}>
+                                                <Icon name={showAddPembeliForm ? 'xmark' : 'plus'} className="text-[10px]" />
+                                                {showAddPembeliForm ? 'Batal' : 'Pembeli'}
+                                            </button>
+                                        </div>
                                     </div>
+
+                                    {showAddPembeliForm ? (
+                                        /* Form tambah pembeli baru */
+                                        <div>
+                                            <input autoFocus type="text" value={newPembeliNameInput} onChange={e => setNewPembeliNameInput(e.target.value)}
+                                                onKeyDown={e => { if (e.key === 'Enter' && newPembeliNameInput.trim()) e.currentTarget.blur(); }}
+                                                placeholder="Nama pembeli baru..." className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-100 mb-4" />
+                                            <button disabled={!newPembeliNameInput.trim() || savingPembeli}
+                                                onClick={async () => {
+                                                    const name = newPembeliNameInput.trim();
+                                                    if (!name) return;
+                                                    setSavingPembeli(true);
+                                                    try {
+                                                        const exists = pasienList.find(p => p.name.toLowerCase() === name.toLowerCase());
+                                                        if (!exists) {
+                                                            await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'pasien_list'), { name, age: '', alamat: '', hp: '', createdAt: window.serverTimestamp() });
+                                                        }
+                                                        setSelectedPembeli(name);
+                                                        setPembeliInput(name);
+                                                        setShowAddPembeliForm(false);
+                                                        setNewPembeliNameInput('');
+                                                        setShowPembeliModal(false);
+                                                        showToast(`Pembeli "${name}" ditambahkan ✅`);
+                                                    } catch(e) { showToast('Gagal menyimpan', 'error'); }
+                                                    finally { setSavingPembeli(false); }
+                                                }}
+                                                className="w-full py-3 rounded-2xl bg-teal-600 hover:bg-teal-700 disabled:opacity-40 text-white font-bold transition-all active:scale-95 flex items-center justify-center gap-2">
+                                                {savingPembeli ? <Icon name="spinner" className="animate-spin" /> : <><Icon name="floppy-disk" /> Simpan & Pilih</>}
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        /* Daftar & cari pembeli */
+                                        <div>
+                                            <input autoFocus type="text" value={pembeliInput} onChange={e => setPembeliInput(e.target.value)} placeholder="Cari nama pembeli..." className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-100 mb-3" />
+                                            <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+                                                {pasienList.filter(p => !pembeliInput || p.name?.toLowerCase().includes(pembeliInput.toLowerCase())).slice(0, 8).map(p => (
+                                                    <button key={p.id} onClick={() => { setSelectedPembeli(p.name); setPembeliInput(p.name); setShowPembeliModal(false); }}
+                                                        className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-3 ${selectedPembeli === p.name ? 'bg-teal-600 text-white' : 'bg-slate-50 hover:bg-teal-50 text-slate-700'}`}>
+                                                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 ${selectedPembeli === p.name ? 'bg-white/20 text-white' : 'bg-teal-100 text-teal-700'}`}>
+                                                            {p.name.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <span className="flex-1">{p.name}</span>
+                                                        {selectedPembeli === p.name && <Icon name="check" className="text-white text-xs" />}
+                                                    </button>
+                                                ))}
+                                                {pasienList.filter(p => !pembeliInput || p.name?.toLowerCase().includes(pembeliInput.toLowerCase())).length === 0 && (
+                                                    <p className="text-center text-xs text-slate-400 py-4">Tidak ada pembeli ditemukan.<br/>Klik <b>+ Pembeli</b> untuk tambah baru.</p>
+                                                )}
+                                            </div>
+                                            {pembeliInput.trim() && !pasienList.find(p => p.name.toLowerCase() === pembeliInput.trim().toLowerCase()) && (
+                                                <button onClick={() => { setSelectedPembeli(pembeliInput.trim()); setShowPembeliModal(false); }}
+                                                    className="w-full mt-3 py-2.5 rounded-xl border-2 border-dashed border-teal-300 text-teal-600 text-xs font-bold hover:bg-teal-50 transition-all active:scale-95">
+                                                    Pilih "{pembeliInput.trim()}" (tanpa simpan)
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
