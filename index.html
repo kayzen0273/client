@@ -8896,6 +8896,8 @@
                                     {tx.status === 'returned' ? <span className="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full">BATAL</span> : (tx.status === 'partial' ? <span className="bg-amber-100 text-amber-600 text-[10px] font-bold px-2 py-0.5 rounded-full">SEBAGIAN</span> : null)}
                                 </div>
                             </div>
+                            {/* Barang, Kasir, Pembeli, Bayar - diindent sesuai posisi tanggal */}
+                            <div className="pl-6">
                             {/* Barang */}
                             <div className="mt-2 mb-3">
                                 <p className="text-xs font-black text-slate-800 mb-0.5">Barang</p>
@@ -8915,6 +8917,7 @@
                             <div className="mb-1">
                                 <p className="text-xs font-black text-slate-800">Bayar</p>
                                 <p className="text-xs text-slate-600 capitalize">{tx.paymentMethod || 'Tunai'}</p>
+                            </div>
                             </div>
                             {/* Footer badges */}
                             <div className="flex justify-between items-center border-t border-dashed border-slate-200 pt-2 mt-2">
