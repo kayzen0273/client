@@ -5767,6 +5767,9 @@
             useEffect(() => {
                 if (!user) return;
                 const savedCartId = localStorage.getItem('activeCartId');
+                const closedAbruptly = localStorage.getItem('cartClosedAbruptly');
+                // Bersihkan flag tutup paksa
+                if (closedAbruptly) localStorage.removeItem('cartClosedAbruptly');
                 if (!savedCartId) return;
                 // Cegah recovery berjalan 2x akibat user & currentProfile berubah hampir bersamaan
                 if (hasRecovered.current) return;
@@ -5777,11 +5780,18 @@
                         const cartRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'active_carts', savedCartId);
                         const cartSnap = await window.getDoc(cartRef);
                         if (!cartSnap.exists()) {
-                            // Dokumen sudah tidak ada, bersihkan localStorage
+                            // Dokumen sudah tidak ada, bersihkan state & localStorage
                             localStorage.removeItem('activeCartId');
+                            setIsSessionActive(false);
+                            setActiveCartId(null);
+                            setCart([]);
                             return;
                         }
                         const data = cartSnap.data();
+                        // Selalu reset sesi — tab sudah ditutup, sesi tidak boleh dilanjutkan otomatis
+                        setIsSessionActive(false);
+                        setActiveCartId(null);
+                        setCart([]);
                         if (data.items && data.items.length > 0) {
                             // Pindahkan ke pending_carts otomatis
                             await window.addDoc(
@@ -5804,6 +5814,10 @@
                         await window.deleteDoc(cartRef);
                     } catch (error) {
                         console.error('Error recovering abandoned cart:', error);
+                        // Tetap reset state meski error
+                        setIsSessionActive(false);
+                        setActiveCartId(null);
+                        setCart([]);
                     } finally {
                         localStorage.removeItem('activeCartId');
                     }
@@ -6039,8 +6053,15 @@
                 };
                 document.addEventListener('visibilitychange', handleVisibility);
 
-                // Keluar website (tutup tab / reload)
-                const handlePageHide = () => { doAutoMoveToTertunda(); };
+                // Keluar website (tutup tab / reload) — tandai bahwa tab ditutup paksa
+                // Karena async Firebase tidak bisa selesai sebelum tab mati,
+                // kita cukup set flag di localStorage supaya saat buka lagi, recovery langsung pindah ke Tertunda
+                const handlePageHide = () => {
+                    const snap = autoSaveSnap.current;
+                    if (snap?.isSessionActive && snap?.activeCartId) {
+                        localStorage.setItem('cartClosedAbruptly', snap.activeCartId);
+                    }
+                };
                 window.addEventListener('pagehide', handlePageHide);
                 window.addEventListener('beforeunload', handlePageHide);
 
