@@ -5751,53 +5751,34 @@
                 );
                 const unsub = window.onSnapshot(q, (snapshot) => {
                     const allCarts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    // FILTER: Hanya tampilkan pending carts milik toko ini
-                    const filtered = allCarts.filter(c => c.storeId === currentProfile.id || c.storeProfile === currentProfile.name);
+                    // Tampilkan semua keranjang toko ini (live maupun tertunda), kecuali milik sesi sendiri
+                    const filtered = allCarts.filter(c =>
+                        (c.storeId === currentProfile.id || c.storeProfile === currentProfile.name)
+                    );
                     setPendingCarts(filtered);
                 });
                 return () => unsub();
             }, [user, currentProfile]);
 
-            // AUTO-RECOVER: Saat halaman dimuat, cek apakah ada active_cart terlantar (akibat refresh/tutup tab)
-            // Jika ada, otomatis pindahkan ke pending_carts supaya tidak hilang
+            // AUTO-RECOVER: Saat halaman dimuat, tandai pending_cart yang terlantar (akibat refresh/tutup tab)
             useEffect(() => {
                 if (!user) return;
                 const savedCartId = localStorage.getItem('activeCartId');
                 if (!savedCartId) return;
-                // Cegah recovery berjalan 2x akibat user & currentProfile berubah hampir bersamaan
                 if (hasRecovered.current) return;
                 hasRecovered.current = true;
 
                 const recoverAbandonedCart = async () => {
                     try {
-                        const cartRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'active_carts', savedCartId);
+                        const cartRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'pending_carts', savedCartId);
                         const cartSnap = await window.getDoc(cartRef);
                         if (!cartSnap.exists()) {
-                            // Dokumen sudah tidak ada, bersihkan localStorage
                             localStorage.removeItem('activeCartId');
                             return;
                         }
-                        const data = cartSnap.data();
-                        if (data.items && data.items.length > 0) {
-                            // Pindahkan ke pending_carts otomatis
-                            await window.addDoc(
-                                window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'pending_carts'),
-                                {
-                                    date: new Date().toISOString(),
-                                    items: data.items,
-                                    total: data.total || 0,
-                                    cashierName: data.cashierName || cashierName || 'Kasir',
-                                    device: navigator.userAgent,
-                                    storeProfile: data.storeName || currentProfile.name,
-                                    storeId: data.storeId || currentProfile.id,
-                                    createdAt: window.serverTimestamp(),
-                                    recoveredFromRefresh: true
-                                }
-                            );
-                            showToast("Keranjang sebelumnya tersimpan sebagai Tertunda 🕐");
-                        }
-                        // Hapus active_cart yang terlantar
-                        await window.deleteDoc(cartRef);
+                        // Tandai sebagai tidak live lagi (tertunda)
+                        await window.setDoc(cartRef, { isLive: false, updatedAt: window.serverTimestamp() }, { merge: true });
+                        showToast("Keranjang sebelumnya tersimpan sebagai Tertunda 🕐");
                     } catch (error) {
                         console.error('Error recovering abandoned cart:', error);
                     } finally {
@@ -5819,55 +5800,30 @@
             const visibilityTimerRef = useRef(null);
             const autoSaveSnap = useRef(null);
 
-            // Sync cart ke Firestore setiap kali cart berubah (outgoing)
+            // Sync cart ke pending_carts Firestore secara real-time setiap kali cart berubah
             useEffect(() => {
                 if (!isSessionActive || !activeCartId || !cashierName) return;
-                
                 const syncCart = async () => {
-                    // Skip jika cart baru saja diupdate dari luar (oleh kasir lain)
-                    if (isExternalUpdate.current) { isExternalUpdate.current = false; return; }
                     try {
-                        const cartRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'active_carts', activeCartId);
+                        const cartRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'pending_carts', activeCartId);
+                        const total = cart.reduce((acc, item) => acc + (safeNumber(item.price) * item.cartQty), 0);
                         await window.setDoc(cartRef, {
-                            cashierName: cashierName,
+                            cashierName: originalCashierName || cashierName,
                             storeId: currentProfile.id,
-                            storeName: currentProfile.name,
+                            storeProfile: currentProfile.name,
                             items: cart,
-                            total: cart.reduce((acc, item) => acc + (safeNumber(item.price) * item.cartQty), 0),
+                            total,
+                            date: new Date().toISOString(),
                             updatedAt: window.serverTimestamp(),
-                            isActive: true
+                            isLive: true
                         }, { merge: true });
                     } catch (error) {
-                        console.error('Error syncing cart:', error);
+                        console.error('Error syncing cart to pending:', error);
                     }
                 };
-
-                // Debounce sync untuk menghindari terlalu banyak write
-                const timeoutId = setTimeout(syncCart, 500);
+                const timeoutId = setTimeout(syncCart, 400);
                 return () => clearTimeout(timeoutId);
-            }, [cart, isSessionActive, activeCartId, cashierName, currentProfile]);
-
-            // Listener incoming: ketika item di keranjang kita diubah dari HP lain
-            useEffect(() => {
-                if (!isSessionActive || !activeCartId) return;
-                const cartRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'active_carts', activeCartId);
-                const unsub = window.onSnapshot(cartRef, (snap) => {
-                    if (!snap.exists()) return;
-                    const data = snap.data();
-                    // Cek apakah items berubah dari luar (jumlah atau id berbeda)
-                    setCart(prevCart => {
-                        const incomingItems = data.items || [];
-                        const prevStr = JSON.stringify(prevCart.map(i => ({id: i.id, cartQty: i.cartQty})));
-                        const incomingStr = JSON.stringify(incomingItems.map(i => ({id: i.id, cartQty: i.cartQty})));
-                        if (prevStr !== incomingStr) {
-                            isExternalUpdate.current = true;
-                            return incomingItems;
-                        }
-                        return prevCart;
-                    });
-                });
-                return () => unsub();
-            }, [isSessionActive, activeCartId]);
+            }, [cart, isSessionActive, activeCartId, cashierName, originalCashierName, currentProfile]);
 
             // ── AUTO-TERTUNDA: Pindahkan ke pending jika user tidak aktif ────────────────
             // Selalu simpan snapshot state terbaru ke ref (dipakai di dalam event handler)
@@ -5887,82 +5843,42 @@
             const doAutoMoveToTertunda = useCallback(async () => {
                 const snap = autoSaveSnap.current;
                 if (!snap || !snap.isSessionActive) return;
-                // Cart kosong: cukup hapus active_cart tanpa simpan ke tertunda
-                if (snap.cart.length === 0) {
-                    if (snap.activeCartId) {
-                        try {
-                            await window.deleteDoc(
-                                window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'active_carts', snap.activeCartId)
-                            );
-                        } catch (e) { console.error('Delete empty active_cart error:', e); }
-                    }
-                    setIsSessionActive(false);
-                    setActiveCartId(null);
-                    localStorage.removeItem('activeCartId');
-                    return;
-                }
                 try {
-                    await window.addDoc(
-                        window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'pending_carts'),
-                        {
-                            date: new Date().toISOString(),
-                            items: snap.cart,
-                            total: snap.grandTotal,
-                            cashierName: snap.cashierName,
-                            device: navigator.userAgent,
-                            storeProfile: snap.storeProfile,
-                            storeId: snap.storeId,
-                            createdAt: window.serverTimestamp(),
-                            autoSaved: true,
-                        }
-                    );
                     if (snap.activeCartId) {
-                        await window.deleteDoc(
-                            window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'active_carts', snap.activeCartId)
-                        );
+                        const cartRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'pending_carts', snap.activeCartId);
+                        if (snap.cart.length === 0) {
+                            await window.deleteDoc(cartRef);
+                        } else {
+                            await window.setDoc(cartRef, { isLive: false, updatedAt: window.serverTimestamp() }, { merge: true });
+                            showToast('Sesi tidak aktif — keranjang dipindah ke Tertunda ⏸️', 'info');
+                        }
                     }
-                    // Reset state sesi
+                } catch (e) {
+                    console.error('Auto-tertunda error:', e);
+                } finally {
                     setIsSessionActive(false);
                     setCart([]);
                     setActiveCartId(null);
                     setOriginalCashierName(null);
                     localStorage.removeItem('activeCartId');
-                    showToast('Sesi tidak aktif — keranjang dipindah ke Tertunda ⏸️', 'info');
-                } catch (e) {
-                    console.error('Auto-tertunda error:', e);
                 }
             }, []); // eslint-disable-line
 
-            // Ganti toko → langsung simpan ke tertunda dengan info toko LAMA
+            // Ganti toko → simpan ke tertunda dengan isLive: false
             const prevProfileRef = useRef(currentProfile);
             useEffect(() => {
                 if (prevProfileRef.current?.id && prevProfileRef.current.id !== currentProfile?.id) {
-                    // Ambil snapshot cart saat ini dengan profil LAMA sebelum berubah
                     const snap = autoSaveSnap.current;
                     if (snap && snap.isSessionActive) {
-                        const oldProfile = prevProfileRef.current;
                         (async () => {
                             try {
-                                if (snap.cart.length > 0) {
-                                    await window.addDoc(
-                                        window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'pending_carts'),
-                                        {
-                                            date: new Date().toISOString(),
-                                            items: snap.cart,
-                                            total: snap.grandTotal,
-                                            cashierName: snap.cashierName,
-                                            device: navigator.userAgent,
-                                            storeProfile: oldProfile.name,
-                                            storeId: oldProfile.id,
-                                            createdAt: window.serverTimestamp(),
-                                            autoSaved: true,
-                                        }
-                                    );
-                                }
                                 if (snap.activeCartId) {
-                                    await window.deleteDoc(
-                                        window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'active_carts', snap.activeCartId)
-                                    );
+                                    const cartRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'pending_carts', snap.activeCartId);
+                                    if (snap.cart.length === 0) {
+                                        await window.deleteDoc(cartRef);
+                                    } else {
+                                        await window.setDoc(cartRef, { isLive: false, updatedAt: window.serverTimestamp() }, { merge: true });
+                                    }
                                 }
                             } catch (e) {
                                 console.error('Ganti toko - tertunda error:', e);
@@ -6032,13 +5948,13 @@
             }, [isSessionActive, cart.length, doAutoMoveToTertunda, resetInactivityTimer]);
             // ── END AUTO-TERTUNDA ─────────────────────────────────────────────────────────
 
-            // Mulai sesi kasir baru - nama otomatis dari akun login
+            // Mulai sesi kasir baru - langsung buat di pending_carts agar terlihat real-time
             const handleStartSession = async (name) => {
                 const finalName = (name || cashierName).trim() || 'Kasir';
                 try {
                     const cartRef = await window.addDoc(
-                        window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'active_carts'),
-                        { cashierName: finalName, storeId: currentProfile.id, storeName: currentProfile.name, items: [], total: 0, updatedAt: window.serverTimestamp(), isActive: true }
+                        window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'pending_carts'),
+                        { cashierName: finalName, storeId: currentProfile.id, storeProfile: currentProfile.name, items: [], total: 0, date: new Date().toISOString(), updatedAt: window.serverTimestamp(), isLive: true }
                     );
                     setActiveCartId(cartRef.id);
                     setIsSessionActive(true);
@@ -6333,53 +6249,38 @@
                 }));
             };
             const handleBack = async () => { 
-                if (cart.length > 0) { 
-                    try {
-                        await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'pending_carts'), {
-                            date: new Date().toISOString(),
-                            items: cart,
-                            total: grandTotal,
-                            cashierName: originalCashierName || cashierName || user.email || 'Kasir',
-                            device: navigator.userAgent,
-                            storeProfile: currentProfile.name, 
-                            storeId: currentProfile.id, // SAVE ID TO FILTER LATER
-                            createdAt: window.serverTimestamp()
-                        });
-                        showToast("Transaksi disimpan (Pending)", "success");
-                    } catch (error) {
-                        console.error(error);
-                        showToast("Gagal menyimpan transaksi tunda", "error");
-                    }
-                }
-                
-                // NEW: Hapus active cart dari Firestore
+                // Tandai dokumen pending_carts sebagai tidak live lagi (tertunda)
                 if (activeCartId) {
                     try {
-                        await window.deleteDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'active_carts', activeCartId));
+                        const cartRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'pending_carts', activeCartId);
+                        if (cart.length > 0) {
+                            await window.setDoc(cartRef, { isLive: false, updatedAt: window.serverTimestamp() }, { merge: true });
+                            showToast("Transaksi disimpan (Pending)", "success");
+                        } else {
+                            // Cart kosong: hapus saja dokumennya
+                            await window.deleteDoc(cartRef);
+                        }
                     } catch (error) {
-                        console.error('Error deleting active cart:', error);
+                        console.error('Error on handleBack:', error);
                     }
                 }
-                
                 setIsSessionActive(false); 
                 setSearch(''); 
                 setCart([]);
                 setActiveCartId(null);
-                setOriginalCashierName(null); // Reset setelah sesi selesai
+                setOriginalCashierName(null);
                 localStorage.removeItem('activeCartId');
-                // cashierName TETAP disimpan untuk sesi berikutnya
             };
             
             const confirmCancel = async () => { 
-                // NEW: Hapus active cart dari Firestore
+                // Hapus dokumen pending_carts
                 if (activeCartId) {
                     try {
-                        await window.deleteDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'active_carts', activeCartId));
+                        await window.deleteDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'pending_carts', activeCartId));
                     } catch (error) {
-                        console.error('Error deleting active cart:', error);
+                        console.error('Error deleting pending cart:', error);
                     }
                 }
-                
                 setCart([]); 
                 setPaymentAmount(''); 
                 setSearch(''); 
@@ -6395,32 +6296,15 @@
             
             const resumeTransaction = async (pendingItem) => { 
                 try {
-                    await window.deleteDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'pending_carts', pendingItem.id));
-                    
-                    // Simpan nama kasir asli agar saat ditunda lagi tetap pakai nama pertama
+                    // Tidak hapus dokumen - cukup tandai isLive & langsung pakai id yang sama
                     setOriginalCashierName(pendingItem.cashierName || cashierName || 'Kasir');
-                    
-                    // Buat active cart baru
-                    const cartRef = await window.addDoc(
-                        window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'active_carts'),
-                        {
-                            cashierName: pendingItem.cashierName || 'Kasir',
-                            storeId: currentProfile.id,
-                            storeName: currentProfile.name,
-                            items: pendingItem.items,
-                            total: pendingItem.total,
-                            updatedAt: window.serverTimestamp(),
-                            isActive: true
-                        }
-                    );
-                    
-                    setActiveCartId(cartRef.id);
-                    localStorage.setItem('activeCartId', cartRef.id);
-                    setCart(pendingItem.items); 
+                    setActiveCartId(pendingItem.id);
+                    localStorage.setItem('activeCartId', pendingItem.id);
+                    setCart(pendingItem.items || []); 
                     setIsSessionActive(true);
                     showToast("Transaksi dilanjutkan");
                 } catch (error) {
-                    showToast("Transaksi sudah diambil atau dihapus", "error");
+                    showToast("Gagal melanjutkan transaksi", "error");
                 }
             };
 
@@ -6476,12 +6360,12 @@
                     batch.set(docRef, newTransaction);
                     await batch.commit();
                     
-                    // NEW: Hapus active cart setelah checkout berhasil
+                    // Hapus dokumen pending_carts setelah checkout berhasil
                     if (activeCartId) {
                         try {
-                            await window.deleteDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'active_carts', activeCartId));
+                            await window.deleteDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'pending_carts', activeCartId));
                         } catch (error) {
-                            console.error('Error deleting active cart:', error);
+                            console.error('Error deleting pending cart:', error);
                         }
                     }
                     
@@ -6554,29 +6438,38 @@
                              {pendingCarts.length > 0 && (
                                 <div className="w-full mb-4 fade-in">
                                     <div className="flex items-center justify-between mb-2 px-0.5">
-                                        <div className="flex items-center gap-1.5"><Icon name="clock-rotate-left" className="text-sky-500 text-xs" /><h3 className="font-bold text-slate-600 text-xs">Tertunda di {currentProfile.name}</h3></div>
+                                        <div className="flex items-center gap-1.5"><Icon name="clock-rotate-left" className="text-sky-500 text-xs" /><h3 className="font-bold text-slate-600 text-xs">Keranjang di {currentProfile.name}</h3></div>
                                         <span className="text-[9px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full font-bold">{pendingCarts.length} sesi</span>
                                     </div>
                                     <div className="space-y-1.5">
-                                        {pendingCarts.map(pending => (
-                                            <button key={pending.id} onClick={() => resumeTransaction(pending)} className="w-full bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-sky-300 transition-all flex items-center gap-2 group relative overflow-hidden">
-                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-sky-400 to-sky-600"></div>
-                                                <div className="w-7 h-7 bg-sky-500 rounded-full flex items-center justify-center text-white text-[10px] font-black flex-shrink-0 ml-1">
+                                        {pendingCarts.map(pending => {
+                                            const isLive = pending.isLive === true;
+                                            const isMine = pending.id === activeCartId;
+                                            return (
+                                            <button key={pending.id} onClick={() => !isMine && resumeTransaction(pending)} className={"w-full px-3 py-2 rounded-xl border shadow-sm transition-all flex items-center gap-2 group relative overflow-hidden " + (isMine ? "bg-sky-50 border-sky-300 cursor-default" : isLive ? "bg-emerald-50 border-emerald-200 hover:shadow-md hover:border-emerald-400" : "bg-white border-slate-200 hover:shadow-md hover:border-sky-300")}>
+                                                <div className={"absolute left-0 top-0 bottom-0 w-1 " + (isLive ? "bg-gradient-to-b from-emerald-400 to-emerald-600" : "bg-gradient-to-b from-sky-400 to-sky-600")}></div>
+                                                <div className={"w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-black flex-shrink-0 ml-1 " + (isLive ? "bg-emerald-500" : "bg-sky-500")}>
                                                     {(pending.cashierName || '?').charAt(0).toUpperCase()}
                                                 </div>
                                                 <div className="text-left flex-1 min-w-0">
                                                     <div className="flex items-center gap-1.5">
-                                                        <p className="font-bold text-sky-700 text-[11px] truncate">{pending.cashierName || 'Kasir'}</p>
-                                                        <span className="text-[9px] text-slate-400 font-medium flex-shrink-0">{new Date(pending.date).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})}</span>
+                                                        <p className={"font-bold text-[11px] truncate " + (isLive ? "text-emerald-700" : "text-sky-700")}>{pending.cashierName || 'Kasir'}</p>
+                                                        {isLive ? (
+                                                            <span className="flex items-center gap-0.5 text-[9px] text-emerald-600 font-bold flex-shrink-0"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full inline-block animate-pulse"></span>LIVE</span>
+                                                        ) : (
+                                                            <span className="text-[9px] text-slate-400 font-medium flex-shrink-0">{new Date(pending.date).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})}</span>
+                                                        )}
                                                     </div>
                                                     <div className="flex items-center gap-1.5 mt-0.5">
                                                         <p className="font-black text-slate-800 text-sm">{formatRupiah(pending.total)}</p>
-                                                        <span className="text-[9px] text-slate-400">{pending.items.length} barang</span>
+                                                        <span className="text-[9px] text-slate-400">{(pending.items||[]).length} barang</span>
                                                     </div>
                                                 </div>
-                                                <div className="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-sky-50 group-hover:text-sky-500 transition-colors flex-shrink-0"><Icon name="chevron-right" className="text-[10px]" /></div>
+                                                {!isMine && <div className="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-sky-50 group-hover:text-sky-500 transition-colors flex-shrink-0"><Icon name="chevron-right" className="text-[10px]" /></div>}
+                                                {isMine && <span className="text-[9px] bg-sky-100 text-sky-600 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">Kamu</span>}
                                             </button>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                              )}
