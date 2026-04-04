@@ -5595,6 +5595,22 @@
             const [selectedPembeli, setSelectedPembeli] = useState('');
             const [pembeliInput, setPembeliInput] = useState('');
             const [showPembeliModal, setShowPembeliModal] = useState(false);
+            const [registeredUsers, setRegisteredUsers] = useState([]);
+
+            // Fetch semua akun terdaftar untuk pilihan Sales
+            useEffect(() => {
+                if (!user) return;
+                const usersRef = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'users');
+                const unsub = window.onSnapshot(usersRef, (snap) => {
+                    const users = snap.docs
+                        .map(d => ({ id: d.id, ...d.data() }))
+                        .map(u => ({ name: u.namaLengkap || u.username, isActive: u.isActive !== false }))
+                        .filter(u => u.name)
+                        .sort((a, b) => a.name.localeCompare(b.name));
+                    setRegisteredUsers(users);
+                });
+                return () => unsub();
+            }, [user]);
 
             // Load daftar dokter & pasien dari Firestore
             useEffect(() => {
@@ -7022,19 +7038,47 @@
                                 </div>
                             </div>
                         )}
-                        {/* Modal Kasir/Sales */}
-                        {showSalesModal && (
-                            <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowSalesModal(false)}>
-                                <div className="bg-white w-full max-w-sm rounded-t-3xl p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
-                                    <h3 className="font-bold text-slate-800 mb-3">Pilih Sales</h3>
-                                    <div className="space-y-1.5">
-                                        {[originalCashierName || cashierName, cashierName, ...(settings?.salesList || [])].filter((v,i,a) => v && a.indexOf(v)===i).map(name => (
-                                            <button key={name} onClick={() => { setSelectedSales(name); setShowSalesModal(false); }} className={`w-full text-left px-4 py-3 rounded-xl text-sm font-semibold transition-all ${(selectedSales || originalCashierName || cashierName) === name ? 'bg-teal-600 text-white' : 'bg-slate-50 text-slate-700 hover:bg-teal-50'}`}>{name}</button>
-                                        ))}
+                        {/* Modal Pilih Sales */}
+                        {showSalesModal && (() => {
+                            // Gabung semua akun + salesList + nama pemilik keranjang, tanpa duplikat
+                            const allSalesNames = [
+                                originalCashierName || cashierName,
+                                cashierName,
+                                ...registeredUsers.map(u => u.name),
+                                ...(settings?.salesList || [])
+                            ].filter((v, i, a) => v && a.indexOf(v) === i);
+                            const activeSales = selectedSales || originalCashierName || cashierName;
+                            return (
+                                <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowSalesModal(false)}>
+                                    <div className="bg-white w-full max-w-sm rounded-t-3xl p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+                                        <div className="flex items-center justify-between mb-3">
+                                            <h3 className="font-bold text-slate-800">Pilih Sales</h3>
+                                            {selectedSales && selectedSales !== (originalCashierName || cashierName) && (
+                                                <button onClick={() => { setSelectedSales(''); setShowSalesModal(false); }} className="text-[10px] font-bold text-red-400 hover:text-red-600 border border-red-200 px-2 py-1 rounded-lg transition-all">Reset</button>
+                                            )}
+                                        </div>
+                                        <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+                                            {allSalesNames.map(name => {
+                                                const userObj = registeredUsers.find(u => u.name === name);
+                                                const isInactive = userObj && userObj.isActive === false;
+                                                const isSelected = activeSales === name;
+                                                return (
+                                                    <button key={name} onClick={() => { setSelectedSales(name); setShowSalesModal(false); }}
+                                                        className={`w-full text-left px-4 py-3 rounded-xl text-sm font-semibold transition-all flex items-center gap-3 ${isSelected ? 'bg-teal-600 text-white' : 'bg-slate-50 text-slate-700 hover:bg-teal-50'}`}>
+                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 ${isSelected ? 'bg-white/20 text-white' : 'bg-teal-100 text-teal-700'}`}>
+                                                            {name.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <span className="flex-1">{name}</span>
+                                                        {isInactive && <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500'}`}>Nonaktif</span>}
+                                                        {isSelected && <Icon name="check" className="text-white text-xs" />}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
+                            );
+                        })()}
                         {/* Modal Pembeli */}
                         {showPembeliModal && (
                             <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowPembeliModal(false)}>
