@@ -6009,7 +6009,7 @@
                 clearTimeout(inactivityTimerRef.current);
                 const snap = autoSaveSnap.current;
                 if (!snap?.isSessionActive || snap.cart.length === 0) return;
-                inactivityTimerRef.current = setTimeout(doAutoMoveToTertunda, 5 * 60 * 1000); // 5 menit
+                inactivityTimerRef.current = setTimeout(doAutoMoveToTertunda, 10 * 60 * 1000); // 10 menit
             }, [doAutoMoveToTertunda]);
 
             useEffect(() => {
@@ -6027,9 +6027,10 @@
 
                 const handleVisibility = () => {
                     if (document.hidden) {
-                        // Tab / browser disembunyikan: langsung pindah ke tertunda
+                        // Tab / browser disembunyikan: tunggu 3 menit sebelum pindah ke tertunda
+                        // (bukan langsung, agar kasir yang keluar sebentar tidak kehilangan sesi)
                         clearTimeout(visibilityTimerRef.current);
-                        doAutoMoveToTertunda();
+                        visibilityTimerRef.current = setTimeout(doAutoMoveToTertunda, 3 * 60 * 1000); // 3 menit
                     } else {
                         // User kembali: batalkan jadwal visibility & reset timer inaktif
                         clearTimeout(visibilityTimerRef.current);
