@@ -8727,34 +8727,23 @@
                         </div>))}
                         {/* Pagination Controls */}
                         {!loading && processedTransactions.length > 0 && (
-                            <div className="flex items-center justify-center gap-2 pt-2 pb-4">
+                            <div className="flex items-center justify-center gap-4 pt-2 pb-4">
                                 <button
-                                    onClick={() => { setHistPage(p => Math.max(1, p - 1)); window.scrollTo && window.scrollTo(0,0); }}
+                                    onClick={() => setHistPage(p => Math.max(1, p - 1))}
                                     disabled={histPage === 1}
-                                    className={`w-9 h-9 rounded-xl border flex items-center justify-center font-bold transition-all active:scale-95 ${histPage === 1 ? 'border-slate-100 text-slate-300 bg-slate-50 cursor-not-allowed' : 'border-slate-200 text-slate-600 bg-white hover:bg-sky-50 hover:border-sky-300 hover:text-sky-600 shadow-sm'}`}
+                                    className={`w-11 h-11 rounded-xl border flex items-center justify-center font-bold transition-all active:scale-95 ${histPage === 1 ? 'border-slate-100 text-slate-300 bg-slate-50 cursor-not-allowed' : 'border-slate-200 text-slate-600 bg-white hover:bg-sky-50 hover:border-sky-300 hover:text-sky-600 shadow-sm'}`}
                                 >
-                                    <Icon name="chevron-left" className="text-xs" />
+                                    <Icon name="chevron-left" className="text-sm" />
                                 </button>
-                                {Array.from({ length: histTotalPages }, (_, i) => i + 1).map(pg => {
-                                    const isActive = pg === histPage;
-                                    const isNear = Math.abs(pg - histPage) <= 1 || pg === 1 || pg === histTotalPages;
-                                    if (!isNear) {
-                                        if (pg === histPage - 2 || pg === histPage + 2) return <span key={pg} className="text-slate-400 text-xs font-bold px-1">…</span>;
-                                        return null;
-                                    }
-                                    return (
-                                        <button key={pg} onClick={() => setHistPage(pg)}
-                                            className={`w-9 h-9 rounded-xl border text-xs font-black transition-all active:scale-95 ${isActive ? 'bg-teal-600 border-teal-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:bg-sky-50 hover:border-sky-300 hover:text-sky-600 shadow-sm'}`}>
-                                            {pg}
-                                        </button>
-                                    );
-                                })}
+                                <span className="text-sm font-bold text-slate-600 min-w-[80px] text-center">
+                                    {histPage} dari {histTotalPages}
+                                </span>
                                 <button
-                                    onClick={() => { setHistPage(p => Math.min(histTotalPages, p + 1)); window.scrollTo && window.scrollTo(0,0); }}
+                                    onClick={() => setHistPage(p => Math.min(histTotalPages, p + 1))}
                                     disabled={histPage === histTotalPages}
-                                    className={`w-9 h-9 rounded-xl border flex items-center justify-center font-bold transition-all active:scale-95 ${histPage === histTotalPages ? 'border-slate-100 text-slate-300 bg-slate-50 cursor-not-allowed' : 'border-slate-200 text-slate-600 bg-white hover:bg-sky-50 hover:border-sky-300 hover:text-sky-600 shadow-sm'}`}
+                                    className={`w-11 h-11 rounded-xl border flex items-center justify-center font-bold transition-all active:scale-95 ${histPage === histTotalPages ? 'border-slate-100 text-slate-300 bg-slate-50 cursor-not-allowed' : 'border-slate-200 text-slate-600 bg-white hover:bg-sky-50 hover:border-sky-300 hover:text-sky-600 shadow-sm'}`}
                                 >
-                                    <Icon name="chevron-right" className="text-xs" />
+                                    <Icon name="chevron-right" className="text-sm" />
                                 </button>
                             </div>
                         )}
