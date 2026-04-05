@@ -5487,7 +5487,7 @@
         };
 
         // --- CASHIER COMPONENT ---
-        const CashierView = ({ items, user, showToast, settings, onGenerateImage, currentProfile, readOnly, authSession, onNavigateToAdd }) => {
+        const CashierView = ({ items, user, showToast, settings, onGenerateImage, currentProfile, readOnly, authSession, onNavigateToAdd, activeCarts: activeCartsProp }) => {
             const [isSessionActive, setIsSessionActive] = useState(false);
             const [search, setSearch] = useState('');
             const [cart, setCart] = useState([]);
@@ -5536,7 +5536,7 @@
             const [cancelModal, setCancelModal] = useState(false);
             const [btDevice, setBtDevice] = useState(null);
             const [pendingCarts, setPendingCarts] = useState([]);
-            const [activeCarts, setActiveCarts] = useState([]);
+            const activeCarts = (activeCartsProp || []).filter(c => c.id !== activeCartId);
             
             // Nama kasir otomatis dari akun login
             const [showCashierModal, setShowCashierModal] = useState(false);
@@ -5758,19 +5758,7 @@
                 return () => unsub();
             }, [user, currentProfile]);
 
-            // Subscribe ke active_carts agar user lain bisa melihat sesi yang sedang berjalan secara real-time
-            useEffect(() => {
-                if (!user) return;
-                const unsub = window.onSnapshot(
-                    window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'active_carts'),
-                    (snapshot) => {
-                        const all = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        const filtered = all.filter(c => (c.storeId === currentProfile.id || c.storeName === currentProfile.name) && c.id !== activeCartId);
-                        setActiveCarts(filtered);
-                    }
-                );
-                return () => unsub();
-            }, [user, currentProfile, activeCartId]);
+
 
             // AUTO-RECOVER: Saat halaman dimuat, cek apakah ada active_cart terlantar (akibat refresh/tutup tab)
             // Jika ada, otomatis pindahkan ke pending_carts supaya tidak hilang
@@ -7054,7 +7042,7 @@
                                 </div>
                             </div>
                             <button onClick={() => { if(readOnly){showToast('Akses terbatas — hubungi owner','error');return;} setPaymentAmount(''); setPaymentMethod(''); setCheckoutModal(true); }} disabled={cart.length === 0} className="w-full py-3.5 bg-gradient-to-r from-sky-600 to-sky-500 text-white rounded-xl font-bold shadow-lg shadow-sky-200 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2"><Icon name="money-bill-wave" /> Bayar Sekarang</button>
-                            <button onClick={() => { if(readOnly) return; setCancelModal(true); }} disabled={cart.length === 0 || readOnly} className="w-full mt-3 py-3 rounded-xl border border-red-200 text-red-500 font-bold hover:bg-red-50 transition-all text-sm disabled:opacity-50 disabled:border-slate-200 disabled:text-slate-400 active:scale-95">Batalkan Transaksi</button>
+                            <button onClick={() => { if(readOnly) return; setCancelModal(true); }} disabled={readOnly} className="w-full mt-3 py-3 rounded-xl border border-red-200 text-red-500 font-bold hover:bg-red-50 transition-all text-sm disabled:opacity-50 disabled:border-slate-200 disabled:text-slate-400 active:scale-95">Batalkan Transaksi</button>
                         </div>
                     </div>
                     {checkoutModal && ( <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm fade-in"> {!paymentSuccess ? ( <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 relative"> <button onClick={() => { setCheckoutModal(false); setPaymentMethod(''); }} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><Icon name="xmark" /></button>
@@ -13386,6 +13374,7 @@
             const [activeStoreId, setActiveStoreId] = useState(localStorage.getItem('activeStoreId') || 'default');
             const [showStoreMenu, setShowStoreMenu] = useState(false);
             const [notifCounts, setNotifCounts] = useState({ pendingCarts: 0 });
+            const [activeCarts, setActiveCarts] = useState([]);
             const [authSession, setAuthSession] = useState(() => getStoredSession());
             const [personalMenuAccess, setPersonalMenuAccess] = useState(null); // null = follow global
             const [allowedStores, setAllowedStores] = useState(null); // null = semua toko boleh diakses
@@ -13731,17 +13720,28 @@
             useEffect(() => {
                 if (!user || activeStoreId === 'all_stores') return;
                 const storeId = activeStoreId;
+                const storeName = settingsData.storeProfiles?.find(p => p.id === storeId)?.name || '';
 
                 const qPending = window.query(
                     window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'pending_carts'),
                     window.orderBy('date', 'desc')
                 );
                 const unsubPending = window.onSnapshot(qPending, (snap) => {
-                    const count = snap.docs.filter(d => d.data().storeId === storeId || d.data().storeProfile === (settingsData.storeProfiles?.find(p => p.id === storeId)?.name || '')).length;
+                    const count = snap.docs.filter(d => d.data().storeId === storeId || d.data().storeProfile === storeName).length;
                     setNotifCounts(prev => ({ ...prev, pendingCarts: count }));
                 });
 
-                return () => { unsubPending(); };
+                // Subscribe ke active_carts di level App agar selalu real-time tanpa tergantung tab aktif
+                const unsubActive = window.onSnapshot(
+                    window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'active_carts'),
+                    (snap) => {
+                        const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                        const filtered = all.filter(c => c.storeId === storeId || c.storeName === storeName);
+                        setActiveCarts(filtered);
+                    }
+                );
+
+                return () => { unsubPending(); unsubActive(); };
             }, [user, activeStoreId, settingsData]);
 
             // ── Deteksi barang kadaluarsa / hampir kadaluarsa → trigger ExpiryBanner ──
@@ -14241,7 +14241,7 @@
                             </div>
                         )}
                         {activeTab === 'home' && (<DashboardView items={inventoryData} settings={settingsData} currentProfile={currentProfile} isOwner={isOwner} onShowLowStock={() => { setActiveTab('list'); setShowOnlyLowStock(true); }} />)}
-                        {activeTab === 'cashier' && (<CashierView items={inventoryData} user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='cashier')?.readOnly} authSession={authSession} onNavigateToAdd={() => setActiveTab('add')} />)}
+                        {activeTab === 'cashier' && (<CashierView items={inventoryData} user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='cashier')?.readOnly} authSession={authSession} onNavigateToAdd={() => setActiveTab('add')} activeCarts={activeCarts} />)}
                         {activeTab === 'history' && (<HistoryView user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} items={inventoryData} readOnly={menuItems.find(m=>m.id==='history')?.readOnly} isOwner={isOwner} />)}
                         {activeTab === 'purchases' && (<PurchaseView user={user} showToast={showToast} items={inventoryData} currentProfile={currentProfile} settings={settingsData} readOnly={menuItems.find(m=>m.id==='purchases')?.readOnly} />)}
                         {activeTab === 'cashbook' && (<CashBookView user={user} currentProfile={currentProfile} showToast={showToast} readOnly={menuItems.find(m=>m.id==='cashbook')?.readOnly} />)}
