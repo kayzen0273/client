@@ -13642,7 +13642,7 @@
             // 1. Fetch Global Settings
             const hasSetInitialTab = useRef(false);
             useEffect(() => {
-                if(!user) return;
+                if(!user || !authSession) return;
                 const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'settings', 'global');
                 const unsub = window.onSnapshot(docRef, (docSnap) => { 
                     if(docSnap.exists()){ 
@@ -13665,7 +13665,7 @@
                     } 
                 });
                 return () => unsub();
-            }, [user]);
+            }, [user, authSession]);
 
             // 2. Fetch Raw Inventory
             useEffect(() => {
@@ -13885,6 +13885,7 @@
             const handleLogout = () => {
                 clearSession();
                 setAuthSession(null);
+                hasSetInitialTab.current = false; // Reset agar tab awal dihitung ulang saat login berikutnya
             };
 
             // Show auth screen if no session
