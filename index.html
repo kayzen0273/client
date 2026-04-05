@@ -5752,28 +5752,23 @@
                 );
                 const unsub = window.onSnapshot(q, (snapshot) => {
                     const allCarts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    // FILTER: Hanya tampilkan pending carts milik toko ini
                     const filtered = allCarts.filter(c => c.storeId === currentProfile.id || c.storeProfile === currentProfile.name);
                     setPendingCarts(filtered);
                 });
                 return () => unsub();
             }, [user, currentProfile]);
 
-            // Subscribe ke active_carts: tampilkan sesi kasir lain secara real-time di "Keranjang Tertunda"
+            // Subscribe ke active_carts agar user lain bisa melihat sesi yang sedang berjalan secara real-time
             useEffect(() => {
                 if (!user) return;
-                const q = window.query(
+                const unsub = window.onSnapshot(
                     window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'active_carts'),
-                    window.orderBy('updatedAt', 'desc')
+                    (snapshot) => {
+                        const all = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        const filtered = all.filter(c => (c.storeId === currentProfile.id || c.storeName === currentProfile.name) && c.id !== activeCartId);
+                        setActiveCarts(filtered);
+                    }
                 );
-                const unsub = window.onSnapshot(q, (snapshot) => {
-                    const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-                    const filtered = all.filter(c =>
-                        (c.storeId === currentProfile.id || c.storeName === currentProfile.name) &&
-                        c.id !== activeCartId
-                    );
-                    setActiveCarts(filtered);
-                });
                 return () => unsub();
             }, [user, currentProfile, activeCartId]);
 
@@ -5906,8 +5901,24 @@
             const doAutoMoveToTertunda = useCallback(async () => {
                 const snap = autoSaveSnap.current;
                 if (!snap || !snap.isSessionActive) return;
-                // Cart kosong: cukup hapus active_cart tanpa simpan ke tertunda
+                // Cart kosong tetap disimpan ke tertunda agar terlihat user lain
                 if (snap.cart.length === 0) {
+                    try {
+                        await window.addDoc(
+                            window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'pending_carts'),
+                            {
+                                date: new Date().toISOString(),
+                                items: [],
+                                total: 0,
+                                cashierName: snap.cashierName,
+                                device: navigator.userAgent,
+                                storeProfile: snap.storeProfile,
+                                storeId: snap.storeId,
+                                createdAt: window.serverTimestamp(),
+                                autoSaved: true,
+                            }
+                        );
+                    } catch (e) { console.error('Save empty pending_cart error:', e); }
                     if (snap.activeCartId) {
                         try {
                             await window.deleteDoc(
@@ -6441,31 +6452,7 @@
                 }
             };
 
-            const resumeActiveCart = async (activeCart) => {
-                try {
-                    await window.deleteDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'active_carts', activeCart.id));
-                    setOriginalCashierName(activeCart.cashierName || cashierName || 'Kasir');
-                    const cartRef = await window.addDoc(
-                        window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'active_carts'),
-                        {
-                            cashierName: cashierName,
-                            storeId: currentProfile.id,
-                            storeName: currentProfile.name,
-                            items: activeCart.items || [],
-                            total: activeCart.total || 0,
-                            updatedAt: window.serverTimestamp(),
-                            isActive: true
-                        }
-                    );
-                    setActiveCartId(cartRef.id);
-                    localStorage.setItem('activeCartId', cartRef.id);
-                    setCart(activeCart.items || []);
-                    setIsSessionActive(true);
-                    showToast("Transaksi dilanjutkan");
-                } catch (error) {
-                    showToast("Transaksi sudah diambil atau dihapus", "error");
-                }
-            };
+            const handleCheckout = async () => {
                 if (!user) return;
                 if (cart.length === 0) return;
                 const isNonCash = paymentMethod === 'qris' || paymentMethod === 'transfer';
@@ -6599,24 +6586,22 @@
                                         <span className="text-[9px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full font-bold">{activeCarts.length + pendingCarts.length} sesi</span>
                                     </div>
                                     <div className="space-y-1.5">
-                                        {activeCarts.map(active => (
-                                            <button key={active.id} onClick={() => resumeActiveCart(active)} className="w-full bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-sky-300 transition-all flex items-center gap-2 group relative overflow-hidden">
+                                        {activeCarts.map(ac => (
+                                            <div key={ac.id} className="w-full bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-2 relative overflow-hidden">
                                                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-sky-400 to-sky-600"></div>
                                                 <div className="w-7 h-7 bg-sky-500 rounded-full flex items-center justify-center text-white text-[10px] font-black flex-shrink-0 ml-1">
-                                                    {(active.cashierName || '?').charAt(0).toUpperCase()}
+                                                    {(ac.cashierName || '?').charAt(0).toUpperCase()}
                                                 </div>
                                                 <div className="text-left flex-1 min-w-0">
                                                     <div className="flex items-center gap-1.5">
-                                                        <p className="font-bold text-sky-700 text-[11px] truncate">{active.cashierName || 'Kasir'}</p>
-                                                        <span className="text-[9px] text-slate-400 font-medium flex-shrink-0">{active.updatedAt?.toDate ? active.updatedAt.toDate().toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'}) : ''}</span>
+                                                        <p className="font-bold text-sky-700 text-[11px] truncate">{ac.cashierName || 'Kasir'}</p>
                                                     </div>
                                                     <div className="flex items-center gap-1.5 mt-0.5">
-                                                        <p className="font-black text-slate-800 text-sm">{formatRupiah(active.total || 0)}</p>
-                                                        <span className="text-[9px] text-slate-400">{(active.items || []).length} barang</span>
+                                                        <p className="font-black text-slate-800 text-sm">{formatRupiah(ac.total || 0)}</p>
+                                                        <span className="text-[9px] text-slate-400">{(ac.items || []).length} barang</span>
                                                     </div>
                                                 </div>
-                                                <div className="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-sky-50 group-hover:text-sky-500 transition-colors flex-shrink-0"><Icon name="chevron-right" className="text-[10px]" /></div>
-                                            </button>
+                                            </div>
                                         ))}
                                         {pendingCarts.map(pending => (
                                             <button key={pending.id} onClick={() => resumeTransaction(pending)} className="w-full bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-sky-300 transition-all flex items-center gap-2 group relative overflow-hidden">
