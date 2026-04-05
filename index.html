@@ -7975,6 +7975,8 @@
             const [tempFilterTipe, setTempFilterTipe] = useState('all');
             const [histFilterActiveSection, setHistFilterActiveSection] = useState(null);
             const [registeredUsers, setRegisteredUsers] = useState([]);
+            const HIST_PAGE_SIZE = 25;
+            const [histPage, setHistPage] = useState(1);
 
             const [uploadingProof, setUploadingProof] = useState(false);
             const [deletingProof, setDeletingProof] = useState(false);
@@ -8209,6 +8211,12 @@
                 });
                 return data;
             }, [dailyTransactions, historySearch, filterStatus, filterKasir, filterPayment, filterTipe, sortOrder]);
+
+            // Reset ke halaman 1 setiap kali filter / search berubah
+            useEffect(() => { setHistPage(1); }, [historySearch, filterStatus, filterKasir, filterPayment, filterTipe, sortOrder, dailyTransactions]);
+
+            const histTotalPages = Math.max(1, Math.ceil(processedTransactions.length / HIST_PAGE_SIZE));
+            const paginatedTransactions = processedTransactions.slice((histPage - 1) * HIST_PAGE_SIZE, histPage * HIST_PAGE_SIZE);
 
             const stats = useMemo(() => {
                 let grossSales = 0, grossCount = 0, returnsValue = 0, returnTxCount = 0;
@@ -8670,11 +8678,11 @@
                     )}
                     </div>
                     <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-1">
-                        {loading ? <div className="text-center py-10 text-slate-400"><div className="typing-dot bg-sky-500"></div> Loading...</div> : processedTransactions.length === 0 ? (<div className="text-center py-12 flex flex-col items-center opacity-60"><div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3"><Icon name="calendar-xmark" className="text-2xl text-slate-400" /></div><p className="font-semibold text-slate-500">Tidak ada transaksi</p><p className="text-xs text-slate-400">Sesuai filter pencarian</p></div>) : processedTransactions.map((tx, idx) => (<div key={tx.id} onClick={() => setSelectedTx(tx)} className={`p-4 rounded-2xl border shadow-sm cursor-pointer transition-all hover:shadow-md ${tx.status === 'returned' ? 'bg-red-50 border-red-100 opacity-80' : 'bg-white border-slate-100 hover:border-sky-300'}`}>
+                        {loading ? <div className="text-center py-10 text-slate-400"><div className="typing-dot bg-sky-500"></div> Loading...</div> : processedTransactions.length === 0 ? (<div className="text-center py-12 flex flex-col items-center opacity-60"><div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3"><Icon name="calendar-xmark" className="text-2xl text-slate-400" /></div><p className="font-semibold text-slate-500">Tidak ada transaksi</p><p className="text-xs text-slate-400">Sesuai filter pencarian</p></div>) : paginatedTransactions.map((tx, idx) => (<div key={tx.id} onClick={() => setSelectedTx(tx)} className={`p-4 rounded-2xl border shadow-sm cursor-pointer transition-all hover:shadow-md ${tx.status === 'returned' ? 'bg-red-50 border-red-100 opacity-80' : 'bg-white border-slate-100 hover:border-sky-300'}`}>
                             {/* Baris atas: nomor urut + tanggal + total */}
                             <div className="flex justify-between items-start mb-1">
                                 <div className="flex items-start gap-2">
-                                    <span className="text-xs font-bold text-slate-400 mt-0.5">{idx + 1}</span>
+                                    <span className="text-xs font-bold text-slate-400 mt-0.5">{(histPage - 1) * HIST_PAGE_SIZE + idx + 1}</span>
                                     <div>
                                         <p className="text-xs font-bold text-teal-600">{(() => { const d = new Date(tx.date.seconds ? tx.date.toDate() : tx.date); return d.toLocaleDateString('en-GB', {year:'numeric', month:'short', day:'numeric'}) + ', ' + d.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}) + ' WIB'; })()}</p>
                                         <p className={`text-sm font-black ${tx.status === 'returned' ? 'text-red-500 line-through' : 'text-teal-600'}`}>#{tx.id?.slice(-10).toUpperCase()}</p>
@@ -8717,6 +8725,39 @@
                                 <span className="text-[10px] text-sky-600 font-bold flex items-center gap-1">Lihat Detail <Icon name="chevron-right" /></span>
                             </div>
                         </div>))}
+                        {/* Pagination Controls */}
+                        {!loading && processedTransactions.length > HIST_PAGE_SIZE && (
+                            <div className="flex items-center justify-center gap-2 pt-2 pb-4">
+                                <button
+                                    onClick={() => { setHistPage(p => Math.max(1, p - 1)); window.scrollTo && window.scrollTo(0,0); }}
+                                    disabled={histPage === 1}
+                                    className={`w-9 h-9 rounded-xl border flex items-center justify-center font-bold transition-all active:scale-95 ${histPage === 1 ? 'border-slate-100 text-slate-300 bg-slate-50 cursor-not-allowed' : 'border-slate-200 text-slate-600 bg-white hover:bg-sky-50 hover:border-sky-300 hover:text-sky-600 shadow-sm'}`}
+                                >
+                                    <Icon name="chevron-left" className="text-xs" />
+                                </button>
+                                {Array.from({ length: histTotalPages }, (_, i) => i + 1).map(pg => {
+                                    const isActive = pg === histPage;
+                                    const isNear = Math.abs(pg - histPage) <= 1 || pg === 1 || pg === histTotalPages;
+                                    if (!isNear) {
+                                        if (pg === histPage - 2 || pg === histPage + 2) return <span key={pg} className="text-slate-400 text-xs font-bold px-1">…</span>;
+                                        return null;
+                                    }
+                                    return (
+                                        <button key={pg} onClick={() => setHistPage(pg)}
+                                            className={`w-9 h-9 rounded-xl border text-xs font-black transition-all active:scale-95 ${isActive ? 'bg-teal-600 border-teal-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:bg-sky-50 hover:border-sky-300 hover:text-sky-600 shadow-sm'}`}>
+                                            {pg}
+                                        </button>
+                                    );
+                                })}
+                                <button
+                                    onClick={() => { setHistPage(p => Math.min(histTotalPages, p + 1)); window.scrollTo && window.scrollTo(0,0); }}
+                                    disabled={histPage === histTotalPages}
+                                    className={`w-9 h-9 rounded-xl border flex items-center justify-center font-bold transition-all active:scale-95 ${histPage === histTotalPages ? 'border-slate-100 text-slate-300 bg-slate-50 cursor-not-allowed' : 'border-slate-200 text-slate-600 bg-white hover:bg-sky-50 hover:border-sky-300 hover:text-sky-600 shadow-sm'}`}
+                                >
+                                    <Icon name="chevron-right" className="text-xs" />
+                                </button>
+                            </div>
+                        )}
                     </div>
                     {selectedTx && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm fade-in">
