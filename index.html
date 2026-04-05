@@ -5753,7 +5753,11 @@
                 const unsub = window.onSnapshot(q, (snapshot) => {
                     const allCarts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     // FILTER: Hanya tampilkan pending carts milik toko ini
-                    const filtered = allCarts.filter(c => c.storeId === currentProfile.id || c.storeProfile === currentProfile.name);
+                    // dan yang memiliki minimal 1 item (keranjang kosong tidak disimpan sebagai tertunda)
+                    const filtered = allCarts.filter(c =>
+                        (c.storeId === currentProfile.id || c.storeProfile === currentProfile.name) &&
+                        c.items && c.items.length > 0
+                    );
                     setPendingCarts(filtered);
                 });
                 return () => unsub();
@@ -13738,7 +13742,13 @@
                     window.orderBy('date', 'desc')
                 );
                 const unsubPending = window.onSnapshot(qPending, (snap) => {
-                    const count = snap.docs.filter(d => d.data().storeId === storeId || d.data().storeProfile === (settingsData.storeProfiles?.find(p => p.id === storeId)?.name || '')).length;
+                    const storeName = settingsData.storeProfiles?.find(p => p.id === storeId)?.name || '';
+                    const count = snap.docs.filter(d => {
+                        const data = d.data();
+                        // Hanya hitung pending cart milik toko ini DAN yang punya minimal 1 item
+                        return (data.storeId === storeId || data.storeProfile === storeName) &&
+                               data.items && data.items.length > 0;
+                    }).length;
                     setNotifCounts(prev => ({ ...prev, pendingCarts: count }));
                 });
 
