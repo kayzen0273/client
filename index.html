@@ -6005,11 +6005,12 @@
 
                 const handleVisibility = () => {
                     if (document.hidden) {
-                        // Tab / browser disembunyikan: langsung pindah ke tertunda
+                        // Tab / browser disembunyikan: tunggu 60 detik dulu sebelum pindah ke tertunda
+                        // (beri waktu jika user hanya buka keyboard, dialog, atau pindah app sebentar)
                         clearTimeout(visibilityTimerRef.current);
-                        doAutoMoveToTertunda();
+                        visibilityTimerRef.current = setTimeout(doAutoMoveToTertunda, 60 * 1000);
                     } else {
-                        // User kembali: batalkan jadwal visibility & reset timer inaktif
+                        // User kembali sebelum timeout: batalkan jadwal & reset timer inaktif
                         clearTimeout(visibilityTimerRef.current);
                         resetInactivityTimer();
                     }
@@ -13327,8 +13328,7 @@
             const [showOnlyLowStock, setShowOnlyLowStock] = useState(false);
             const [selectedRacks, setSelectedRacks] = useState([]);
             const [formData, setFormData] = useState({ name: '', qty: '', unit: 'Pcs', exp: '', rack: '', price: '', costPrice: '', minStock: '', defaultDiscount: '', defaultDiscountType: '%' });
-            const [editingItem, setEditingItem] = useState(null);
-            const [returnTabAfterAdd, setReturnTabAfterAdd] = useState('list'); 
+            const [editingItem, setEditingItem] = useState(null); 
             const [deleteModal, setDeleteModal] = useState({ show: false, item: null });
             const [deleteRackModal, setDeleteRackModal] = useState({ show: false, rackName: null });
             const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
@@ -13829,7 +13829,7 @@
                         }
                     }
 
-                    setEditingItem(null); setFormData({ name: '', qty: '', unit: 'Pcs', exp: '', rack: '', price: '', costPrice: '', minStock: '', defaultDiscount: '', defaultDiscountType: '%' }); setActiveTab(returnTabAfterAdd); setReturnTabAfterAdd('list');
+                    setEditingItem(null); setFormData({ name: '', qty: '', unit: 'Pcs', exp: '', rack: '', price: '', costPrice: '', minStock: '', defaultDiscount: '', defaultDiscountType: '%' }); setActiveTab('list');
                 } catch (error) { console.error("Error saving:", error); showToast("Gagal menyimpan ke database", "error"); } finally { setSubmitting(false); }
             };
 
@@ -14197,12 +14197,12 @@
                             </div>
                         )}
                         {activeTab === 'home' && (<DashboardView items={inventoryData} settings={settingsData} currentProfile={currentProfile} isOwner={isOwner} onShowLowStock={() => { setActiveTab('list'); setShowOnlyLowStock(true); }} />)}
-                        {activeTab === 'cashier' && (<CashierView items={inventoryData} user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='cashier')?.readOnly} authSession={authSession} onNavigateToAdd={() => { setReturnTabAfterAdd('cashier'); setActiveTab('add'); }} />)}
+                        {activeTab === 'cashier' && (<CashierView items={inventoryData} user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='cashier')?.readOnly} authSession={authSession} onNavigateToAdd={() => setActiveTab('add')} />)}
                         {activeTab === 'history' && (<HistoryView user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} items={inventoryData} readOnly={menuItems.find(m=>m.id==='history')?.readOnly} isOwner={isOwner} />)}
                         {activeTab === 'purchases' && (<PurchaseView user={user} showToast={showToast} items={inventoryData} currentProfile={currentProfile} settings={settingsData} readOnly={menuItems.find(m=>m.id==='purchases')?.readOnly} />)}
                         {activeTab === 'cashbook' && (<CashBookView user={user} currentProfile={currentProfile} showToast={showToast} readOnly={menuItems.find(m=>m.id==='cashbook')?.readOnly} />)}
-                        {activeTab === 'list' && (<ListView items={inventoryData} loading={loading} settings={settingsData} searchQuery={searchQuery} setSearchQuery={setSearchQuery} showOnlyLowStock={showOnlyLowStock} setShowOnlyLowStock={setShowOnlyLowStock} selectedRacks={selectedRacks} setSelectedRacks={setSelectedRacks} uniqueRacksData={uniqueRacksData} onCopySuccess={showToast} onEdit={(item) => { setFormData({...item}); setEditingItem(item); setReturnTabAfterAdd('list'); setActiveTab('add'); }} onDelete={(item) => setDeleteModal({ show: true, item: item })} onDeleteRack={(rackName) => setDeleteRackModal({ show: true, rackName })} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='list')?.readOnly} isOwner={isOwner} />)}
-                        {activeTab === 'add' && (<FormView formData={formData} setFormData={setFormData} onSubmit={handleSubmit} isEditing={!!editingItem} submitting={submitting} onCancel={() => { setEditingItem(null); setFormData({name:'', qty:'', unit:'Pcs', exp:'', rack:'', price:'', costPrice:'', minStock: '', defaultDiscount: '', defaultDiscountType: '%'}); setActiveTab(returnTabAfterAdd); setReturnTabAfterAdd('list'); }} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='add')?.readOnly} />)}
+                        {activeTab === 'list' && (<ListView items={inventoryData} loading={loading} settings={settingsData} searchQuery={searchQuery} setSearchQuery={setSearchQuery} showOnlyLowStock={showOnlyLowStock} setShowOnlyLowStock={setShowOnlyLowStock} selectedRacks={selectedRacks} setSelectedRacks={setSelectedRacks} uniqueRacksData={uniqueRacksData} onCopySuccess={showToast} onEdit={(item) => { setFormData({...item}); setEditingItem(item); setActiveTab('add'); }} onDelete={(item) => setDeleteModal({ show: true, item: item })} onDeleteRack={(rackName) => setDeleteRackModal({ show: true, rackName })} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='list')?.readOnly} isOwner={isOwner} />)}
+                        {activeTab === 'add' && (<FormView formData={formData} setFormData={setFormData} onSubmit={handleSubmit} isEditing={!!editingItem} submitting={submitting} onCancel={() => { setEditingItem(null); setFormData({name:'', qty:'', unit:'Pcs', exp:'', rack:'', price:'', costPrice:'', minStock: '', defaultDiscount: '', defaultDiscountType: '%'}); setActiveTab('list'); }} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='add')?.readOnly} />)}
                         {activeTab === 'import' && (<BulkImportView user={user} onImportComplete={(count) => { showToast(`${count} Barang berhasil diimport`); setActiveTab('list'); }} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='import')?.readOnly} />)}
                         {activeTab === 'stock_opname' && (<StockOpnameView items={inventoryData} user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='stock_opname')?.readOnly} isOwner={isOwner} />)}
                         {activeTab === 'rekam_medis' && (<RekamMedisView user={user} showToast={showToast} readOnly={menuItems.find(m=>m.id==='rekam_medis')?.readOnly} />)}
