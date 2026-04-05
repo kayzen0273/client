@@ -5753,11 +5753,7 @@
                 const unsub = window.onSnapshot(q, (snapshot) => {
                     const allCarts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     // FILTER: Hanya tampilkan pending carts milik toko ini
-                    // dan yang memiliki minimal 1 item (keranjang kosong tidak disimpan sebagai tertunda)
-                    const filtered = allCarts.filter(c =>
-                        (c.storeId === currentProfile.id || c.storeProfile === currentProfile.name) &&
-                        c.items && c.items.length > 0
-                    );
+                    const filtered = allCarts.filter(c => c.storeId === currentProfile.id || c.storeProfile === currentProfile.name);
                     setPendingCarts(filtered);
                 });
                 return () => unsub();
@@ -5766,14 +5762,43 @@
             // Real-time listener untuk active_carts (keranjang kasir lain yang sedang aktif)
             useEffect(() => {
                 if (!user) return;
+                const STALE_THRESHOLD_MS = 30 * 60 * 1000; // 30 menit
                 const q = window.query(
                     window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'active_carts'),
                     window.where('isActive', '==', true)
                 );
                 const unsub = window.onSnapshot(q, (snapshot) => {
-                    const all = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    const now = Date.now();
+                    const staleIds = [];
+                    const all = snapshot.docs.map(doc => {
+                        const data = doc.data();
+                        // Konversi updatedAt Firestore Timestamp ke ms
+                        const updatedAtMs = data.updatedAt?.toMillis?.() || data.updatedAt?.seconds * 1000 || 0;
+                        return { id: doc.id, ...data, _updatedAtMs: updatedAtMs };
+                    });
+
+                    // Pisahkan: stale (tidak diupdate > 30 menit) vs fresh
+                    const fresh = all.filter(c => {
+                        const isStale = c._updatedAtMs > 0 && (now - c._updatedAtMs) > STALE_THRESHOLD_MS;
+                        const isMine = c.id === activeCartId;
+                        if (isStale && !isMine) {
+                            staleIds.push(c.id); // tandai untuk dihapus
+                            return false;
+                        }
+                        return true;
+                    });
+
+                    // Auto-cleanup: hapus dokumen stale dari Firestore (background, tidak blocking)
+                    if (staleIds.length > 0) {
+                        staleIds.forEach(staleId => {
+                            window.deleteDoc(
+                                window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'active_carts', staleId)
+                            ).catch(e => console.warn('Cleanup stale active_cart error:', e));
+                        });
+                    }
+
                     // Filter toko ini, kecuali keranjang milik diri sendiri
-                    const filtered = all.filter(c =>
+                    const filtered = fresh.filter(c =>
                         (c.storeId === currentProfile.id || c.storeName === currentProfile.name) &&
                         c.id !== activeCartId
                     );
@@ -6042,7 +6067,23 @@
                 document.addEventListener('visibilitychange', handleVisibility);
 
                 // Keluar website (tutup tab / reload)
-                const handlePageHide = () => { doAutoMoveToTertunda(); };
+                // FIX: Gunakan sendBeacon (sync/keepalive) untuk mark isActive=false
+                // sebelum tab benar-benar tutup, karena doAutoMoveToTertunda() async tidak reliable saat pagehide.
+                const handlePageHide = () => {
+                    const snap = autoSaveSnap.current;
+                    if (snap?.isSessionActive && snap?.activeCartId) {
+                        try {
+                            const projectId = window.db?.app?.options?.projectId;
+                            const cartId = snap.activeCartId;
+                            if (projectId && cartId) {
+                                const url = 'https://firestore.googleapis.com/v1/projects/' + projectId + '/databases/(default)/documents/artifacts/' + window.appId + '/public/data/active_carts/' + cartId + '?updateMask.fieldPaths=isActive';
+                                const body = JSON.stringify({ fields: { isActive: { booleanValue: false } } });
+                                navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
+                            }
+                        } catch(e) { /* silent - best effort */ }
+                    }
+                    doAutoMoveToTertunda();
+                };
                 window.addEventListener('pagehide', handlePageHide);
                 window.addEventListener('beforeunload', handlePageHide);
 
@@ -6061,6 +6102,20 @@
             const handleStartSession = async (name) => {
                 const finalName = (name || cashierName).trim() || 'Kasir';
                 try {
+                    // FIX: Bersihkan active_carts lama milik kasir ini (nama sama, toko sama) sebelum buat baru
+                    // Mencegah duplikasi karena sesi sebelumnya tidak ter-cleanup dengan benar
+                    try {
+                        const staleQ = window.query(
+                            window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'active_carts'),
+                            window.where('cashierName', '==', finalName),
+                            window.where('storeId', '==', currentProfile.id),
+                            window.where('isActive', '==', true)
+                        );
+                        const staleSnap = await window.getDocs(staleQ);
+                        const deleteOps = staleSnap.docs.map(d => window.deleteDoc(d.ref));
+                        await Promise.all(deleteOps);
+                    } catch(cleanupErr) { console.warn('Cleanup stale carts on start:', cleanupErr); }
+
                     const cartRef = await window.addDoc(
                         window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'active_carts'),
                         { cashierName: finalName, storeId: currentProfile.id, storeName: currentProfile.name, items: [], total: 0, updatedAt: window.serverTimestamp(), isActive: true }
@@ -13742,13 +13797,7 @@
                     window.orderBy('date', 'desc')
                 );
                 const unsubPending = window.onSnapshot(qPending, (snap) => {
-                    const storeName = settingsData.storeProfiles?.find(p => p.id === storeId)?.name || '';
-                    const count = snap.docs.filter(d => {
-                        const data = d.data();
-                        // Hanya hitung pending cart milik toko ini DAN yang punya minimal 1 item
-                        return (data.storeId === storeId || data.storeProfile === storeName) &&
-                               data.items && data.items.length > 0;
-                    }).length;
+                    const count = snap.docs.filter(d => d.data().storeId === storeId || d.data().storeProfile === (settingsData.storeProfiles?.find(p => p.id === storeId)?.name || '')).length;
                     setNotifCounts(prev => ({ ...prev, pendingCarts: count }));
                 });
 
