@@ -521,6 +521,8 @@
             expiryNotifEnabled: true,
             expiryNotifMonths: 3,
             expiryNotifSeconds: 3,
+            // Kasir: izinkan checkout stok 0
+            allowZeroStockCheckout: false,
         };
 
         // --- BLUETOOTH PRINTER HELPERS ---
@@ -871,6 +873,60 @@
                         <span>{label}</span>
                         <span style={{ opacity: 0.65, fontWeight: 500, fontSize: '11px', marginLeft: 2 }}>
                             — lihat Stok Barang
+                        </span>
+                    </div>
+                </div>
+            );
+        };
+        // ─────────────────────────────────────────────────────────────────────
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Banner notifikasi stok minus: muncul di atas layar saat ada barang stok < 0
+        const NegativeStockBanner = ({ items, durationMs = 5000 }) => {
+            const [phase, setPhase] = React.useState('hidden');
+            const shownRef = React.useRef(false);
+
+            React.useEffect(() => {
+                if (!items || items.length === 0 || shownRef.current) return;
+                shownRef.current = true;
+                setPhase('enter');
+                const t1 = setTimeout(() => setPhase('exit'), durationMs);
+                const t2 = setTimeout(() => setPhase('hidden'), durationMs + 450);
+                return () => { clearTimeout(t1); clearTimeout(t2); };
+            }, [items]);
+
+            if (phase === 'hidden' || !items || items.length === 0) return null;
+
+            const label = items.length === 1
+                ? `Stok "${items[0].name}" minus! Segera input faktur.`
+                : `${items.length} barang stoknya minus! Segera input faktur.`;
+
+            return (
+                <div
+                    className={phase === 'exit' ? 'exp-banner-exit' : 'exp-banner-enter'}
+                    style={{
+                        position: 'fixed', top: 0, left: 0, right: 0,
+                        zIndex: 1000, display: 'flex', justifyContent: 'center',
+                        padding: '10px 16px',
+                        pointerEvents: phase === 'exit' ? 'none' : 'auto',
+                    }}
+                >
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: '10px',
+                        background: 'linear-gradient(135deg,#dc2626,#b91c1c)',
+                        color: '#fff',
+                        padding: '10px 20px',
+                        borderRadius: '99px',
+                        boxShadow: '0 6px 24px rgba(220,38,38,0.40)',
+                        fontSize: '13px', fontWeight: 700,
+                        maxWidth: '520px',
+                        backdropFilter: 'blur(8px)',
+                        border: '1.5px solid rgba(255,255,255,0.25)',
+                    }}>
+                        <Icon name="box-open" style={{ fontSize: '14px', flexShrink: 0 }} />
+                        <span>{label}</span>
+                        <span style={{ opacity: 0.65, fontWeight: 500, fontSize: '11px', marginLeft: 2 }}>
+                            — lihat menu Pembelian
                         </span>
                     </div>
                 </div>
@@ -3323,11 +3379,29 @@
                         if (activeMenu === 'stok') return (
                             <div className={`bg-white/90 backdrop-blur-sm rounded-[30px] shadow-soft border ${c.border} overflow-hidden`}>
                                 <SubHeader />
-                                <div className="p-5">
-                                    <label className="text-xs font-bold text-slate-500 block mb-2">Batas Stok Menipis (Global)</label>
-                                    <div className="flex items-center gap-3">
-                                        <input type="number" value={localSettings.lowStockThreshold} onChange={(e) => handleChange('lowStockThreshold', parseInt(e.target.value) || 0)} className="w-24 p-2.5 rounded-lg border border-slate-300 focus:border-sky-500 outline-none text-center font-bold text-lg" />
-                                        <span className="text-sm text-slate-400">Unit (angka default minimum stok)</span>
+                                <div className="p-5 space-y-5">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 block mb-2">Batas Stok Menipis (Global)</label>
+                                        <div className="flex items-center gap-3">
+                                            <input type="number" value={localSettings.lowStockThreshold} onChange={(e) => handleChange('lowStockThreshold', parseInt(e.target.value) || 0)} className="w-24 p-2.5 rounded-lg border border-slate-300 focus:border-sky-500 outline-none text-center font-bold text-lg" />
+                                            <span className="text-sm text-slate-400">Unit (angka default minimum stok)</span>
+                                        </div>
+                                    </div>
+                                    <div className="border-t border-slate-100 pt-4">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div>
+                                                <p className="text-sm font-bold text-slate-700">Izinkan Checkout Stok 0</p>
+                                                <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">Jika <b>aktif</b>: kasir tetap bisa checkout barang meski stok 0 (stok akan jadi minus). Jika <b>nonaktif</b>: hanya owner yang bisa checkout barang stok 0.</p>
+                                            </div>
+                                            <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                                                <input type="checkbox" className="sr-only peer" checked={localSettings.allowZeroStockCheckout === true} onChange={e => handleChange('allowZeroStockCheckout', e.target.checked)} />
+                                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-500"></div>
+                                            </label>
+                                        </div>
+                                        <div className={`mt-2 text-[11px] font-bold px-3 py-1.5 rounded-lg inline-flex items-center gap-1.5 ${localSettings.allowZeroStockCheckout ? 'bg-sky-50 text-sky-700' : 'bg-slate-100 text-slate-500'}`}>
+                                            <Icon name={localSettings.allowZeroStockCheckout ? 'unlock' : 'lock'} className="text-[10px]" />
+                                            {localSettings.allowZeroStockCheckout ? 'Semua kasir boleh checkout stok 0' : 'Hanya owner yang boleh checkout stok 0'}
+                                        </div>
                                     </div>
                                 </div>
                                 <SaveBtn />
@@ -5488,7 +5562,7 @@
         };
 
         // --- CASHIER COMPONENT ---
-        const CashierView = ({ items, user, showToast, settings, onGenerateImage, currentProfile, readOnly, authSession, onNavigateToAdd }) => {
+        const CashierView = ({ items, user, showToast, settings, onGenerateImage, currentProfile, readOnly, authSession, onNavigateToAdd, isOwner }) => {
             const [isSessionActive, setIsSessionActive] = useState(false);
             const [search, setSearch] = useState('');
             const [cart, setCart] = useState([]);
@@ -6180,7 +6254,14 @@
             }
 
             const addToCart = (item) => {
-                if (safeNumber(item.qty) <= 0) { showToast("Stok Habis di Toko Ini!", "error"); return; }
+                if (safeNumber(item.qty) <= 0) {
+                    const allowed = settings.allowZeroStockCheckout === true || isOwner;
+                    if (!allowed) {
+                        showToast("Stok Habis! Hubungi owner untuk checkout.", "error");
+                        return;
+                    }
+                    showToast("⚠️ Stok 0 — transaksi tetap diproses. Segera input faktur!", "error");
+                }
                 
                 // Set default sesuai barang
                 const defaultPrice = item.price || 0;
@@ -6968,22 +7049,26 @@
                                             {filteredItems.map(item => {
                                                 const inCart = cart.find(c => c.id === item.id);
                                                 const currentStock = safeNumber(item.qty) - (inCart ? inCart.cartQty : 0);
-                                                const isOOS = currentStock <= 0;
+                                                const isZeroStock = currentStock <= 0;
+                                                const isNegStock = currentStock < 0;
+                                                const canCheckoutZero = settings.allowZeroStockCheckout === true || isOwner;
                                                 const highlightName = (name, query) => {
                                                     if (!query) return name;
                                                     const idx = name.toLowerCase().indexOf(query.toLowerCase());
                                                     if (idx === -1) return name;
                                                     return (<>{name.slice(0, idx)}<b className="font-black text-slate-900">{name.slice(idx, idx + query.length)}</b>{name.slice(idx + query.length)}</>);
                                                 };
+                                                const isDisabled = isZeroStock && !canCheckoutZero;
                                                 return (
-                                                    <button key={item.id} onClick={() => addToCart(item)} disabled={isOOS}
-                                                        className={`w-full text-left px-3 py-2 flex items-center justify-between gap-2 transition-all active:scale-[0.99] ${isOOS ? 'opacity-50 bg-slate-50' : 'hover:bg-teal-50/60 active:bg-teal-100/50'}`}>
+                                                    <button key={item.id} onClick={() => addToCart(item)} disabled={isDisabled}
+                                                        className={`w-full text-left px-3 py-2 flex items-center justify-between gap-2 transition-all active:scale-[0.99] ${isDisabled ? 'opacity-40 bg-slate-50' : 'hover:bg-teal-50/60 active:bg-teal-100/50'}`}>
                                                         <div className="flex-1 min-w-0">
                                                             <p className="text-sm text-slate-700 leading-snug">{highlightName(item.name, search)}{item.isKonsinyasi && <span className="ml-1 inline-block bg-fuchsia-100 text-fuchsia-700 text-[8px] font-black px-1 rounded border border-fuchsia-200">kons.</span>}</p>
+                                                            {isZeroStock && canCheckoutZero && <p className="text-[9px] font-bold text-orange-600 mt-0.5 flex items-center gap-1"><Icon name="triangle-exclamation" className="text-[8px]" />Segera input faktur!</p>}
                                                         </div>
                                                         <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
                                                             <span className="text-sm font-bold text-slate-800 whitespace-nowrap">{formatRupiah(item.price)}{item.unit ? `/${item.unit}` : ''}</span>
-                                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isOOS ? 'bg-red-500 text-white' : 'bg-green-50 text-green-700 border border-green-300'}`}>
+                                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isNegStock ? 'bg-red-600 text-white animate-pulse' : isZeroStock ? 'bg-orange-500 text-white' : 'bg-green-50 text-green-700 border border-green-300'}`}>
                                                                 stok {currentStock} {item.unit || ''}
                                                             </span>
                                                         </div>
@@ -13552,7 +13637,9 @@
             const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
             const [submitting, setSubmitting] = useState(false);
             const [expiryAlertItems, setExpiryAlertItems] = useState([]); // untuk ExpiryBanner
+            const [negativeStockItems, setNegativeStockItems] = useState([]); // untuk NegativeStockBanner
             const _expiryAlertShown = useRef(false); // hanya tampil sekali per session
+            const _negStockAlertShown = useRef(false); // hanya tampil sekali per session
             const [user, setUser] = useState(null);
             const [isSidebarOpen, setIsSidebarOpen] = useState(false);
             const [receiptToPrint, setReceiptToPrint] = useState(null);
@@ -13939,6 +14026,17 @@
             }, [inventoryData, loading, settingsData.expiryNotifEnabled, settingsData.expiryNotifMonths]);
             // ─────────────────────────────────────────────────────────────────
 
+            // ── Deteksi barang stok minus → trigger NegativeStockBanner ──
+            useEffect(() => {
+                if (loading || _negStockAlertShown.current || inventoryData.length === 0) return;
+                const negItems = inventoryData.filter(i => safeNumber(i.qty) < 0);
+                if (negItems.length > 0) {
+                    _negStockAlertShown.current = true;
+                    setNegativeStockItems(negItems);
+                }
+            }, [inventoryData, loading]);
+            // ─────────────────────────────────────────────────────────────────
+
             const uniqueRacksData = useMemo(() => {
                 const rackMap = new Map();
                 inventoryData.forEach(item => {
@@ -14115,7 +14213,7 @@
 
             return (
                 <div className={`min-h-screen flex flex-col md:flex-row bg-sky-50/50 transition-colors duration-500 ${activeStoreId === 'all_stores' ? 'theme-all-stores' : ''}`}>
-                    <RamadhanDecor /> <Toast show={toast.show} message={toast.message} type={toast.type} /> <ExpiryBanner items={expiryAlertItems} thresholdDays={(settingsData.expiryNotifMonths || 3) * 30} durationMs={(settingsData.expiryNotifSeconds || 3) * 1000} /> {isSidebarOpen && (<div className="fixed inset-0 bg-slate-900/50 z-40 md:hidden backdrop-blur-sm fade-in" onClick={() => setIsSidebarOpen(false)}></div>)}
+                    <RamadhanDecor /> <Toast show={toast.show} message={toast.message} type={toast.type} /> <ExpiryBanner items={expiryAlertItems} thresholdDays={(settingsData.expiryNotifMonths || 3) * 30} durationMs={(settingsData.expiryNotifSeconds || 3) * 1000} /> <NegativeStockBanner items={negativeStockItems} durationMs={6000} /> {isSidebarOpen && (<div className="fixed inset-0 bg-slate-900/50 z-40 md:hidden backdrop-blur-sm fade-in" onClick={() => setIsSidebarOpen(false)}></div>)}
                     
                     {/* HIDDEN RECEIPT CONTAINER (UPDATED FOR DYNAMIC STORE) */}
                     {receiptToPrint && ( <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', zIndex: -1 }}> 
@@ -14416,7 +14514,7 @@
                             </div>
                         )}
                         {activeTab === 'home' && (<DashboardView items={inventoryData} settings={settingsData} currentProfile={currentProfile} isOwner={isOwner} onShowLowStock={() => { setActiveTab('list'); setShowOnlyLowStock(true); }} />)}
-                        {activeTab === 'cashier' && (<CashierView items={inventoryData} user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='cashier')?.readOnly} authSession={authSession} onNavigateToAdd={() => setActiveTab('add')} />)}
+                        {activeTab === 'cashier' && (<CashierView items={inventoryData} user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='cashier')?.readOnly} authSession={authSession} onNavigateToAdd={() => setActiveTab('add')} isOwner={isOwner} />)}
                         {activeTab === 'history' && (<HistoryView user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} items={inventoryData} readOnly={menuItems.find(m=>m.id==='history')?.readOnly} isOwner={isOwner} />)}
                         {activeTab === 'purchases' && (<PurchaseView user={user} showToast={showToast} items={inventoryData} currentProfile={currentProfile} settings={settingsData} readOnly={menuItems.find(m=>m.id==='purchases')?.readOnly} />)}
                         {activeTab === 'cashbook' && (<CashBookView user={user} currentProfile={currentProfile} showToast={showToast} readOnly={menuItems.find(m=>m.id==='cashbook')?.readOnly} />)}
