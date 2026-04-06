@@ -6150,13 +6150,13 @@
             const roundOptions = useMemo(() => {
                 if (grandTotal <= 0) return [];
                 const opts = new Set();
-                [500, 1000, 2000, 5000].forEach(d => {
+                [500, 1000].forEach(d => {
                     const down = Math.floor(grandTotal / d) * d;
                     const up = Math.ceil(grandTotal / d) * d;
                     if (down > 0 && down !== grandTotal) opts.add(down);
-                    if (up !== grandTotal) opts.add(up);
+                    if (up > 0 && up !== grandTotal) opts.add(up);
                 });
-                return Array.from(opts).sort((a, b) => a - b).slice(0, 4);
+                return Array.from(opts).sort((a, b) => a - b);
             }, [grandTotal]);
             const getPaymentSuggestions = useMemo(() => {
                 const suggestions = new Set(); suggestions.add(effectiveTotal); 
@@ -7179,8 +7179,7 @@
                                             {roundOptions.map(opt => (
                                                 <button key={opt} onClick={() => { setCartPembulatan(cartPembulatan === opt ? 0 : opt); setPaymentAmount(''); }}
                                                     className={`py-1.5 px-3 rounded-lg text-xs font-bold border transition-all active:scale-95 ${cartPembulatan === opt ? 'bg-teal-600 border-teal-600 text-white' : 'bg-white text-slate-600 border-slate-200 hover:bg-teal-50 hover:border-teal-300'}`}>
-                                                    {(opt/1000).toLocaleString('id-ID', {minimumFractionDigits: opt%1000===0?0:1}) + ''}
-                                                    {formatRupiah(opt).replace('Rp','').trim()}
+                                                    {formatRupiah(opt)}
                                                 </button>
                                             ))}
                                         </div>
