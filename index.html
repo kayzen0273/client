@@ -8261,7 +8261,7 @@
 
             const stats = useMemo(() => {
                 let grossSales = 0, grossCount = 0, returnsValue = 0, returnTxCount = 0, totalUangR = 0, totalPembulatan = 0;
-                dailyTransactions.forEach(tx => {
+                processedTransactions.forEach(tx => {
                     grossSales += tx.items.reduce((sum, item) => sum + (item.price * item.cartQty), 0); grossCount++;
                     let txReturnVal = 0, hasReturn = false;
                     tx.items.forEach(item => { if (item.returnedQty && item.returnedQty > 0) { txReturnVal += (item.returnedQty * item.price); hasReturn = true; } else if (tx.status === 'returned') { txReturnVal += (item.cartQty * item.price); hasReturn = true; } });
@@ -8270,7 +8270,7 @@
                     if (tx.pembulatan) totalPembulatan += (tx.pembulatan || 0);
                 });
                 return { netSales: grossSales - returnsValue, grossSales, grossCount, returnsValue, returnTxCount, avgSale: grossCount > 0 ? grossSales / grossCount : 0, totalUangR, totalPembulatan };
-            }, [dailyTransactions]);
+            }, [processedTransactions]);
 
             const openReturModal = (tx, item, index) => { const maxRetur = item.cartQty - (item.returnedQty || 0); if (maxRetur <= 0) { showToast("Barang ini sudah diretur semua", "error"); return; } setReturModal({ show: true, tx, item, index, max: maxRetur }); setQtyToRetur(maxRetur); };
             const handleProcessRetur = async () => {
