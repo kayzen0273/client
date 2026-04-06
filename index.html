@@ -8006,12 +8006,12 @@
             const [racikanInfoModal, setRacikanInfoModal] = useState(null);
             const [filterStatus, setFilterStatus] = useState('all'); 
             const [filterKasir, setFilterKasir] = useState([]); // array untuk multi-select
-            const [filterPayment, setFilterPayment] = useState('all');
+            const [filterPayment, setFilterPayment] = useState([]);
             const [sortOrder, setSortOrder] = useState('newest');
             const [histFilterModalOpen, setHistFilterModalOpen] = useState(false);
             const [tempFilterStatus, setTempFilterStatus] = useState('all');
             const [tempFilterKasir, setTempFilterKasir] = useState([]); // array
-            const [tempFilterPayment, setTempFilterPayment] = useState('all');
+            const [tempFilterPayment, setTempFilterPayment] = useState([]);
             const [filterTipe, setFilterTipe] = useState('all');
             const [tempFilterTipe, setTempFilterTipe] = useState('all');
             const [histFilterActiveSection, setHistFilterActiveSection] = useState(null);
@@ -8243,7 +8243,7 @@
                 }
                 if (filterStatus !== 'all') { data = data.filter(tx => tx.status === filterStatus); }
                 if (filterKasir.length > 0) { data = data.filter(tx => filterKasir.includes(tx.cashierName)); }
-                if (filterPayment !== 'all') { data = data.filter(tx => (tx.paymentMethod || 'tunai') === filterPayment); }
+                if (filterPayment.length > 0) { data = data.filter(tx => filterPayment.includes(tx.paymentMethod || 'tunai')); }
                 if (filterTipe !== 'all') { data = data.filter(tx => (tx.tipeTransaksi || 'Harga normal') === filterTipe); }
                 data.sort((a, b) => {
                     const dateA = a.date.seconds ? a.date.toDate() : new Date(a.date);
@@ -8558,13 +8558,13 @@
                         <div className="flex gap-2 flex-wrap items-center">
                         {/* Tombol Filter */}
                         {(() => {
-                            const activeCount = [filterStatus !== 'all', filterKasir.length > 0, filterPayment !== 'all', filterTipe !== 'all'].filter(Boolean).length;
+                            const activeCount = [filterStatus !== 'all', filterKasir.length > 0, filterPayment.length > 0, filterTipe !== 'all'].filter(Boolean).length;
                             return (
                                 <button
                                     onClick={() => {
                                         setTempFilterStatus(filterStatus);
                                         setTempFilterKasir([...filterKasir]);
-                                        setTempFilterPayment(filterPayment);
+                                        setTempFilterPayment([...filterPayment]);
                                         setTempFilterTipe(filterTipe);
                                         setHistFilterActiveSection(null);
                                         setHistFilterModalOpen(true);
@@ -8581,7 +8581,7 @@
                         <div className="relative flex-1 min-w-[120px]"><select className="w-full appearance-none pl-3 pr-8 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-sky-500" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} ><option value="newest">Terbaru</option><option value="oldest">Terlama</option><option value="highest">Total Terbanyak</option><option value="lowest">Total Tersedikit</option></select><Icon name="arrow-down-wide-short" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none" /></div>
                     </div>
                     {/* Active filter chips/tags */}
-                    {(filterStatus !== 'all' || filterKasir.length > 0 || filterPayment !== 'all' || filterTipe !== 'all') && (
+                    {(filterStatus !== 'all' || filterKasir.length > 0 || filterPayment.length > 0 || filterTipe !== 'all') && (
                         <div className="flex flex-wrap gap-1.5 pt-1">
                             {filterStatus !== 'all' && (
                                 <span className="flex items-center gap-1 bg-teal-50 border border-teal-200 text-teal-700 text-xs font-bold px-2.5 py-1 rounded-full">
@@ -8595,12 +8595,12 @@
                                     <button onClick={() => setFilterKasir(filterKasir.filter(x => x !== k))} className="ml-0.5 text-teal-400 hover:text-teal-700 leading-none font-black">✕</button>
                                 </span>
                             ))}
-                            {filterPayment !== 'all' && (
-                                <span className="flex items-center gap-1 bg-teal-50 border border-teal-200 text-teal-700 text-xs font-bold px-2.5 py-1 rounded-full">
-                                    {{tunai:'💵 Tunai',qris:'💳 QRIS',transfer:'🏦 Transfer'}[filterPayment]}
-                                    <button onClick={() => setFilterPayment('all')} className="ml-0.5 text-teal-400 hover:text-teal-700 leading-none font-black">✕</button>
+                            {filterPayment.map(p => (
+                                <span key={p} className="flex items-center gap-1 bg-teal-50 border border-teal-200 text-teal-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                                    {{tunai:'💵 Tunai',qris:'💳 QRIS',transfer:'🏦 Transfer'}[p] || p}
+                                    <button onClick={() => setFilterPayment(filterPayment.filter(x => x !== p))} className="ml-0.5 text-teal-400 hover:text-teal-700 leading-none font-black">✕</button>
                                 </span>
-                            )}
+                            ))}
                             {filterTipe !== 'all' && (
                                 <span className="flex items-center gap-1 bg-sky-50 border border-sky-200 text-sky-700 text-xs font-bold px-2.5 py-1 rounded-full">
                                     🏷️ {filterTipe}
@@ -8620,7 +8620,7 @@
                                         <button onClick={() => setHistFilterModalOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500"><Icon name="xmark" /></button>
                                         <h3 className="text-xl font-extrabold text-slate-800">Filter</h3>
                                     </div>
-                                    <button onClick={() => { setFilterStatus(tempFilterStatus); setFilterKasir([...tempFilterKasir]); setFilterPayment(tempFilterPayment); setFilterTipe(tempFilterTipe); setHistFilterModalOpen(false); }} className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-xl transition-all active:scale-95">Pasang</button>
+                                    <button onClick={() => { setFilterStatus(tempFilterStatus); setFilterKasir([...tempFilterKasir]); setFilterPayment([...tempFilterPayment]); setFilterTipe(tempFilterTipe); setHistFilterModalOpen(false); }} className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-xl transition-all active:scale-95">Pasang</button>
                                 </div>
                                 {/* Filter rows */}
                                 <div className="px-5 py-2">
@@ -8696,24 +8696,33 @@
                                     <div className="border-b border-slate-100">
                                         <button onClick={() => setHistFilterActiveSection(histFilterActiveSection === 'payment' ? null : 'payment')} className="w-full flex items-center justify-between py-4 text-left">
                                             <span className="font-bold text-slate-800 text-sm">Bayar</span>
-                                            <span className={`flex items-center gap-1.5 text-xs font-bold border rounded-lg px-3 py-1.5 transition-all ${tempFilterPayment !== 'all' ? 'border-teal-500 text-teal-600 bg-teal-50' : 'border-slate-200 text-teal-600'}`}>
-                                                <Icon name="pen" className="text-[10px]" /> {tempFilterPayment !== 'all' ? ({tunai:'💵 Tunai',qris:'💳 QRIS',transfer:'🏦 Transfer'}[tempFilterPayment]) : 'Ubah'}
+                                            <span className={`flex items-center gap-1.5 text-xs font-bold border rounded-lg px-3 py-1.5 transition-all ${tempFilterPayment.length > 0 ? 'border-teal-500 text-teal-600 bg-teal-50' : 'border-slate-200 text-teal-600'}`}>
+                                                <Icon name="pen" className="text-[10px]" /> {tempFilterPayment.length > 0 ? `${tempFilterPayment.length} dipilih` : 'Ubah'}
                                             </span>
                                         </button>
                                         {histFilterActiveSection === 'payment' && (
-                                            <div className="pb-4 flex flex-wrap gap-2">
-                                                {[{value:'all',label:'Semua'},{value:'tunai',label:'💵 Tunai'},{value:'qris',label:'💳 QRIS'},{value:'transfer',label:'🏦 Transfer'}].map(opt => (
-                                                    <button key={opt.value} onClick={() => { setTempFilterPayment(opt.value); setHistFilterActiveSection(null); }}
-                                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${tempFilterPayment === opt.value ? 'bg-teal-600 border-teal-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
-                                                        {opt.label}
-                                                    </button>
-                                                ))}
+                                            <div className="pb-4 flex flex-col gap-1">
+                                                {[{value:'tunai',label:'💵 Tunai'},{value:'qris',label:'💳 QRIS'},{value:'transfer',label:'🏦 Transfer'}].map(opt => {
+                                                    const checked = tempFilterPayment.includes(opt.value);
+                                                    return (
+                                                        <button key={opt.value} onClick={() => setTempFilterPayment(checked ? tempFilterPayment.filter(x=>x!==opt.value) : [...tempFilterPayment, opt.value])}
+                                                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold border transition-all text-left ${checked ? 'bg-teal-600 border-teal-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                                                            <span className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${checked ? 'border-white bg-white' : 'border-slate-300'}`}>
+                                                                {checked && <Icon name="check" className="text-teal-600 text-[9px]" />}
+                                                            </span>
+                                                            {opt.label}
+                                                        </button>
+                                                    );
+                                                })}
+                                                {tempFilterPayment.length > 0 && (
+                                                    <button onClick={() => setTempFilterPayment([])} className="mt-1 text-xs text-red-500 font-bold hover:text-red-700 text-left px-1">✕ Hapus semua pilihan bayar</button>
+                                                )}
                                             </div>
                                         )}
                                     </div>
                                     {/* Reset */}
-                                    {(tempFilterStatus !== 'all' || tempFilterKasir.length > 0 || tempFilterPayment !== 'all' || tempFilterTipe !== 'all') && (
-                                        <button onClick={() => { setTempFilterStatus('all'); setTempFilterKasir([]); setTempFilterPayment('all'); setTempFilterTipe('all'); }} className="mt-4 mb-2 w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-red-200 text-red-500 text-sm font-bold hover:bg-red-50 transition-all">
+                                    {(tempFilterStatus !== 'all' || tempFilterKasir.length > 0 || tempFilterPayment.length > 0 || tempFilterTipe !== 'all') && (
+                                        <button onClick={() => { setTempFilterStatus('all'); setTempFilterKasir([]); setTempFilterPayment([]); setTempFilterTipe('all'); }} className="mt-4 mb-2 w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-red-200 text-red-500 text-sm font-bold hover:bg-red-50 transition-all">
                                             <Icon name="xmark" /> Reset Filter
                                         </button>
                                     )}
