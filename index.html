@@ -8003,6 +8003,7 @@
             const [daysOffset30, setDaysOffset30] = useState(0); // 0 = 30 hari terakhir
 
             const [historySearch, setHistorySearch] = useState('');
+            const [historySearchInput, setHistorySearchInput] = useState('');
             const [racikanInfoModal, setRacikanInfoModal] = useState(null);
             const [filterStatus, setFilterStatus] = useState('all'); 
             const [filterKasir, setFilterKasir] = useState([]); // array untuk multi-select
@@ -8554,7 +8555,7 @@
                         <div className={`p-4 rounded-xl border shadow-sm ${stats.totalPembulatan >= 0 ? 'bg-amber-50 border-amber-100' : 'bg-red-50 border-red-100'}`}><div className="flex items-center gap-1 mb-1 border-b-2 border-dashed border-amber-200 w-fit pb-0.5"><h4 className={`font-bold text-sm ${stats.totalPembulatan >= 0 ? 'text-amber-800' : 'text-red-800'}`}>Total pembulatan kasir</h4></div><div className={`text-2xl font-black mt-2 ${stats.totalPembulatan >= 0 ? 'text-amber-700' : 'text-red-600'}`}>{stats.totalPembulatan >= 0 ? '+' : ''}{formatRupiah(stats.totalPembulatan)}</div><p className={`text-xs mt-1 ${stats.totalPembulatan >= 0 ? 'text-amber-500' : 'text-red-400'}`}>{stats.totalPembulatan >= 0 ? 'Lebih dari harga asli' : 'Kurang dari harga asli'}</p></div>
                     </div>
                     <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm mb-4 space-y-3">
-                         <div className="relative"><input type="text" placeholder="Cari barang, pasien, dokter..." className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none text-sm font-medium" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} /><Icon name="magnifying-glass" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm" /></div>
+                         <div className="relative"><input type="text" placeholder="Cari barang, pasien, dokter..." className="w-full pl-10 pr-9 py-2.5 rounded-lg border border-slate-200 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none text-sm font-medium" value={historySearchInput} onChange={(e) => { setHistorySearchInput(e.target.value); setHistorySearch(e.target.value); }} /><Icon name="magnifying-glass" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />{historySearchInput && (<button onClick={() => { setHistorySearchInput(''); setHistorySearch(''); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><Icon name="xmark" className="text-sm" /></button>)}</div>
                         <div className="flex gap-2 flex-wrap items-center">
                         {/* Tombol Filter */}
                         {(() => {
