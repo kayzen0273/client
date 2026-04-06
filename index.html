@@ -969,7 +969,7 @@
                 encoder.line();
                 const printRow = (label, value) => { const valStr = formatRupiah(value).replace('Rp', ''); const spaces = 32 - label.length - valStr.length; encoder.text(label + " ".repeat(Math.max(1, spaces)) + valStr).newline(); };
                 printRow("SUBTOTAL", subtotalBt);
-                if (receipt.pembulatan && receipt.pembulatan !== 0) { printRow(receipt.pembulatan > 0 ? "PEMBULATAN (+)" : "PEMBULATAN (-)", Math.abs(receipt.pembulatan)); }
+                if (receipt.pembulatan && receipt.pembulatan !== 0) { printRow("PEMBULATAN", Math.abs(receipt.pembulatan)); }
                 if (diskonBtRp > 0) { printRow(diskonLabelBt, diskonBtRp); }
                 encoder.line();
                 encoder.bold(true); printRow("TOTAL", validTotal); encoder.bold(false);
@@ -14153,7 +14153,7 @@
   }
   return (<>
     <div className="flex justify-between text-sm mb-1"><span>Subtotal</span><span>{formatRupiah(subtotalR)}</span></div>
-    {receiptToPrint.pembulatan !== undefined && receiptToPrint.pembulatan !== 0 && ( <div className="flex justify-between text-sm mb-1" style={{color: receiptToPrint.pembulatan > 0 ? '#16a34a' : '#dc2626'}}> <span>Pembulatan {receiptToPrint.pembulatan > 0 ? '(+)' : '(-)'}</span> <span>{receiptToPrint.pembulatan > 0 ? '+' : '-'}{formatRupiah(Math.abs(receiptToPrint.pembulatan))}</span> </div> )}
+    {receiptToPrint.pembulatan !== undefined && receiptToPrint.pembulatan !== 0 && ( <div className="flex justify-between text-sm mb-1"> <span>Pembulatan</span> <span>{formatRupiah(Math.abs(receiptToPrint.pembulatan))}</span> </div> )}
     {diskonR > 0 && (<div className="flex justify-between text-sm mb-1"><span>{diskonLabelR}</span><span>- {formatRupiah(diskonR)}</span></div>)}
     <div className="border-t border-dashed border-gray-300 my-1"></div>
   </>);
