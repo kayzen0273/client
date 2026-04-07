@@ -7562,7 +7562,7 @@
                     </div>
                     <div className="w-full md:w-80 lg:w-96 flex flex-col bg-white rounded-3xl shadow-soft border border-slate-100 h-fit md:h-full max-h-[calc(100vh-100px)]">
                         <div className="p-4 border-b border-slate-100 bg-slate-50/50 rounded-t-3xl flex justify-between items-center"><h3 className="font-bold text-slate-800 flex items-center gap-2"><Icon name="cart-shopping" className="text-sky-600" /> Keranjang</h3><span className="text-xs font-bold bg-sky-100 text-sky-700 px-2 py-1 rounded-full">{cart.length} Item</span></div>
-                        <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar min-h-[200px]">{cart.length === 0 ? (<div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-60"><Icon name="basket-shopping" className="text-4xl mb-2" /><p className="text-xs font-medium">Keranjang Kosong</p></div>) : (cart.map(item => (<div key={item.id + (item.selectedUnit || '') + (item.price || '')} onClick={() => editCartItem(item)} className={`p-3 rounded-xl border flex gap-3 group relative cursor-pointer transition-all ${item.isRacikan ? 'bg-teal-50 border-teal-100 hover:bg-teal-100 hover:border-teal-300' : 'bg-slate-50 border-slate-100 hover:bg-sky-50 hover:border-sky-300'}`}><div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity"><Icon name="pen-to-square" className="text-[10px] text-sky-500" /></div><div className="flex-1 min-w-0"><div className="flex items-center gap-1.5 flex-wrap"><h4 className={"text-xs font-bold text-slate-700 " + (item.isRacikanGroup ? "line-clamp-2" : "truncate")}>{item.name}</h4>{item.isRacikan && <span className="text-[8px] font-black bg-teal-600 text-white px-1 py-0.5 rounded flex-shrink-0">R/</span>}{item.isKonsinyasi && <span className="text-[8px] font-black bg-fuchsia-100 text-fuchsia-700 px-1 py-0.5 rounded flex-shrink-0 border border-fuchsia-200">konsinyasi</span>}</div>{item.isRacikanGroup ? (<p className="text-[9px] text-teal-600 font-bold mt-0.5"><Icon name="pen-to-square" className="text-[9px] mr-0.5" />Klik untuk edit racikan</p>) : (<p className="text-[10px] text-slate-500">{formatRupiah(item.originalPrice || item.price)} {item.selectedUnit ? `per ${item.selectedUnit}` : ''} x {item.cartQty}</p>)}{item.discount && <p className="text-[9px] text-red-500 font-bold">Diskon: {item.discount.type === '%' ? `${item.discount.value}%` : formatRupiah(item.discount.value)}</p>}{settings?.showNoteButton !== false && item.itemNote && (<button onClick={e => { e.stopPropagation(); setNoteModalItem(item); }} title="Lihat catatan barang" className="mt-0.5 flex items-center gap-1 text-[9px] text-sky-600 font-bold bg-sky-50 hover:bg-sky-100 active:bg-sky-200 px-1.5 py-0.5 rounded-full border border-sky-200 transition-colors max-w-[120px] truncate"><Icon name="circle-info" className="text-[9px] flex-shrink-0" /><span className="truncate">{item.itemNote.length > 18 ? item.itemNote.slice(0, 18) + '…' : item.itemNote}</span></button>)}</div><div className="flex flex-col items-end gap-1"><p className="text-xs font-bold text-slate-800">{formatRupiah(item.price * item.cartQty)}</p><div className="flex items-center gap-1 bg-white rounded-lg shadow-sm border border-slate-200 p-0.5" onClick={e => e.stopPropagation()}><button onClick={() => updateQty(item.id, -1, item.selectedUnit, item.price)} className="w-5 h-5 flex items-center justify-center text-[8px] hover:bg-slate-100 rounded text-slate-500"><Icon name="minus" /></button><span className="text-xs font-bold w-4 text-center">{item.cartQty}</span><button onClick={() => updateQty(item.id, 1, item.selectedUnit, item.price)} className="w-5 h-5 flex items-center justify-center text-[8px] hover:bg-slate-100 rounded text-slate-500"><Icon name="plus" /></button></div></div></div>)))}</div>
+                        <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar min-h-[200px]">{cart.length === 0 ? (<div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-60"><Icon name="basket-shopping" className="text-4xl mb-2" /><p className="text-xs font-medium">Keranjang Kosong</p></div>) : (cart.map(item => (<div key={item.id + (item.selectedUnit || '') + (item.price || '')} onClick={() => editCartItem(item)} className={`p-3 rounded-xl border flex gap-3 group relative cursor-pointer transition-all ${item.isRacikan ? 'bg-teal-50 border-teal-100 hover:bg-teal-100 hover:border-teal-300' : 'bg-slate-50 border-slate-100 hover:bg-sky-50 hover:border-sky-300'}`}><div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity"><Icon name="pen-to-square" className="text-[10px] text-sky-500" /></div><div className="flex-1 min-w-0"><div className="flex items-center gap-1.5 flex-wrap"><h4 className={"text-xs font-bold text-slate-700 " + (item.isRacikanGroup ? "line-clamp-2" : "truncate")}>{item.name}</h4>{item.isRacikan && <span className="text-[8px] font-black bg-teal-600 text-white px-1 py-0.5 rounded flex-shrink-0">R/</span>}{item.isKonsinyasi && <span className="text-[8px] font-black bg-fuchsia-100 text-fuchsia-700 px-1 py-0.5 rounded flex-shrink-0 border border-fuchsia-200">konsinyasi</span>}</div>{item.isRacikanGroup ? (<p className="text-[9px] text-teal-600 font-bold mt-0.5"><Icon name="pen-to-square" className="text-[9px] mr-0.5" />Klik untuk edit racikan</p>) : (<p className="text-[10px] text-slate-500">{formatRupiah(item.originalPrice || item.price)} {item.selectedUnit ? `per ${item.selectedUnit}` : ''} x {item.cartQty}</p>)}{item.discount && <p className="text-[9px] text-red-500 font-bold">Diskon: {item.discount.type === '%' ? `${item.discount.value}%` : formatRupiah(item.discount.value)}</p>}</div><div className="flex flex-col items-end gap-1"><p className="text-xs font-bold text-slate-800">{formatRupiah(item.price * item.cartQty)}</p><div className="flex items-center gap-1 bg-white rounded-lg shadow-sm border border-slate-200 p-0.5" onClick={e => e.stopPropagation()}><button onClick={() => updateQty(item.id, -1, item.selectedUnit, item.price)} className="w-5 h-5 flex items-center justify-center text-[8px] hover:bg-slate-100 rounded text-slate-500"><Icon name="minus" /></button><span className="text-xs font-bold w-4 text-center">{item.cartQty}</span><button onClick={() => updateQty(item.id, 1, item.selectedUnit, item.price)} className="w-5 h-5 flex items-center justify-center text-[8px] hover:bg-slate-100 rounded text-slate-500"><Icon name="plus" /></button></div></div></div>)))}</div>
                         <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-3xl">
                             {/* Subtotal, Diskon, Biaya Pengiriman, Total */}
                             <div className="space-y-2 mb-3">
@@ -14031,6 +14031,491 @@
         };
         // =================== END TRANSFER BARANG VIEW ===================
 
+        // =================== KASIR OFFLINE VIEW ===================
+        const KasirOfflineView = ({ items, showToast, currentProfile, settings, authSession, user }) => {
+            const fmtRp = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n||0).replace(/,00$/,'');
+            const safeN = (v) => { const n = parseFloat(String(v).replace(/[^\d.-]/g,'')); return isNaN(n)?0:n; };
+
+            const [search, setSearch] = React.useState('');
+            const [cart, setCart] = React.useState([]);
+            const [tab, setTab] = React.useState('kasir'); // 'kasir' | 'riwayat'
+            const [checkoutOpen, setCheckoutOpen] = React.useState(false);
+            const [payAmount, setPayAmount] = React.useState('');
+            const [payMethod, setPayMethod] = React.useState('tunai');
+            const [isOnline, setIsOnline] = React.useState(navigator.onLine);
+            const [isSyncing, setIsSyncing] = React.useState(false);
+            const [offlineTx, setOfflineTx] = React.useState([]);
+            const [successData, setSuccessData] = React.useState(null);
+            const [selectedCategory, setSelectedCategory] = React.useState('Semua');
+            const cashierName = authSession?.namaLengkap || authSession?.username || 'Kasir';
+            const OFFLINE_KEY = `husna_offline_tx_${currentProfile?.id||'default'}`;
+
+            // Load offline transactions from localStorage
+            const loadOfflineTx = React.useCallback(() => {
+                try {
+                    const raw = localStorage.getItem(OFFLINE_KEY);
+                    if (raw) setOfflineTx(JSON.parse(raw));
+                } catch(e) { setOfflineTx([]); }
+            }, [OFFLINE_KEY]);
+
+            React.useEffect(() => { loadOfflineTx(); }, [loadOfflineTx]);
+
+            // Online/offline detection
+            React.useEffect(() => {
+                const handleOnline = () => { setIsOnline(true); };
+                const handleOffline = () => setIsOnline(false);
+                window.addEventListener('online', handleOnline);
+                window.addEventListener('offline', handleOffline);
+                return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); };
+            }, []);
+
+            // Auto-sync when online
+            React.useEffect(() => {
+                if (isOnline) syncOfflineTx();
+            }, [isOnline]); // eslint-disable-line
+
+            const syncOfflineTx = async () => {
+                if (!isOnline || !window.db || !window.appId) return;
+                let pending;
+                try {
+                    const raw = localStorage.getItem(OFFLINE_KEY);
+                    pending = raw ? JSON.parse(raw) : [];
+                } catch(e) { pending = []; }
+                const toSync = pending.filter(t => t.status === 'pending');
+                if (toSync.length === 0) return;
+                setIsSyncing(true);
+                let successCount = 0;
+                const updated = [...pending];
+                for (const tx of toSync) {
+                    try {
+                        const batch = window.writeBatch(window.db);
+                        // Update stok
+                        tx.items.forEach(item => {
+                            const stockField = `stocks.${currentProfile?.id||'default'}`;
+                            const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', item.id);
+                            batch.update(docRef, { [stockField]: window.increment(-item.cartQty), updatedAt: window.serverTimestamp() });
+                        });
+                        // Save transaction
+                        const txRef = window.doc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'transactions'));
+                        batch.set(txRef, {
+                            date: window.serverTimestamp(),
+                            items: tx.items,
+                            subtotal: tx.subtotal,
+                            diskon: 0,
+                            biayaPengiriman: 0,
+                            pembulatan: 0,
+                            total: tx.total,
+                            pay: tx.pay,
+                            change: tx.change,
+                            paymentMethod: tx.paymentMethod || 'tunai',
+                            status: 'success',
+                            cashierName: tx.cashierName || cashierName,
+                            salesName: tx.cashierName || cashierName,
+                            tipeTransaksi: 'Harga normal',
+                            pembeli: tx.pembeli || '',
+                            storeId: currentProfile?.id || 'default',
+                            storeName: currentProfile?.name || 'Toko',
+                            offlineSync: true,
+                            offlineDate: tx.date,
+                        });
+                        await batch.commit();
+                        const idx = updated.findIndex(u => u.localId === tx.localId);
+                        if (idx !== -1) updated[idx] = { ...updated[idx], status: 'synced', syncedAt: new Date().toISOString() };
+                        successCount++;
+                    } catch(e) {
+                        console.error('Sync error for tx', tx.localId, e);
+                    }
+                }
+                localStorage.setItem(OFFLINE_KEY, JSON.stringify(updated));
+                setOfflineTx(updated);
+                setIsSyncing(false);
+                if (successCount > 0) showToast(`✅ ${successCount} transaksi offline berhasil disinkron!`, 'success');
+            };
+
+            // Filtered items
+            const storeId = currentProfile?.id || 'default';
+            const filteredItems = React.useMemo(() => {
+                let list = items.filter(it => {
+                    const stk = it.stocks ? (it.stocks[storeId] ?? it.qty ?? 0) : (it.qty ?? 0);
+                    return stk > 0;
+                });
+                if (selectedCategory !== 'Semua') list = list.filter(it => (it.rack||'Lainnya') === selectedCategory);
+                if (search.trim()) {
+                    const q = search.toLowerCase();
+                    list = list.filter(it => it.name?.toLowerCase().includes(q));
+                }
+                return list;
+            }, [items, search, selectedCategory, storeId]);
+
+            const categories = React.useMemo(() => {
+                const cats = ['Semua', ...new Set(items.map(it => it.rack||'Lainnya').filter(Boolean))];
+                return cats;
+            }, [items]);
+
+            // Cart actions
+            const addToCart = (item) => {
+                const stk = item.stocks ? (item.stocks[storeId] ?? item.qty ?? 0) : (item.qty ?? 0);
+                setCart(prev => {
+                    const existing = prev.find(c => c.id === item.id);
+                    if (existing) {
+                        if (existing.cartQty >= stk) { showToast('Stok tidak cukup!', 'error'); return prev; }
+                        return prev.map(c => c.id === item.id ? { ...c, cartQty: c.cartQty + 1 } : c);
+                    }
+                    return [...prev, { ...item, cartQty: 1, price: item.price || 0, originalPrice: item.price || 0 }];
+                });
+            };
+
+            const updateQty = (id, delta) => {
+                setCart(prev => prev.map(c => c.id === id ? { ...c, cartQty: Math.max(0, c.cartQty + delta) } : c).filter(c => c.cartQty > 0));
+            };
+
+            const removeFromCart = (id) => setCart(prev => prev.filter(c => c.id !== id));
+
+            const cartTotal = cart.reduce((s, c) => s + c.price * c.cartQty, 0);
+            const cartCount = cart.reduce((s, c) => s + c.cartQty, 0);
+            const change = safeN(payAmount) - cartTotal;
+
+            const handleCheckoutOffline = () => {
+                if (cart.length === 0) { showToast('Keranjang kosong!', 'error'); return; }
+                if (payMethod === 'tunai' && safeN(payAmount) < cartTotal) { showToast('Uang kurang!', 'error'); return; }
+                const finalPay = payMethod !== 'tunai' ? cartTotal : safeN(payAmount);
+                const finalChange = payMethod !== 'tunai' ? 0 : Math.max(0, safeN(payAmount) - cartTotal);
+                const tx = {
+                    localId: `off_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
+                    date: new Date().toISOString(),
+                    items: cart.map(c => ({ ...c })),
+                    subtotal: cartTotal,
+                    total: cartTotal,
+                    pay: finalPay,
+                    change: finalChange,
+                    paymentMethod: payMethod,
+                    cashierName,
+                    storeName: currentProfile?.name || 'Toko',
+                    storeId: currentProfile?.id || 'default',
+                    status: isOnline ? 'pending' : 'pending',
+                };
+                const existing = (() => { try { return JSON.parse(localStorage.getItem(OFFLINE_KEY)||'[]'); } catch(e){ return []; } })();
+                const updated = [tx, ...existing];
+                localStorage.setItem(OFFLINE_KEY, JSON.stringify(updated));
+                setOfflineTx(updated);
+                setSuccessData({ ...tx, changeAmt: finalChange });
+                setCart([]);
+                setPayAmount('');
+                setCheckoutOpen(false);
+                // try chaching sound
+                try { const s = document.getElementById('chaching-sound'); if(s){ s.currentTime=0; s.play(); } } catch(e){}
+                showToast('✅ Transaksi disimpan!', 'success');
+                if (isOnline) setTimeout(syncOfflineTx, 500);
+            };
+
+            const pendingCount = offlineTx.filter(t => t.status === 'pending').length;
+            const syncedCount = offlineTx.filter(t => t.status === 'synced').length;
+
+            return (
+                <div style={{ background: 'linear-gradient(135deg, #e0f2fe 0%, #f0fdf4 100%)', minHeight: '100vh', fontFamily: 'Inter, sans-serif' }}>
+                    {/* HEADER */}
+                    <div style={{ background: 'white', borderBottom: '1px solid #e2e8f0', padding: '12px 16px', position: 'sticky', top: 0, zIndex: 30, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{ width: 36, height: 36, background: isOnline ? '#0ea5e9' : '#94a3b8', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Icon name={isOnline ? 'wifi' : 'wifi-slash'} style={{ color: 'white', fontSize: 14 }} />
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a' }}>Kasir Offline</div>
+                                    <div style={{ fontSize: 11, color: isOnline ? '#16a34a' : '#dc2626', fontWeight: 700 }}>
+                                        {isSyncing ? '🔄 Menyinkron...' : isOnline ? '🟢 Online' : '🔴 Offline'}
+                                        {pendingCount > 0 && !isSyncing && ` • ${pendingCount} menunggu sync`}
+                                    </div>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                                {isOnline && pendingCount > 0 && (
+                                    <button onClick={syncOfflineTx} style={{ background: '#0ea5e9', color: 'white', border: 'none', borderRadius: 10, padding: '6px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                                        <Icon name="rotate" style={{ marginRight: 4 }} />Sync
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => setTab(tab === 'kasir' ? 'riwayat' : 'kasir')}
+                                    style={{ background: tab === 'riwayat' ? '#0f172a' : '#f1f5f9', color: tab === 'riwayat' ? 'white' : '#475569', border: 'none', borderRadius: 10, padding: '6px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                                    <Icon name={tab === 'riwayat' ? 'cash-register' : 'clock-rotate-left'} style={{ marginRight: 4 }} />
+                                    {tab === 'riwayat' ? 'Kasir' : `Riwayat${offlineTx.length > 0 ? ` (${offlineTx.length})` : ''}`}
+                                </button>
+                            </div>
+                        </div>
+                        {/* Store info bar */}
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 600, color: '#0369a1' }}>
+                                <Icon name="shop" style={{ marginRight: 4 }} />{currentProfile?.name || 'Toko'}
+                            </div>
+                            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 600, color: '#15803d' }}>
+                                <Icon name="user" style={{ marginRight: 4 }} />{cashierName}
+                            </div>
+                            {cartCount > 0 && (
+                                <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 700, color: '#92400e', marginLeft: 'auto' }}>
+                                    🛒 {cartCount} item • {fmtRp(cartTotal)}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {tab === 'kasir' ? (
+                        <div style={{ padding: '12px 12px 180px' }}>
+                            {/* SUCCESS BANNER */}
+                            {successData && (
+                                <div style={{ background: 'linear-gradient(135deg, #dcfce7, #d1fae5)', border: '2px solid #86efac', borderRadius: 16, padding: '14px 16px', marginBottom: 12, position: 'relative' }}>
+                                    <button onClick={() => setSuccessData(null)} style={{ position: 'absolute', top: 8, right: 10, background: 'none', border: 'none', fontSize: 16, cursor: 'pointer', color: '#6b7280' }}>✕</button>
+                                    <div style={{ fontWeight: 800, color: '#15803d', fontSize: 14, marginBottom: 4 }}>✅ Transaksi Tersimpan!</div>
+                                    <div style={{ fontSize: 12, color: '#166534' }}>
+                                        Total: <b>{fmtRp(successData.total)}</b>
+                                        {successData.paymentMethod === 'tunai' && ` • Kembalian: ${fmtRp(successData.changeAmt)}`}
+                                        {!isOnline && <span style={{ color: '#dc2626', marginLeft: 6 }}>⚠️ Akan disinkron saat online</span>}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* SEARCH */}
+                            <div style={{ position: 'relative', marginBottom: 10 }}>
+                                <Icon name="magnifying-glass" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: 14 }} />
+                                <input
+                                    value={search}
+                                    onChange={e => setSearch(e.target.value)}
+                                    placeholder="Ketik nama barang disini..."
+                                    style={{ width: '100%', padding: '12px 12px 12px 36px', borderRadius: 14, border: '2px solid #e2e8f0', fontSize: 14, outline: 'none', background: 'white', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                                    onFocus={e => e.target.style.borderColor = '#0ea5e9'}
+                                    onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                                />
+                                {search && <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 16 }}>✕</button>}
+                            </div>
+
+                            {/* CATEGORY CHIPS */}
+                            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginBottom: 12, paddingBottom: 4 }}>
+                                {categories.map(cat => (
+                                    <button key={cat} onClick={() => setSelectedCategory(cat)}
+                                        style={{ flexShrink: 0, padding: '5px 12px', borderRadius: 20, border: '1.5px solid', fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all .15s',
+                                            background: selectedCategory === cat ? '#0f172a' : 'white',
+                                            borderColor: selectedCategory === cat ? '#0f172a' : '#e2e8f0',
+                                            color: selectedCategory === cat ? 'white' : '#64748b' }}>
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* PRODUCT GRID */}
+                            {filteredItems.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#94a3b8' }}>
+                                    <Icon name="box-open" style={{ fontSize: 32, marginBottom: 8, display: 'block' }} />
+                                    <div style={{ fontWeight: 600 }}>Barang tidak ditemukan</div>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+                                    {filteredItems.map(item => {
+                                        const stk = item.stocks ? (item.stocks[storeId] ?? item.qty ?? 0) : (item.qty ?? 0);
+                                        const inCart = cart.find(c => c.id === item.id);
+                                        return (
+                                            <button key={item.id} onClick={() => addToCart(item)}
+                                                style={{ background: 'white', border: `2px solid ${inCart ? '#0ea5e9' : '#f1f5f9'}`, borderRadius: 14, padding: '12px 10px', textAlign: 'left', cursor: 'pointer', transition: 'all .15s', position: 'relative',
+                                                    boxShadow: inCart ? '0 0 0 3px rgba(14,165,233,0.15)' : '0 1px 4px rgba(0,0,0,0.04)' }}>
+                                                {inCart && (
+                                                    <div style={{ position: 'absolute', top: 6, right: 6, background: '#0ea5e9', color: 'white', borderRadius: '50%', width: 20, height: 20, fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        {inCart.cartQty}
+                                                    </div>
+                                                )}
+                                                <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a', marginBottom: 4, lineHeight: 1.3 }}>{item.name}</div>
+                                                <div style={{ fontWeight: 800, fontSize: 14, color: '#0ea5e9', marginBottom: 4 }}>{fmtRp(item.price)}</div>
+                                                <div style={{ fontSize: 10, color: stk <= 3 ? '#dc2626' : '#94a3b8', fontWeight: 600 }}>
+                                                    Stok: {stk} {item.unit||''}
+                                                </div>
+                                                {item.rack && <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>{item.rack}</div>}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        /* RIWAYAT TAB */
+                        <div style={{ padding: '12px 12px 80px' }}>
+                            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                                <div style={{ flex: 1, background: 'white', borderRadius: 12, padding: '12px', textAlign: 'center', border: '1px solid #fde68a' }}>
+                                    <div style={{ fontSize: 20, fontWeight: 900, color: '#92400e' }}>{pendingCount}</div>
+                                    <div style={{ fontSize: 11, color: '#92400e', fontWeight: 600 }}>Belum Sync</div>
+                                </div>
+                                <div style={{ flex: 1, background: 'white', borderRadius: 12, padding: '12px', textAlign: 'center', border: '1px solid #bbf7d0' }}>
+                                    <div style={{ fontSize: 20, fontWeight: 900, color: '#15803d' }}>{syncedCount}</div>
+                                    <div style={{ fontSize: 11, color: '#15803d', fontWeight: 600 }}>Tersinkron</div>
+                                </div>
+                                <div style={{ flex: 1, background: 'white', borderRadius: 12, padding: '12px', textAlign: 'center', border: '1px solid #bae6fd' }}>
+                                    <div style={{ fontSize: 20, fontWeight: 900, color: '#0369a1' }}>{fmtRp(offlineTx.reduce((s,t) => s+t.total, 0)).replace('Rp','Rp ')}</div>
+                                    <div style={{ fontSize: 11, color: '#0369a1', fontWeight: 600 }}>Total</div>
+                                </div>
+                            </div>
+
+                            {isOnline && pendingCount > 0 && (
+                                <button onClick={syncOfflineTx} disabled={isSyncing}
+                                    style={{ width: '100%', background: 'linear-gradient(135deg, #0ea5e9, #0284c7)', color: 'white', border: 'none', borderRadius: 12, padding: '12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 12 }}>
+                                    {isSyncing ? '🔄 Menyinkron...' : `☁️ Sinkron ${pendingCount} Transaksi Sekarang`}
+                                </button>
+                            )}
+
+                            {offlineTx.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#94a3b8' }}>
+                                    <Icon name="clock-rotate-left" style={{ fontSize: 32, marginBottom: 8, display: 'block' }} />
+                                    <div style={{ fontWeight: 600 }}>Belum ada transaksi offline</div>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    {offlineTx.map(tx => (
+                                        <div key={tx.localId} style={{ background: 'white', borderRadius: 12, padding: '12px', border: `1.5px solid ${tx.status==='synced'?'#bbf7d0':'#fde68a'}` }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                                                <div>
+                                                    <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>{fmtRp(tx.total)}</div>
+                                                    <div style={{ fontSize: 11, color: '#94a3b8' }}>{new Date(tx.date).toLocaleString('id-ID')}</div>
+                                                </div>
+                                                <div style={{ padding: '3px 8px', borderRadius: 6, fontSize: 10, fontWeight: 800,
+                                                    background: tx.status==='synced'?'#dcfce7':'#fef9c3',
+                                                    color: tx.status==='synced'?'#15803d':'#92400e' }}>
+                                                    {tx.status==='synced'?'✅ Synced':'⏳ Pending'}
+                                                </div>
+                                            </div>
+                                            <div style={{ fontSize: 11, color: '#64748b' }}>
+                                                {tx.items?.map(it => `${it.name} (${it.cartQty})`).join(', ')}
+                                            </div>
+                                            <div style={{ display: 'flex', gap: 8, marginTop: 6, fontSize: 11, color: '#94a3b8' }}>
+                                                <span><Icon name="credit-card" style={{ marginRight: 2 }} />{tx.paymentMethod}</span>
+                                                <span><Icon name="user" style={{ marginRight: 2 }} />{tx.cashierName}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* BOTTOM CART BAR */}
+                    {tab === 'kasir' && (
+                        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40, background: 'white', borderTop: '1px solid #e2e8f0', padding: '12px 16px', boxShadow: '0 -4px 20px rgba(0,0,0,0.08)' }}>
+                            {cart.length > 0 && (
+                                <div style={{ marginBottom: 10, maxHeight: 140, overflowY: 'auto' }}>
+                                    {cart.map(item => (
+                                        <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{item.name}</div>
+                                                <div style={{ fontSize: 11, color: '#0ea5e9' }}>{fmtRp(item.price)} × {item.cartQty} = <b>{fmtRp(item.price * item.cartQty)}</b></div>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                <button onClick={() => updateQty(item.id, -1)} style={{ width: 26, height: 26, borderRadius: 6, border: '1.5px solid #e2e8f0', background: 'white', cursor: 'pointer', fontWeight: 800, fontSize: 14, display:'flex',alignItems:'center',justifyContent:'center' }}>−</button>
+                                                <span style={{ fontSize: 13, fontWeight: 800, minWidth: 20, textAlign: 'center' }}>{item.cartQty}</span>
+                                                <button onClick={() => updateQty(item.id, 1)} style={{ width: 26, height: 26, borderRadius: 6, border: '1.5px solid #0ea5e9', background: '#0ea5e9', color:'white', cursor: 'pointer', fontWeight: 800, fontSize: 14, display:'flex',alignItems:'center',justifyContent:'center' }}>+</button>
+                                                <button onClick={() => removeFromCart(item.id)} style={{ width: 26, height: 26, borderRadius: 6, border: '1.5px solid #fecaca', background: '#fef2f2', cursor: 'pointer', color:'#dc2626', fontSize: 11, display:'flex',alignItems:'center',justifyContent:'center' }}>✕</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>TOTAL</div>
+                                    <div style={{ fontSize: 18, fontWeight: 900, color: '#0f172a' }}>{fmtRp(cartTotal)}</div>
+                                </div>
+                                <button
+                                    onClick={() => { if (cart.length === 0) { showToast('Keranjang kosong!', 'error'); return; } setCheckoutOpen(true); }}
+                                    style={{ background: cart.length > 0 ? 'linear-gradient(135deg, #0ea5e9, #0284c7)' : '#e2e8f0',
+                                        color: cart.length > 0 ? 'white' : '#94a3b8', border: 'none', borderRadius: 14, padding: '14px 24px',
+                                        fontSize: 14, fontWeight: 800, cursor: cart.length > 0 ? 'pointer' : 'default', flex: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                                    <Icon name="cart-shopping" />
+                                    Bayar Sekarang
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* CHECKOUT MODAL */}
+                    {checkoutOpen && (
+                        <div onClick={() => setCheckoutOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'flex-end' }}>
+                            <div onClick={e => e.stopPropagation()} style={{ background: 'white', borderRadius: '20px 20px 0 0', padding: '20px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+                                <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                                    <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>💳 Pembayaran</div>
+                                    <div style={{ fontSize: 22, fontWeight: 900, color: '#0ea5e9', marginTop: 4 }}>{fmtRp(cartTotal)}</div>
+                                </div>
+
+                                {/* Items summary */}
+                                <div style={{ background: '#f8fafc', borderRadius: 12, padding: '10px 12px', marginBottom: 14 }}>
+                                    {cart.map(item => (
+                                        <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '3px 0', color: '#475569', fontWeight: 600 }}>
+                                            <span>{item.name} × {item.cartQty}</span>
+                                            <span>{fmtRp(item.price * item.cartQty)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Payment method */}
+                                <div style={{ marginBottom: 14 }}>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>Metode Bayar</div>
+                                    <div style={{ display: 'flex', gap: 6 }}>
+                                        {[['tunai','Tunai','money-bill-wave'],['qris','QRIS','qrcode'],['transfer','Transfer','building-columns']].map(([val,label,icon]) => (
+                                            <button key={val} onClick={() => setPayMethod(val)}
+                                                style={{ flex: 1, padding: '8px 4px', borderRadius: 10, border: `2px solid ${payMethod===val?'#0ea5e9':'#e2e8f0'}`,
+                                                    background: payMethod===val?'#e0f2fe':'white', cursor: 'pointer', fontSize: 11, fontWeight: 700,
+                                                    color: payMethod===val?'#0369a1':'#64748b', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                                                <Icon name={icon} style={{ fontSize: 16 }} />
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Cash input */}
+                                {payMethod === 'tunai' && (
+                                    <div style={{ marginBottom: 14 }}>
+                                        <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>Uang Diterima</div>
+                                        <input
+                                            type="number"
+                                            value={payAmount}
+                                            onChange={e => setPayAmount(e.target.value)}
+                                            placeholder="0"
+                                            style={{ width: '100%', padding: '12px', borderRadius: 12, border: '2px solid #e2e8f0', fontSize: 16, fontWeight: 700, outline: 'none', boxSizing: 'border-box', textAlign: 'right' }}
+                                            onFocus={e => e.target.style.borderColor = '#0ea5e9'}
+                                            onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                                        />
+                                        {/* Quick amounts */}
+                                        <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                                            {[cartTotal, Math.ceil(cartTotal/5000)*5000, Math.ceil(cartTotal/10000)*10000, Math.ceil(cartTotal/50000)*50000].filter((v,i,a)=>a.indexOf(v)===i).map(amt => (
+                                                <button key={amt} onClick={() => setPayAmount(String(amt))}
+                                                    style={{ padding: '5px 10px', borderRadius: 8, border: '1.5px solid #e2e8f0', background: 'white', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#475569' }}>
+                                                    {fmtRp(amt)}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {safeN(payAmount) >= cartTotal && (
+                                            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '8px 12px', marginTop: 8, fontSize: 13, fontWeight: 700, color: '#15803d' }}>
+                                                Kembalian: {fmtRp(safeN(payAmount) - cartTotal)}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {!isOnline && (
+                                    <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10, padding: '8px 12px', marginBottom: 12, fontSize: 11, color: '#9a3412', fontWeight: 600 }}>
+                                        ⚠️ Mode offline — transaksi disimpan lokal & akan disinkron saat online
+                                    </div>
+                                )}
+
+                                <button onClick={handleCheckoutOffline}
+                                    style={{ width: '100%', background: 'linear-gradient(135deg, #0ea5e9, #0284c7)', color: 'white', border: 'none', borderRadius: 14, padding: '15px', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}>
+                                    ✅ Konfirmasi Pembayaran
+                                </button>
+                                <button onClick={() => setCheckoutOpen(false)}
+                                    style={{ width: '100%', background: 'white', color: '#64748b', border: '1.5px solid #e2e8f0', borderRadius: 14, padding: '12px', fontSize: 14, fontWeight: 700, cursor: 'pointer', marginTop: 8 }}>
+                                    Batal
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+        // =================== END KASIR OFFLINE VIEW ===================
+
 
 
                 const App = () => {
@@ -14593,6 +15078,7 @@
             };
             const menuItems = [ 
                 { id: 'cashier',     label: 'Kasir',             icon: 'cash-register',      enabled: isOwner || showMenu('showMenuCashier', settingsData.showMenuCashier),    readOnly: !isOwner && !menuOn('enableCashier', settingsData.enableCashier),    badge: notifCounts.pendingCarts }, 
+                { id: 'kasir_offline', label: 'Kasir Offline',  icon: 'wifi-slash',          enabled: true, readOnly: false }, 
                 { id: 'history',     label: 'Riwayat',           icon: 'clock-rotate-left',  enabled: isOwner || showMenu('showMenuHistory', settingsData.showMenuHistory),    readOnly: !isOwner && !menuOn('enableHistory', settingsData.enableHistory) }, 
                 { id: 'purchases',   label: 'Faktur Pembelian',  icon: 'file-invoice-dollar', enabled: isOwner || showMenu('showMenuPurchases', settingsData.showMenuPurchases), readOnly: !isOwner && !menuOn('enablePurchases', settingsData.enablePurchases) }, 
                 { id: 'home',        label: 'Dashboard',         icon: 'chart-pie',           enabled: isOwner || showMenu('showMenuDashboard', settingsData.showMenuDashboard), readOnly: false }, 
@@ -14914,6 +15400,7 @@
                         <NegativeStockBanner items={inventoryData} settings={settingsData} onNavigateToPurchases={() => setActiveTab('purchases')} />
                         {activeTab === 'home' && (<DashboardView items={inventoryData} settings={settingsData} currentProfile={currentProfile} isOwner={isOwner} onShowLowStock={() => { setActiveTab('list'); setShowOnlyLowStock(true); }} />)}
                         {activeTab === 'cashier' && (<CashierView items={inventoryData} user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='cashier')?.readOnly} authSession={authSession} onNavigateToAdd={() => setActiveTab('add')} isOwner={isOwner} />)}
+                        {activeTab === 'kasir_offline' && (<KasirOfflineView items={inventoryData} showToast={showToast} currentProfile={currentProfile} settings={settingsData} authSession={authSession} user={user} />)}
                         {activeTab === 'history' && (<HistoryView user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} items={inventoryData} readOnly={menuItems.find(m=>m.id==='history')?.readOnly} isOwner={isOwner} authSession={authSession} />)}
                         {activeTab === 'purchases' && (<PurchaseView user={user} showToast={showToast} items={inventoryData} currentProfile={currentProfile} settings={settingsData} readOnly={menuItems.find(m=>m.id==='purchases')?.readOnly} />)}
                         {activeTab === 'cashbook' && (<CashBookView user={user} currentProfile={currentProfile} showToast={showToast} readOnly={menuItems.find(m=>m.id==='cashbook')?.readOnly} />)}
