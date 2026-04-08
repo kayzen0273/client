@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -3752,7 +3751,17 @@
         const PurchaseView = ({ user, showToast, items, currentProfile, settings, readOnly }) => {
             const [purchases, setPurchases] = useState([]);
             const [suppliers, setSuppliers] = useState([]);
-            const [loading, setLoading] = useState(true);
+            // Cek cache inventory untuk inisialisasi loading state (jika cache ada, tidak perlu spinner awal)
+            const [loading, setLoading] = useState(() => {
+                try {
+                    const cached = localStorage.getItem('husna_inventory_cache_v2');
+                    if (cached) {
+                        const parsed = JSON.parse(cached);
+                        if (parsed && parsed.length > 0) return false; // ada cache, langsung false
+                    }
+                } catch(e) {}
+                return true; // tidak ada cache, tampilkan loading
+            });
             const [supplierModalOpen, setSupplierModalOpen] = useState(false);
             const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
             const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -5486,7 +5495,17 @@
             const [viewMode, setViewMode] = useState('operational'); // 'operational' | 'revenue'
             const [entries, setEntries] = useState([]);
             const [revenueLogs, setRevenueLogs] = useState([]);
-            const [loading, setLoading] = useState(true);
+            // Cek cache inventory untuk inisialisasi loading state (jika cache ada, tidak perlu spinner awal)
+            const [loading, setLoading] = useState(() => {
+                try {
+                    const cached = localStorage.getItem('husna_inventory_cache_v2');
+                    if (cached) {
+                        const parsed = JSON.parse(cached);
+                        if (parsed && parsed.length > 0) return false; // ada cache, langsung false
+                    }
+                } catch(e) {}
+                return true; // tidak ada cache, tampilkan loading
+            });
             
             // Operational Form State
             const [showModal, setShowModal] = useState(false);
@@ -7309,7 +7328,7 @@
                                      <div className="text-left">
                                          <p className={`font-black text-sm leading-none ${!isOnline ? 'text-white' : 'text-slate-700'}`}>Mode Offline</p>
                                          <p className={`text-[10px] mt-0.5 ${!isOnline ? 'text-amber-100' : 'text-slate-400'}`}>
-                                             {offlineQueue.length > 0 ? `${offlineQueue.length} transaksi belum tersinkron` : 'Transaksi disimpan lokal, sync otomatis'}
+                                             {offlineQueue.length > 0 ? `${offlineQueue.length} transaksi belum tersinkron` : (items.length > 0 ? `${items.length} barang tersedia (cache lokal)` : 'Transaksi disimpan lokal, sync otomatis')}
                                          </p>
                                      </div>
                                  </div>
@@ -8708,7 +8727,17 @@
         // --- UPDATED: HISTORY VIEW ---
         const HistoryView = ({ user, showToast, settings, onGenerateImage, currentProfile, items, readOnly, isOwner, authSession }) => {
             const [transactions, setTransactions] = useState([]);
-            const [loading, setLoading] = useState(true);
+            // Cek cache inventory untuk inisialisasi loading state (jika cache ada, tidak perlu spinner awal)
+            const [loading, setLoading] = useState(() => {
+                try {
+                    const cached = localStorage.getItem('husna_inventory_cache_v2');
+                    if (cached) {
+                        const parsed = JSON.parse(cached);
+                        if (parsed && parsed.length > 0) return false; // ada cache, langsung false
+                    }
+                } catch(e) {}
+                return true; // tidak ada cache, tampilkan loading
+            });
             const [selectedTx, setSelectedTx] = useState(null);
             const [purchasesData, setPurchasesData] = useState([]);
             
@@ -10653,7 +10682,17 @@
         // ==================== PAPAN CATATAN ====================
         const PapanCatatan = ({ user, readOnly }) => {
             const [items, setItems] = useState([]);
-            const [loading, setLoading] = useState(true);
+            // Cek cache inventory untuk inisialisasi loading state (jika cache ada, tidak perlu spinner awal)
+            const [loading, setLoading] = useState(() => {
+                try {
+                    const cached = localStorage.getItem('husna_inventory_cache_v2');
+                    if (cached) {
+                        const parsed = JSON.parse(cached);
+                        if (parsed && parsed.length > 0) return false; // ada cache, langsung false
+                    }
+                } catch(e) {}
+                return true; // tidak ada cache, tampilkan loading
+            });
             const [addModal, setAddModal] = useState(false);
             const [noteText, setNoteText] = useState('');
             const [noteColor, setNoteColor] = useState('#FEF9C3');
@@ -14356,9 +14395,28 @@
 
                 const App = () => {
             const [inventoryData, setInventoryData] = useState([]);
-            const [rawInventory, setRawInventory] = useState([]); // Store original data from DB
+            // ── OFFLINE INVENTORY CACHE ──────────────────────────────────────────────────
+            // Key localStorage untuk menyimpan cache katalog barang
+            const INVENTORY_CACHE_KEY = 'husna_inventory_cache_v2';
+            // Inisialisasi rawInventory dari cache lokal (supaya langsung tersedia saat offline / reload)
+            const [rawInventory, setRawInventory] = useState(() => {
+                try {
+                    const cached = localStorage.getItem(INVENTORY_CACHE_KEY);
+                    return cached ? JSON.parse(cached) : [];
+                } catch { return []; }
+            });
             const [settingsData, setSettingsData] = useState(DEFAULT_SETTINGS); 
-            const [loading, setLoading] = useState(true);
+            // Cek cache inventory untuk inisialisasi loading state (jika cache ada, tidak perlu spinner awal)
+            const [loading, setLoading] = useState(() => {
+                try {
+                    const cached = localStorage.getItem('husna_inventory_cache_v2');
+                    if (cached) {
+                        const parsed = JSON.parse(cached);
+                        if (parsed && parsed.length > 0) return false; // ada cache, langsung false
+                    }
+                } catch(e) {}
+                return true; // tidak ada cache, tampilkan loading
+            });
             const [activeTab, setActiveTab] = useState('cashier'); 
             const [searchQuery, setSearchQuery] = useState('');
             const [showOnlyLowStock, setShowOnlyLowStock] = useState(false);
@@ -14670,15 +14728,55 @@
                 return () => unsub();
             }, [user]);
 
-            // 2. Fetch Raw Inventory
+            // 2. Fetch Raw Inventory — dengan cache offline
             useEffect(() => {
                 if (!user) return;
+
+                // Jika ada cache, langsung set loading=false supaya UI tampil dengan data lama
+                try {
+                    const cached = localStorage.getItem(INVENTORY_CACHE_KEY);
+                    if (cached) {
+                        const parsedCache = JSON.parse(cached);
+                        if (parsedCache && parsedCache.length > 0) {
+                            setLoading(false); // tampilkan data cache sementara Firebase loading
+                        }
+                    }
+                } catch(e) {}
+
                 const q = window.query(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory'));
                 const unsubscribeSnapshot = window.onSnapshot(q, (snapshot) => {
                     const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setRawInventory(data); // Save raw data
+                    setRawInventory(data);
+                    // Simpan ke cache lokal setiap kali data berhasil diambil dari Firebase
+                    try {
+                        localStorage.setItem(INVENTORY_CACHE_KEY, JSON.stringify(data));
+                    } catch(e) {
+                        // localStorage penuh? coba hapus item sementara dulu
+                        try {
+                            localStorage.removeItem('husna_offline_draft');
+                            localStorage.setItem(INVENTORY_CACHE_KEY, JSON.stringify(data));
+                        } catch(e2) { console.warn('Gagal simpan cache inventory:', e2); }
+                    }
                     setLoading(false);
-                }, (error) => { console.error("Firestore Error:", error); showToast("Gagal memuat data live", "error"); });
+                }, (error) => {
+                    console.error("Firestore Error:", error);
+                    // Offline atau error: gunakan data dari cache supaya kasir tetap bisa jalan
+                    try {
+                        const cached = localStorage.getItem(INVENTORY_CACHE_KEY);
+                        if (cached) {
+                            const parsedCache = JSON.parse(cached);
+                            if (parsedCache && parsedCache.length > 0) {
+                                setRawInventory(parsedCache);
+                                showToast('📦 Data barang dari cache lokal (offline)', 'info');
+                            } else {
+                                showToast('Gagal memuat data — tidak ada cache tersedia', 'error');
+                            }
+                        } else {
+                            showToast('Gagal memuat data live', 'error');
+                        }
+                    } catch(e) { showToast('Gagal memuat data live', 'error'); }
+                    setLoading(false);
+                });
                 return () => unsubscribeSnapshot();
             }, [user]);
 
