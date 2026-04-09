@@ -1769,7 +1769,6 @@
                 { key: 'showMenuRekamMedis', label: 'Rekam Medis', icon: 'stethoscope', desc: 'Tampilkan rekam medis (dokter & pasien)' },
                 { key: 'showMenuJadwalShift', label: 'Jadwal Shift', icon: 'calendar-days', desc: 'Tampilkan jadwal shift karyawan' },
                 { key: 'showMenuTransferBarang', label: 'Transfer Barang', icon: 'right-left', desc: 'Tampilkan transfer barang antar toko' },
-                { key: 'showMenuZenbot', label: 'Zenbot', icon: 'robot', desc: 'Tampilkan Zenbot — AI berbasis data internal' },
             ];
             const dashboardVisibilityList = [
                 { key: 'showNilaiStokDashboard', label: 'Total Nilai Stok (Modal)', icon: 'coins', desc: 'Tampilkan total harga beli × stok di dashboard' },
@@ -14352,313 +14351,363 @@
         };
         // =================== END TRANSFER BARANG VIEW ===================
 
+        // =================== ZENBOT VIEW ===================
+        const ZenbotView = ({ isOwner, showToast }) => {
+            const STORAGE_KEY = 'zenbot_knowledge_base';
+            const CHAT_KEY    = 'zenbot_chat_history';
 
+            const loadKnowledge = () => {
+                try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
+            };
+            const loadChat = () => {
+                try { return JSON.parse(localStorage.getItem(CHAT_KEY) || '[]'); } catch { return []; }
+            };
 
-        // ═══════════════════════════════════════════════════════════════
-        // ZENBOT — Offline AI berbasis Knowledge Base dari Admin
-        // ═══════════════════════════════════════════════════════════════
-        const ZenbotView = ({ isOwner }) => {
-            const [query, setQuery] = React.useState('');
-            const [messages, setMessages] = React.useState([]);
-            const [thinking, setThinking] = React.useState(false);
-            const [kb, setKb] = React.useState([]);
-            const [showWelcome, setShowWelcome] = React.useState(true);
-            const [kbCount, setKbCount] = React.useState(0);
-            const inputRef = React.useRef(null);
+            const [activeTab, setActiveTab]     = React.useState('chat');
+            const [knowledge, setKnowledge]     = React.useState(loadKnowledge);
+            const [inputText, setInputText]     = React.useState('');
+            const [saveLabel, setSaveLabel]     = React.useState('');
+            const [question, setQuestion]       = React.useState('');
+            const [messages, setMessages]       = React.useState(loadChat);
+            const [isTyping, setIsTyping]       = React.useState(false);
+            const [showClear, setShowClear]     = React.useState(false);
             const chatEndRef = React.useRef(null);
 
-            // Load KB dari localStorage (disinkron oleh Admin Panel)
-            const loadKb = React.useCallback(() => {
-                try {
-                    const raw = localStorage.getItem('husna_zenbot_kb');
-                    if (raw) {
-                        const data = JSON.parse(raw);
-                        setKb(Array.isArray(data) ? data : []);
-                        setKbCount(Array.isArray(data) ? data.length : 0);
-                    }
-                } catch(e) { setKb([]); setKbCount(0); }
-            }, []);
+            React.useEffect(() => {
+                chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, [messages, isTyping]);
 
             React.useEffect(() => {
-                loadKb();
-                const onStorage = (e) => { if (e.key === 'husna_zenbot_kb') loadKb(); };
-                window.addEventListener('storage', onStorage);
-                return () => window.removeEventListener('storage', onStorage);
-            }, [loadKb]);
+                localStorage.setItem(CHAT_KEY, JSON.stringify(messages.slice(-100)));
+            }, [messages]);
 
-            React.useEffect(() => {
-                if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
-            }, [messages, thinking]);
+            // ---- Knowledge Engine ----
+            const tokenize = (text) =>
+                text.toLowerCase().replace(/[^a-z0-9\u00C0-\u024F\s]/g, ' ').split(/\s+/).filter(w => w.length > 2);
 
-            // ── NLP Matching Engine ──
-            const normalize = (text) => {
-                return (text || '').toLowerCase()
-                    .replace(/[^\w\s]/g, ' ')
-                    .replace(/\s+/g, ' ').trim();
-            };
-
-            const tokenize = (text) => {
-                const stopwords = new Set(['apa','ini','itu','yang','dan','atau','di','ke','dari','untuk','adalah','ada','tidak','dengan','pada','kami','saya','kamu','anda','how','what','why','when','where','who','is','are','the','a','an','of','in','to','for','can','do','does']);
-                return normalize(text).split(' ').filter(t => t.length > 1 && !stopwords.has(t));
-            };
-
-            const computeScore = (entry, queryTokens) => {
-                const titleTokens = tokenize(entry.title || '');
-                const contentTokens = tokenize(entry.content || '');
-                const tagsTokens = tokenize((entry.tags || []).join(' '));
-                const allTokens = [...titleTokens, ...titleTokens, ...tagsTokens, ...contentTokens]; // title weighted 2x
+            const scoreChunk = (chunk, queryTokens) => {
+                const chunkTokens = tokenize(chunk);
+                const freq = {};
+                chunkTokens.forEach(t => { freq[t] = (freq[t] || 0) + 1; });
                 let score = 0;
-                let exactPhrase = false;
-                const normalContent = normalize((entry.title || '') + ' ' + (entry.content || ''));
-                const normalQuery = normalize(queryTokens.join(' '));
-                if (normalContent.includes(normalQuery) && normalQuery.length > 3) { exactPhrase = true; score += 50; }
                 queryTokens.forEach(qt => {
-                    allTokens.forEach(et => {
-                        if (et === qt) score += 10;
-                        else if (et.includes(qt) || qt.includes(et)) score += 4;
-                        else if (et.length > 3 && qt.length > 3) {
-                            // Simple Levenshtein-like: check if ≥60% chars match
-                            const shorter = et.length < qt.length ? et : qt;
-                            const longer = et.length < qt.length ? qt : et;
-                            let matches = 0;
-                            shorter.split('').forEach(c => { if (longer.includes(c)) matches++; });
-                            if (matches / shorter.length >= 0.75) score += 2;
-                        }
-                    });
+                    if (freq[qt]) score += (1 + Math.log(freq[qt])) * (10 / (chunkTokens.length + 10));
+                    // partial match
+                    chunkTokens.forEach(ct => { if (ct.includes(qt) || qt.includes(ct)) score += 0.3; });
                 });
                 return score;
             };
 
-            const findAnswer = (userQuery) => {
-                if (!kb.length) return null;
-                const queryTokens = tokenize(userQuery);
-                if (!queryTokens.length) return null;
-                const scored = kb
-                    .filter(e => e.active !== false)
-                    .map(e => ({ ...e, score: computeScore(e, queryTokens) }))
-                    .filter(e => e.score > 0)
-                    .sort((a, b) => b.score - a.score);
-                if (!scored.length) return null;
-                const top = scored[0];
-                const related = scored.slice(1, 4).filter(e => e.score >= top.score * 0.4);
-                return { top, related, confidence: Math.min(100, Math.round((top.score / (queryTokens.length * 10)) * 100)) };
+            const splitToChunks = (text) => {
+                // Split by paragraph, then by sentence if paragraph too long
+                const paras = text.split(/\n{2,}/).map(p => p.trim()).filter(p => p.length > 20);
+                const chunks = [];
+                paras.forEach(para => {
+                    if (para.length < 600) { chunks.push(para); }
+                    else {
+                        const sents = para.match(/[^.!?]+[.!?]+/g) || [para];
+                        let group = '';
+                        sents.forEach(s => {
+                            if ((group + s).length < 500) group += s + ' ';
+                            else { if (group) chunks.push(group.trim()); group = s + ' '; }
+                        });
+                        if (group.trim()) chunks.push(group.trim());
+                    }
+                });
+                return chunks;
             };
 
-            const handleSend = () => {
-                const q = query.trim();
+            const handleSaveKnowledge = () => {
+                const text = inputText.trim();
+                if (!text) { showToast('Teks kosong, tidak ada yang disimpan', 'error'); return; }
+                const newChunks = splitToChunks(text);
+                const updated = [...knowledge, ...newChunks.map(c => ({ text: c, savedAt: new Date().toISOString(), label: saveLabel.trim() || `Batch ${knowledge.length + 1}` }))];
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+                setKnowledge(updated);
+                setInputText('');
+                setSaveLabel('');
+                showToast(`✅ ${newChunks.length} paragraf baru disimpan! Total: ${updated.length} chunk`, 'success');
+            };
+
+            const handleDeleteChunk = (idx) => {
+                const updated = knowledge.filter((_, i) => i !== idx);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+                setKnowledge(updated);
+                showToast('Chunk dihapus', 'info');
+            };
+
+            const handleClearKnowledge = () => {
+                localStorage.removeItem(STORAGE_KEY);
+                setKnowledge([]);
+                showToast('Semua pengetahuan dihapus', 'info');
+            };
+
+            // ---- Chat Engine ----
+            const answerQuestion = (q) => {
+                if (knowledge.length === 0) {
+                    return { text: '🤖 Otak saya masih kosong! Minta owner untuk mengisi pengetahuan dulu lewat panel **Owner**. Setelah itu saya bisa bantu jawab pertanyaan.', found: false };
+                }
+                const qTokens = tokenize(q);
+                if (qTokens.length === 0) return { text: 'Pertanyaannya kurang jelas, coba tulis lebih lengkap ya!', found: false };
+
+                const scored = knowledge
+                    .map((chunk, i) => ({ ...chunk, idx: i, score: scoreChunk(chunk.text, qTokens) }))
+                    .filter(c => c.score > 0)
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 4);
+
+                if (scored.length === 0 || scored[0].score < 0.3) {
+                    return { text: `🔍 Hmm, saya tidak menemukan info tentang **"${q}"** di pengetahuan saya. Minta owner tambahkan info tersebut ya!`, found: false };
+                }
+
+                // Build answer from top chunks
+                const topText = scored.slice(0, 3).map(c => c.text).join('\n\n');
+                const confidence = scored[0].score >= 2 ? 'tinggi' : scored[0].score >= 1 ? 'sedang' : 'rendah';
+                const emoji = confidence === 'tinggi' ? '✅' : confidence === 'sedang' ? '🔎' : '💡';
+                return {
+                    text: `${emoji} Berdasarkan pengetahuan saya:\n\n${topText}`,
+                    found: true,
+                    confidence,
+                    sources: scored.length
+                };
+            };
+
+            const handleSendQuestion = () => {
+                const q = question.trim();
                 if (!q) return;
-                setQuery('');
-                setShowWelcome(false);
                 const userMsg = { role: 'user', text: q, time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) };
                 setMessages(prev => [...prev, userMsg]);
-                setThinking(true);
+                setQuestion('');
+                setIsTyping(true);
                 setTimeout(() => {
-                    const result = findAnswer(q);
-                    let botMsg;
-                    if (!kb.length) {
-                        botMsg = { role: 'bot', text: 'Otak Zenbot masih kosong! Minta admin untuk mengisi Knowledge Base di Admin Panel → tab Zenbot KB.', type: 'empty', time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) };
-                    } else if (!result) {
-                        botMsg = { role: 'bot', text: 'Hmm, saya tidak menemukan informasi yang relevan dengan pertanyaan Anda. Coba kata kunci yang berbeda, atau minta admin untuk menambahkan informasi ini ke Knowledge Base.', type: 'notfound', time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) };
-                    } else {
-                        botMsg = { role: 'bot', top: result.top, related: result.related, confidence: result.confidence, type: 'answer', time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) };
-                    }
-                    setThinking(false);
+                    const ans = answerQuestion(q);
+                    const botMsg = { role: 'bot', text: ans.text, time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }), found: ans.found };
                     setMessages(prev => [...prev, botMsg]);
+                    setIsTyping(false);
                 }, 600 + Math.random() * 400);
             };
 
-            const handleKey = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
-
-            const SUGGESTIONS = ['Jam operasional toko', 'Cara retur barang', 'Metode pembayaran', 'Promo hari ini', 'Cara klaim garansi'];
-
-            const ConfidenceBadge = ({ score }) => {
-                const color = score >= 70 ? '#22c55e' : score >= 40 ? '#f59e0b' : '#94a3b8';
-                const label = score >= 70 ? 'Sangat relevan' : score >= 40 ? 'Cukup relevan' : 'Kurang yakin';
-                return (
-                    <span style={{ fontSize: '10px', fontWeight: 700, color, background: color + '15', padding: '2px 8px', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        <i className={`fa-solid ${score >= 70 ? 'fa-circle-check' : score >= 40 ? 'fa-circle-exclamation' : 'fa-circle-question'}`} style={{ fontSize: '9px' }}></i> {label}
-                    </span>
-                );
+            const handleKeyDown = (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendQuestion(); }
             };
 
+            const totalChars = knowledge.reduce((s, c) => s + c.text.length, 0);
+            const uniqueLabels = [...new Set(knowledge.map(c => c.label).filter(Boolean))];
+
             return (
-                <div style={{ minHeight: '100vh', background: '#ffffff', display: 'flex', flexDirection: 'column', fontFamily: "'Inter', sans-serif" }}>
-                    {/* Header strip */}
-                    <div style={{ background: '#fff', borderBottom: '1px solid #f1f5f9', padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ width: 28, height: 28, borderRadius: '8px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <i className="fa-solid fa-robot" style={{ color: '#fff', fontSize: '12px' }}></i>
+                <div className="flex flex-col h-full max-w-2xl mx-auto w-full">
+                    {/* Header */}
+                    <div className="bg-gradient-to-r from-violet-600 to-purple-700 text-white px-5 py-4 flex-shrink-0 rounded-b-2xl shadow-lg">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-xl">🤖</div>
+                            <div>
+                                <h1 className="font-extrabold text-lg leading-tight">Zenbot</h1>
+                                <p className="text-violet-200 text-xs">{knowledge.length} chunk · {(totalChars/1000).toFixed(1)}K karakter pengetahuan · Offline</p>
                             </div>
-                            <span style={{ fontWeight: 800, fontSize: '14px', color: '#1e293b', letterSpacing: '-0.3px' }}>Zenbot</span>
-                            <span style={{ fontSize: '10px', background: '#f1f5f9', color: '#64748b', fontWeight: 700, padding: '2px 8px', borderRadius: '20px' }}>
-                                {kbCount} entri KB
-                            </span>
+                            <div className="ml-auto flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                                <span className="text-xs text-violet-200">Online</span>
+                            </div>
                         </div>
-                        <button onClick={loadKb} title="Refresh KB" style={{ width: 28, height: 28, borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px' }}>
-                            <i className="fa-solid fa-rotate-right"></i>
-                        </button>
+                        {/* Tabs */}
+                        <div className="flex gap-2 mt-3">
+                            <button onClick={() => setActiveTab('chat')} className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab==='chat' ? 'bg-white text-violet-700 shadow' : 'bg-white/10 text-white hover:bg-white/20'}`}>
+                                💬 Chat
+                            </button>
+                            {isOwner && (
+                                <button onClick={() => setActiveTab('owner')} className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab==='owner' ? 'bg-white text-violet-700 shadow' : 'bg-white/10 text-white hover:bg-white/20'}`}>
+                                    🧠 Panel Owner
+                                </button>
+                            )}
+                            {isOwner && (
+                                <button onClick={() => setActiveTab('knowledge')} className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab==='knowledge' ? 'bg-white text-violet-700 shadow' : 'bg-white/10 text-white hover:bg-white/20'}`}>
+                                    📚 Data ({knowledge.length})
+                                </button>
+                            )}
+                        </div>
                     </div>
 
-                    {/* Main area */}
-                    <div style={{ flex: 1, overflowY: 'auto', padding: showWelcome ? '0' : '16px 16px 0' }}>
-                        {showWelcome ? (
-                            /* Welcome Screen — Google-like */
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 50px)', padding: '20px', textAlign: 'center' }}>
-                                {/* Logo */}
-                                <div style={{ marginBottom: '28px' }}>
-                                    <div style={{ width: 72, height: 72, borderRadius: '20px', background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', boxShadow: '0 8px 32px rgba(99,102,241,0.25)' }}>
-                                        <i className="fa-solid fa-robot" style={{ color: '#fff', fontSize: '30px' }}></i>
-                                    </div>
-                                    <h1 style={{ fontSize: '32px', fontWeight: 900, letterSpacing: '-1px', margin: '0 0 6px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Zenbot</h1>
-                                    <p style={{ fontSize: '13px', color: '#94a3b8', fontWeight: 600, margin: 0 }}>Asisten cerdas berbasis data internal toko</p>
-                                </div>
-                                {/* Search box */}
-                                <div style={{ width: '100%', maxWidth: '540px', position: 'relative', marginBottom: '20px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '28px', padding: '12px 18px', gap: '10px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', transition: 'box-shadow 0.2s' }}
-                                        onFocus={(e) => e.currentTarget.style.boxShadow = '0 4px 20px rgba(99,102,241,0.15)'}
-                                        onBlur={(e) => e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.06)'}
-                                    >
-                                        <i className="fa-solid fa-magnifying-glass" style={{ color: '#94a3b8', fontSize: '14px', flexShrink: 0 }}></i>
-                                        <input
-                                            ref={inputRef}
-                                            value={query}
-                                            onChange={e => setQuery(e.target.value)}
-                                            onKeyDown={handleKey}
-                                            placeholder="Tanyakan sesuatu…"
-                                            autoFocus
-                                            style={{ flex: 1, border: 'none', outline: 'none', fontSize: '15px', fontWeight: 500, color: '#1e293b', background: 'transparent', fontFamily: 'inherit' }}
-                                        />
-                                        {query && (
-                                            <button onClick={() => setQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '13px', padding: '2px', flexShrink: 0 }}>
-                                                <i className="fa-solid fa-xmark"></i>
-                                            </button>
-                                        )}
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '16px' }}>
-                                        <button onClick={handleSend} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 20px', fontSize: '13px', fontWeight: 700, color: '#334155', cursor: 'pointer', fontFamily: 'inherit' }}>
-                                            Tanya Zenbot
-                                        </button>
-                                    </div>
-                                </div>
-                                {/* Suggestions */}
-                                <div style={{ maxWidth: '540px', width: '100%' }}>
-                                    <p style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: 700, marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Coba tanya:</p>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center' }}>
-                                        {SUGGESTIONS.map((s, i) => (
-                                            <button key={i} onClick={() => { setQuery(s); setTimeout(() => { setQuery(''); setShowWelcome(false); const userMsg = { role: 'user', text: s, time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }; setMessages(prev => [...prev, userMsg]); setThinking(true); setTimeout(() => { const result = findAnswer(s); let botMsg; if (!kb.length) { botMsg = { role: 'bot', text: 'Otak Zenbot masih kosong! Minta admin untuk mengisi Knowledge Base.', type: 'empty', time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }; } else if (!result) { botMsg = { role: 'bot', text: 'Saya tidak menemukan informasi yang relevan. Coba kata kunci berbeda.', type: 'notfound', time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }; } else { botMsg = { role: 'bot', top: result.top, related: result.related, confidence: result.confidence, type: 'answer', time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }; } setThinking(false); setMessages(prev => [...prev, botMsg]); }, 700); }, 0); }}
-                                                style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '6px 14px', fontSize: '12px', fontWeight: 600, color: '#475569', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '6px' }}
-                                            >
-                                                <i className="fa-regular fa-clock" style={{ fontSize: '10px', color: '#94a3b8' }}></i> {s}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                                {kbCount === 0 && (
-                                    <div style={{ marginTop: '28px', background: '#fff7ed', border: '1.5px solid #fed7aa', borderRadius: '12px', padding: '12px 18px', maxWidth: '400px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                                        <i className="fa-solid fa-triangle-exclamation" style={{ color: '#f97316', marginTop: '2px', flexShrink: 0 }}></i>
-                                        <p style={{ fontSize: '12px', fontWeight: 600, color: '#92400e', lineHeight: 1.6, margin: 0 }}>Knowledge Base masih kosong. Buka <strong>Admin Panel → tab Zenbot KB</strong> untuk mengisi data.</p>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            /* Chat View */
-                            <div style={{ maxWidth: '680px', margin: '0 auto', paddingBottom: '20px' }}>
-                                {messages.map((msg, i) => (
-                                    <div key={i} style={{ marginBottom: '16px', display: 'flex', flexDirection: msg.role === 'user' ? 'row-reverse' : 'row', alignItems: 'flex-start', gap: '10px' }}>
-                                        {msg.role === 'bot' && (
-                                            <div style={{ width: 32, height: 32, borderRadius: '10px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                                <i className="fa-solid fa-robot" style={{ color: '#fff', fontSize: '13px' }}></i>
+                    {/* CHAT TAB */}
+                    {activeTab === 'chat' && (
+                        <div className="flex flex-col flex-1 min-h-0">
+                            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-slate-50">
+                                {messages.length === 0 && (
+                                    <div className="text-center py-10">
+                                        <div className="text-5xl mb-3">🤖</div>
+                                        <p className="font-bold text-slate-700 text-base">Halo! Saya Zenbot</p>
+                                        <p className="text-slate-400 text-sm mt-1">Tanya apa saja, saya akan jawab<br/>berdasarkan pengetahuan yang sudah diisi.</p>
+                                        {knowledge.length === 0 && (
+                                            <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700 max-w-xs mx-auto">
+                                                ⚠️ Pengetahuan masih kosong. {isOwner ? 'Buka tab "Panel Owner" untuk mulai isi.' : 'Minta owner untuk isi pengetahuan dulu.'}
                                             </div>
                                         )}
-                                        <div style={{ maxWidth: '85%' }}>
-                                            {msg.role === 'user' ? (
-                                                <div style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#fff', borderRadius: '18px 18px 4px 18px', padding: '10px 16px', fontSize: '14px', fontWeight: 500, lineHeight: 1.5 }}>
-                                                    {msg.text}
+                                        {knowledge.length > 0 && (
+                                            <div className="mt-4 flex flex-wrap gap-1 justify-center">
+                                                {['Apa ini?', 'Cara pakai?', 'Info produk', 'Harga?', 'Stok?'].map(s => (
+                                                    <button key={s} onClick={() => { setQuestion(s); }} className="bg-violet-100 text-violet-700 text-xs px-3 py-1 rounded-full font-semibold hover:bg-violet-200 transition">{s}</button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                {messages.map((msg, i) => (
+                                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                        {msg.role === 'bot' && <div className="w-7 h-7 rounded-full bg-violet-600 flex items-center justify-center text-white text-sm mr-2 flex-shrink-0 mt-1">🤖</div>}
+                                        <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm shadow-sm ${msg.role === 'user' ? 'bg-violet-600 text-white rounded-br-sm' : 'bg-white text-slate-800 rounded-bl-sm border border-slate-100'}`}>
+                                            <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>{msg.text}</div>
+                                            <div className={`text-[10px] mt-1 ${msg.role === 'user' ? 'text-violet-200' : 'text-slate-400'}`}>{msg.time}</div>
+                                        </div>
+                                        {msg.role === 'user' && <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-sm ml-2 flex-shrink-0 mt-1">👤</div>}
+                                    </div>
+                                ))}
+                                {isTyping && (
+                                    <div className="flex justify-start">
+                                        <div className="w-7 h-7 rounded-full bg-violet-600 flex items-center justify-center text-white text-sm mr-2 flex-shrink-0">🤖</div>
+                                        <div className="bg-white border border-slate-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
+                                            <div className="flex gap-1 items-center h-4">
+                                                <div className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{animationDelay:'0ms'}}></div>
+                                                <div className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{animationDelay:'150ms'}}></div>
+                                                <div className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{animationDelay:'300ms'}}></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                                <div ref={chatEndRef} />
+                            </div>
+                            {/* Input */}
+                            <div className="bg-white border-t border-slate-200 px-4 py-3 flex gap-2 flex-shrink-0">
+                                {messages.length > 0 && (
+                                    <button onClick={() => { setMessages([]); localStorage.removeItem(CHAT_KEY); }} className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-400 text-sm transition flex-shrink-0" title="Hapus chat">🗑️</button>
+                                )}
+                                <textarea
+                                    value={question}
+                                    onChange={e => setQuestion(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    rows={1}
+                                    placeholder="Tanya sesuatu... (Enter = kirim)"
+                                    className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-400 bg-slate-50"
+                                    style={{ maxHeight: '100px', overflowY: 'auto' }}
+                                />
+                                <button
+                                    onClick={handleSendQuestion}
+                                    disabled={!question.trim() || isTyping}
+                                    className="w-9 h-9 flex items-center justify-center rounded-xl bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition flex-shrink-0 text-base"
+                                >➤</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* OWNER PANEL TAB */}
+                    {activeTab === 'owner' && isOwner && (
+                        <div className="flex-1 overflow-y-auto px-4 py-4 bg-slate-50">
+                            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-2xl">🧠</span>
+                                    <div>
+                                        <h3 className="font-extrabold text-slate-800">Isi Pengetahuan Zenbot</h3>
+                                        <p className="text-xs text-slate-400">Copy-paste teks dari mana saja → Simpan → Zenbot makin pintar</p>
+                                    </div>
+                                </div>
+                                {/* Stats */}
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div className="bg-violet-50 rounded-xl p-2.5 text-center">
+                                        <div className="font-extrabold text-violet-700 text-lg">{knowledge.length}</div>
+                                        <div className="text-[10px] text-violet-500">Total Chunk</div>
+                                    </div>
+                                    <div className="bg-emerald-50 rounded-xl p-2.5 text-center">
+                                        <div className="font-extrabold text-emerald-700 text-lg">{uniqueLabels.length}</div>
+                                        <div className="text-[10px] text-emerald-500">Sumber</div>
+                                    </div>
+                                    <div className="bg-amber-50 rounded-xl p-2.5 text-center">
+                                        <div className="font-extrabold text-amber-700 text-lg">{(totalChars/1000).toFixed(1)}K</div>
+                                        <div className="text-[10px] text-amber-500">Karakter</div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="text-xs font-bold text-slate-600 mb-1 block">Label / Nama Sumber (opsional)</label>
+                                    <input
+                                        type="text"
+                                        value={saveLabel}
+                                        onChange={e => setSaveLabel(e.target.value)}
+                                        placeholder="cth: Info Produk A, FAQ Pelanggan, SOP Kasir..."
+                                        className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-slate-50"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="text-xs font-bold text-slate-600 mb-1 block">Paste teks di sini ↓</label>
+                                    <textarea
+                                        value={inputText}
+                                        onChange={e => setInputText(e.target.value)}
+                                        rows={10}
+                                        placeholder="Paste teks dari Google, artikel, FAQ, info produk, SOP, apapun...&#10;&#10;Bisa paste berkali-kali, setiap save akan DITAMBAHKAN ke pengetahuan yang sudah ada (tidak menghapus yang lama)."
+                                        className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-slate-50 resize-y font-mono"
+                                    />
+                                    <div className="flex justify-between items-center mt-1">
+                                        <span className="text-xs text-slate-400">{inputText.length} karakter diketik</span>
+                                        {inputText && <button onClick={() => setInputText('')} className="text-xs text-red-400 hover:text-red-600">Bersihkan</button>}
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={handleSaveKnowledge}
+                                    disabled={!inputText.trim()}
+                                    className="w-full py-3 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-extrabold rounded-xl transition text-sm shadow-md"
+                                >
+                                    💾 Simpan & Tambahkan ke Pengetahuan
+                                </button>
+
+                                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-700 space-y-1">
+                                    <p className="font-bold">💡 Tips penggunaan:</p>
+                                    <p>• Bisa paste berulang kali — setiap save <strong>ditambahkan</strong>, bukan menggantikan</p>
+                                    <p>• Semakin banyak teks, semakin pintar jawabannya</p>
+                                    <p>• Semua tersimpan di perangkat ini (offline, tanpa internet)</p>
+                                    <p>• Gunakan label untuk tandai sumber teks</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* KNOWLEDGE LIST TAB */}
+                    {activeTab === 'knowledge' && isOwner && (
+                        <div className="flex-1 overflow-y-auto px-4 py-4 bg-slate-50">
+                            <div className="flex justify-between items-center mb-3">
+                                <h3 className="font-extrabold text-slate-700">📚 Data Pengetahuan</h3>
+                                {knowledge.length > 0 && (
+                                    <button onClick={() => { if(window.confirm('Hapus SEMUA pengetahuan? Tidak bisa dibatalkan!')) handleClearKnowledge(); }} className="text-xs bg-red-50 text-red-500 border border-red-200 px-3 py-1.5 rounded-lg font-bold hover:bg-red-100">🗑️ Hapus Semua</button>
+                                )}
+                            </div>
+                            {knowledge.length === 0 && (
+                                <div className="text-center py-12 text-slate-400">
+                                    <div className="text-4xl mb-2">📭</div>
+                                    <p className="text-sm">Belum ada pengetahuan tersimpan</p>
+                                </div>
+                            )}
+                            <div className="space-y-2">
+                                {knowledge.map((chunk, i) => (
+                                    <div key={i} className="bg-white rounded-xl border border-slate-200 shadow-sm p-3">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-[10px] bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-bold"># {i+1}</span>
+                                                    {chunk.label && <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">{chunk.label}</span>}
+                                                    <span className="text-[10px] text-slate-400">{chunk.text.length} kar</span>
                                                 </div>
-                                            ) : msg.type === 'answer' ? (
-                                                <div>
-                                                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px 18px 18px 18px', padding: '14px 16px', marginBottom: '8px' }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
-                                                            <span style={{ fontSize: '12px', fontWeight: 800, color: '#6366f1', background: '#eef2ff', padding: '2px 8px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                                <i className="fa-solid fa-book" style={{ fontSize: '9px' }}></i> {msg.top.category || 'Informasi'}
-                                                            </span>
-                                                            <ConfidenceBadge score={msg.confidence} />
-                                                        </div>
-                                                        <p style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', margin: '0 0 6px', lineHeight: 1.4 }}>{msg.top.title}</p>
-                                                        <p style={{ fontSize: '13px', color: '#334155', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>{msg.top.content}</p>
-                                                        {msg.top.tags && msg.top.tags.length > 0 && (
-                                                            <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                                                {msg.top.tags.map((tag, ti) => (
-                                                                    <span key={ti} style={{ fontSize: '10px', fontWeight: 700, background: '#ede9fe', color: '#7c3aed', padding: '2px 8px', borderRadius: '20px' }}>#{tag}</span>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    {msg.related && msg.related.length > 0 && (
-                                                        <div style={{ marginBottom: '4px' }}>
-                                                            <p style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 700, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Info terkait:</p>
-                                                            {msg.related.map((rel, ri) => (
-                                                                <div key={ri} style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: '10px', padding: '8px 12px', marginBottom: '4px', cursor: 'pointer' }}
-                                                                    onClick={() => { setMessages(prev => [...prev.slice(0,-1), { ...prev[prev.length-1], top: rel, related: [], confidence: Math.min(100, Math.round((rel.score / 30) * 100)) }]); }}>
-                                                                    <p style={{ fontSize: '12px', fontWeight: 800, color: '#334155', margin: '0 0 2px' }}>{rel.title}</p>
-                                                                    <p style={{ fontSize: '11px', color: '#94a3b8', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rel.content}</p>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <div style={{ background: msg.type === 'empty' ? '#fffbeb' : '#f8fafc', border: `1px solid ${msg.type === 'empty' ? '#fde68a' : '#e2e8f0'}`, borderRadius: '4px 18px 18px 18px', padding: '12px 16px', color: '#64748b', fontSize: '13px', lineHeight: 1.6 }}>
-                                                    {msg.type === 'empty' && <i className="fa-solid fa-database" style={{ marginRight: '6px', color: '#f59e0b' }}></i>}
-                                                    {msg.type === 'notfound' && <i className="fa-solid fa-magnifying-glass" style={{ marginRight: '6px', color: '#94a3b8' }}></i>}
-                                                    {msg.text}
-                                                </div>
-                                            )}
-                                            <div style={{ fontSize: '10px', color: '#cbd5e1', fontWeight: 600, marginTop: '4px', textAlign: msg.role === 'user' ? 'right' : 'left', paddingLeft: msg.role === 'bot' ? '4px' : 0, paddingRight: msg.role === 'user' ? '4px' : 0 }}>{msg.time}</div>
+                                                <p className="text-xs text-slate-600 line-clamp-3" style={{display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical', overflow:'hidden'}}>{chunk.text}</p>
+                                            </div>
+                                            <button onClick={() => handleDeleteChunk(i)} className="flex-shrink-0 text-slate-300 hover:text-red-400 text-base transition">✕</button>
                                         </div>
                                     </div>
                                 ))}
-                                {thinking && (
-                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '16px' }}>
-                                        <div style={{ width: 32, height: 32, borderRadius: '10px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                            <i className="fa-solid fa-robot" style={{ color: '#fff', fontSize: '13px' }}></i>
-                                        </div>
-                                        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px 18px 18px 18px', padding: '12px 16px' }}>
-                                            <span className="typing-dot"></span><span className="typing-dot"></span><span className="typing-dot"></span>
-                                        </div>
-                                    </div>
-                                )}
-                                <div ref={chatEndRef}></div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Input bar (sticky bottom, only in chat mode) */}
-                    {!showWelcome && (
-                        <div style={{ background: '#fff', borderTop: '1px solid #f1f5f9', padding: '12px 16px', flexShrink: 0 }}>
-                            <div style={{ maxWidth: '680px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '10px', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '24px', padding: '8px 16px' }}>
-                                <i className="fa-solid fa-magnifying-glass" style={{ color: '#94a3b8', fontSize: '13px', flexShrink: 0 }}></i>
-                                <input
-                                    value={query}
-                                    onChange={e => setQuery(e.target.value)}
-                                    onKeyDown={handleKey}
-                                    placeholder="Tanya sesuatu lagi…"
-                                    autoFocus
-                                    style={{ flex: 1, border: 'none', outline: 'none', fontSize: '14px', fontWeight: 500, color: '#1e293b', background: 'transparent', fontFamily: 'inherit' }}
-                                />
-                                <button onClick={() => { setMessages([]); setShowWelcome(true); }} title="Mulai baru" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '12px', padding: '2px 4px' }} title="Reset chat">
-                                    <i className="fa-solid fa-arrows-rotate"></i>
-                                </button>
-                                <button onClick={handleSend} disabled={!query.trim()} style={{ width: 32, height: 32, borderRadius: '50%', background: query.trim() ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : '#e2e8f0', border: 'none', color: query.trim() ? '#fff' : '#94a3b8', cursor: query.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s' }}>
-                                    <i className="fa-solid fa-arrow-up" style={{ fontSize: '12px' }}></i>
-                                </button>
                             </div>
                         </div>
                     )}
                 </div>
             );
         };
-        // ── End ZenbotView ──
+        // =================== END ZENBOT VIEW ===================
+
 
                 const App = () => {
             const [inventoryData, setInventoryData] = useState([]);
@@ -15233,7 +15282,7 @@
                 { id: 'rekam_medis', label: 'Rekam Medis',       icon: 'stethoscope',         enabled: isOwner || showMenu('showMenuRekamMedis', settingsData.showMenuRekamMedis), readOnly: !isOwner && !menuOn('enableRekamMedis', settingsData.enableRekamMedis) },
                 { id: 'jadwal_shift', label: 'Jadwal Shift',     icon: 'calendar-days',       enabled: isOwner || showMenu('showMenuJadwalShift', settingsData.showMenuJadwalShift), readOnly: !isOwner && !menuOn('enableJadwalShift', settingsData.enableJadwalShift) },
                 { id: 'transfer_barang', label: 'Transfer Barang', icon: 'right-left',         enabled: isOwner || showMenu('showMenuTransferBarang', settingsData.showMenuTransferBarang), readOnly: !isOwner && !menuOn('enableTransferBarang', settingsData.enableTransferBarang) },
-                { id: 'zenbot',      label: 'Zenbot',            icon: 'robot',               enabled: true, readOnly: false },
+                { id: 'zenbot',      label: 'Zenbot 🤖',          icon: 'robot',               enabled: true, readOnly: false },
                 { id: 'pengguna_akun', label: 'Pengguna Akun',   icon: 'users',               enabled: true, readOnly: false },
                 { id: 'settings',    label: 'Pengaturan',        icon: 'gears',               enabled: true, readOnly: false },
             ];
@@ -15556,7 +15605,7 @@
                         {activeTab === 'catatan' && (<PapanCatatan user={user} readOnly={menuItems.find(m=>m.id==='catatan')?.readOnly} />)}
                         {activeTab === 'jadwal_shift' && (<JadwalShiftView user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='jadwal_shift')?.readOnly} isOwner={isOwner} authSession={authSession} settings={settingsData} />)}
                         {activeTab === 'transfer_barang' && (<TransferBarangView user={user} showToast={showToast} rawInventory={rawInventory} settings={settingsData} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='transfer_barang')?.readOnly} authSession={authSession} />)}
-                        {activeTab === 'zenbot' && (<ZenbotView isOwner={isOwner} />)}
+                        {activeTab === 'zenbot' && (<ZenbotView isOwner={isOwner} showToast={showToast} />)}
                     </main>
                     <ConfirmModal isOpen={deleteModal.show} title="Hapus Barang?" message={`Yakin ingin menghapus permanen "${deleteModal.item?.name}"? Barang ini akan hilang dari SEMUA toko.`} onConfirm={handleDelete} onCancel={() => setDeleteModal({ show: false, item: null })} />
                     <ConfirmModal isOpen={deleteRackModal.show} title="Hapus Rak?" message={`Yakin ingin menghapus rak "${deleteRackModal.rackName}"? Semua barang di rak ini akan menjadi 'No Rack' (-).`} onConfirm={handleConfirmDeleteRack} onCancel={() => setDeleteRackModal({ show: false, rackName: null })} confirmText="Ya, Hapus Rak" />
