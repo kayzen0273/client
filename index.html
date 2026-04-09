@@ -14353,336 +14353,535 @@
 
         // =================== ZENBOT VIEW ===================
         const ZenbotView = ({ isOwner, showToast }) => {
-            const STORAGE_KEY = 'zenbot_knowledge_base';
-            const CHAT_KEY    = 'zenbot_chat_history';
+            const STORAGE_KEY = 'zenbot_kb_v3';
+            const CHAT_KEY    = 'zenbot_chat_v3';
 
-            const loadKnowledge = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; } };
-            const loadChat      = () => { try { return JSON.parse(localStorage.getItem(CHAT_KEY) || '[]'); } catch { return []; } };
+            const loadKB   = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; } };
+            const loadChat = () => { try { return JSON.parse(localStorage.getItem(CHAT_KEY)    || '[]'); } catch { return []; } };
 
-            const [zTab, setZTab]         = React.useState('chat');
-            const [knowledge, setKnowledge] = React.useState(loadKnowledge);
+            const [zTab,      setZTab]      = React.useState('chat');
+            const [knowledge, setKnowledge] = React.useState(loadKB);
             const [inputText, setInputText] = React.useState('');
-            const [question, setQuestion]   = React.useState('');
-            const [messages, setMessages]   = React.useState(loadChat);
-            const [isTyping, setIsTyping]   = React.useState(false);
+            const [question,  setQuestion]  = React.useState('');
+            const [messages,  setMessages]  = React.useState(loadChat);
+            const [isTyping,  setIsTyping]  = React.useState(false);
             const chatEndRef = React.useRef(null);
 
             React.useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isTyping]);
-            React.useEffect(() => { localStorage.setItem(CHAT_KEY, JSON.stringify(messages.slice(-120))); }, [messages]);
+            React.useEffect(() => { localStorage.setItem(CHAT_KEY, JSON.stringify(messages.slice(-150))); }, [messages]);
 
-            // ================================================================
-            // CORE NLP ENGINE — semua berjalan offline, tanpa API
-            // ================================================================
+            // ═══════════════════════════════════════════════════════════
+            //  LAYER 1 — TEXT NORMALIZATION & TOKENIZATION
+            // ═══════════════════════════════════════════════════════════
 
-            // Daftar kata umum (stopwords) Bahasa Indonesia & Inggris
-            const STOPWORDS = new Set(['yang','dan','di','ke','dari','ini','itu','ada','untuk','dengan','adalah','atau','juga','pada','dalam','akan','apa','bagaimana','kenapa','mengapa','kapan','siapa','mana','the','is','are','was','were','in','on','at','to','of','and','or','a','an','it','be','do','does','did','have','has','not','for','with','that','this','can','how','why','what','when','who','where']);
+            // Normalisasi fonetik Indonesia (ejaan campuran, huruf mirip)
+            const phoneticNorm = (w) => w
+                .replace(/ph/g,'f').replace(/ck/g,'k').replace(/tj/g,'c')
+                .replace(/dj/g,'j').replace(/oe/g,'u').replace(/ae/g,'e')
+                .replace(/ai$/g,'ay').replace(/[sz]$/g,'s')
+                .replace(/([aeiou])\1+/g,'$1')   // hilangkan vokal ganda: "baaaaik" → "baik"
+                .replace(/(.)\1+/g,'$1$1');        // maks 2 konsonan sama berurutan
 
-            const tokenize = (text) =>
-                text.toLowerCase()
-                    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-                    .replace(/[^a-z0-9\s]/g, ' ')
-                    .split(/\s+/)
-                    .filter(w => w.length > 1 && !STOPWORDS.has(w));
+            // Koreksi typo umum & singkatan informal Indonesia
+            const TYPO_MAP = {
+                'gmn':'gimana','bgmn':'bagaimana','knp':'kenapa','krn':'karena',
+                'yg':'yang','dg':'dengan','sdh':'sudah','blm':'belum','tdk':'tidak',
+                'gk':'tidak','ga':'tidak','gak':'tidak','engga':'tidak','enggak':'tidak',
+                'bgt':'banget','bngt':'banget','skrg':'sekarang','hrs':'harus',
+                'msh':'masih','jg':'juga','jgn':'jangan','sm':'sama','tp':'tapi',
+                'klo':'kalau','kl':'kalau','klu':'kalau','kalo':'kalau',
+                'utk':'untuk','u':'untuk','tuk':'untuk','buat':'untuk',
+                'aja':'saja','aj':'saja','doang':'saja','thx':'terima kasih',
+                'makasih':'terima kasih','makasi':'terima kasih','tq':'terima kasih',
+                'gimana':'bagaimana','brp':'berapa','kapn':'kapan','spt':'seperti',
+                'dll':'dan lain lain','dsb':'dan sebagainya','tsb':'tersebut',
+                'dr':'dari','pd':'pada','dgn':'dengan','ttg':'tentang',
+                'harga':'harga','hrg':'harga','hrga':'harga',
+                'produk':'produk','prduk':'produk','pruduk':'produk',
+                'stok':'stok','stock':'stok','stoc':'stok','stk':'stok',
+                'info':'informasi','inpo':'informasi','infomasi':'informasi',
+            };
 
-            // Stemming ringan Bahasa Indonesia (prefix & suffix stripping)
+            const STOPWORDS = new Set([
+                'yang','dan','di','ke','dari','ini','itu','ada','untuk','dengan',
+                'adalah','atau','juga','pada','dalam','akan','sudah','bisa','dapat',
+                'kami','kamu','anda','saya','dia','mereka','kita','kita','itu',
+                'the','is','are','was','were','in','on','at','to','of','and',
+                'or','a','an','it','be','do','does','did','have','has','not',
+                'for','with','that','this','can','by','as','we','they','he','she',
+            ]);
+
+            const normalize = (text) => text
+                .toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9\s]/g, ' ');
+
+            const tokenize = (text) => {
+                const words = normalize(text).split(/\s+/).filter(w => w.length > 1);
+                return words.map(w => {
+                    const corrected = TYPO_MAP[w] || w;
+                    return corrected.includes(' ') ? corrected.split(' ') : corrected;
+                }).flat().filter(w => w.length > 1 && !STOPWORDS.has(w));
+            };
+
+            // Stemming Bahasa Indonesia (affix stripping)
             const stem = (word) => {
-                let w = word;
-                const prefixes = ['meng','men','mem','me','peng','pen','pem','pe','ber','ter','di','ke','se'];
-                const suffixes = ['kan','an','i','nya','lah','kah','tah','pun'];
+                let w = phoneticNorm(word);
+                if (w.length <= 3) return w;
+                const prefixes = ['menge','memper','diper','meny','men','mem','me','peny','pen','pem','pe','ber','ter','ke','se','di','ku','mu'];
+                const suffixes = ['kanlah','ilah','kan','lah','kah','tah','pun','nya','an','i'];
                 for (const p of prefixes) { if (w.startsWith(p) && w.length > p.length + 2) { w = w.slice(p.length); break; } }
                 for (const s of suffixes) { if (w.endsWith(s) && w.length > s.length + 2) { w = w.slice(0, -s.length); break; } }
                 return w;
             };
 
-            const stemTokenize = (text) => tokenize(text).map(stem);
-
-            // TF-IDF sederhana: hitung IDF dari seluruh knowledge
-            const buildIDF = (corpus) => {
-                const idf = {};
-                const N = corpus.length || 1;
-                corpus.forEach(doc => {
-                    const seen = new Set(stemTokenize(doc.text));
-                    seen.forEach(t => { idf[t] = (idf[t] || 0) + 1; });
-                });
-                Object.keys(idf).forEach(t => { idf[t] = Math.log(N / idf[t]) + 1; });
-                return idf;
+            // Kamus sinonim & istilah terkait (auto-expand query)
+            const SYNONYMS = {
+                'harga':['tarif','biaya','ongkos','cost','price','bandrol','nilai'],
+                'produk':['barang','item','benda','artikel','dagangan','komoditas'],
+                'beli':['purchase','order','pesan','ambil','dapatkan'],
+                'jual':['sell','pasarkan','tawarkan','distribusi'],
+                'stok':['persediaan','stock','inventory','sedia','ketersediaan'],
+                'cara':['metode','prosedur','langkah','tutorial','panduan','bagaimana'],
+                'apa':['apakah','definisi','pengertian','arti','maksud'],
+                'bagus':['baik','berkualitas','unggul','terbaik','premium','unggulan'],
+                'murah':['terjangkau','ekonomis','hemat','discount','diskon'],
+                'manfaat':['kegunaan','fungsi','benefit','keuntungan','kelebihan'],
+                'masalah':['problem','kendala','isu','hambatan','gangguan'],
+                'kontak':['hubungi','telepon','wa','whatsapp','email','alamat'],
+                'garansi':['warranty','jaminan','klaim'],
+                'pengiriman':['kirim','delivery','ekspedisi','ongkir','shipping'],
             };
 
-            const scoreSentence = (sentence, qStems, idf) => {
-                const sStems = stemTokenize(sentence);
-                if (sStems.length === 0) return 0;
-                const tf = {};
-                sStems.forEach(t => { tf[t] = (tf[t] || 0) + 1; });
-                let score = 0;
-                qStems.forEach(qt => {
-                    if (tf[qt]) {
-                        const tfScore = tf[qt] / sStems.length;
-                        const idfScore = idf[qt] || 1;
-                        score += tfScore * idfScore;
-                    }
-                    // partial stem match
-                    sStems.forEach(st => {
-                        if (st !== qt && (st.includes(qt) || qt.includes(st)) && Math.min(st.length, qt.length) > 3) {
-                            score += 0.15 * (idf[st] || 1);
+            const expandQuery = (tokens) => {
+                const expanded = new Set(tokens);
+                tokens.forEach(t => {
+                    const st = stem(t);
+                    expanded.add(st);
+                    Object.entries(SYNONYMS).forEach(([key, vals]) => {
+                        if (key === t || key === st || vals.includes(t) || vals.includes(st)) {
+                            expanded.add(key);
+                            vals.forEach(v => expanded.add(v));
                         }
                     });
                 });
-                // Position bonus: kalimat lebih awal dalam chunk dapat bonus kecil
-                return score;
+                return [...expanded];
             };
 
-            // Pecah teks menjadi kalimat
-            const splitSentences = (text) => {
-                return text
-                    .replace(/([.!?؟।])\s+/g, '$1\n')
-                    .split('\n')
-                    .map(s => s.trim())
-                    .filter(s => s.length > 15);
+            // ═══════════════════════════════════════════════════════════
+            //  LAYER 2 — FUZZY MATCHING (Levenshtein Distance)
+            // ═══════════════════════════════════════════════════════════
+
+            // Edit distance — batas toleransi typo
+            const levenshtein = (a, b) => {
+                if (a === b) return 0;
+                if (Math.abs(a.length - b.length) > 3) return 99;
+                const m = a.length, n = b.length;
+                const dp = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+                for (let j = 1; j <= n; j++) dp[0][j] = j;
+                for (let i = 1; i <= m; i++) {
+                    for (let j = 1; j <= n; j++) {
+                        dp[i][j] = a[i-1] === b[j-1]
+                            ? dp[i-1][j-1]
+                            : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+                    }
+                }
+                return dp[m][n];
             };
 
-            // Deteksi tipe pertanyaan
-            const detectQuestionType = (q) => {
-                const ql = q.toLowerCase();
-                if (/^(apa|apakah|apa itu|apa yang|apa saja|apa perbedaan)/i.test(ql)) return 'definition';
-                if (/^(bagaimana|gimana|caranya|langkah|cara)/i.test(ql)) return 'howto';
-                if (/^(kenapa|mengapa|why|alasan)/i.test(ql)) return 'reason';
-                if (/^(kapan|sejak kapan|mulai kapan)/i.test(ql)) return 'time';
-                if (/^(siapa|who)/i.test(ql)) return 'person';
-                if (/^(berapa|berapa banyak|harga|biaya|tarif)/i.test(ql)) return 'quantity';
-                if (/^(dimana|di mana|where|lokasi|alamat)/i.test(ql)) return 'location';
-                if (/(rekomendasi|saran|sebaiknya|boleh|bisa)/i.test(ql)) return 'recommendation';
+            // Toleransi typo adaptif berdasarkan panjang kata
+            const maxDist = (len) => len <= 4 ? 0 : len <= 6 ? 1 : len <= 9 ? 2 : 3;
+
+            // Cek apakah dua token "cocok" (exact / stem / fuzzy)
+            const tokensMatch = (qt, dt) => {
+                if (qt === dt) return 1.0;
+                const qst = stem(qt), dst = stem(dt);
+                if (qst === dst) return 0.9;
+                if (qst === dt || qt === dst) return 0.85;
+                const d = levenshtein(qt, dt);
+                if (d <= maxDist(qt.length)) return Math.max(0.3, 0.8 - d * 0.2);
+                // Partial containment (satu mengandung yang lain, minimal 4 char)
+                if (qt.length >= 4 && dt.includes(qt)) return 0.6;
+                if (dt.length >= 4 && qt.includes(dt)) return 0.55;
+                // Stem fuzzy
+                const dStem = levenshtein(qst, dst);
+                if (dStem <= maxDist(qst.length)) return Math.max(0.2, 0.65 - dStem * 0.15);
+                return 0;
+            };
+
+            // ═══════════════════════════════════════════════════════════
+            //  LAYER 3 — BIGRAM & TF-IDF SCORING
+            // ═══════════════════════════════════════════════════════════
+
+            const bigrams = (tokens) => {
+                const bg = [];
+                for (let i = 0; i < tokens.length - 1; i++) bg.push(tokens[i] + '_' + tokens[i+1]);
+                return bg;
+            };
+
+            // Build IDF cache dari seluruh corpus
+            const buildIDF = React.useMemo(() => {
+                if (knowledge.length === 0) return {};
+                const N = knowledge.length;
+                const df = {};
+                knowledge.forEach(doc => {
+                    const toks = [...new Set(tokenize(doc.text).map(stem))];
+                    toks.forEach(t => { df[t] = (df[t] || 0) + 1; });
+                });
+                const idf = {};
+                Object.keys(df).forEach(t => { idf[t] = Math.log((N + 1) / (df[t] + 1)) + 1; });
+                return idf;
+            }, [knowledge]);
+
+            const scoreSentence = (sentence, qTokens, qBigrams, idf) => {
+                const sTokens = tokenize(sentence).map(stem);
+                const sBigrams = bigrams(sTokens);
+                if (sTokens.length === 0) return 0;
+
+                // TF-IDF token score (fuzzy)
+                let tokenScore = 0;
+                const tfMap = {};
+                sTokens.forEach(t => { tfMap[t] = (tfMap[t] || 0) + 1; });
+
+                qTokens.forEach(qt => {
+                    let bestMatch = 0;
+                    Object.keys(tfMap).forEach(dt => {
+                        const m = tokensMatch(qt, dt);
+                        if (m > bestMatch) bestMatch = m;
+                    });
+                    if (bestMatch > 0) {
+                        const tf = (tfMap[stem(qt)] || 1) / sTokens.length;
+                        const idfW = idf[stem(qt)] || 1.5;
+                        tokenScore += bestMatch * (1 + Math.log(tf * sTokens.length + 1)) * idfW;
+                    }
+                });
+
+                // Bigram bonus (frasa yang cocok)
+                let bigramScore = 0;
+                qBigrams.forEach(qbg => {
+                    if (sBigrams.some(sbg => sbg === qbg || levenshtein(qbg, sbg) <= 2)) bigramScore += 1.5;
+                });
+
+                // Panjang kalimat: idealnya 10-50 kata
+                const lenPenalty = sTokens.length < 4 ? 0.5 : sTokens.length > 80 ? 0.8 : 1.0;
+
+                return (tokenScore + bigramScore) * lenPenalty;
+            };
+
+            // ═══════════════════════════════════════════════════════════
+            //  LAYER 4 — CONTEXT MEMORY (follow-up awareness)
+            // ═══════════════════════════════════════════════════════════
+
+            // Ekstrak topik dari pesan sebelumnya untuk pertanyaan lanjutan
+            const getContextTokens = (msgs) => {
+                const recent = msgs.slice(-4).filter(m => m.role === 'user').map(m => m.text).join(' ');
+                return tokenize(recent).map(stem).slice(0, 10);
+            };
+
+            // ═══════════════════════════════════════════════════════════
+            //  LAYER 5 — INTENT & QUESTION ANALYSIS
+            // ═══════════════════════════════════════════════════════════
+
+            const analyzeIntent = (q) => {
+                const ql = q.toLowerCase().trim();
+                const patterns = [
+                    { type:'greeting',    re:/^(halo|hai|hi|hei|selamat|assalam|pagi|siang|sore|malam|hola|hey)\b/ },
+                    { type:'thanks',      re:/^(terima kasih|makasih|makasi|thx|thanks|tq)\b/ },
+                    { type:'definition',  re:/^(apa|apakah|apa itu|apa yang|pengertian|definisi|arti|maksud)\b/ },
+                    { type:'howto',       re:/^(bagaimana|gimana|caranya|cara|langkah|tutorial|panduan|prosedur)\b/ },
+                    { type:'reason',      re:/^(kenapa|mengapa|why|alasan|penyebab|sebab)\b/ },
+                    { type:'quantity',    re:/^(berapa|berapa banyak|harga|biaya|tarif|ongkos|harganya)\b/ },
+                    { type:'time',        re:/^(kapan|sejak|mulai|sampai|lama|durasi)\b/ },
+                    { type:'location',    re:/^(dimana|di mana|where|lokasi|alamat|tempat)\b/ },
+                    { type:'comparison',  re:/(dibanding|versus|vs|bedanya|perbedaan|lebih baik|mana yang)\b/ },
+                    { type:'recommend',   re:/(rekomendasi|sarankan|sebaiknya|saran|pilih yang|mana yang bagus)\b/ },
+                    { type:'yesno',       re:/^(apakah|apa ada|ada gak|ada tidak|ada nggak|boleh|bisa|mungkin)\b/ },
+                    { type:'list',        re:/(sebutkan|sebutkan|daftar|list|apa saja|macam|jenis)\b/ },
+                    { type:'general',     re:/./ },
+                ];
+                for (const p of patterns) { if (p.re.test(ql)) return p.type; }
                 return 'general';
             };
 
-            // Pilih kalimat pembuka yang alami berdasarkan tipe pertanyaan
-            const getIntro = (type, topicHint) => {
-                const hint = topicHint ? ` mengenai "${topicHint}"` : '';
-                const intros = {
-                    definition:     [`Jadi${hint}, `, `Secara singkat${hint}, `, `Kalau kamu tanya soal itu, `],
-                    howto:          [`Caranya${hint} begini: `, `Langkah-langkahnya${hint}, `, `Untuk melakukan itu, `],
-                    reason:         [`Alasannya${hint} karena `, `Hal itu terjadi karena `, `Secara umum, `],
-                    time:           [`Waktu yang tepat`, `Biasanya`, `Umumnya`],
-                    person:         [`Berdasarkan info yang ada, `, `Menurut data saya, `],
-                    quantity:       [`Untuk soal angka atau harga${hint}, `, `Informasinya: `],
-                    location:       [`Lokasinya atau tempat${hint} `, `Kalau soal tempat, `],
-                    recommendation: [`Rekomendasi saya berdasarkan info yang ada: `, `Sebaiknya `],
-                    general:        [`Berdasarkan informasi yang saya punya, `, `Terkait hal itu, `, `Baiklah, `],
-                };
-                const list = intros[type] || intros.general;
-                return list[Math.floor(Math.random() * list.length)];
+            // Ekstrak kata kunci topik utama (bukan stopword, bukan terlalu pendek)
+            const extractMainTopic = (tokens) =>
+                tokens.filter(t => t.length > 3 && !STOPWORDS.has(t)).slice(0, 3).join(' ');
+
+            // ═══════════════════════════════════════════════════════════
+            //  LAYER 6 — NATURAL LANGUAGE GENERATOR
+            // ═══════════════════════════════════════════════════════════
+
+            const rand = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+            const GREETINGS_RESP = [
+                'Halo! Ada yang bisa saya bantu? Silakan tanyakan apa saja 😊',
+                'Hai! Saya siap membantu. Mau tanya apa hari ini?',
+                'Selamat datang! Ketikkan pertanyaanmu, saya akan coba jawab.',
+                'Hei! Senang bisa chat dengan kamu. Ada info apa yang kamu butuhkan?',
+            ];
+            const THANKS_RESP = [
+                'Sama-sama! Kalau masih ada pertanyaan lain, saya siap membantu 😊',
+                'Dengan senang hati! Jangan sungkan kalau mau tanya lagi.',
+                'No problem! Ada lagi yang bisa saya bantu?',
+            ];
+            const NOT_FOUND_RESP = (topic) => rand([
+                `Hmm, saya sudah cari di semua data yang ada tapi belum ketemu info tentang "${topic}" ini. Coba tanya dengan kata berbeda, atau minta owner tambahkan infonya ya.`,
+                `Untuk pertanyaan soal "${topic}", saya belum punya datanya nih. Mungkin owner bisa tambahkan informasi itu supaya saya bisa bantu lebih baik.`,
+                `Maaf, info mengenai "${topic}" belum ada di pengetahuan saya. Kalau owner sudah update datanya, saya pasti bisa jawab!`,
+                `Saya cari-cari tapi tidak menemukan yang cocok dengan "${topic}". Bisa dicoba dengan kata kunci lain?`,
+            ]);
+            const EMPTY_RESP = [
+                'Otak saya masih kosong nih! Minta owner isi pengetahuan dulu di Panel Owner, baru saya bisa bantu jawab.',
+                'Belum ada info apapun yang bisa saya akses. Owner perlu tambahkan data dulu ya.',
+                'Saya belum punya pengetahuan apapun saat ini. Setelah owner mengisi data, saya siap bantu!',
+            ];
+
+            const INTROS = {
+                definition:   ['Jadi ', 'Secara singkat, ', 'Kalau berbicara soal itu, ', 'Menurut info yang saya punya, '],
+                howto:        ['Caranya begini: ', 'Untuk melakukan itu, ', 'Langkah yang bisa diikuti: ', 'Prosesnya seperti ini, '],
+                reason:       ['Alasannya adalah ', 'Hal ini terjadi karena ', 'Penyebabnya, ', 'Secara umum karena '],
+                quantity:     ['Dari data yang ada, ', 'Untuk soal angka ini, ', 'Informasinya: ', 'Detailnya, '],
+                time:         ['Waktu yang tepat adalah ', 'Biasanya ', 'Umumnya ', 'Dari info yang ada, '],
+                location:     ['Lokasinya ', 'Tempat yang dimaksud ', 'Kalau soal tempat, ', 'Berdasarkan info, '],
+                comparison:   ['Kalau dibandingkan, ', 'Perbedaannya yaitu ', 'Secara perbandingan, '],
+                recommend:    ['Rekomendasi berdasarkan info yang ada: ', 'Sebaiknya ', 'Pilihan terbaik adalah '],
+                yesno:        ['Berdasarkan informasi yang saya punya, ', 'Dari data yang ada, '],
+                list:         ['Berikut ini yang bisa saya temukan: ', 'Berdasarkan data saya, ada beberapa hal: ', 'Dari info yang tersedia: '],
+                general:      ['Terkait hal itu, ', 'Dari informasi yang saya punya, ', 'Baiklah, ', 'Berdasarkan yang saya ketahui, '],
             };
 
-            // Fungsi utama: sintesis jawaban natural dari knowledge base
-            const synthesizeAnswer = (q) => {
-                if (knowledge.length === 0) {
-                    const empties = [
-                        'Wah, otak saya masih kosong nih! Minta owner isi dulu pengetahuannya biar saya bisa bantu jawab.',
-                        'Belum ada info yang bisa saya akses. Owner perlu tambahkan dulu data di Panel Owner ya.',
-                        'Saya belum punya pengetahuan apapun. Kalau owner sudah isi, saya siap bantu!'
-                    ];
-                    return empties[Math.floor(Math.random() * empties.length)];
-                }
+            const CONNECTORS = [
+                'Selain itu, ', 'Perlu ditambahkan, ', 'Yang juga penting, ',
+                'Lebih lanjut, ', 'Sebagai tambahan, ', 'Di samping itu, ',
+                'Info lainnya, ', 'Yang menarik juga, ',
+            ];
 
-                const qTokens  = tokenize(q);
-                const qStems   = qTokens.map(stem);
+            const CLOSINGS = [
+                '\n\nAda hal lain yang ingin kamu tanyakan? 😊',
+                '\n\nSemoga membantu! Kalau ada pertanyaan lain, silakan.',
+                '\n\nKalau butuh penjelasan lebih detail, bisa tanya lagi ya.',
+                '',
+                '',
+                '\n\nApakah ada yang masih kurang jelas?',
+            ];
+
+            // ═══════════════════════════════════════════════════════════
+            //  LAYER 7 — MAIN SYNTHESIZER
+            // ═══════════════════════════════════════════════════════════
+
+            const splitSentences = (text) =>
+                text.replace(/([.!?؟।])\s+/g,'$1|||').split('|||')
+                    .map(s => s.trim()).filter(s => s.length > 12 && /\w/.test(s));
+
+            const synthesize = (q, msgHistory) => {
+                // Handle special intents first
+                const intent = analyzeIntent(q);
+                if (intent === 'greeting') return rand(GREETINGS_RESP);
+                if (intent === 'thanks')   return rand(THANKS_RESP);
+
+                if (knowledge.length === 0) return rand(EMPTY_RESP);
+
+                // Tokenize + expand query (dengan context dari pesan sebelumnya)
+                const baseTokens  = tokenize(q);
+                const ctxTokens   = getContextTokens(msgHistory);
+                const allTokens   = [...new Set([...baseTokens, ...ctxTokens.slice(0,3)])];
+                const expanded    = expandQuery(allTokens);
+                const qStems      = [...new Set(expanded.map(stem))];
+                const qBigrams    = bigrams(baseTokens.map(stem));
+
                 if (qStems.length === 0) {
-                    return 'Hmm, pertanyaannya kurang jelas nih. Coba tulis lebih lengkap ya, supaya saya bisa bantu!';
+                    return 'Pertanyaannya kurang jelas nih. Coba tulis lebih lengkap supaya saya bisa bantu ya!';
                 }
 
-                const idf = buildIDF(knowledge);
-                const qType = detectQuestionType(q);
-
-                // Kumpulkan SEMUA kalimat dari seluruh knowledge dengan skornya
-                const allSentences = [];
+                // Score semua kalimat dari seluruh knowledge base
+                const allSents = [];
                 knowledge.forEach((chunk, ci) => {
                     const sents = splitSentences(chunk.text);
                     sents.forEach((sent, si) => {
-                        const score = scoreSentence(sent, qStems, idf) * (1 - si * 0.02); // sedikit turun per posisi
-                        if (score > 0) allSentences.push({ sent, score, ci });
+                        const score = scoreSentence(sent, qStems, qBigrams, buildIDF);
+                        const posBonus = 1 - (si / Math.max(sents.length, 10)) * 0.1;
+                        if (score > 0) allSents.push({ sent, score: score * posBonus, ci, si });
                     });
                 });
 
-                allSentences.sort((a, b) => b.score - a.score);
-                const topScore = allSentences[0]?.score || 0;
+                allSents.sort((a,b) => b.score - a.score);
+                const topScore = allSents[0]?.score || 0;
 
-                if (topScore < 0.05) {
-                    const notFounds = [
-                        `Saya cari-cari di semua data yang ada, tapi tidak ketemu info tentang "${qTokens.slice(0,3).join(' ')}" itu. Coba tanya dengan kata lain, atau minta owner tambahkan infonya.`,
-                        `Hmm, untuk pertanyaan tentang "${qTokens[0] || q}" ini, saya belum punya datanya. Owner bisa tambahkan info tersebut supaya saya bisa jawab.`,
-                        `Maaf, info tentang itu belum ada di pengetahuan saya. Kalau owner bisa tambahkan nanti, saya pasti bisa bantu jawab!`
-                    ];
-                    return notFounds[Math.floor(Math.random() * notFounds.length)];
+                if (topScore < 0.08) {
+                    const topic = extractMainTopic(baseTokens) || q.slice(0,30);
+                    return NOT_FOUND_RESP(topic);
                 }
 
-                // Ambil kalimat terbaik, hindari duplikat konten
-                const threshold = topScore * 0.35;
-                const selected = [];
-                const seenContent = new Set();
-                for (const item of allSentences) {
-                    if (item.score < threshold) break;
-                    const key = item.sent.toLowerCase().replace(/\s+/g, ' ').slice(0, 60);
-                    if (!seenContent.has(key)) {
-                        seenContent.add(key);
-                        selected.push(item.sent.trim());
-                        if (selected.length >= 4) break;
+                // Pilih kalimat terbaik — hindari duplikat & terlalu mirip
+                const threshold = topScore * 0.3;
+                const picked = [];
+                const seenKeys = new Set();
+                for (const item of allSents) {
+                    if (item.score < threshold || picked.length >= 5) break;
+                    // Dedup: bandingkan 50 char pertama
+                    const key = item.sent.toLowerCase().replace(/\s+/g,' ').slice(0,55);
+                    const isDup = [...seenKeys].some(k => levenshtein(k, key) < 15);
+                    if (!isDup) {
+                        seenKeys.add(key);
+                        picked.push(item.sent.trim());
                     }
                 }
 
-                // Ekstrak topik utama dari pertanyaan untuk intro
-                const mainTopic = qTokens.filter(t => !STOPWORDS.has(t)).slice(0, 2).join(' ') || '';
-                const intro = getIntro(qType, mainTopic.length > 2 ? mainTopic : '');
+                if (picked.length === 0) return NOT_FOUND_RESP(extractMainTopic(baseTokens) || q.slice(0,30));
 
-                // Susun jawaban: intro + isi utama + penutup kontekstual
+                // Susun jawaban natural
+                const intro = rand(INTROS[intent] || INTROS.general);
                 let body = '';
-                if (selected.length === 1) {
-                    body = selected[0];
+                if (picked.length === 1) {
+                    body = picked[0];
                 } else {
-                    // Gabungkan kalimat dengan konektor alami
-                    const connectors = ['Selain itu, ', 'Perlu diketahui juga, ', 'Tambahan info, ', 'Yang penting juga, '];
-                    body = selected[0];
-                    for (let i = 1; i < selected.length; i++) {
-                        const conn = connectors[(i - 1) % connectors.length];
-                        body += '\n\n' + conn + selected[i].charAt(0).toLowerCase() + selected[i].slice(1);
+                    // Kalimat pertama langsung, sisanya pakai konektor
+                    body = picked[0];
+                    const usedConn = new Set();
+                    for (let i = 1; i < picked.length; i++) {
+                        let conn;
+                        do { conn = rand(CONNECTORS); } while (usedConn.has(conn) && usedConn.size < CONNECTORS.length);
+                        usedConn.add(conn);
+                        const frag = picked[i];
+                        // Huruf kecil di awal fragmen jika disambung
+                        body += '\n\n' + conn + frag.charAt(0).toLowerCase() + frag.slice(1);
                     }
                 }
 
-                // Bersihkan body dari karakter aneh
-                body = body.replace(/\s+/g, ' ').trim();
+                // Pastikan awalan kalimat pertama tidak duplikat dengan intro
+                const firstWord = body.split(/\s+/)[0].toLowerCase();
+                const introEnd  = intro.trim().toLowerCase().split(/\s+/).slice(-1)[0];
+                if (firstWord === introEnd) body = body.slice(firstWord.length).trimStart();
 
-                // Penutup variasi
-                const closings = [
-                    '\n\nAda hal lain yang ingin kamu tanyakan?',
-                    '\n\nSemoga membantu! Ada pertanyaan lain?',
-                    '',
-                    '\n\nKalau butuh info lebih detail, bisa tanya lagi ya.',
-                    '',
-                ];
-                const closing = topScore > 0.5 ? closings[Math.floor(Math.random() * closings.length)] : '';
-
+                // Closing (tidak selalu muncul)
+                const closing = topScore > 0.4 ? rand(CLOSINGS) : '';
                 return intro + body + closing;
             };
 
-            // ================================================================
-            // KNOWLEDGE MANAGEMENT
-            // ================================================================
+            // ═══════════════════════════════════════════════════════════
+            //  KNOWLEDGE MANAGEMENT
+            // ═══════════════════════════════════════════════════════════
 
             const splitToChunks = (text) => {
-                const paras = text.split(/\n{2,}|\n(?=[A-Z•\-\d])/).map(p => p.trim()).filter(p => p.length > 25);
+                const paras = text.split(/\n{2,}|\n(?=[•\-\d]|\p{Lu})/u)
+                    .map(p => p.trim()).filter(p => p.length > 25);
                 const chunks = [];
                 paras.forEach(para => {
-                    if (para.length <= 700) { chunks.push(para); }
-                    else {
-                        const sents = splitSentences(para);
-                        let group = '';
-                        sents.forEach(s => {
-                            if ((group + ' ' + s).length < 600) group += (group ? ' ' : '') + s;
-                            else { if (group) chunks.push(group.trim()); group = s; }
-                        });
-                        if (group.trim()) chunks.push(group.trim());
-                    }
+                    if (para.length <= 700) { chunks.push(para); return; }
+                    const sents = splitSentences(para);
+                    let group = '';
+                    sents.forEach(s => {
+                        if ((group + ' ' + s).length < 600) group += (group ? ' ' : '') + s;
+                        else { if (group) chunks.push(group.trim()); group = s; }
+                    });
+                    if (group.trim()) chunks.push(group.trim());
                 });
-                return chunks.filter((c, i, arr) => arr.indexOf(c) === i); // deduplicate
+                // Deduplikasi chunk
+                return chunks.filter((c, i, arr) => arr.findIndex(x => x.slice(0,60) === c.slice(0,60)) === i);
             };
 
-            const handleSaveKnowledge = () => {
+            const handleSave = () => {
                 const text = inputText.trim();
-                if (!text) { showToast('Teks kosong, tidak ada yang disimpan', 'error'); return; }
+                if (!text) { showToast('Teks kosong', 'error'); return; }
                 const newChunks = splitToChunks(text);
-                const updated = [...knowledge, ...newChunks.map(c => ({ text: c, savedAt: new Date().toISOString() }))];
+                const updated = [...knowledge, ...newChunks.map(c => ({ text: c, at: Date.now() }))];
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
                 setKnowledge(updated);
                 setInputText('');
-                showToast(`✅ ${newChunks.length} paragraf tersimpan! Total: ${updated.length} data`, 'success');
+                showToast(`✅ +${newChunks.length} paragraf tersimpan · Total: ${updated.length}`, 'success');
             };
 
-            const handleDeleteChunk = (idx) => {
-                const updated = knowledge.filter((_, i) => i !== idx);
+            const handleDelChunk = (idx) => {
+                const updated = knowledge.filter((_,i) => i !== idx);
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
                 setKnowledge(updated);
                 showToast('Data dihapus', 'info');
             };
 
-            const handleClearKnowledge = () => {
+            const handleClearAll = () => {
                 localStorage.removeItem(STORAGE_KEY);
                 setKnowledge([]);
                 showToast('Semua pengetahuan dihapus', 'info');
             };
 
-            // ================================================================
-            // CHAT HANDLER
-            // ================================================================
+            // ═══════════════════════════════════════════════════════════
+            //  CHAT HANDLER
+            // ═══════════════════════════════════════════════════════════
 
-            const handleSendQuestion = () => {
+            const handleSend = () => {
                 const q = question.trim();
                 if (!q || isTyping) return;
-                const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-                setMessages(prev => [...prev, { role: 'user', text: q, time: now }]);
+                const now = new Date().toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
+                const newMsgs = [...messages, { role:'user', text:q, time:now }];
+                setMessages(newMsgs);
                 setQuestion('');
                 setIsTyping(true);
-                // Simulasi "berpikir" (sedikit delay biar natural)
-                const thinkTime = 500 + Math.min(q.length * 15, 1200);
+                const delay = 400 + Math.min(q.length * 18, 1400);
                 setTimeout(() => {
-                    const answer = synthesizeAnswer(q);
-                    const nowBot = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-                    setMessages(prev => [...prev, { role: 'bot', text: answer, time: nowBot }]);
+                    const answer = synthesize(q, newMsgs);
+                    const t = new Date().toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
+                    setMessages(prev => [...prev, { role:'bot', text:answer, time:t }]);
                     setIsTyping(false);
-                }, thinkTime);
+                }, delay);
             };
 
-            const handleKeyDown = (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendQuestion(); }
-            };
+            const handleKey = (e) => { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
 
-            const totalChars = knowledge.reduce((s, c) => s + c.text.length, 0);
-
-            // Suggestion chips dinamis dari topik knowledge
-            const getSuggestions = () => {
+            // Chip saran dinamis dari knowledge
+            const suggestions = React.useMemo(() => {
                 if (knowledge.length === 0) return [];
-                const all = knowledge.map(c => c.text).join(' ');
-                const tokens = tokenize(all).map(stem);
                 const freq = {};
-                tokens.forEach(t => { if (t.length > 3) freq[t] = (freq[t] || 0) + 1; });
-                return Object.entries(freq).sort((a,b) => b[1]-a[1]).slice(0, 5).map(([w]) => w);
-            };
+                knowledge.forEach(c => tokenize(c.text).forEach(t => {
+                    if (t.length > 4 && !STOPWORDS.has(t)) freq[t] = (freq[t]||0)+1;
+                }));
+                return Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([w])=>w);
+            }, [knowledge]);
 
+            const totalChars = knowledge.reduce((s,c) => s + c.text.length, 0);
+
+            // ═══════════════════════════════════════════════════════════
+            //  RENDER
+            // ═══════════════════════════════════════════════════════════
             return (
                 <div className="flex flex-col h-full max-w-2xl mx-auto w-full">
-                    {/* ── HEADER ── */}
+                    {/* Header */}
                     <div className="bg-gradient-to-r from-violet-600 to-purple-700 text-white px-5 py-4 flex-shrink-0 shadow-lg" style={{borderRadius:'0 0 1.25rem 1.25rem'}}>
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-xl flex-shrink-0">🤖</div>
-                            <div className="min-w-0">
-                                <h1 className="font-extrabold text-lg leading-tight">Zenbot</h1>
-                                <p className="text-violet-200 text-[11px] truncate">{knowledge.length} data · {(totalChars/1000).toFixed(1)}K karakter · Offline</p>
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                    <h1 className="font-extrabold text-lg leading-tight">Zenbot</h1>
+                                    <span className="text-[9px] bg-white/20 px-2 py-0.5 rounded-full font-bold tracking-wide">AI v3</span>
+                                </div>
+                                <p className="text-violet-200 text-[11px] truncate">{knowledge.length} paragraf · {(totalChars/1000).toFixed(1)}K karakter · Offline · Fuzzy AI</p>
                             </div>
-                            <div className="ml-auto flex items-center gap-1.5 flex-shrink-0">
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
                                 <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
                                 <span className="text-xs text-violet-200">Aktif</span>
                             </div>
                         </div>
                         <div className="flex gap-2 mt-3">
-                            {['chat','owner','data'].map((t, i) => {
+                            {[['chat','💬 Chat'],['owner','🧠 Panel Owner'],['data',`📚 Data (${knowledge.length})`]].map(([t,label]) => {
                                 if (!isOwner && t !== 'chat') return null;
-                                const labels = { chat: '💬 Chat', owner: '🧠 Panel Owner', data: `📚 Data (${knowledge.length})` };
                                 return (
                                     <button key={t} onClick={() => setZTab(t)}
                                         className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${zTab===t ? 'bg-white text-violet-700 shadow' : 'bg-white/10 text-white hover:bg-white/20'}`}>
-                                        {labels[t]}
+                                        {label}
                                     </button>
                                 );
                             })}
                         </div>
                     </div>
 
-                    {/* ── CHAT TAB ── */}
+                    {/* ── CHAT ── */}
                     {zTab === 'chat' && (
                         <div className="flex flex-col flex-1 min-h-0">
                             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-slate-50">
                                 {messages.length === 0 && (
                                     <div className="text-center py-10 px-4">
                                         <div className="text-5xl mb-3">🤖</div>
-                                        <p className="font-extrabold text-slate-700 text-base">Halo! Saya Zenbot</p>
-                                        <p className="text-slate-400 text-sm mt-1 leading-relaxed">Tanya apa saja — saya akan menjawab<br/>dengan bahasa sendiri, bukan copy-paste.</p>
+                                        <p className="font-extrabold text-slate-700 text-base">Halo! Saya Zenbot AI</p>
+                                        <p className="text-slate-400 text-sm mt-1 leading-relaxed">Tanya apa saja — saya mengerti typo,<br/>singkatan, dan bahasa santai sekalipun.</p>
                                         {knowledge.length === 0 ? (
                                             <div className="mt-5 bg-amber-50 border border-amber-200 rounded-2xl p-3 text-xs text-amber-700 max-w-xs mx-auto">
                                                 ⚠️ Pengetahuan masih kosong.<br/>{isOwner ? 'Buka "Panel Owner" untuk mulai isi.' : 'Minta owner isi pengetahuan dulu ya.'}
@@ -14691,38 +14890,45 @@
                                             <div className="mt-5">
                                                 <p className="text-xs text-slate-400 mb-2">Topik yang bisa kamu tanyakan:</p>
                                                 <div className="flex flex-wrap gap-1.5 justify-center">
-                                                    {getSuggestions().map(s => (
+                                                    {suggestions.map(s => (
                                                         <button key={s} onClick={() => setQuestion('Apa itu ' + s)}
-                                                            className="bg-violet-100 text-violet-700 text-xs px-3 py-1 rounded-full font-semibold hover:bg-violet-200 transition capitalize">{s}</button>
+                                                            className="bg-violet-100 text-violet-700 text-xs px-3 py-1.5 rounded-full font-semibold hover:bg-violet-200 transition capitalize">{s}</button>
                                                     ))}
                                                 </div>
                                             </div>
                                         )}
+                                        <div className="mt-5 bg-slate-100 rounded-2xl px-4 py-3 text-xs text-slate-500 max-w-xs mx-auto text-left space-y-1">
+                                            <p className="font-bold text-slate-600">✨ Kemampuan AI ini:</p>
+                                            <p>• Memahami typo & singkatan</p>
+                                            <p>• Mengenali sinonim kata</p>
+                                            <p>• Ingat konteks percakapan</p>
+                                            <p>• Menjawab dengan bahasa alami</p>
+                                        </div>
                                     </div>
                                 )}
 
                                 {messages.map((msg, i) => (
-                                    <div key={i} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                        {msg.role === 'bot' && (
-                                            <div className="w-7 h-7 rounded-full bg-violet-600 flex items-center justify-center text-sm flex-shrink-0 mt-1">🤖</div>
+                                    <div key={i} className={`flex gap-2 ${msg.role==='user' ? 'justify-end' : 'justify-start'}`}>
+                                        {msg.role==='bot' && (
+                                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-purple-700 flex items-center justify-center text-sm flex-shrink-0 mt-0.5 shadow-sm">🤖</div>
                                         )}
-                                        <div className={`max-w-[82%] rounded-2xl px-4 py-3 text-sm shadow-sm ${msg.role === 'user' ? 'bg-violet-600 text-white rounded-br-sm' : 'bg-white text-slate-800 rounded-bl-sm border border-slate-100'}`}>
-                                            <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.65' }}>{msg.text}</div>
-                                            <div className={`text-[10px] mt-1.5 ${msg.role === 'user' ? 'text-violet-200 text-right' : 'text-slate-400'}`}>{msg.time}</div>
+                                        <div className={`max-w-[82%] rounded-2xl px-4 py-3 text-sm shadow-sm ${msg.role==='user' ? 'bg-violet-600 text-white rounded-br-sm' : 'bg-white text-slate-800 rounded-bl-sm border border-slate-100'}`}>
+                                            <div style={{ whiteSpace:'pre-wrap', lineHeight:'1.7' }}>{msg.text}</div>
+                                            <div className={`text-[10px] mt-1.5 ${msg.role==='user' ? 'text-violet-200 text-right' : 'text-slate-400'}`}>{msg.time}</div>
                                         </div>
-                                        {msg.role === 'user' && (
-                                            <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-sm flex-shrink-0 mt-1">👤</div>
+                                        {msg.role==='user' && (
+                                            <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-sm flex-shrink-0 mt-0.5">👤</div>
                                         )}
                                     </div>
                                 ))}
 
                                 {isTyping && (
                                     <div className="flex gap-2 justify-start">
-                                        <div className="w-7 h-7 rounded-full bg-violet-600 flex items-center justify-center text-sm flex-shrink-0">🤖</div>
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-purple-700 flex items-center justify-center text-sm flex-shrink-0 shadow-sm">🤖</div>
                                         <div className="bg-white border border-slate-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
-                                            <div className="flex gap-1 items-center h-4">
-                                                {[0,150,300].map(d => (
-                                                    <div key={d} className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{animationDelay:d+'ms'}}></div>
+                                            <div className="flex gap-1 items-center h-5">
+                                                {[0,160,320].map(d => (
+                                                    <div key={d} className="w-2.5 h-2.5 bg-violet-400 rounded-full animate-bounce" style={{animationDelay:d+'ms'}}></div>
                                                 ))}
                                             </div>
                                         </div>
@@ -14731,7 +14937,6 @@
                                 <div ref={chatEndRef} />
                             </div>
 
-                            {/* Input area */}
                             <div className="bg-white border-t border-slate-100 px-4 py-3 flex gap-2 flex-shrink-0">
                                 {messages.length > 0 && (
                                     <button onClick={() => { setMessages([]); localStorage.removeItem(CHAT_KEY); }}
@@ -14739,81 +14944,74 @@
                                         🗑️
                                     </button>
                                 )}
-                                <textarea
-                                    value={question}
-                                    onChange={e => setQuestion(e.target.value)}
-                                    onKeyDown={handleKeyDown}
-                                    rows={1}
-                                    placeholder="Tanya sesuatu... (Enter kirim, Shift+Enter baris baru)"
-                                    className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-400 bg-slate-50"
-                                    style={{ maxHeight: '100px', overflowY: 'auto' }}
-                                />
-                                <button onClick={handleSendQuestion} disabled={!question.trim() || isTyping}
-                                    className="w-9 h-9 flex items-center justify-center rounded-xl bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition flex-shrink-0">
+                                <textarea value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={handleKey}
+                                    rows={1} placeholder="Tanya apa saja... (typo gak masalah!)"
+                                    className="flex-1 border border-slate-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-400 bg-slate-50 leading-relaxed"
+                                    style={{ maxHeight:'120px', overflowY:'auto' }} />
+                                <button onClick={handleSend} disabled={!question.trim() || isTyping}
+                                    className="w-9 h-9 flex items-center justify-center rounded-xl bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition flex-shrink-0 text-base shadow-sm">
                                     ➤
                                 </button>
                             </div>
                         </div>
                     )}
 
-                    {/* ── PANEL OWNER TAB ── */}
+                    {/* ── PANEL OWNER ── */}
                     {zTab === 'owner' && isOwner && (
                         <div className="flex-1 overflow-y-auto px-4 py-4 bg-slate-50">
-                            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <span className="text-3xl">🧠</span>
+                            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+                                <div className="flex items-start gap-3">
+                                    <span className="text-3xl mt-0.5">🧠</span>
                                     <div>
                                         <h3 className="font-extrabold text-slate-800 text-base">Isi Pengetahuan Zenbot</h3>
-                                        <p className="text-xs text-slate-400 mt-0.5">Copy → Paste → Simpan. Ulangi berkali-kali.<br/>Makin banyak data, makin pintar jawabannya.</p>
+                                        <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">Copy → Paste → Simpan. Bisa diulang berkali-kali.<br/>Setiap save <strong>ditambahkan</strong>, tidak menghapus yang lama.</p>
                                     </div>
                                 </div>
 
-                                {/* Stats bar */}
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="bg-violet-50 rounded-xl p-3 text-center">
-                                        <div className="font-extrabold text-violet-700 text-xl">{knowledge.length}</div>
-                                        <div className="text-[10px] text-violet-500 font-medium">Paragraf Tersimpan</div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="bg-violet-50 rounded-xl p-3 text-center border border-violet-100">
+                                        <div className="font-extrabold text-violet-700 text-2xl">{knowledge.length}</div>
+                                        <div className="text-[11px] text-violet-500 font-semibold mt-0.5">Paragraf</div>
                                     </div>
-                                    <div className="bg-emerald-50 rounded-xl p-3 text-center">
-                                        <div className="font-extrabold text-emerald-700 text-xl">{(totalChars/1000).toFixed(1)}K</div>
-                                        <div className="text-[10px] text-emerald-500 font-medium">Total Karakter</div>
-                                    </div>
-                                </div>
-
-                                {/* Textarea */}
-                                <div>
-                                    <textarea
-                                        value={inputText}
-                                        onChange={e => setInputText(e.target.value)}
-                                        rows={11}
-                                        placeholder={"Paste teks di sini...\n\nContoh:\n- Artikel dari Google\n- Info produk\n- FAQ pelanggan\n- SOP karyawan\n- Daftar harga\n\nSetiap klik Simpan akan DITAMBAHKAN, bukan menimpa yang lama."}
-                                        className="w-full border border-slate-200 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-slate-50 resize-y leading-relaxed"
-                                    />
-                                    <div className="flex justify-between mt-1">
-                                        <span className="text-[11px] text-slate-400">{inputText.length.toLocaleString()} karakter</span>
-                                        {inputText && <button onClick={() => setInputText('')} className="text-[11px] text-red-400 hover:text-red-600 font-semibold">Hapus ↑</button>}
+                                    <div className="bg-emerald-50 rounded-xl p-3 text-center border border-emerald-100">
+                                        <div className="font-extrabold text-emerald-700 text-2xl">{(totalChars/1000).toFixed(1)}K</div>
+                                        <div className="text-[11px] text-emerald-500 font-semibold mt-0.5">Karakter</div>
                                     </div>
                                 </div>
 
-                                <button onClick={handleSaveKnowledge} disabled={!inputText.trim()}
+                                <textarea value={inputText} onChange={e => setInputText(e.target.value)} rows={12}
+                                    placeholder={"Paste teks di sini...\n\nBisa dari mana saja:\n• Artikel / berita dari Google\n• Info & deskripsi produk\n• Daftar harga\n• FAQ pelanggan\n• SOP atau aturan toko\n• Penjelasan apapun\n\n↓ Klik Simpan setelah paste"}
+                                    className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-slate-50 resize-y leading-relaxed" />
+
+                                <div className="flex items-center justify-between text-xs text-slate-400">
+                                    <span>{inputText.length.toLocaleString()} karakter</span>
+                                    {inputText && <button onClick={() => setInputText('')} className="text-red-400 hover:text-red-600 font-semibold">Bersihkan ↑</button>}
+                                </div>
+
+                                <button onClick={handleSave} disabled={!inputText.trim()}
                                     className="w-full py-3.5 bg-violet-600 hover:bg-violet-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white font-extrabold rounded-xl transition text-sm shadow-md">
                                     💾 Simpan ke Pengetahuan Zenbot
                                 </button>
 
-                                <div className="bg-sky-50 border border-sky-200 rounded-xl p-3 text-xs text-sky-700 leading-relaxed">
-                                    <strong>Cara kerja:</strong> Teks yang kamu simpan dipecah per paragraf, lalu dianalisis saat ada pertanyaan. Zenbot akan menyusun jawaban alami — bukan mengopi teks mentah.
+                                <div className="bg-gradient-to-br from-sky-50 to-indigo-50 border border-sky-200 rounded-xl p-4 text-xs text-sky-800 space-y-1.5 leading-relaxed">
+                                    <p className="font-bold text-sm">✨ Cara kerja AI Zenbot:</p>
+                                    <p>Teks disimpan lokal di perangkat ini. Saat ada pertanyaan, engine AI memindai ribuan kalimat, mencocokkan kata — bahkan yang typo — lalu <strong>menyusun ulang jawaban</strong> dengan bahasa alami. Tidak copy-paste mentah.</p>
+                                    <p className="mt-1 text-sky-600">Makin banyak data → makin pintar jawabannya.</p>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* ── DATA TAB ── */}
+                    {/* ── DATA ── */}
                     {zTab === 'data' && isOwner && (
                         <div className="flex-1 overflow-y-auto px-4 py-4 bg-slate-50">
                             <div className="flex justify-between items-center mb-3">
-                                <h3 className="font-extrabold text-slate-700">📚 Data Tersimpan</h3>
+                                <div>
+                                    <h3 className="font-extrabold text-slate-700">📚 Data Tersimpan</h3>
+                                    <p className="text-xs text-slate-400">{knowledge.length} paragraf · {(totalChars/1000).toFixed(1)}K karakter total</p>
+                                </div>
                                 {knowledge.length > 0 && (
-                                    <button onClick={() => { if(window.confirm('Hapus SEMUA data pengetahuan? Tidak bisa dikembalikan!')) handleClearKnowledge(); }}
+                                    <button onClick={() => { if(window.confirm('Hapus SEMUA data pengetahuan Zenbot? Tidak bisa dikembalikan!')) handleClearAll(); }}
                                         className="text-xs bg-red-50 text-red-500 border border-red-200 px-3 py-1.5 rounded-lg font-bold hover:bg-red-100 transition">
                                         🗑️ Hapus Semua
                                     </button>
@@ -14822,21 +15020,22 @@
                             {knowledge.length === 0 ? (
                                 <div className="text-center py-14 text-slate-400">
                                     <div className="text-4xl mb-2">📭</div>
-                                    <p className="text-sm">Belum ada data pengetahuan</p>
+                                    <p className="text-sm">Belum ada data</p>
                                 </div>
                             ) : (
                                 <div className="space-y-2">
                                     {knowledge.map((chunk, i) => (
-                                        <div key={i} className="bg-white rounded-xl border border-slate-200 shadow-sm p-3">
-                                            <div className="flex items-start justify-between gap-2">
+                                        <div key={i} className="bg-white rounded-xl border border-slate-200 p-3 shadow-sm">
+                                            <div className="flex items-start gap-2">
                                                 <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-1.5 mb-1">
+                                                    <div className="flex items-center gap-1.5 mb-1.5">
                                                         <span className="text-[10px] bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-bold">#{i+1}</span>
-                                                        <span className="text-[10px] text-slate-400">{chunk.text.length} karakter</span>
+                                                        <span className="text-[10px] text-slate-400">{chunk.text.length} kar</span>
+                                                        {chunk.at && <span className="text-[10px] text-slate-300">{new Date(chunk.at).toLocaleDateString('id-ID')}</span>}
                                                     </div>
-                                                    <p className="text-xs text-slate-600 leading-relaxed" style={{display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical', overflow:'hidden'}}>{chunk.text}</p>
+                                                    <p className="text-xs text-slate-600 leading-relaxed" style={{display:'-webkit-box',WebkitLineClamp:3,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{chunk.text}</p>
                                                 </div>
-                                                <button onClick={() => handleDeleteChunk(i)} className="flex-shrink-0 text-slate-300 hover:text-red-400 transition text-lg leading-none">✕</button>
+                                                <button onClick={() => handleDelChunk(i)} className="flex-shrink-0 text-slate-300 hover:text-red-400 transition text-lg leading-none mt-0.5">✕</button>
                                             </div>
                                         </div>
                                     ))}
@@ -14848,6 +15047,7 @@
             );
         };
         // =================== END ZENBOT VIEW ===================
+
 
 
                 const App = () => {
