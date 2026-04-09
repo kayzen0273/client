@@ -14353,16 +14353,360 @@
 
 
 
-                const App = () => {
-            const [inventoryData, setInventoryData] = useState([]);
-            const INVENTORY_CACHE_KEY = 'husna_inventory_cache';
-            const [rawInventory, setRawInventory] = useState(() => {
-                // Muat dari cache localStorage saat pertama buka (untuk mode offline)
+
+        // =================== ZENBOT VIEW ===================
+        const ZENBOT_CACHE_KEY = 'zenbot_brain_cache_v1';
+
+        const ZenbotView = ({ user, showToast, isOwner, authSession }) => {
+            const [query, setQuery] = React.useState('');
+            const [inputVal, setInputVal] = React.useState('');
+            const [brainData, setBrainData] = React.useState(() => {
+                // Muat cache offline saat pertama render
                 try {
-                    const cached = localStorage.getItem(INVENTORY_CACHE_KEY);
+                    const cached = localStorage.getItem(ZENBOT_CACHE_KEY);
                     return cached ? JSON.parse(cached) : [];
                 } catch { return []; }
             });
+            const [loadingBrain, setLoadingBrain] = React.useState(true);
+            const [isOfflineMode, setIsOfflineMode] = React.useState(!navigator.onLine);
+            const [cacheTime, setCacheTime] = React.useState(() => {
+                try { return localStorage.getItem(ZENBOT_CACHE_KEY + '_time') || null; } catch { return null; }
+            });
+            const [result, setResult] = React.useState(null); // {answer, category, matchedQ, score}
+            const [typing, setTyping] = React.useState(false);
+            const [typedText, setTypedText] = React.useState('');
+            const [searched, setSearched] = React.useState(false);
+            const [suggestions, setSuggestions] = React.useState([]);
+            const inputRef = React.useRef(null);
+            const AID = window.appId || 'default-app-id';
+
+            // Monitor koneksi online/offline
+            React.useEffect(() => {
+                const goOnline  = () => setIsOfflineMode(false);
+                const goOffline = () => setIsOfflineMode(true);
+                window.addEventListener('online',  goOnline);
+                window.addEventListener('offline', goOffline);
+                return () => {
+                    window.removeEventListener('online',  goOnline);
+                    window.removeEventListener('offline', goOffline);
+                };
+            }, []);
+
+            // Load brain data dari Firestore — cache ke localStorage setiap dapat data baru
+            React.useEffect(() => {
+                if (!user) return;
+                // Jika sudah ada cache, langsung selesai loading — Firestore tetap jalan di background
+                const hasCached = (() => { try { return !!localStorage.getItem(ZENBOT_CACHE_KEY); } catch { return false; } })();
+                if (hasCached) setLoadingBrain(false);
+
+                const collRef = window.collection(window.db, 'artifacts', AID, 'public', 'data', 'zenbot_brain');
+                const unsub = window.onSnapshot(collRef, snap => {
+                    const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    setBrainData(data);
+                    setLoadingBrain(false);
+                    // Simpan ke cache offline
+                    try {
+                        const now = new Date().toLocaleString('id-ID');
+                        localStorage.setItem(ZENBOT_CACHE_KEY, JSON.stringify(data));
+                        localStorage.setItem(ZENBOT_CACHE_KEY + '_time', now);
+                        setCacheTime(now);
+                    } catch(e) { console.warn('Zenbot cache error:', e); }
+                }, () => {
+                    // Firestore gagal (offline) — cache sudah di-load di useState init
+                    setLoadingBrain(false);
+                });
+                return () => unsub();
+            }, [user]);
+
+            // Fuse.js search
+            const getFuse = React.useMemo(() => {
+                if (!brainData.length) return null;
+                return new Fuse(brainData, {
+                    keys: ['question', 'keywords', 'category'],
+                    threshold: 0.45,
+                    includeScore: true,
+                    minMatchCharLength: 2,
+                });
+            }, [brainData]);
+
+            const doSearch = (q) => {
+                const trimmed = q.trim();
+                if (!trimmed) return;
+                setQuery(trimmed);
+                setSearched(true);
+                setTyping(true);
+                setTypedText('');
+                setResult(null);
+                setSuggestions([]);
+
+                if (!getFuse || brainData.length === 0) {
+                    setTimeout(() => {
+                        setTyping(false);
+                        setResult({ answer: 'Otak Zenbot masih kosong. Minta admin untuk mengisi data pengetahuan terlebih dahulu.', category: 'Info', matchedQ: '', score: 0 });
+                    }, 800);
+                    return;
+                }
+
+                const hits = getFuse.search(trimmed);
+                let answer, category, matchedQ, score;
+
+                if (hits.length > 0 && hits[0].score < 0.5) {
+                    const best = hits[0].item;
+                    answer = best.answer;
+                    category = best.category || 'Umum';
+                    matchedQ = best.question;
+                    score = Math.round((1 - hits[0].score) * 100);
+                    // Suggestions dari hits lain (max 3)
+                    const sugg = hits.slice(1, 4).filter(h => h.score < 0.6).map(h => h.item.question);
+                    setSuggestions(sugg);
+                } else {
+                    answer = 'Maaf, saya belum punya informasi tentang itu. Coba tanyakan dengan kata kunci yang berbeda, atau minta admin menambahkan ke otak Zenbot. 🤔';
+                    category = 'Tidak Ditemukan';
+                    matchedQ = '';
+                    score = 0;
+                    // Show all categories as suggestions
+                    const cats = [...new Set(brainData.map(b => b.question))].slice(0, 3);
+                    setSuggestions(cats);
+                }
+
+                // Typing animation
+                let i = 0;
+                const words = answer.split('');
+                const tick = () => {
+                    if (i <= words.length) {
+                        setTypedText(answer.slice(0, i));
+                        i++;
+                        setTimeout(tick, 12);
+                    } else {
+                        setTyping(false);
+                        setResult({ answer, category, matchedQ, score });
+                    }
+                };
+                setTimeout(tick, 400);
+            };
+
+            const handleSubmit = (e) => {
+                if (e) e.preventDefault();
+                doSearch(inputVal);
+            };
+
+            const handleReset = () => {
+                setInputVal('');
+                setQuery('');
+                setResult(null);
+                setSearched(false);
+                setTypedText('');
+                setSuggestions([]);
+                setTimeout(() => inputRef.current?.focus(), 100);
+            };
+
+            const categories = [...new Set(brainData.map(b => b.category).filter(Boolean))];
+
+            const catColors = {
+                'Produk': 'bg-emerald-100 text-emerald-700',
+                'Harga': 'bg-amber-100 text-amber-700',
+                'Stok': 'bg-blue-100 text-blue-700',
+                'Layanan': 'bg-purple-100 text-purple-700',
+                'Umum': 'bg-slate-100 text-slate-600',
+                'Info': 'bg-sky-100 text-sky-700',
+                'Tidak Ditemukan': 'bg-red-100 text-red-600',
+            };
+            const getCatColor = (cat) => catColors[cat] || 'bg-violet-100 text-violet-700';
+
+            return (
+                <div className="min-h-screen bg-white flex flex-col" style={{fontFamily:"'Inter','Plus Jakarta Sans',sans-serif"}}>
+                    {/* Header mini jika sudah search */}
+                    {searched ? (
+                        <>
+                            {/* Google-style top bar after search */}
+                            <div className="sticky top-0 z-20 bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3">
+                                {/* Logo kecil */}
+                                <button onClick={handleReset} className="flex-shrink-0 flex items-center gap-0.5 select-none cursor-pointer">
+                                    <span style={{fontSize:'22px',fontWeight:900,color:'#4285F4',fontFamily:'serif'}}>Z</span>
+                                    <span style={{fontSize:'22px',fontWeight:900,color:'#EA4335',fontFamily:'serif'}}>e</span>
+                                    <span style={{fontSize:'22px',fontWeight:900,color:'#FBBC05',fontFamily:'serif'}}>n</span>
+                                    <span style={{fontSize:'22px',fontWeight:900,color:'#4285F4',fontFamily:'serif'}}>b</span>
+                                    <span style={{fontSize:'22px',fontWeight:900,color:'#34A853',fontFamily:'serif'}}>o</span>
+                                    <span style={{fontSize:'22px',fontWeight:900,color:'#EA4335',fontFamily:'serif'}}>t</span>
+                                </button>
+                                {/* Search bar compact */}
+                                <form onSubmit={handleSubmit} className="flex-1 flex items-center gap-2">
+                                    <div className="flex-1 flex items-center border border-slate-300 rounded-full px-4 py-2 shadow-sm hover:shadow-md transition-shadow focus-within:shadow-md focus-within:border-slate-400 bg-white gap-2">
+                                        <i className="fa-solid fa-magnifying-glass text-slate-400 text-sm flex-shrink-0"></i>
+                                        <input
+                                            ref={inputRef}
+                                            value={inputVal}
+                                            onChange={e => setInputVal(e.target.value)}
+                                            placeholder="Tanyakan sesuatu..."
+                                            className="flex-1 outline-none text-sm font-medium text-slate-700 placeholder:text-slate-400 bg-transparent"
+                                        />
+                                        {inputVal && (
+                                            <button type="button" onClick={() => setInputVal('')} className="text-slate-400 hover:text-slate-600 flex-shrink-0">
+                                                <i className="fa-solid fa-xmark text-xs"></i>
+                                            </button>
+                                        )}
+                                    </div>
+                                    <button type="submit" className="bg-sky-500 hover:bg-sky-600 text-white rounded-full px-4 py-2 text-sm font-bold transition-colors flex-shrink-0">
+                                        <i className="fa-solid fa-magnifying-glass"></i>
+                                    </button>
+                                </form>
+                            </div>
+
+                            {/* Result area */}
+                            <div className="flex-1 px-4 md:px-16 py-6 max-w-3xl mx-auto w-full">
+                                {/* Query info */}
+                                <p className="text-xs text-slate-400 mb-4 font-medium">
+                                    {loadingBrain ? 'Memuat otak Zenbot...' : (isOfflineMode ? `📦 ${brainData.length} pengetahuan (offline) • Hasil untuk: ` : `🧠 ${brainData.length} pengetahuan • Hasil untuk: `)}
+                                    {!loadingBrain && <span className="text-slate-600 font-bold">"{query}"</span>}
+                                </p>
+
+                                {/* Answer card */}
+                                <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm mb-5">
+                                    {/* Card header */}
+                                    <div className="flex items-center gap-3 px-5 py-3 bg-slate-50 border-b border-slate-100">
+                                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center flex-shrink-0">
+                                            <span style={{fontSize:'16px'}}>🤖</span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-black text-slate-700">Zenbot</p>
+                                            {result && result.matchedQ && (
+                                                <p className="text-[10px] text-slate-400 truncate">Cocok: "{result.matchedQ}" • {result.score}% relevan</p>
+                                            )}
+                                        </div>
+                                        {result && (
+                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex-shrink-0 ${getCatColor(result.category)}`}>
+                                                {result.category}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {/* Answer body */}
+                                    <div className="px-5 py-4">
+                                        {(typing || typedText) && (
+                                            <p className="text-sm text-slate-700 leading-relaxed font-medium whitespace-pre-wrap">
+                                                {typedText}
+                                                {typing && <span className="inline-block w-0.5 h-4 bg-sky-500 ml-0.5 animate-pulse align-middle"></span>}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Suggestions */}
+                                {suggestions.length > 0 && !typing && (
+                                    <div className="mb-6">
+                                        <p className="text-xs font-black text-slate-500 mb-2 flex items-center gap-1">
+                                            <i className="fa-solid fa-lightbulb text-amber-400"></i> Mungkin yang kamu cari:
+                                        </p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {suggestions.map((s, i) => (
+                                                <button key={i} onClick={() => { setInputVal(s); doSearch(s); }}
+                                                    className="text-xs text-sky-600 border border-sky-200 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-full font-semibold transition-colors">
+                                                    {s}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* All categories chips */}
+                                {categories.length > 0 && !typing && (
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Kategori tersedia:</p>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {categories.map((cat, i) => (
+                                                <button key={i} onClick={() => { setInputVal(cat); doSearch(cat); }}
+                                                    className={`text-[10px] font-black px-2.5 py-1 rounded-full transition-colors hover:opacity-80 ${getCatColor(cat)}`}>
+                                                    {cat}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    ) : (
+                        /* ── Google-style homepage ── */
+                        <div className="flex-1 flex flex-col items-center justify-center px-4 pb-24" style={{minHeight:'80vh'}}>
+                            {/* Logo */}
+                            <div className="mb-8 select-none">
+                                <div className="flex items-end gap-1 justify-center mb-1">
+                                    <span style={{fontSize:'clamp(52px,10vw,82px)',fontWeight:900,color:'#4285F4',fontFamily:'serif',lineHeight:1}}>Z</span>
+                                    <span style={{fontSize:'clamp(52px,10vw,82px)',fontWeight:900,color:'#EA4335',fontFamily:'serif',lineHeight:1}}>e</span>
+                                    <span style={{fontSize:'clamp(52px,10vw,82px)',fontWeight:900,color:'#FBBC05',fontFamily:'serif',lineHeight:1}}>n</span>
+                                    <span style={{fontSize:'clamp(52px,10vw,82px)',fontWeight:900,color:'#4285F4',fontFamily:'serif',lineHeight:1}}>b</span>
+                                    <span style={{fontSize:'clamp(52px,10vw,82px)',fontWeight:900,color:'#34A853',fontFamily:'serif',lineHeight:1}}>o</span>
+                                    <span style={{fontSize:'clamp(52px,10vw,82px)',fontWeight:900,color:'#EA4335',fontFamily:'serif',lineHeight:1}}>t</span>
+                                </div>
+                                <p className="text-center text-xs font-semibold text-slate-400 tracking-widest uppercase mt-1">
+                                    {loadingBrain ? '⏳ Memuat otak...' : (
+                                    isOfflineMode
+                                        ? <span style={{color:'#f59e0b'}}>📦 {brainData.length} pengetahuan (cache offline{cacheTime ? ` • ${cacheTime}` : ''})</span>
+                                        : `🧠 ${brainData.length} pengetahuan dimuat`
+                                )}
+                                </p>
+                            </div>
+
+                            {/* Search box */}
+                            <form onSubmit={handleSubmit} className="w-full max-w-xl">
+                                <div className="flex items-center border border-slate-300 rounded-full px-5 py-3.5 shadow hover:shadow-md transition-shadow focus-within:shadow-md focus-within:border-slate-400 bg-white gap-3 mb-6">
+                                    <i className="fa-solid fa-magnifying-glass text-slate-400 text-base flex-shrink-0"></i>
+                                    <input
+                                        ref={inputRef}
+                                        value={inputVal}
+                                        onChange={e => setInputVal(e.target.value)}
+                                        placeholder="Tanyakan apa saja tentang toko..."
+                                        className="flex-1 outline-none text-sm font-medium text-slate-700 placeholder:text-slate-400 bg-transparent"
+                                        autoFocus
+                                    />
+                                    {inputVal && (
+                                        <button type="button" onClick={() => setInputVal('')} className="text-slate-400 hover:text-slate-600 flex-shrink-0">
+                                            <i className="fa-solid fa-xmark"></i>
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="flex justify-center gap-3">
+                                    <button type="submit" className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-lg transition-colors border border-slate-200 hover:border-slate-300">
+                                        Cari dengan Zenbot
+                                    </button>
+                                    <button type="button" onClick={() => { if (brainData.length > 0) { const r = brainData[Math.floor(Math.random()*brainData.length)]; setInputVal(r.question); doSearch(r.question); } }}
+                                        className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-lg transition-colors border border-slate-200 hover:border-slate-300">
+                                        Saya Lagi Beruntung
+                                    </button>
+                                </div>
+                            </form>
+
+                            {/* Category quick links */}
+                            {categories.length > 0 && (
+                                <div className="mt-10 w-full max-w-xl">
+                                    <p className="text-xs font-black text-slate-400 uppercase tracking-wider text-center mb-3">Jelajahi Kategori</p>
+                                    <div className="flex flex-wrap gap-2 justify-center">
+                                        {categories.map((cat, i) => (
+                                            <button key={i} onClick={() => { setInputVal(cat); doSearch(cat); }}
+                                                className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-all hover:scale-105 ${getCatColor(cat)}`}>
+                                                {cat}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Empty state */}
+                            {!loadingBrain && brainData.length === 0 && (
+                                <div className="mt-8 text-center">
+                                    <div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-3 text-3xl">🧠</div>
+                                    <p className="text-sm font-bold text-slate-500">Otak Zenbot masih kosong</p>
+                                    <p className="text-xs text-slate-400 mt-1">Minta admin untuk mengisi pengetahuan di Panel Admin → Tab Zenbot</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+        // =================== END ZENBOT VIEW ===================
+
+                const App = () => {
+            const [inventoryData, setInventoryData] = useState([]);
+            const [rawInventory, setRawInventory] = useState([]); // Store original data from DB
             const [settingsData, setSettingsData] = useState(DEFAULT_SETTINGS); 
             const [loading, setLoading] = useState(true);
             const [activeTab, setActiveTab] = useState('cashier'); 
@@ -14676,24 +15020,15 @@
                 return () => unsub();
             }, [user]);
 
-            // 2. Fetch Raw Inventory (dengan cache offline ke localStorage)
+            // 2. Fetch Raw Inventory
             useEffect(() => {
                 if (!user) return;
-                // Jika sudah ada cache, langsung set loading false agar UI muncul saat offline
-                try { if (localStorage.getItem(INVENTORY_CACHE_KEY)) { setLoading(false); } } catch {}
                 const q = window.query(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory'));
                 const unsubscribeSnapshot = window.onSnapshot(q, (snapshot) => {
                     const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setRawInventory(data);
+                    setRawInventory(data); // Save raw data
                     setLoading(false);
-                    // Simpan ke localStorage sebagai cache offline
-                    try { localStorage.setItem(INVENTORY_CACHE_KEY, JSON.stringify(data)); } catch(e) { console.warn('Gagal simpan cache inventory:', e); }
-                }, (error) => {
-                    console.error("Firestore Error:", error);
-                    // Jika offline/error, gunakan cache yang sudah di-load saat init state
-                    setLoading(false);
-                    showToast("Offline — menampilkan data barang terakhir tersimpan", "warning");
-                });
+                }, (error) => { console.error("Firestore Error:", error); showToast("Gagal memuat data live", "error"); });
                 return () => unsubscribeSnapshot();
             }, [user]);
 
@@ -14942,6 +15277,7 @@
                 { id: 'rekam_medis', label: 'Rekam Medis',       icon: 'stethoscope',         enabled: isOwner || showMenu('showMenuRekamMedis', settingsData.showMenuRekamMedis), readOnly: !isOwner && !menuOn('enableRekamMedis', settingsData.enableRekamMedis) },
                 { id: 'jadwal_shift', label: 'Jadwal Shift',     icon: 'calendar-days',       enabled: isOwner || showMenu('showMenuJadwalShift', settingsData.showMenuJadwalShift), readOnly: !isOwner && !menuOn('enableJadwalShift', settingsData.enableJadwalShift) },
                 { id: 'transfer_barang', label: 'Transfer Barang', icon: 'right-left',         enabled: isOwner || showMenu('showMenuTransferBarang', settingsData.showMenuTransferBarang), readOnly: !isOwner && !menuOn('enableTransferBarang', settingsData.enableTransferBarang) },
+                { id: 'zenbot',       label: 'Zenbot',            icon: 'robot',               enabled: true, readOnly: false },
                 { id: 'pengguna_akun', label: 'Pengguna Akun',   icon: 'users',               enabled: true, readOnly: false },
                 { id: 'settings',    label: 'Pengaturan',        icon: 'gears',               enabled: true, readOnly: false },
             ];
@@ -15263,6 +15599,7 @@
                         {activeTab === 'pengguna_akun' && (<PenggunaAkunView authSession={authSession} onUpdateSession={(newSession) => { setAuthSession(newSession); saveSession(newSession); }} showToast={showToast} />)}
                         {activeTab === 'catatan' && (<PapanCatatan user={user} readOnly={menuItems.find(m=>m.id==='catatan')?.readOnly} />)}
                         {activeTab === 'jadwal_shift' && (<JadwalShiftView user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='jadwal_shift')?.readOnly} isOwner={isOwner} authSession={authSession} settings={settingsData} />)}
+                        {activeTab === 'zenbot' && (<ZenbotView user={user} showToast={showToast} isOwner={isOwner} authSession={authSession} />)}
                         {activeTab === 'transfer_barang' && (<TransferBarangView user={user} showToast={showToast} rawInventory={rawInventory} settings={settingsData} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='transfer_barang')?.readOnly} authSession={authSession} />)}
                     </main>
                     <ConfirmModal isOpen={deleteModal.show} title="Hapus Barang?" message={`Yakin ingin menghapus permanen "${deleteModal.item?.name}"? Barang ini akan hilang dari SEMUA toko.`} onConfirm={handleDelete} onCancel={() => setDeleteModal({ show: false, item: null })} />
