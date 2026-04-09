@@ -1769,6 +1769,7 @@
                 { key: 'showMenuRekamMedis', label: 'Rekam Medis', icon: 'stethoscope', desc: 'Tampilkan rekam medis (dokter & pasien)' },
                 { key: 'showMenuJadwalShift', label: 'Jadwal Shift', icon: 'calendar-days', desc: 'Tampilkan jadwal shift karyawan' },
                 { key: 'showMenuTransferBarang', label: 'Transfer Barang', icon: 'right-left', desc: 'Tampilkan transfer barang antar toko' },
+                { key: 'showMenuZenbot', label: 'Zenbot', icon: 'robot', desc: 'Tampilkan Zenbot — AI berbasis data internal' },
             ];
             const dashboardVisibilityList = [
                 { key: 'showNilaiStokDashboard', label: 'Total Nilai Stok (Modal)', icon: 'coins', desc: 'Tampilkan total harga beli × stok di dashboard' },
@@ -14353,356 +14354,311 @@
 
 
 
-
-        // =================== ZENBOT VIEW ===================
-        const ZENBOT_CACHE_KEY = 'zenbot_brain_cache_v1';
-
-        const ZenbotView = ({ user, showToast, isOwner, authSession }) => {
+        // ═══════════════════════════════════════════════════════════════
+        // ZENBOT — Offline AI berbasis Knowledge Base dari Admin
+        // ═══════════════════════════════════════════════════════════════
+        const ZenbotView = ({ isOwner }) => {
             const [query, setQuery] = React.useState('');
-            const [inputVal, setInputVal] = React.useState('');
-            const [brainData, setBrainData] = React.useState(() => {
-                // Muat cache offline saat pertama render
-                try {
-                    const cached = localStorage.getItem(ZENBOT_CACHE_KEY);
-                    return cached ? JSON.parse(cached) : [];
-                } catch { return []; }
-            });
-            const [loadingBrain, setLoadingBrain] = React.useState(true);
-            const [isOfflineMode, setIsOfflineMode] = React.useState(!navigator.onLine);
-            const [cacheTime, setCacheTime] = React.useState(() => {
-                try { return localStorage.getItem(ZENBOT_CACHE_KEY + '_time') || null; } catch { return null; }
-            });
-            const [result, setResult] = React.useState(null); // {answer, category, matchedQ, score}
-            const [typing, setTyping] = React.useState(false);
-            const [typedText, setTypedText] = React.useState('');
-            const [searched, setSearched] = React.useState(false);
-            const [suggestions, setSuggestions] = React.useState([]);
+            const [messages, setMessages] = React.useState([]);
+            const [thinking, setThinking] = React.useState(false);
+            const [kb, setKb] = React.useState([]);
+            const [showWelcome, setShowWelcome] = React.useState(true);
+            const [kbCount, setKbCount] = React.useState(0);
             const inputRef = React.useRef(null);
-            const AID = window.appId || 'default-app-id';
+            const chatEndRef = React.useRef(null);
 
-            // Monitor koneksi online/offline
-            React.useEffect(() => {
-                const goOnline  = () => setIsOfflineMode(false);
-                const goOffline = () => setIsOfflineMode(true);
-                window.addEventListener('online',  goOnline);
-                window.addEventListener('offline', goOffline);
-                return () => {
-                    window.removeEventListener('online',  goOnline);
-                    window.removeEventListener('offline', goOffline);
-                };
+            // Load KB dari localStorage (disinkron oleh Admin Panel)
+            const loadKb = React.useCallback(() => {
+                try {
+                    const raw = localStorage.getItem('husna_zenbot_kb');
+                    if (raw) {
+                        const data = JSON.parse(raw);
+                        setKb(Array.isArray(data) ? data : []);
+                        setKbCount(Array.isArray(data) ? data.length : 0);
+                    }
+                } catch(e) { setKb([]); setKbCount(0); }
             }, []);
 
-            // Load brain data dari Firestore — cache ke localStorage setiap dapat data baru
             React.useEffect(() => {
-                if (!user) return;
-                // Jika sudah ada cache, langsung selesai loading — Firestore tetap jalan di background
-                const hasCached = (() => { try { return !!localStorage.getItem(ZENBOT_CACHE_KEY); } catch { return false; } })();
-                if (hasCached) setLoadingBrain(false);
+                loadKb();
+                const onStorage = (e) => { if (e.key === 'husna_zenbot_kb') loadKb(); };
+                window.addEventListener('storage', onStorage);
+                return () => window.removeEventListener('storage', onStorage);
+            }, [loadKb]);
 
-                const collRef = window.collection(window.db, 'artifacts', AID, 'public', 'data', 'zenbot_brain');
-                const unsub = window.onSnapshot(collRef, snap => {
-                    const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    setBrainData(data);
-                    setLoadingBrain(false);
-                    // Simpan ke cache offline
-                    try {
-                        const now = new Date().toLocaleString('id-ID');
-                        localStorage.setItem(ZENBOT_CACHE_KEY, JSON.stringify(data));
-                        localStorage.setItem(ZENBOT_CACHE_KEY + '_time', now);
-                        setCacheTime(now);
-                    } catch(e) { console.warn('Zenbot cache error:', e); }
-                }, () => {
-                    // Firestore gagal (offline) — cache sudah di-load di useState init
-                    setLoadingBrain(false);
-                });
-                return () => unsub();
-            }, [user]);
+            React.useEffect(() => {
+                if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+            }, [messages, thinking]);
 
-            // Fuse.js search
-            const getFuse = React.useMemo(() => {
-                if (!brainData.length) return null;
-                return new Fuse(brainData, {
-                    keys: ['question', 'keywords', 'category'],
-                    threshold: 0.45,
-                    includeScore: true,
-                    minMatchCharLength: 2,
-                });
-            }, [brainData]);
-
-            const doSearch = (q) => {
-                const trimmed = q.trim();
-                if (!trimmed) return;
-                setQuery(trimmed);
-                setSearched(true);
-                setTyping(true);
-                setTypedText('');
-                setResult(null);
-                setSuggestions([]);
-
-                if (!getFuse || brainData.length === 0) {
-                    setTimeout(() => {
-                        setTyping(false);
-                        setResult({ answer: 'Otak Zenbot masih kosong. Minta admin untuk mengisi data pengetahuan terlebih dahulu.', category: 'Info', matchedQ: '', score: 0 });
-                    }, 800);
-                    return;
-                }
-
-                const hits = getFuse.search(trimmed);
-                let answer, category, matchedQ, score;
-
-                if (hits.length > 0 && hits[0].score < 0.5) {
-                    const best = hits[0].item;
-                    answer = best.answer;
-                    category = best.category || 'Umum';
-                    matchedQ = best.question;
-                    score = Math.round((1 - hits[0].score) * 100);
-                    // Suggestions dari hits lain (max 3)
-                    const sugg = hits.slice(1, 4).filter(h => h.score < 0.6).map(h => h.item.question);
-                    setSuggestions(sugg);
-                } else {
-                    answer = 'Maaf, saya belum punya informasi tentang itu. Coba tanyakan dengan kata kunci yang berbeda, atau minta admin menambahkan ke otak Zenbot. 🤔';
-                    category = 'Tidak Ditemukan';
-                    matchedQ = '';
-                    score = 0;
-                    // Show all categories as suggestions
-                    const cats = [...new Set(brainData.map(b => b.question))].slice(0, 3);
-                    setSuggestions(cats);
-                }
-
-                // Typing animation
-                let i = 0;
-                const words = answer.split('');
-                const tick = () => {
-                    if (i <= words.length) {
-                        setTypedText(answer.slice(0, i));
-                        i++;
-                        setTimeout(tick, 12);
-                    } else {
-                        setTyping(false);
-                        setResult({ answer, category, matchedQ, score });
-                    }
-                };
-                setTimeout(tick, 400);
+            // ── NLP Matching Engine ──
+            const normalize = (text) => {
+                return (text || '').toLowerCase()
+                    .replace(/[^\w\s]/g, ' ')
+                    .replace(/\s+/g, ' ').trim();
             };
 
-            const handleSubmit = (e) => {
-                if (e) e.preventDefault();
-                doSearch(inputVal);
+            const tokenize = (text) => {
+                const stopwords = new Set(['apa','ini','itu','yang','dan','atau','di','ke','dari','untuk','adalah','ada','tidak','dengan','pada','kami','saya','kamu','anda','how','what','why','when','where','who','is','are','the','a','an','of','in','to','for','can','do','does']);
+                return normalize(text).split(' ').filter(t => t.length > 1 && !stopwords.has(t));
             };
 
-            const handleReset = () => {
-                setInputVal('');
+            const computeScore = (entry, queryTokens) => {
+                const titleTokens = tokenize(entry.title || '');
+                const contentTokens = tokenize(entry.content || '');
+                const tagsTokens = tokenize((entry.tags || []).join(' '));
+                const allTokens = [...titleTokens, ...titleTokens, ...tagsTokens, ...contentTokens]; // title weighted 2x
+                let score = 0;
+                let exactPhrase = false;
+                const normalContent = normalize((entry.title || '') + ' ' + (entry.content || ''));
+                const normalQuery = normalize(queryTokens.join(' '));
+                if (normalContent.includes(normalQuery) && normalQuery.length > 3) { exactPhrase = true; score += 50; }
+                queryTokens.forEach(qt => {
+                    allTokens.forEach(et => {
+                        if (et === qt) score += 10;
+                        else if (et.includes(qt) || qt.includes(et)) score += 4;
+                        else if (et.length > 3 && qt.length > 3) {
+                            // Simple Levenshtein-like: check if ≥60% chars match
+                            const shorter = et.length < qt.length ? et : qt;
+                            const longer = et.length < qt.length ? qt : et;
+                            let matches = 0;
+                            shorter.split('').forEach(c => { if (longer.includes(c)) matches++; });
+                            if (matches / shorter.length >= 0.75) score += 2;
+                        }
+                    });
+                });
+                return score;
+            };
+
+            const findAnswer = (userQuery) => {
+                if (!kb.length) return null;
+                const queryTokens = tokenize(userQuery);
+                if (!queryTokens.length) return null;
+                const scored = kb
+                    .filter(e => e.active !== false)
+                    .map(e => ({ ...e, score: computeScore(e, queryTokens) }))
+                    .filter(e => e.score > 0)
+                    .sort((a, b) => b.score - a.score);
+                if (!scored.length) return null;
+                const top = scored[0];
+                const related = scored.slice(1, 4).filter(e => e.score >= top.score * 0.4);
+                return { top, related, confidence: Math.min(100, Math.round((top.score / (queryTokens.length * 10)) * 100)) };
+            };
+
+            const handleSend = () => {
+                const q = query.trim();
+                if (!q) return;
                 setQuery('');
-                setResult(null);
-                setSearched(false);
-                setTypedText('');
-                setSuggestions([]);
-                setTimeout(() => inputRef.current?.focus(), 100);
+                setShowWelcome(false);
+                const userMsg = { role: 'user', text: q, time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) };
+                setMessages(prev => [...prev, userMsg]);
+                setThinking(true);
+                setTimeout(() => {
+                    const result = findAnswer(q);
+                    let botMsg;
+                    if (!kb.length) {
+                        botMsg = { role: 'bot', text: 'Otak Zenbot masih kosong! Minta admin untuk mengisi Knowledge Base di Admin Panel → tab Zenbot KB.', type: 'empty', time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) };
+                    } else if (!result) {
+                        botMsg = { role: 'bot', text: 'Hmm, saya tidak menemukan informasi yang relevan dengan pertanyaan Anda. Coba kata kunci yang berbeda, atau minta admin untuk menambahkan informasi ini ke Knowledge Base.', type: 'notfound', time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) };
+                    } else {
+                        botMsg = { role: 'bot', top: result.top, related: result.related, confidence: result.confidence, type: 'answer', time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) };
+                    }
+                    setThinking(false);
+                    setMessages(prev => [...prev, botMsg]);
+                }, 600 + Math.random() * 400);
             };
 
-            const categories = [...new Set(brainData.map(b => b.category).filter(Boolean))];
+            const handleKey = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
 
-            const catColors = {
-                'Produk': 'bg-emerald-100 text-emerald-700',
-                'Harga': 'bg-amber-100 text-amber-700',
-                'Stok': 'bg-blue-100 text-blue-700',
-                'Layanan': 'bg-purple-100 text-purple-700',
-                'Umum': 'bg-slate-100 text-slate-600',
-                'Info': 'bg-sky-100 text-sky-700',
-                'Tidak Ditemukan': 'bg-red-100 text-red-600',
+            const SUGGESTIONS = ['Jam operasional toko', 'Cara retur barang', 'Metode pembayaran', 'Promo hari ini', 'Cara klaim garansi'];
+
+            const ConfidenceBadge = ({ score }) => {
+                const color = score >= 70 ? '#22c55e' : score >= 40 ? '#f59e0b' : '#94a3b8';
+                const label = score >= 70 ? 'Sangat relevan' : score >= 40 ? 'Cukup relevan' : 'Kurang yakin';
+                return (
+                    <span style={{ fontSize: '10px', fontWeight: 700, color, background: color + '15', padding: '2px 8px', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <i className={`fa-solid ${score >= 70 ? 'fa-circle-check' : score >= 40 ? 'fa-circle-exclamation' : 'fa-circle-question'}`} style={{ fontSize: '9px' }}></i> {label}
+                    </span>
+                );
             };
-            const getCatColor = (cat) => catColors[cat] || 'bg-violet-100 text-violet-700';
 
             return (
-                <div className="min-h-screen bg-white flex flex-col" style={{fontFamily:"'Inter','Plus Jakarta Sans',sans-serif"}}>
-                    {/* Header mini jika sudah search */}
-                    {searched ? (
-                        <>
-                            {/* Google-style top bar after search */}
-                            <div className="sticky top-0 z-20 bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3">
-                                {/* Logo kecil */}
-                                <button onClick={handleReset} className="flex-shrink-0 flex items-center gap-0.5 select-none cursor-pointer">
-                                    <span style={{fontSize:'22px',fontWeight:900,color:'#4285F4',fontFamily:'serif'}}>Z</span>
-                                    <span style={{fontSize:'22px',fontWeight:900,color:'#EA4335',fontFamily:'serif'}}>e</span>
-                                    <span style={{fontSize:'22px',fontWeight:900,color:'#FBBC05',fontFamily:'serif'}}>n</span>
-                                    <span style={{fontSize:'22px',fontWeight:900,color:'#4285F4',fontFamily:'serif'}}>b</span>
-                                    <span style={{fontSize:'22px',fontWeight:900,color:'#34A853',fontFamily:'serif'}}>o</span>
-                                    <span style={{fontSize:'22px',fontWeight:900,color:'#EA4335',fontFamily:'serif'}}>t</span>
-                                </button>
-                                {/* Search bar compact */}
-                                <form onSubmit={handleSubmit} className="flex-1 flex items-center gap-2">
-                                    <div className="flex-1 flex items-center border border-slate-300 rounded-full px-4 py-2 shadow-sm hover:shadow-md transition-shadow focus-within:shadow-md focus-within:border-slate-400 bg-white gap-2">
-                                        <i className="fa-solid fa-magnifying-glass text-slate-400 text-sm flex-shrink-0"></i>
+                <div style={{ minHeight: '100vh', background: '#ffffff', display: 'flex', flexDirection: 'column', fontFamily: "'Inter', sans-serif" }}>
+                    {/* Header strip */}
+                    <div style={{ background: '#fff', borderBottom: '1px solid #f1f5f9', padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ width: 28, height: 28, borderRadius: '8px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <i className="fa-solid fa-robot" style={{ color: '#fff', fontSize: '12px' }}></i>
+                            </div>
+                            <span style={{ fontWeight: 800, fontSize: '14px', color: '#1e293b', letterSpacing: '-0.3px' }}>Zenbot</span>
+                            <span style={{ fontSize: '10px', background: '#f1f5f9', color: '#64748b', fontWeight: 700, padding: '2px 8px', borderRadius: '20px' }}>
+                                {kbCount} entri KB
+                            </span>
+                        </div>
+                        <button onClick={loadKb} title="Refresh KB" style={{ width: 28, height: 28, borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px' }}>
+                            <i className="fa-solid fa-rotate-right"></i>
+                        </button>
+                    </div>
+
+                    {/* Main area */}
+                    <div style={{ flex: 1, overflowY: 'auto', padding: showWelcome ? '0' : '16px 16px 0' }}>
+                        {showWelcome ? (
+                            /* Welcome Screen — Google-like */
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 50px)', padding: '20px', textAlign: 'center' }}>
+                                {/* Logo */}
+                                <div style={{ marginBottom: '28px' }}>
+                                    <div style={{ width: 72, height: 72, borderRadius: '20px', background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', boxShadow: '0 8px 32px rgba(99,102,241,0.25)' }}>
+                                        <i className="fa-solid fa-robot" style={{ color: '#fff', fontSize: '30px' }}></i>
+                                    </div>
+                                    <h1 style={{ fontSize: '32px', fontWeight: 900, letterSpacing: '-1px', margin: '0 0 6px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Zenbot</h1>
+                                    <p style={{ fontSize: '13px', color: '#94a3b8', fontWeight: 600, margin: 0 }}>Asisten cerdas berbasis data internal toko</p>
+                                </div>
+                                {/* Search box */}
+                                <div style={{ width: '100%', maxWidth: '540px', position: 'relative', marginBottom: '20px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '28px', padding: '12px 18px', gap: '10px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', transition: 'box-shadow 0.2s' }}
+                                        onFocus={(e) => e.currentTarget.style.boxShadow = '0 4px 20px rgba(99,102,241,0.15)'}
+                                        onBlur={(e) => e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.06)'}
+                                    >
+                                        <i className="fa-solid fa-magnifying-glass" style={{ color: '#94a3b8', fontSize: '14px', flexShrink: 0 }}></i>
                                         <input
                                             ref={inputRef}
-                                            value={inputVal}
-                                            onChange={e => setInputVal(e.target.value)}
-                                            placeholder="Tanyakan sesuatu..."
-                                            className="flex-1 outline-none text-sm font-medium text-slate-700 placeholder:text-slate-400 bg-transparent"
+                                            value={query}
+                                            onChange={e => setQuery(e.target.value)}
+                                            onKeyDown={handleKey}
+                                            placeholder="Tanyakan sesuatu…"
+                                            autoFocus
+                                            style={{ flex: 1, border: 'none', outline: 'none', fontSize: '15px', fontWeight: 500, color: '#1e293b', background: 'transparent', fontFamily: 'inherit' }}
                                         />
-                                        {inputVal && (
-                                            <button type="button" onClick={() => setInputVal('')} className="text-slate-400 hover:text-slate-600 flex-shrink-0">
-                                                <i className="fa-solid fa-xmark text-xs"></i>
+                                        {query && (
+                                            <button onClick={() => setQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '13px', padding: '2px', flexShrink: 0 }}>
+                                                <i className="fa-solid fa-xmark"></i>
                                             </button>
                                         )}
                                     </div>
-                                    <button type="submit" className="bg-sky-500 hover:bg-sky-600 text-white rounded-full px-4 py-2 text-sm font-bold transition-colors flex-shrink-0">
-                                        <i className="fa-solid fa-magnifying-glass"></i>
-                                    </button>
-                                </form>
-                            </div>
-
-                            {/* Result area */}
-                            <div className="flex-1 px-4 md:px-16 py-6 max-w-3xl mx-auto w-full">
-                                {/* Query info */}
-                                <p className="text-xs text-slate-400 mb-4 font-medium">
-                                    {loadingBrain ? 'Memuat otak Zenbot...' : (isOfflineMode ? `📦 ${brainData.length} pengetahuan (offline) • Hasil untuk: ` : `🧠 ${brainData.length} pengetahuan • Hasil untuk: `)}
-                                    {!loadingBrain && <span className="text-slate-600 font-bold">"{query}"</span>}
-                                </p>
-
-                                {/* Answer card */}
-                                <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm mb-5">
-                                    {/* Card header */}
-                                    <div className="flex items-center gap-3 px-5 py-3 bg-slate-50 border-b border-slate-100">
-                                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center flex-shrink-0">
-                                            <span style={{fontSize:'16px'}}>🤖</span>
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-black text-slate-700">Zenbot</p>
-                                            {result && result.matchedQ && (
-                                                <p className="text-[10px] text-slate-400 truncate">Cocok: "{result.matchedQ}" • {result.score}% relevan</p>
-                                            )}
-                                        </div>
-                                        {result && (
-                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex-shrink-0 ${getCatColor(result.category)}`}>
-                                                {result.category}
-                                            </span>
-                                        )}
-                                    </div>
-                                    {/* Answer body */}
-                                    <div className="px-5 py-4">
-                                        {(typing || typedText) && (
-                                            <p className="text-sm text-slate-700 leading-relaxed font-medium whitespace-pre-wrap">
-                                                {typedText}
-                                                {typing && <span className="inline-block w-0.5 h-4 bg-sky-500 ml-0.5 animate-pulse align-middle"></span>}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Suggestions */}
-                                {suggestions.length > 0 && !typing && (
-                                    <div className="mb-6">
-                                        <p className="text-xs font-black text-slate-500 mb-2 flex items-center gap-1">
-                                            <i className="fa-solid fa-lightbulb text-amber-400"></i> Mungkin yang kamu cari:
-                                        </p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {suggestions.map((s, i) => (
-                                                <button key={i} onClick={() => { setInputVal(s); doSearch(s); }}
-                                                    className="text-xs text-sky-600 border border-sky-200 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-full font-semibold transition-colors">
-                                                    {s}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* All categories chips */}
-                                {categories.length > 0 && !typing && (
-                                    <div>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Kategori tersedia:</p>
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {categories.map((cat, i) => (
-                                                <button key={i} onClick={() => { setInputVal(cat); doSearch(cat); }}
-                                                    className={`text-[10px] font-black px-2.5 py-1 rounded-full transition-colors hover:opacity-80 ${getCatColor(cat)}`}>
-                                                    {cat}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </>
-                    ) : (
-                        /* ── Google-style homepage ── */
-                        <div className="flex-1 flex flex-col items-center justify-center px-4 pb-24" style={{minHeight:'80vh'}}>
-                            {/* Logo */}
-                            <div className="mb-8 select-none">
-                                <div className="flex items-end gap-1 justify-center mb-1">
-                                    <span style={{fontSize:'clamp(52px,10vw,82px)',fontWeight:900,color:'#4285F4',fontFamily:'serif',lineHeight:1}}>Z</span>
-                                    <span style={{fontSize:'clamp(52px,10vw,82px)',fontWeight:900,color:'#EA4335',fontFamily:'serif',lineHeight:1}}>e</span>
-                                    <span style={{fontSize:'clamp(52px,10vw,82px)',fontWeight:900,color:'#FBBC05',fontFamily:'serif',lineHeight:1}}>n</span>
-                                    <span style={{fontSize:'clamp(52px,10vw,82px)',fontWeight:900,color:'#4285F4',fontFamily:'serif',lineHeight:1}}>b</span>
-                                    <span style={{fontSize:'clamp(52px,10vw,82px)',fontWeight:900,color:'#34A853',fontFamily:'serif',lineHeight:1}}>o</span>
-                                    <span style={{fontSize:'clamp(52px,10vw,82px)',fontWeight:900,color:'#EA4335',fontFamily:'serif',lineHeight:1}}>t</span>
-                                </div>
-                                <p className="text-center text-xs font-semibold text-slate-400 tracking-widest uppercase mt-1">
-                                    {loadingBrain ? '⏳ Memuat otak...' : (
-                                    isOfflineMode
-                                        ? <span style={{color:'#f59e0b'}}>📦 {brainData.length} pengetahuan (cache offline{cacheTime ? ` • ${cacheTime}` : ''})</span>
-                                        : `🧠 ${brainData.length} pengetahuan dimuat`
-                                )}
-                                </p>
-                            </div>
-
-                            {/* Search box */}
-                            <form onSubmit={handleSubmit} className="w-full max-w-xl">
-                                <div className="flex items-center border border-slate-300 rounded-full px-5 py-3.5 shadow hover:shadow-md transition-shadow focus-within:shadow-md focus-within:border-slate-400 bg-white gap-3 mb-6">
-                                    <i className="fa-solid fa-magnifying-glass text-slate-400 text-base flex-shrink-0"></i>
-                                    <input
-                                        ref={inputRef}
-                                        value={inputVal}
-                                        onChange={e => setInputVal(e.target.value)}
-                                        placeholder="Tanyakan apa saja tentang toko..."
-                                        className="flex-1 outline-none text-sm font-medium text-slate-700 placeholder:text-slate-400 bg-transparent"
-                                        autoFocus
-                                    />
-                                    {inputVal && (
-                                        <button type="button" onClick={() => setInputVal('')} className="text-slate-400 hover:text-slate-600 flex-shrink-0">
-                                            <i className="fa-solid fa-xmark"></i>
+                                    <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '16px' }}>
+                                        <button onClick={handleSend} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 20px', fontSize: '13px', fontWeight: 700, color: '#334155', cursor: 'pointer', fontFamily: 'inherit' }}>
+                                            Tanya Zenbot
                                         </button>
-                                    )}
+                                    </div>
                                 </div>
-                                <div className="flex justify-center gap-3">
-                                    <button type="submit" className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-lg transition-colors border border-slate-200 hover:border-slate-300">
-                                        Cari dengan Zenbot
-                                    </button>
-                                    <button type="button" onClick={() => { if (brainData.length > 0) { const r = brainData[Math.floor(Math.random()*brainData.length)]; setInputVal(r.question); doSearch(r.question); } }}
-                                        className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-lg transition-colors border border-slate-200 hover:border-slate-300">
-                                        Saya Lagi Beruntung
-                                    </button>
-                                </div>
-                            </form>
-
-                            {/* Category quick links */}
-                            {categories.length > 0 && (
-                                <div className="mt-10 w-full max-w-xl">
-                                    <p className="text-xs font-black text-slate-400 uppercase tracking-wider text-center mb-3">Jelajahi Kategori</p>
-                                    <div className="flex flex-wrap gap-2 justify-center">
-                                        {categories.map((cat, i) => (
-                                            <button key={i} onClick={() => { setInputVal(cat); doSearch(cat); }}
-                                                className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-all hover:scale-105 ${getCatColor(cat)}`}>
-                                                {cat}
+                                {/* Suggestions */}
+                                <div style={{ maxWidth: '540px', width: '100%' }}>
+                                    <p style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: 700, marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Coba tanya:</p>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center' }}>
+                                        {SUGGESTIONS.map((s, i) => (
+                                            <button key={i} onClick={() => { setQuery(s); setTimeout(() => { setQuery(''); setShowWelcome(false); const userMsg = { role: 'user', text: s, time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }; setMessages(prev => [...prev, userMsg]); setThinking(true); setTimeout(() => { const result = findAnswer(s); let botMsg; if (!kb.length) { botMsg = { role: 'bot', text: 'Otak Zenbot masih kosong! Minta admin untuk mengisi Knowledge Base.', type: 'empty', time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }; } else if (!result) { botMsg = { role: 'bot', text: 'Saya tidak menemukan informasi yang relevan. Coba kata kunci berbeda.', type: 'notfound', time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }; } else { botMsg = { role: 'bot', top: result.top, related: result.related, confidence: result.confidence, type: 'answer', time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }; } setThinking(false); setMessages(prev => [...prev, botMsg]); }, 700); }, 0); }}
+                                                style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '6px 14px', fontSize: '12px', fontWeight: 600, color: '#475569', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                            >
+                                                <i className="fa-regular fa-clock" style={{ fontSize: '10px', color: '#94a3b8' }}></i> {s}
                                             </button>
                                         ))}
                                     </div>
                                 </div>
-                            )}
+                                {kbCount === 0 && (
+                                    <div style={{ marginTop: '28px', background: '#fff7ed', border: '1.5px solid #fed7aa', borderRadius: '12px', padding: '12px 18px', maxWidth: '400px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                                        <i className="fa-solid fa-triangle-exclamation" style={{ color: '#f97316', marginTop: '2px', flexShrink: 0 }}></i>
+                                        <p style={{ fontSize: '12px', fontWeight: 600, color: '#92400e', lineHeight: 1.6, margin: 0 }}>Knowledge Base masih kosong. Buka <strong>Admin Panel → tab Zenbot KB</strong> untuk mengisi data.</p>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            /* Chat View */
+                            <div style={{ maxWidth: '680px', margin: '0 auto', paddingBottom: '20px' }}>
+                                {messages.map((msg, i) => (
+                                    <div key={i} style={{ marginBottom: '16px', display: 'flex', flexDirection: msg.role === 'user' ? 'row-reverse' : 'row', alignItems: 'flex-start', gap: '10px' }}>
+                                        {msg.role === 'bot' && (
+                                            <div style={{ width: 32, height: 32, borderRadius: '10px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                <i className="fa-solid fa-robot" style={{ color: '#fff', fontSize: '13px' }}></i>
+                                            </div>
+                                        )}
+                                        <div style={{ maxWidth: '85%' }}>
+                                            {msg.role === 'user' ? (
+                                                <div style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#fff', borderRadius: '18px 18px 4px 18px', padding: '10px 16px', fontSize: '14px', fontWeight: 500, lineHeight: 1.5 }}>
+                                                    {msg.text}
+                                                </div>
+                                            ) : msg.type === 'answer' ? (
+                                                <div>
+                                                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px 18px 18px 18px', padding: '14px 16px', marginBottom: '8px' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                                                            <span style={{ fontSize: '12px', fontWeight: 800, color: '#6366f1', background: '#eef2ff', padding: '2px 8px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                <i className="fa-solid fa-book" style={{ fontSize: '9px' }}></i> {msg.top.category || 'Informasi'}
+                                                            </span>
+                                                            <ConfidenceBadge score={msg.confidence} />
+                                                        </div>
+                                                        <p style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', margin: '0 0 6px', lineHeight: 1.4 }}>{msg.top.title}</p>
+                                                        <p style={{ fontSize: '13px', color: '#334155', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>{msg.top.content}</p>
+                                                        {msg.top.tags && msg.top.tags.length > 0 && (
+                                                            <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                                                {msg.top.tags.map((tag, ti) => (
+                                                                    <span key={ti} style={{ fontSize: '10px', fontWeight: 700, background: '#ede9fe', color: '#7c3aed', padding: '2px 8px', borderRadius: '20px' }}>#{tag}</span>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    {msg.related && msg.related.length > 0 && (
+                                                        <div style={{ marginBottom: '4px' }}>
+                                                            <p style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 700, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Info terkait:</p>
+                                                            {msg.related.map((rel, ri) => (
+                                                                <div key={ri} style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: '10px', padding: '8px 12px', marginBottom: '4px', cursor: 'pointer' }}
+                                                                    onClick={() => { setMessages(prev => [...prev.slice(0,-1), { ...prev[prev.length-1], top: rel, related: [], confidence: Math.min(100, Math.round((rel.score / 30) * 100)) }]); }}>
+                                                                    <p style={{ fontSize: '12px', fontWeight: 800, color: '#334155', margin: '0 0 2px' }}>{rel.title}</p>
+                                                                    <p style={{ fontSize: '11px', color: '#94a3b8', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rel.content}</p>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div style={{ background: msg.type === 'empty' ? '#fffbeb' : '#f8fafc', border: `1px solid ${msg.type === 'empty' ? '#fde68a' : '#e2e8f0'}`, borderRadius: '4px 18px 18px 18px', padding: '12px 16px', color: '#64748b', fontSize: '13px', lineHeight: 1.6 }}>
+                                                    {msg.type === 'empty' && <i className="fa-solid fa-database" style={{ marginRight: '6px', color: '#f59e0b' }}></i>}
+                                                    {msg.type === 'notfound' && <i className="fa-solid fa-magnifying-glass" style={{ marginRight: '6px', color: '#94a3b8' }}></i>}
+                                                    {msg.text}
+                                                </div>
+                                            )}
+                                            <div style={{ fontSize: '10px', color: '#cbd5e1', fontWeight: 600, marginTop: '4px', textAlign: msg.role === 'user' ? 'right' : 'left', paddingLeft: msg.role === 'bot' ? '4px' : 0, paddingRight: msg.role === 'user' ? '4px' : 0 }}>{msg.time}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                                {thinking && (
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '16px' }}>
+                                        <div style={{ width: 32, height: 32, borderRadius: '10px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                            <i className="fa-solid fa-robot" style={{ color: '#fff', fontSize: '13px' }}></i>
+                                        </div>
+                                        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px 18px 18px 18px', padding: '12px 16px' }}>
+                                            <span className="typing-dot"></span><span className="typing-dot"></span><span className="typing-dot"></span>
+                                        </div>
+                                    </div>
+                                )}
+                                <div ref={chatEndRef}></div>
+                            </div>
+                        )}
+                    </div>
 
-                            {/* Empty state */}
-                            {!loadingBrain && brainData.length === 0 && (
-                                <div className="mt-8 text-center">
-                                    <div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-3 text-3xl">🧠</div>
-                                    <p className="text-sm font-bold text-slate-500">Otak Zenbot masih kosong</p>
-                                    <p className="text-xs text-slate-400 mt-1">Minta admin untuk mengisi pengetahuan di Panel Admin → Tab Zenbot</p>
-                                </div>
-                            )}
+                    {/* Input bar (sticky bottom, only in chat mode) */}
+                    {!showWelcome && (
+                        <div style={{ background: '#fff', borderTop: '1px solid #f1f5f9', padding: '12px 16px', flexShrink: 0 }}>
+                            <div style={{ maxWidth: '680px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '10px', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '24px', padding: '8px 16px' }}>
+                                <i className="fa-solid fa-magnifying-glass" style={{ color: '#94a3b8', fontSize: '13px', flexShrink: 0 }}></i>
+                                <input
+                                    value={query}
+                                    onChange={e => setQuery(e.target.value)}
+                                    onKeyDown={handleKey}
+                                    placeholder="Tanya sesuatu lagi…"
+                                    autoFocus
+                                    style={{ flex: 1, border: 'none', outline: 'none', fontSize: '14px', fontWeight: 500, color: '#1e293b', background: 'transparent', fontFamily: 'inherit' }}
+                                />
+                                <button onClick={() => { setMessages([]); setShowWelcome(true); }} title="Mulai baru" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '12px', padding: '2px 4px' }} title="Reset chat">
+                                    <i className="fa-solid fa-arrows-rotate"></i>
+                                </button>
+                                <button onClick={handleSend} disabled={!query.trim()} style={{ width: 32, height: 32, borderRadius: '50%', background: query.trim() ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : '#e2e8f0', border: 'none', color: query.trim() ? '#fff' : '#94a3b8', cursor: query.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s' }}>
+                                    <i className="fa-solid fa-arrow-up" style={{ fontSize: '12px' }}></i>
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
             );
         };
-        // =================== END ZENBOT VIEW ===================
+        // ── End ZenbotView ──
 
                 const App = () => {
             const [inventoryData, setInventoryData] = useState([]);
@@ -15277,7 +15233,7 @@
                 { id: 'rekam_medis', label: 'Rekam Medis',       icon: 'stethoscope',         enabled: isOwner || showMenu('showMenuRekamMedis', settingsData.showMenuRekamMedis), readOnly: !isOwner && !menuOn('enableRekamMedis', settingsData.enableRekamMedis) },
                 { id: 'jadwal_shift', label: 'Jadwal Shift',     icon: 'calendar-days',       enabled: isOwner || showMenu('showMenuJadwalShift', settingsData.showMenuJadwalShift), readOnly: !isOwner && !menuOn('enableJadwalShift', settingsData.enableJadwalShift) },
                 { id: 'transfer_barang', label: 'Transfer Barang', icon: 'right-left',         enabled: isOwner || showMenu('showMenuTransferBarang', settingsData.showMenuTransferBarang), readOnly: !isOwner && !menuOn('enableTransferBarang', settingsData.enableTransferBarang) },
-                { id: 'zenbot',       label: 'Zenbot',            icon: 'robot',               enabled: true, readOnly: false },
+                { id: 'zenbot',      label: 'Zenbot',            icon: 'robot',               enabled: true, readOnly: false },
                 { id: 'pengguna_akun', label: 'Pengguna Akun',   icon: 'users',               enabled: true, readOnly: false },
                 { id: 'settings',    label: 'Pengaturan',        icon: 'gears',               enabled: true, readOnly: false },
             ];
@@ -15599,8 +15555,8 @@
                         {activeTab === 'pengguna_akun' && (<PenggunaAkunView authSession={authSession} onUpdateSession={(newSession) => { setAuthSession(newSession); saveSession(newSession); }} showToast={showToast} />)}
                         {activeTab === 'catatan' && (<PapanCatatan user={user} readOnly={menuItems.find(m=>m.id==='catatan')?.readOnly} />)}
                         {activeTab === 'jadwal_shift' && (<JadwalShiftView user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='jadwal_shift')?.readOnly} isOwner={isOwner} authSession={authSession} settings={settingsData} />)}
-                        {activeTab === 'zenbot' && (<ZenbotView user={user} showToast={showToast} isOwner={isOwner} authSession={authSession} />)}
                         {activeTab === 'transfer_barang' && (<TransferBarangView user={user} showToast={showToast} rawInventory={rawInventory} settings={settingsData} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='transfer_barang')?.readOnly} authSession={authSession} />)}
+                        {activeTab === 'zenbot' && (<ZenbotView isOwner={isOwner} />)}
                     </main>
                     <ConfirmModal isOpen={deleteModal.show} title="Hapus Barang?" message={`Yakin ingin menghapus permanen "${deleteModal.item?.name}"? Barang ini akan hilang dari SEMUA toko.`} onConfirm={handleDelete} onCancel={() => setDeleteModal({ show: false, item: null })} />
                     <ConfirmModal isOpen={deleteRackModal.show} title="Hapus Rak?" message={`Yakin ingin menghapus rak "${deleteRackModal.rackName}"? Semua barang di rak ini akan menjadi 'No Rack' (-).`} onConfirm={handleConfirmDeleteRack} onCancel={() => setDeleteRackModal({ show: false, rackName: null })} confirmText="Ya, Hapus Rak" />
