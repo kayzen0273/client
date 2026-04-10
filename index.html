@@ -11373,15 +11373,23 @@
                 return () => unsub();
             }, []);
 
+            const initializedSessionRef = React.useRef(null);
+
             useEffect(() => {
                 const active = sessions.find(s => s.status === 'open' && s.profileId === profileId);
                 if (active) {
                     setActiveSession(active);
                     setSessionId(active.id);
-                    const counts = {};
-                    (active.entries || []).forEach(e => { counts[e.itemId] = e.physicalQty; });
-                    setPhysicalCounts(counts);
+                    // Hanya load physicalCounts saat pertama kali sesi ditemukan,
+                    // supaya snapshot berikutnya tidak overwrite input user
+                    if (initializedSessionRef.current !== active.id) {
+                        initializedSessionRef.current = active.id;
+                        const counts = {};
+                        (active.entries || []).forEach(e => { counts[e.itemId] = e.physicalQty; });
+                        setPhysicalCounts(counts);
+                    }
                 } else {
+                    initializedSessionRef.current = null;
                     setActiveSession(null);
                     setSessionId(null);
                     setPhysicalCounts({});
