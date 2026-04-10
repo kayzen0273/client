@@ -14365,9 +14365,9 @@
                     const messagesEndRef = React.useRef(null);
                     const inputRef = React.useRef(null);
 
-                    const GITHUB_TOKEN = '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';
-                    const ENDPOINT = 'https://models.inference.ai.azure.com';
-                    const MODEL = 'gpt-4o';
+                    const OPENROUTER_KEY = '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';
+                    const ENDPOINT = 'https://openrouter.ai/api/v1';
+                    const MODEL = 'openai/gpt-4o';
 
                     React.useEffect(() => {
                         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -14386,7 +14386,9 @@
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${GITHUB_TOKEN}`
+                                    'Authorization': `Bearer ${OPENROUTER_KEY}`,
+                                    'HTTP-Referer': window.location.href,
+                                    'X-Title': 'Zenbot AI - Kasir Husna'
                                 },
                                 body: JSON.stringify({
                                     model: MODEL,
