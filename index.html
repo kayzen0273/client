@@ -45,7 +45,6 @@
                         coinSpin: { '0%': { transform: 'rotateY(0deg)' }, '100%': { transform: 'rotateY(360deg)' } },
                         slideUp: { '0%': { transform: 'translateY(100vh)', opacity: 0 }, '10%': { opacity: 0.7 }, '90%': { opacity: 0.7 }, '100%': { transform: 'translateY(-20vh)', opacity: 0 } },
                         scanLine: { '0%, 100%': { top: '0%', opacity: 0.8 }, '50%': { top: '100%', opacity: 0.4 } },
-                        spin: { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } },
                     }
                 }
             }
@@ -1770,6 +1769,7 @@
                 { key: 'showMenuRekamMedis', label: 'Rekam Medis', icon: 'stethoscope', desc: 'Tampilkan rekam medis (dokter & pasien)' },
                 { key: 'showMenuJadwalShift', label: 'Jadwal Shift', icon: 'calendar-days', desc: 'Tampilkan jadwal shift karyawan' },
                 { key: 'showMenuTransferBarang', label: 'Transfer Barang', icon: 'right-left', desc: 'Tampilkan transfer barang antar toko' },
+                { key: 'showMenuZenbot', label: 'Zenbot AI', icon: 'robot', desc: 'Tampilkan menu Zenbot AI asisten' },
             ];
             const dashboardVisibilityList = [
                 { key: 'showNilaiStokDashboard', label: 'Total Nilai Stok (Modal)', icon: 'coins', desc: 'Tampilkan total harga beli × stok di dashboard' },
@@ -3827,12 +3827,6 @@
             const [attachmentFile, setAttachmentFile] = useState(null);
             const [attachmentPreview, setAttachmentPreview] = useState(null);
             const attachmentInputRef = useRef(null);
-            // ── AI Scan States ──────────────────────────────────────────
-            const [aiScanLoading, setAiScanLoading] = useState(false);
-            const [aiScanDone, setAiScanDone] = useState(false);
-            const aiPhotoInputRef = useRef(null);
-            const GITHUB_TOKEN = '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';
-            // ────────────────────────────────────────────────────────────
             const [supplierData, setSupplierData] = useState({ name: '', address: '', phone: '' });
             const [editingSupplier, setEditingSupplier] = useState(null);
             const [deletePasswordModal, setDeletePasswordModal] = useState({ show: false, purchaseId: null, closeDetailAfter: false });
@@ -4485,110 +4479,6 @@
             
             const removeAttachment = () => { setAttachmentFile(null); setAttachmentPreview(null); if(attachmentInputRef.current) attachmentInputRef.current.value=''; };
 
-            // ── AI Scan Faktur via GitHub Models (GPT-4o) ────────────────────────────
-            const handleAIScanFaktur = (file) => {
-                if (!file) return;
-                setAiScanLoading(true);
-                setAiScanDone(false);
-                const reader = new FileReader();
-                reader.onload = async (ev) => {
-                    try {
-                        const base64Data = ev.target.result.split(',')[1];
-                        const mediaType = file.type || 'image/jpeg';
-                        const response = await fetch('https://models.inference.ai.azure.com/chat/completions', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${GITHUB_TOKEN}`
-                            },
-                            body: JSON.stringify({
-                                model: 'gpt-4o',
-                                max_tokens: 1500,
-                                messages: [{
-                                    role: 'user',
-                                    content: [
-                                        {
-                                            type: 'image_url',
-                                            image_url: { url: `data:${mediaType};base64,${base64Data}` }
-                                        },
-                                        {
-                                            type: 'text',
-                                            text: `Ini foto faktur pembelian toko. Ekstrak semua informasi dalam format JSON persis seperti ini (tanpa teks lain, tanpa backtick, tanpa komentar):
-{
-  "invoiceNumber": "nomor faktur atau null",
-  "date": "YYYY-MM-DD atau null",
-  "supplier": "nama supplier/pengirim atau null",
-  "dueDate": "YYYY-MM-DD atau null",
-  "paymentMethod": "Tunai atau Kredit atau Transfer",
-  "ppn": "excl_11 atau excl_12 atau incl_11 atau incl_12 atau null",
-  "items": [
-    { "name": "nama barang", "qty": angka, "buyPrice": angka_harga_beli, "price": angka_harga_jual }
-  ]
-}
-Harga hanya angka tanpa titik/koma/Rp. Jika harga jual tidak ada, samakan dengan harga beli. Hanya JSON murni.`
-                                        }
-                                    ]
-                                }]
-                            })
-                        });
-                        if (!response.ok) {
-                            const errText = await response.text();
-                            throw new Error(`HTTP ${response.status}: ${errText}`);
-                        }
-                        const data = await response.json();
-                        const rawText = data.choices?.[0]?.message?.content || '';
-                        const jsonStr = rawText.replace(/```json|```/g, '').trim();
-                        const parsed = JSON.parse(jsonStr);
-
-                        setInvoiceData(prev => {
-                            const newItems = Array.isArray(parsed.items) && parsed.items.length > 0
-                                ? parsed.items.map(item => {
-                                    const match = items.find(inv =>
-                                        inv.name.toLowerCase().includes((item.name || '').toLowerCase()) ||
-                                        (item.name || '').toLowerCase().includes(inv.name.toLowerCase())
-                                    );
-                                    const tempId = `_new_${Date.now()}_${Math.random().toString(36).slice(2,7)}`;
-                                    return {
-                                        id: match ? match.id : tempId,
-                                        name: match ? match.name : (item.name || ''),
-                                        qty: Number(item.qty) || 1,
-                                        price: Number(item.price) || Number(item.buyPrice) || 0,
-                                        buyPrice: Number(item.buyPrice) || Number(item.price) || 0,
-                                        discountBeli: 0,
-                                        discountBeliType: '%',
-                                        batchNo: '',
-                                        currentStock: match ? (match.qty || 0) : 0,
-                                        _pendingNew: !match,
-                                        _newItemMeta: !match ? { unit: 'Pcs', rack: '-', exp: '', minStock: null } : undefined
-                                    };
-                                })
-                                : prev.items;
-                            return {
-                                ...prev,
-                                invoiceNumber: parsed.invoiceNumber || prev.invoiceNumber,
-                                date: parsed.date || prev.date,
-                                supplier: parsed.supplier || prev.supplier,
-                                dueDate: parsed.dueDate || prev.dueDate,
-                                paymentMethod: parsed.paymentMethod || prev.paymentMethod,
-                                ppn: parsed.ppn || prev.ppn,
-                                items: newItems,
-                            };
-                        });
-                        setAiScanDone(true);
-                        showToast('✨ Faktur terbaca oleh AI! Cek & simpan.', 'success');
-                    } catch(err) {
-                        console.error('AI Scan error:', err);
-                        showToast('Gagal baca faktur: ' + (err.message || 'Error tidak diketahui'), 'error');
-                    } finally {
-                        setAiScanLoading(false);
-                        if (aiPhotoInputRef.current) aiPhotoInputRef.current.value = '';
-                    }
-                };
-                reader.onerror = () => { setAiScanLoading(false); showToast('Gagal membaca file.', 'error'); };
-                reader.readAsDataURL(file);
-            };
-            // ─────────────────────────────────────────────────────────────────────────
-
             const handleOpenDetail = (purchase) => { setSelectedPurchase(purchase); setDetailModalOpen(true); };
 
             const handleOpenEdit = (purchase) => {
@@ -4975,56 +4865,7 @@ Harga hanya angka tanpa titik/koma/Rp. Jika harga jual tidak ada, samakan dengan
                             <div className="flex-1 overflow-y-auto px-4 py-3 pb-24 space-y-5">
                                 <p className="text-xs text-green-600">✓ Draf tersimpan otomatis</p>
 
-                                {/* ── AI SCAN BANNER ─────────────────────────────────── */}
-                                <input
-                                    ref={aiPhotoInputRef}
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={e => { const f = e.target.files?.[0]; if(f) handleAIScanFaktur(f); }}
-                                />
-                                <div style={{background:'linear-gradient(135deg,#0f766e 0%,#0d9488 60%,#0891b2 100%)',borderRadius:'14px',padding:'14px 16px',color:'#fff',position:'relative',overflow:'hidden'}}>
-                                    <div style={{position:'absolute',top:'-20px',right:'-20px',width:'90px',height:'90px',background:'rgba(255,255,255,0.07)',borderRadius:'50%'}}></div>
-                                    <div style={{position:'absolute',bottom:'-30px',left:'30%',width:'70px',height:'70px',background:'rgba(255,255,255,0.05)',borderRadius:'50%'}}></div>
-                                    <div className="flex items-center gap-3">
-                                        <div style={{width:'44px',height:'44px',background:'rgba(255,255,255,0.18)',borderRadius:'12px',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:'22px'}}>
-                                            {aiScanLoading ? '⏳' : aiScanDone ? '✅' : '🤖'}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p style={{fontWeight:800,fontSize:'13.5px',marginBottom:'2px',letterSpacing:'-0.01em'}}>
-                                                {aiScanLoading ? 'AI sedang membaca faktur...' : aiScanDone ? 'Faktur terbaca! Cek & simpan' : 'Scan Faktur dengan AI'}
-                                            </p>
-                                            <p style={{fontSize:'10.5px',opacity:0.82,lineHeight:1.4}}>
-                                                {aiScanLoading ? 'Mohon tunggu sebentar...' : aiScanDone ? 'Data terisi otomatis. Koreksi jika perlu.' : 'Foto faktur → semua kolom terisi otomatis'}
-                                            </p>
-                                        </div>
-                                        {!aiScanLoading && (
-                                            <div className="flex flex-col gap-1.5 flex-shrink-0">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => { if(aiPhotoInputRef.current){ aiPhotoInputRef.current.removeAttribute('capture'); aiPhotoInputRef.current.click(); } }}
-                                                    style={{background:'rgba(255,255,255,0.22)',border:'1.5px solid rgba(255,255,255,0.4)',color:'#fff',borderRadius:'8px',padding:'5px 10px',fontSize:'10.5px',fontWeight:700,display:'flex',alignItems:'center',gap:'5px',cursor:'pointer',whiteSpace:'nowrap'}}
-                                                >
-                                                    <Icon name="image" className="text-[10px]" /> Galeri
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => { if(aiPhotoInputRef.current){ aiPhotoInputRef.current.setAttribute('capture','environment'); aiPhotoInputRef.current.click(); } }}
-                                                    style={{background:'rgba(255,255,255,0.22)',border:'1.5px solid rgba(255,255,255,0.4)',color:'#fff',borderRadius:'8px',padding:'5px 10px',fontSize:'10.5px',fontWeight:700,display:'flex',alignItems:'center',gap:'5px',cursor:'pointer',whiteSpace:'nowrap'}}
-                                                >
-                                                    <Icon name="camera" className="text-[10px]" /> Kamera
-                                                </button>
-                                            </div>
-                                        )}
-                                        {aiScanLoading && (
-                                            <div style={{width:'28px',height:'28px',border:'3px solid rgba(255,255,255,0.3)',borderTopColor:'#fff',borderRadius:'50%',animation:'spin 0.8s linear infinite',flexShrink:0}}></div>
-                                        )}
-                                    </div>
-                                    {aiScanDone && (
-                                        <button type="button" onClick={() => setAiScanDone(false)} style={{position:'absolute',top:'8px',right:'8px',background:'rgba(255,255,255,0.15)',border:'none',color:'#fff',width:'20px',height:'20px',borderRadius:'50%',fontSize:'11px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
-                                    )}
-                                </div>
-                                {/* ───────────────────────────────────────────────────── */}
+                                {/* SECTION: Detail Faktur */}
                                 <div>
                                     <div className="flex items-center gap-2 text-sm font-medium mb-3">📄 Detail faktur</div>
                                     <div className="space-y-2">
@@ -14513,6 +14354,369 @@ Harga hanya angka tanpa titik/koma/Rp. Jika harga jual tidak ada, samakan dengan
 
 
 
+
+        // =================== ZENBOT AI VIEW ===================
+        const ZENBOT_STORAGE_KEY = 'zenbot_knowledge_husna';
+        const ZENBOT_GITHUB_TOKEN = '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';
+        const ZENBOT_ENDPOINT = 'https://models.inference.ai.azure.com/chat/completions';
+        const ZENBOT_MODEL = 'gpt-4o-mini';
+
+        const ZenbotView = ({ showToast, user }) => {
+            const [tab, setTab] = React.useState('chat');
+            const [messages, setMessages] = React.useState([{
+                role: 'assistant',
+                content: '🤖 Halo! Saya **Zenbot** — asisten AI Toko Husna.\n\nSaya menggunakan pengetahuan yang sudah diisi di tab **Otak** untuk menjawab pertanyaan kamu. Semakin banyak diisi, semakin pintar saya!\n\nTanya apa saja ya 😊'
+            }]);
+            const [chatInput, setChatInput] = React.useState('');
+            const [isLoading, setIsLoading] = React.useState(false);
+            const [knowledge, setKnowledge] = React.useState([]);
+            const [pasteText, setPasteText] = React.useState('');
+            const [pasteSource, setPasteSource] = React.useState('');
+            const [isSaving, setIsSaving] = React.useState(false);
+            const [searchKb, setSearchKb] = React.useState('');
+            const chatEndRef = React.useRef(null);
+            const textareaRef = React.useRef(null);
+
+            // Load knowledge from localStorage on mount
+            React.useEffect(() => {
+                try {
+                    const saved = localStorage.getItem(ZENBOT_STORAGE_KEY);
+                    if (saved) setKnowledge(JSON.parse(saved));
+                } catch(e) {}
+                // Listen for knowledge updates from admin panel (same browser)
+                const handler = (e) => {
+                    if (e.key === ZENBOT_STORAGE_KEY) {
+                        try { setKnowledge(JSON.parse(e.newValue || '[]')); } catch(err) {}
+                    }
+                };
+                window.addEventListener('storage', handler);
+                return () => window.removeEventListener('storage', handler);
+            }, []);
+
+            React.useEffect(() => {
+                chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, [messages, isLoading]);
+
+            const persistKnowledge = (kb) => {
+                setKnowledge(kb);
+                try { localStorage.setItem(ZENBOT_STORAGE_KEY, JSON.stringify(kb)); } catch(e) {}
+            };
+
+            const addKnowledge = () => {
+                if (!pasteText.trim()) return;
+                setIsSaving(true);
+                const entry = {
+                    id: Date.now().toString(),
+                    text: pasteText.trim(),
+                    source: pasteSource.trim() || 'Manual Input',
+                    timestamp: new Date().toISOString(),
+                    wordCount: pasteText.trim().split(/\s+/).filter(Boolean).length,
+                };
+                const newKb = [entry, ...knowledge];
+                persistKnowledge(newKb);
+                setPasteText('');
+                setPasteSource('');
+                setTimeout(() => {
+                    setIsSaving(false);
+                    showToast?.('✅ Pengetahuan berhasil disimpan ke Zenbot!');
+                }, 300);
+            };
+
+            const deleteKnowledge = (id) => {
+                persistKnowledge(knowledge.filter(k => k.id !== id));
+                showToast?.('🗑️ Entri dihapus');
+            };
+
+            const clearAll = () => {
+                if (!window.confirm('Hapus semua pengetahuan Zenbot? Tidak bisa dibatalkan.')) return;
+                persistKnowledge([]);
+                showToast?.('🗑️ Semua pengetahuan dihapus');
+            };
+
+            const buildSystemPrompt = () => {
+                const base = 'Kamu adalah Zenbot, asisten AI cerdas untuk Toko Husna. Jawab dalam Bahasa Indonesia dengan ramah, jelas, dan to the point. Gunakan emoji secukupnya.';
+                if (knowledge.length === 0) return base;
+                const ctx = knowledge.map((k, i) => `--- [${i+1}] ${k.source} ---\n${k.text}`).join('\n\n');
+                return `${base}\n\nGunakan pengetahuan berikut sebagai referensi utama untuk menjawab:\n\n${ctx}\n\nJika pertanyaan tidak relevan dengan pengetahuan di atas, tetap bantu dengan pengetahuan umum.`;
+            };
+
+            const sendMessage = async () => {
+                const userText = chatInput.trim();
+                if (!userText || isLoading) return;
+                const userMsg = { role: 'user', content: userText };
+                const newMsgs = [...messages, userMsg];
+                setMessages(newMsgs);
+                setChatInput('');
+                setIsLoading(true);
+                try {
+                    const apiMessages = newMsgs.map(m => ({ role: m.role, content: m.content }));
+                    const res = await fetch(ZENBOT_ENDPOINT, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${ZENBOT_GITHUB_TOKEN}`,
+                        },
+                        body: JSON.stringify({
+                            model: ZENBOT_MODEL,
+                            messages: [
+                                { role: 'system', content: buildSystemPrompt() },
+                                ...apiMessages.slice(-12),
+                            ],
+                            max_tokens: 1024,
+                            temperature: 0.75,
+                        }),
+                    });
+                    if (!res.ok) {
+                        const errBody = await res.text();
+                        throw new Error(`HTTP ${res.status}: ${errBody.slice(0,200)}`);
+                    }
+                    const data = await res.json();
+                    const reply = data.choices?.[0]?.message?.content?.trim() || '(Tidak ada respons)';
+                    setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+                } catch(err) {
+                    // Offline fallback: cari di knowledge base
+                    const q = userText.toLowerCase();
+                    const words = q.split(/\s+/).filter(w => w.length > 3);
+                    const found = knowledge.find(k =>
+                        words.some(w => k.text.toLowerCase().includes(w))
+                    );
+                    const offline = found
+                        ? `📡 **Mode Offline** — Saya menemukan info relevan dari pengetahuan tersimpan:\n\n"${found.text.slice(0, 400)}${found.text.length > 400 ? '…' : ''}"\n\n_(Sumber: ${found.source})_`
+                        : `📡 **Mode Offline** — Tidak dapat menghubungi AI dan tidak ada info relevan di pengetahuan saya.\n\nError: ${err.message}\n\nPastikan koneksi internet aktif dan token GitHub valid.`;
+                    setMessages(prev => [...prev, { role: 'assistant', content: offline, isOffline: true }]);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            const handleKeyDown = (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+            };
+
+            const renderMd = (text) => {
+                // Very simple markdown: bold, italic, newlines
+                return text
+                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                    .replace(/`(.+?)`/g, '<code style="background:#f1f5f9;padding:1px 4px;border-radius:4px;font-size:0.9em">$1</code>')
+                    .replace(/\n/g, '<br/>');
+            };
+
+            const totalWords = knowledge.reduce((s, k) => s + (k.wordCount || 0), 0);
+            const filteredKb = searchKb
+                ? knowledge.filter(k => k.text.toLowerCase().includes(searchKb.toLowerCase()) || k.source.toLowerCase().includes(searchKb.toLowerCase()))
+                : knowledge;
+
+            return (
+                <div style={{display:'flex',flexDirection:'column',height:'calc(100vh - 120px)',maxWidth:'680px',margin:'0 auto',padding:'12px 8px 0',gap:'10px'}}>
+                    {/* Header */}
+                    <div style={{display:'flex',alignItems:'center',gap:'12px',padding:'0 4px',flexShrink:0}}>
+                        <div style={{width:'42px',height:'42px',borderRadius:'14px',background:'linear-gradient(135deg,#7c3aed,#4f46e5)',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 4px 16px rgba(124,58,237,0.35)',flexShrink:0}}>
+                            <Icon name="robot" className="text-white" style={{fontSize:'18px'}} />
+                        </div>
+                        <div style={{flex:1}}>
+                            <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+                                <span style={{fontSize:'15px',fontWeight:900,color:'#1e293b'}}>Zenbot AI</span>
+                                <span style={{fontSize:'9px',background:'linear-gradient(135deg,#7c3aed,#4f46e5)',color:'#fff',padding:'2px 8px',borderRadius:'20px',fontWeight:900,letterSpacing:'0.5px'}}>BETA</span>
+                            </div>
+                            <span style={{fontSize:'11px',color:'#94a3b8',fontWeight:600}}>{knowledge.length} entri · {totalWords.toLocaleString('id-ID')} kata tersimpan</span>
+                        </div>
+                        {/* Tab switcher */}
+                        <div style={{display:'flex',gap:'4px',background:'#f1f5f9',padding:'4px',borderRadius:'12px',flexShrink:0}}>
+                            {[{id:'chat',icon:'comments',label:'Chat'},{id:'knowledge',icon:'brain',label:'Otak'}].map(t => (
+                                <button key={t.id} onClick={() => setTab(t.id)}
+                                    style={{padding:'6px 12px',borderRadius:'8px',fontSize:'12px',fontWeight:800,border:'none',cursor:'pointer',transition:'all 0.2s',
+                                        background: tab===t.id ? '#fff' : 'transparent',
+                                        color: tab===t.id ? '#7c3aed' : '#64748b',
+                                        boxShadow: tab===t.id ? '0 2px 8px rgba(0,0,0,0.1)' : 'none',
+                                    }}>
+                                    <Icon name={t.icon} style={{marginRight:'5px'}} />{t.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* ── CHAT TAB ── */}
+                    {tab === 'chat' && (
+                        <React.Fragment>
+                            {/* Messages */}
+                            <div style={{flex:1,overflowY:'auto',background:'#fff',borderRadius:'20px',border:'1.5px solid #e2e8f0',padding:'16px',display:'flex',flexDirection:'column',gap:'12px'}}>
+                                {messages.map((msg, i) => (
+                                    <div key={i} style={{display:'flex',gap:'8px',flexDirection:msg.role==='user'?'row-reverse':'row',alignItems:'flex-end'}}>
+                                        {msg.role === 'assistant' && (
+                                            <div style={{width:'28px',height:'28px',borderRadius:'10px',background:'linear-gradient(135deg,#7c3aed,#4f46e5)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                                                <Icon name="robot" style={{color:'#fff',fontSize:'11px'}} />
+                                            </div>
+                                        )}
+                                        <div style={{
+                                            maxWidth:'78%',
+                                            padding:'10px 14px',
+                                            borderRadius: msg.role==='user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                                            background: msg.role==='user' ? 'linear-gradient(135deg,#7c3aed,#6d28d9)' : msg.isOffline ? '#fffbeb' : '#f8fafc',
+                                            border: msg.role==='user' ? 'none' : msg.isOffline ? '1.5px solid #fde68a' : '1.5px solid #e2e8f0',
+                                            color: msg.role==='user' ? '#fff' : '#1e293b',
+                                            fontSize:'13px',
+                                            fontWeight:500,
+                                            lineHeight:'1.55',
+                                            boxShadow: msg.role==='user' ? '0 2px 12px rgba(124,58,237,0.25)' : '0 1px 4px rgba(0,0,0,0.04)',
+                                        }} dangerouslySetInnerHTML={{__html: renderMd(msg.content)}} />
+                                        {msg.role === 'user' && (
+                                            <div style={{width:'28px',height:'28px',borderRadius:'10px',background:'#e2e8f0',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                                                <Icon name="user" style={{color:'#64748b',fontSize:'11px'}} />
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                                {isLoading && (
+                                    <div style={{display:'flex',gap:'8px',alignItems:'flex-end'}}>
+                                        <div style={{width:'28px',height:'28px',borderRadius:'10px',background:'linear-gradient(135deg,#7c3aed,#4f46e5)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                                            <Icon name="robot" style={{color:'#fff',fontSize:'11px'}} />
+                                        </div>
+                                        <div style={{padding:'12px 16px',background:'#f8fafc',border:'1.5px solid #e2e8f0',borderRadius:'18px 18px 18px 4px',display:'flex',gap:'4px',alignItems:'center'}}>
+                                            <span className="typing-dot"></span>
+                                            <span className="typing-dot"></span>
+                                            <span className="typing-dot"></span>
+                                        </div>
+                                    </div>
+                                )}
+                                <div ref={chatEndRef} />
+                            </div>
+                            {/* Input box */}
+                            <div style={{display:'flex',gap:'8px',flexShrink:0,paddingBottom:'8px'}}>
+                                <textarea
+                                    ref={textareaRef}
+                                    value={chatInput}
+                                    onChange={e => setChatInput(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    placeholder="Tanya Zenbot apa saja… (Enter kirim, Shift+Enter baris baru)"
+                                    rows={2}
+                                    style={{flex:1,border:'1.5px solid #e2e8f0',borderRadius:'14px',padding:'10px 14px',fontSize:'13px',fontWeight:500,outline:'none',resize:'none',fontFamily:'inherit',color:'#1e293b',transition:'border-color 0.2s'}}
+                                    onFocus={e => e.target.style.borderColor='#7c3aed'}
+                                    onBlur={e => e.target.style.borderColor='#e2e8f0'}
+                                />
+                                <button onClick={sendMessage} disabled={!chatInput.trim()||isLoading}
+                                    style={{width:'44px',background:chatInput.trim()&&!isLoading?'linear-gradient(135deg,#7c3aed,#4f46e5)':'#e2e8f0',border:'none',borderRadius:'14px',cursor:chatInput.trim()&&!isLoading?'pointer':'not-allowed',transition:'all 0.2s',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,boxShadow:chatInput.trim()&&!isLoading?'0 4px 12px rgba(124,58,237,0.3)':'none'}}>
+                                    <Icon name={isLoading?'spinner':'paper-plane'} style={{color:'#fff',fontSize:'14px'}} className={isLoading?'animate-spin':''} />
+                                </button>
+                            </div>
+                            {knowledge.length === 0 && (
+                                <div style={{flexShrink:0,background:'#fdf4ff',border:'1.5px solid #e9d5ff',borderRadius:'12px',padding:'10px 14px',fontSize:'11px',color:'#7e22ce',fontWeight:700,display:'flex',alignItems:'center',gap:'8px'}}>
+                                    <Icon name="lightbulb" style={{fontSize:'14px'}} />
+                                    Zenbot belum punya pengetahuan! Buka tab <strong>Otak</strong> untuk isi dulu biar jawaban lebih akurat.
+                                </div>
+                            )}
+                        </React.Fragment>
+                    )}
+
+                    {/* ── KNOWLEDGE TAB ── */}
+                    {tab === 'knowledge' && (
+                        <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:'10px',paddingBottom:'16px'}}>
+                            {/* Add knowledge box */}
+                            <div style={{background:'#fff',borderRadius:'20px',border:'1.5px solid #e2e8f0',padding:'16px',display:'flex',flexDirection:'column',gap:'10px',flexShrink:0}}>
+                                <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+                                    <div style={{width:'28px',height:'28px',borderRadius:'8px',background:'#f3f0ff',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                                        <Icon name="plus" style={{color:'#7c3aed',fontSize:'13px'}} />
+                                    </div>
+                                    <span style={{fontSize:'13px',fontWeight:900,color:'#1e293b'}}>Tambah Pengetahuan Baru</span>
+                                </div>
+                                <input
+                                    value={pasteSource}
+                                    onChange={e => setPasteSource(e.target.value)}
+                                    placeholder="Nama sumber (cth: Prosedur Kasir, Info Produk, SOP Toko…)"
+                                    style={{border:'1.5px solid #e2e8f0',borderRadius:'10px',padding:'8px 12px',fontSize:'12px',fontWeight:600,outline:'none',fontFamily:'inherit',color:'#1e293b'}}
+                                    onFocus={e=>e.target.style.borderColor='#7c3aed'}
+                                    onBlur={e=>e.target.style.borderColor='#e2e8f0'}
+                                />
+                                <textarea
+                                    value={pasteText}
+                                    onChange={e => setPasteText(e.target.value)}
+                                    placeholder="Paste teks di sini… bisa berulang-ulang. Semua akan dikumpulkan dan digunakan AI saat menjawab pertanyaan.&#10;&#10;Makin banyak diisi = Zenbot makin pintar! 🧠"
+                                    rows={6}
+                                    style={{border:'1.5px solid #e2e8f0',borderRadius:'10px',padding:'10px 12px',fontSize:'12px',fontWeight:500,outline:'none',resize:'vertical',fontFamily:'inherit',color:'#1e293b',lineHeight:'1.5'}}
+                                    onFocus={e=>e.target.style.borderColor='#7c3aed'}
+                                    onBlur={e=>e.target.style.borderColor='#e2e8f0'}
+                                />
+                                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                                    <span style={{fontSize:'11px',color:'#94a3b8',fontWeight:600}}>
+                                        {pasteText.split(/\s+/).filter(Boolean).length} kata diketik
+                                    </span>
+                                    <button onClick={addKnowledge} disabled={!pasteText.trim()||isSaving}
+                                        style={{padding:'8px 18px',background:pasteText.trim()&&!isSaving?'linear-gradient(135deg,#7c3aed,#4f46e5)':'#e2e8f0',color:'#fff',border:'none',borderRadius:'10px',fontSize:'12px',fontWeight:800,cursor:pasteText.trim()&&!isSaving?'pointer':'not-allowed',display:'flex',alignItems:'center',gap:'6px',transition:'all 0.2s',boxShadow:pasteText.trim()&&!isSaving?'0 4px 12px rgba(124,58,237,0.3)':'none'}}>
+                                        <Icon name={isSaving?'spinner':'floppy-disk'} className={isSaving?'animate-spin':''} />
+                                        Simpan ke Otak
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Knowledge stats bar */}
+                            {knowledge.length > 0 && (
+                                <div style={{background:'linear-gradient(135deg,#7c3aed,#4f46e5)',borderRadius:'16px',padding:'12px 16px',display:'flex',alignItems:'center',gap:'12px',flexShrink:0}}>
+                                    <Icon name="brain" style={{color:'#fff',fontSize:'18px'}} />
+                                    <div style={{flex:1}}>
+                                        <div style={{color:'#fff',fontSize:'13px',fontWeight:900}}>{knowledge.length} Entri Pengetahuan</div>
+                                        <div style={{color:'rgba(255,255,255,0.7)',fontSize:'11px',fontWeight:600}}>{totalWords.toLocaleString('id-ID')} total kata tersimpan</div>
+                                    </div>
+                                    <button onClick={clearAll} style={{background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.3)',color:'#fff',padding:'5px 12px',borderRadius:'8px',fontSize:'11px',fontWeight:800,cursor:'pointer'}}>
+                                        <Icon name="trash" style={{marginRight:'4px'}} />Hapus Semua
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Search bar */}
+                            {knowledge.length > 2 && (
+                                <div style={{position:'relative',flexShrink:0}}>
+                                    <Icon name="magnifying-glass" style={{position:'absolute',left:'12px',top:'50%',transform:'translateY(-50%)',color:'#94a3b8',fontSize:'12px'}} />
+                                    <input value={searchKb} onChange={e=>setSearchKb(e.target.value)} placeholder="Cari pengetahuan…"
+                                        style={{width:'100%',border:'1.5px solid #e2e8f0',borderRadius:'12px',padding:'9px 12px 9px 34px',fontSize:'12px',fontWeight:600,outline:'none',fontFamily:'inherit'}} />
+                                </div>
+                            )}
+
+                            {/* Knowledge list */}
+                            {filteredKb.length > 0 ? (
+                                <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+                                    {filteredKb.map(k => (
+                                        <div key={k.id} style={{background:'#fff',borderRadius:'16px',border:'1.5px solid #ede9fe',padding:'12px 14px',display:'flex',gap:'10px',alignItems:'flex-start'}}>
+                                            <div style={{width:'32px',height:'32px',borderRadius:'10px',background:'#f3f0ff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                                                <Icon name="file-lines" style={{color:'#7c3aed',fontSize:'13px'}} />
+                                            </div>
+                                            <div style={{flex:1,minWidth:0}}>
+                                                <div style={{display:'flex',alignItems:'center',gap:'6px',marginBottom:'4px',flexWrap:'wrap'}}>
+                                                    <span style={{fontSize:'12px',fontWeight:900,color:'#6d28d9'}}>{k.source}</span>
+                                                    <span style={{fontSize:'10px',color:'#94a3b8',fontWeight:600}}>{new Date(k.timestamp).toLocaleDateString('id-ID')}</span>
+                                                    <span style={{fontSize:'10px',background:'#ede9fe',color:'#7c3aed',padding:'1px 8px',borderRadius:'20px',fontWeight:800}}>{k.wordCount || 0} kata</span>
+                                                </div>
+                                                <p style={{fontSize:'12px',color:'#475569',fontWeight:500,lineHeight:'1.5',display:'-webkit-box',WebkitLineClamp:3,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{k.text}</p>
+                                            </div>
+                                            <button onClick={() => deleteKnowledge(k.id)}
+                                                style={{background:'none',border:'none',cursor:'pointer',color:'#cbd5e1',padding:'4px',borderRadius:'6px',transition:'color 0.2s',flexShrink:0}}
+                                                onMouseEnter={e=>e.currentTarget.style.color='#ef4444'}
+                                                onMouseLeave={e=>e.currentTarget.style.color='#cbd5e1'}>
+                                                <Icon name="trash" style={{fontSize:'12px'}} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div style={{background:'#fff',borderRadius:'20px',border:'1.5px solid #e2e8f0',padding:'40px 20px',display:'flex',flexDirection:'column',alignItems:'center',gap:'12px',textAlign:'center'}}>
+                                    <div style={{width:'56px',height:'56px',borderRadius:'18px',background:'#f3f0ff',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                                        <Icon name="brain" style={{color:'#c4b5fd',fontSize:'26px'}} />
+                                    </div>
+                                    <div>
+                                        <p style={{fontSize:'14px',fontWeight:900,color:'#6d28d9',marginBottom:'4px'}}>Otak Zenbot Masih Kosong</p>
+                                        <p style={{fontSize:'12px',color:'#94a3b8',fontWeight:600,maxWidth:'260px',lineHeight:'1.6'}}>Paste teks apapun di atas — SOP, info produk, panduan, dll. Zenbot akan gunakan sebagai referensi saat menjawab.</p>
+                                    </div>
+                                    <div style={{background:'#ede9fe',borderRadius:'12px',padding:'10px 14px',maxWidth:'300px'}}>
+                                        <p style={{fontSize:'11px',color:'#7c3aed',fontWeight:700,lineHeight:'1.6'}}>💡 <strong>Tips:</strong> Kamu juga bisa kirim pengetahuan dari Admin Panel notifikasi dengan tombol "Feed ke Zenbot"</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+        // =================== END ZENBOT AI VIEW ===================
+
                 const App = () => {
             const [inventoryData, setInventoryData] = useState([]);
             const [rawInventory, setRawInventory] = useState([]); // Store original data from DB
@@ -15086,6 +15290,7 @@ Harga hanya angka tanpa titik/koma/Rp. Jika harga jual tidak ada, samakan dengan
                 { id: 'rekam_medis', label: 'Rekam Medis',       icon: 'stethoscope',         enabled: isOwner || showMenu('showMenuRekamMedis', settingsData.showMenuRekamMedis), readOnly: !isOwner && !menuOn('enableRekamMedis', settingsData.enableRekamMedis) },
                 { id: 'jadwal_shift', label: 'Jadwal Shift',     icon: 'calendar-days',       enabled: isOwner || showMenu('showMenuJadwalShift', settingsData.showMenuJadwalShift), readOnly: !isOwner && !menuOn('enableJadwalShift', settingsData.enableJadwalShift) },
                 { id: 'transfer_barang', label: 'Transfer Barang', icon: 'right-left',         enabled: isOwner || showMenu('showMenuTransferBarang', settingsData.showMenuTransferBarang), readOnly: !isOwner && !menuOn('enableTransferBarang', settingsData.enableTransferBarang) },
+                { id: 'zenbot',        label: 'Zenbot',            icon: 'robot',               enabled: true, readOnly: false },
                 { id: 'pengguna_akun', label: 'Pengguna Akun',   icon: 'users',               enabled: true, readOnly: false },
                 { id: 'settings',    label: 'Pengaturan',        icon: 'gears',               enabled: true, readOnly: false },
             ];
@@ -15407,6 +15612,7 @@ Harga hanya angka tanpa titik/koma/Rp. Jika harga jual tidak ada, samakan dengan
                         {activeTab === 'pengguna_akun' && (<PenggunaAkunView authSession={authSession} onUpdateSession={(newSession) => { setAuthSession(newSession); saveSession(newSession); }} showToast={showToast} />)}
                         {activeTab === 'catatan' && (<PapanCatatan user={user} readOnly={menuItems.find(m=>m.id==='catatan')?.readOnly} />)}
                         {activeTab === 'jadwal_shift' && (<JadwalShiftView user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='jadwal_shift')?.readOnly} isOwner={isOwner} authSession={authSession} settings={settingsData} />)}
+                        {activeTab === 'zenbot' && (<ZenbotView showToast={showToast} user={user} />)}
                         {activeTab === 'transfer_barang' && (<TransferBarangView user={user} showToast={showToast} rawInventory={rawInventory} settings={settingsData} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='transfer_barang')?.readOnly} authSession={authSession} />)}
                     </main>
                     <ConfirmModal isOpen={deleteModal.show} title="Hapus Barang?" message={`Yakin ingin menghapus permanen "${deleteModal.item?.name}"? Barang ini akan hilang dari SEMUA toko.`} onConfirm={handleDelete} onCancel={() => setDeleteModal({ show: false, item: null })} />
