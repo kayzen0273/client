@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sistem Kasir Toko Husna (V71 - Mode Offline dengan Sinkronisasi Otomatis)</title>
+    <title>Sistem Kasir Apotek Rafa Medica</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -77,13 +77,14 @@
 
         // Konfigurasi dari User
         const userConfig = {
-            apiKey: "AIzaSyAKhe3ILdMTN7Dn9Ao3MqlzW3s5hHUDB_c",
-            authDomain: "toko-husna-c6415.firebaseapp.com",
-            projectId: "toko-husna-c6415",
-            storageBucket: "toko-husna-c6415.firebasestorage.app",
-            messagingSenderId: "171239564619",
-            appId: "1:171239564619:web:29972d886bd39f1559f4ce",
-            measurementId: "G-4BKNYL5KFC"
+            apiKey: "AIzaSyCG8PQL8h2z8O5ebRW3_Mdm1ovgNSdUwC4",
+            authDomain: "rafa-medica.firebaseapp.com",
+            databaseURL: "https://rafa-medica-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "rafa-medica",
+            storageBucket: "rafa-medica.firebasestorage.app",
+            messagingSenderId: "550088541296",
+            appId: "1:550088541296:web:7b520c90d5c6723ebfe0b5",
+            measurementId: "G-7V2PLLQEKY"
         };
 
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : userConfig;
@@ -280,7 +281,7 @@
     <!-- React App (Babel) -->
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo, useCallback } = React;
-        const APP_NAME = "Toko Husna";
+        const APP_NAME = "Apotek Rafa Medica";
 
         // --- CHANGELOG / NOTIFIKASI UPDATE ---
         const CHANGELOG = [
@@ -528,8 +529,8 @@
                 ]
             },
         ];
-        const CHANGELOG_STORAGE_KEY = 'husna_read_changelogs';
-        const CHANGELOG_DATA_KEY   = 'husna_changelog_data';
+        const CHANGELOG_STORAGE_KEY = 'rafa_read_changelogs';
+        const CHANGELOG_DATA_KEY   = 'rafa_changelog_data';
         // Baca dari localStorage jika ada (dikelola admin panel), fallback ke CHANGELOG hardcode
         function getLiveChangelog() {
             try {
@@ -1642,7 +1643,7 @@
         // ==================== END AKSES TOKO TAB ====================
 
         // ==================== OWNER PANEL ====================
-        const OwnerPanel = ({ onBack, localSettings, handleChange, onSave, savingSettings, ownerSettings, onSaveSettings, ownerAuthSession }) => {
+        const OwnerPanel = ({ onBack, localSettings, handleChange, onSave, savingSettings, ownerSettings, onSaveSettings, ownerAuthSession, inventoryItems = [] }) => {
             const [users, setUsers] = useState([]);
             const [loadingUsers, setLoadingUsers] = useState(true);
             const [activeTab, setActiveTab] = useState('karyawan'); // 'karyawan' | 'akses_menu' | 'akses_toko' | 'sidebar' | 'pengaturan_menu' | 'kode'
@@ -1658,6 +1659,11 @@
             const [showKodeHapus, setShowKodeHapus] = useState(false);
             const [savingKode, setSavingKode] = useState(false);
             const [kodeLoaded, setKodeLoaded] = useState(false);
+
+            // Hapus Data state
+            const [hapusDataModal, setHapusDataModal] = useState({ show: false, type: '' });
+            const [hapusDataLoading, setHapusDataLoading] = useState(false);
+            const [konfirmasiText, setKonfirmasiText] = useState('');
 
             const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
@@ -1779,6 +1785,46 @@
                 (searchUser === '' || u.namaLengkap?.toLowerCase().includes(searchUser.toLowerCase()) || u.username?.toLowerCase().includes(searchUser.toLowerCase()) || u.email?.toLowerCase().includes(searchUser.toLowerCase()))
             );
 
+            const handleHapusSemua = async () => {
+                if (inventoryItems.length === 0) { showToast('Tidak ada barang untuk dihapus'); setHapusDataModal({ show: false, type: '' }); return; }
+                setHapusDataLoading(true);
+                try {
+                    const BATCH_SIZE = 400;
+                    for (let i = 0; i < inventoryItems.length; i += BATCH_SIZE) {
+                        const batch = window.writeBatch(window.db);
+                        inventoryItems.slice(i, i + BATCH_SIZE).forEach(item => {
+                            const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', item.id);
+                            batch.delete(ref);
+                        });
+                        await batch.commit();
+                    }
+                    showToast(`✅ ${inventoryItems.length} barang berhasil dihapus semua!`);
+                } catch (e) { showToast('❌ Gagal menghapus semua barang'); }
+                setHapusDataLoading(false);
+                setHapusDataModal({ show: false, type: '' });
+                setKonfirmasiText('');
+            };
+
+            const handleResetStok = async () => {
+                if (inventoryItems.length === 0) { showToast('Tidak ada barang'); setHapusDataModal({ show: false, type: '' }); return; }
+                setHapusDataLoading(true);
+                try {
+                    const BATCH_SIZE = 400;
+                    for (let i = 0; i < inventoryItems.length; i += BATCH_SIZE) {
+                        const batch = window.writeBatch(window.db);
+                        inventoryItems.slice(i, i + BATCH_SIZE).forEach(item => {
+                            const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', item.id);
+                            batch.update(ref, { qty: 0 });
+                        });
+                        await batch.commit();
+                    }
+                    showToast(`✅ Stok ${inventoryItems.length} barang berhasil direset ke 0!`);
+                } catch (e) { showToast('❌ Gagal mereset stok'); }
+                setHapusDataLoading(false);
+                setHapusDataModal({ show: false, type: '' });
+                setKonfirmasiText('');
+            };
+
             return (
                 <div className="bg-white/90 backdrop-blur-sm rounded-[30px] shadow-soft border border-amber-200 overflow-hidden fade-in">
                     {/* Header */}
@@ -1799,6 +1845,7 @@
                         <button onClick={() => setActiveTab('sidebar')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab==='sidebar' ? 'bg-amber-500 text-white shadow-md' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}><Icon name="sidebar" className="mr-1.5" />Sidebar</button>
                         <button onClick={() => setActiveTab('pengaturan_menu')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab==='pengaturan_menu' ? 'bg-amber-500 text-white shadow-md' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}><Icon name="gears" className="mr-1.5" />Menu Pengaturan</button>
                         <button onClick={() => setActiveTab('kode')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab==='kode' ? 'bg-amber-500 text-white shadow-md' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}><Icon name="key" className="mr-1.5" />Ubah Kode</button>
+                        <button onClick={() => setActiveTab('hapus_data')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab==='hapus_data' ? 'bg-red-500 text-white shadow-md' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}><Icon name="trash-can" className="mr-1.5" />Hapus Data</button>
                     </div>
 
                     {/* ---- TAB: KARYAWAN ---- */}
@@ -2186,6 +2233,123 @@
                         </div>
                     )}
 
+                    {/* ---- TAB: HAPUS DATA ---- */}
+                    {activeTab === 'hapus_data' && (
+                        <div className="p-4 space-y-4">
+                            {/* Warning Banner */}
+                            <div className="p-3 bg-red-50 border border-red-300 rounded-xl flex items-start gap-2">
+                                <Icon name="triangle-exclamation" className="text-red-500 mt-0.5 flex-shrink-0" />
+                                <p className="text-xs text-red-800 font-semibold">Zona berbahaya! Tindakan di bawah ini <strong>tidak bisa dibatalkan</strong>. Pastikan kamu sudah backup data sebelum melanjutkan.</p>
+                            </div>
+
+                            {/* Info total barang */}
+                            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-slate-200 flex items-center justify-center flex-shrink-0">
+                                    <Icon name="boxes-stacked" className="text-slate-600 text-sm" />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-slate-700">Total Barang Saat Ini</p>
+                                    <p className="text-lg font-black text-slate-900">{inventoryItems.length} <span className="text-sm font-semibold text-slate-500">barang</span></p>
+                                </div>
+                            </div>
+
+                            {/* Hapus Semua Nama Barang */}
+                            <div className="bg-white rounded-2xl border-2 border-red-200 shadow-sm overflow-hidden">
+                                <div className="px-4 pt-4 pb-3 border-b border-red-100 flex items-center gap-2 bg-red-50">
+                                    <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
+                                        <Icon name="trash-can" className="text-red-600 text-sm" />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-red-800 text-sm">Hapus Semua Nama Barang</p>
+                                        <p className="text-[10px] text-red-500">Menghapus seluruh data barang secara permanen</p>
+                                    </div>
+                                </div>
+                                <div className="p-4 space-y-3">
+                                    <p className="text-xs text-slate-600">Semua <strong>{inventoryItems.length} barang</strong> beserta nama, harga, stok, kadaluarsa, dan rak akan <span className="text-red-600 font-bold">dihapus permanen</span> dari database. Riwayat transaksi tidak terpengaruh.</p>
+                                    <button
+                                        onClick={() => { setKonfirmasiText(''); setHapusDataModal({ show: true, type: 'hapus_semua' }); }}
+                                        disabled={inventoryItems.length === 0}
+                                        className="w-full py-3 bg-red-500 hover:bg-red-600 disabled:opacity-40 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md"
+                                    >
+                                        <Icon name="trash-can" /> Hapus Semua Barang ({inventoryItems.length})
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Reset Semua Stok ke 0 */}
+                            <div className="bg-white rounded-2xl border-2 border-orange-200 shadow-sm overflow-hidden">
+                                <div className="px-4 pt-4 pb-3 border-b border-orange-100 flex items-center gap-2 bg-orange-50">
+                                    <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
+                                        <Icon name="rotate-left" className="text-orange-600 text-sm" />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-orange-800 text-sm">Reset Semua Stok ke 0</p>
+                                        <p className="text-[10px] text-orange-500">Mengosongkan jumlah stok seluruh barang</p>
+                                    </div>
+                                </div>
+                                <div className="p-4 space-y-3">
+                                    <p className="text-xs text-slate-600">Stok semua <strong>{inventoryItems.length} barang</strong> akan diset menjadi <span className="text-orange-600 font-bold">0 (nol)</span>. Nama, harga, dan data lain tetap ada. Berguna saat stock opname awal.</p>
+                                    <button
+                                        onClick={() => { setKonfirmasiText(''); setHapusDataModal({ show: true, type: 'reset_stok' }); }}
+                                        disabled={inventoryItems.length === 0}
+                                        className="w-full py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md"
+                                    >
+                                        <Icon name="rotate-left" /> Reset Stok Semua Barang ({inventoryItems.length})
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Modal Konfirmasi Hapus Data */}
+                    {hapusDataModal.show && (
+                        <div className="fixed inset-0 bg-slate-900/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm fade-in" onClick={() => { if (!hapusDataLoading) { setHapusDataModal({ show: false, type: '' }); setKonfirmasiText(''); } }}>
+                            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm pop-in" onClick={e => e.stopPropagation()}>
+                                <div className="text-center mb-4">
+                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3 ${hapusDataModal.type === 'hapus_semua' ? 'bg-red-100' : 'bg-orange-100'}`}>
+                                        <Icon name={hapusDataModal.type === 'hapus_semua' ? 'trash-can' : 'rotate-left'} className={`text-2xl ${hapusDataModal.type === 'hapus_semua' ? 'text-red-500' : 'text-orange-500'}`} />
+                                    </div>
+                                    <h3 className="font-black text-slate-800 text-lg">
+                                        {hapusDataModal.type === 'hapus_semua' ? '⚠️ Hapus Semua Barang?' : '⚠️ Reset Semua Stok ke 0?'}
+                                    </h3>
+                                    <p className="text-slate-500 text-xs mt-2 leading-relaxed">
+                                        {hapusDataModal.type === 'hapus_semua'
+                                            ? <><strong className="text-red-600">{inventoryItems.length} barang</strong> akan dihapus permanen dari database. Tindakan ini <strong>tidak bisa dibatalkan!</strong></>
+                                            : <>Stok <strong className="text-orange-600">{inventoryItems.length} barang</strong> akan direset ke <strong>0</strong>. Nama dan data barang tetap ada.</>
+                                        }
+                                    </p>
+                                </div>
+                                <div className="mb-4">
+                                    <p className="text-xs font-bold text-slate-600 mb-2 text-center">Ketik <span className={`px-1.5 py-0.5 rounded font-mono text-xs ${hapusDataModal.type === 'hapus_semua' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>{hapusDataModal.type === 'hapus_semua' ? 'HAPUS SEMUA' : 'RESET STOK'}</span> untuk konfirmasi</p>
+                                    <input
+                                        type="text"
+                                        value={konfirmasiText}
+                                        onChange={e => setKonfirmasiText(e.target.value)}
+                                        placeholder={hapusDataModal.type === 'hapus_semua' ? 'HAPUS SEMUA' : 'RESET STOK'}
+                                        className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-bold text-center focus:outline-none transition-colors ${konfirmasiText === (hapusDataModal.type === 'hapus_semua' ? 'HAPUS SEMUA' : 'RESET STOK') ? 'border-green-400 bg-green-50 text-green-700' : 'border-slate-200 bg-slate-50 text-slate-700'}`}
+                                    />
+                                </div>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => { setHapusDataModal({ show: false, type: '' }); setKonfirmasiText(''); }}
+                                        disabled={hapusDataLoading}
+                                        className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-600 font-bold text-sm hover:bg-slate-200 disabled:opacity-50"
+                                    >Batal</button>
+                                    <button
+                                        onClick={hapusDataModal.type === 'hapus_semua' ? handleHapusSemua : handleResetStok}
+                                        disabled={hapusDataLoading || konfirmasiText !== (hapusDataModal.type === 'hapus_semua' ? 'HAPUS SEMUA' : 'RESET STOK')}
+                                        className={`flex-1 py-3 rounded-xl text-white font-bold text-sm shadow-md disabled:opacity-40 transition-all ${hapusDataModal.type === 'hapus_semua' ? 'bg-red-500 hover:bg-red-600' : 'bg-orange-500 hover:bg-orange-600'}`}
+                                    >
+                                        {hapusDataLoading
+                                            ? <><span className="typing-dot bg-white"></span><span className="typing-dot bg-white"></span><span className="typing-dot bg-white"></span></>
+                                            : hapusDataModal.type === 'hapus_semua' ? '🗑️ Ya, Hapus Semua' : '🔄 Ya, Reset Stok'
+                                        }
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Confirm Modal */}
                     {confirmModal.show && (
                         <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm fade-in" onClick={() => setConfirmModal({ show: false, type: '', user: null })}>
@@ -2196,6 +2360,7 @@
                                     </div>
                                     <h3 className="font-black text-slate-800 text-lg">
                                         {confirmModal.type === 'delete' ? 'Hapus Akun Permanen?' : confirmModal.type === 'deactivate' ? 'Nonaktifkan Akun?' : 'Aktifkan Akun?'}
+
                                     </h3>
                                     <p className="text-slate-500 text-sm mt-2 leading-relaxed">
                                         {confirmModal.type === 'delete'
@@ -2527,7 +2692,7 @@
                     const resolvedPhoto = newPhotoData === 'REMOVE' ? null : (newPhotoData || authSession.profilePhoto || null);
                     const resolvedPos = newPhotoData === 'REMOVE' ? null : (authSession.photoPosition || null);
                     const newSession = { ...authSession, namaLengkap: form.namaLengkap.trim(), username: form.username.toLowerCase(), email: form.email.toLowerCase(), whatsapp: form.whatsapp.trim(), profilePhoto: resolvedPhoto, photoPosition: resolvedPos };
-                    localStorage.setItem('husna_auth_session', JSON.stringify(newSession));
+                    localStorage.setItem('rafa_auth_session', JSON.stringify(newSession));
                     if (onUpdateSession) onUpdateSession(newSession);
                     showMsg('success', 'Profil berhasil disimpan!');
                     setNewPhotoData(null);
@@ -3246,7 +3411,7 @@
         };
 
         // --- NEGATIVE STOCK BANNER ---
-        const NEGSTOCK_NOTIF_KEY = 'husna_negstock_last_notif';
+        const NEGSTOCK_NOTIF_KEY = 'rafa_negstock_last_notif';
         const NegativeStockBanner = ({ items, settings, onNavigateToPurchases }) => {
             const [visible, setVisible] = useState(false);
             const [dismissed, setDismissed] = useState(false);
@@ -3710,7 +3875,7 @@
                                     {/* TRANSFER */}
                                     <div>
                                         <div className="flex items-center gap-2 mb-3"><Icon name="building-columns" className="text-teal-600 text-base" /><span className="text-sm font-bold text-slate-700">Info Rekening Transfer</span></div>
-                                        <textarea value={localSettings.transferInfo || ''} onChange={(e) => handleChange('transferInfo', e.target.value)} className="w-full p-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-400 outline-none text-sm h-24 transition-colors" placeholder={"Contoh:\nBCA 1234567890\na.n. Toko Husna"} />
+                                        <textarea value={localSettings.transferInfo || ''} onChange={(e) => handleChange('transferInfo', e.target.value)} className="w-full p-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-400 outline-none text-sm h-24 transition-colors" placeholder={"Contoh:\nBCA 1234567890\na.n. Apotek Rafa Medica"} />
                                         <p className="text-[10px] text-slate-400 mt-1">Tulis nama bank dan nomor rekening. Jika kosong, Transfer tidak akan muncul di kasir.</p>
                                     </div>
                                 </div>
@@ -3738,7 +3903,7 @@
                         );
 
                         if (activeMenu === 'owner_panel') return (
-                            <OwnerPanel onBack={() => setActiveMenu(null)} localSettings={localSettings} handleChange={handleChange} onSave={handleSave} savingSettings={loading} ownerSettings={settings} onSaveSettings={onSave} ownerAuthSession={authSession} />
+                            <OwnerPanel onBack={() => setActiveMenu(null)} localSettings={localSettings} handleChange={handleChange} onSave={handleSave} savingSettings={loading} ownerSettings={settings} onSaveSettings={onSave} ownerAuthSession={authSession} inventoryItems={inventoryItems} />
                         );
 
                         return null;
@@ -6014,7 +6179,7 @@
             const [isOfflineMode, setIsOfflineMode] = useState(false);
             const [isOnline, setIsOnline] = useState(navigator.onLine);
             const [offlineQueue, setOfflineQueue] = useState(() => {
-                try { return JSON.parse(localStorage.getItem('husna_offline_queue') || '[]'); } catch { return []; }
+                try { return JSON.parse(localStorage.getItem('rafa_offline_queue') || '[]'); } catch { return []; }
             });
             const [isSyncing, setIsSyncing] = useState(false);
 
@@ -6029,7 +6194,7 @@
 
             // Simpan offlineQueue ke localStorage setiap berubah
             useEffect(() => {
-                localStorage.setItem('husna_offline_queue', JSON.stringify(offlineQueue));
+                localStorage.setItem('rafa_offline_queue', JSON.stringify(offlineQueue));
             }, [offlineQueue]);
 
             // Auto-sync saat kembali online
@@ -7020,7 +7185,7 @@
                     // Mode offline: simpan cart ke localStorage sebagai draft offline
                     if (cart.length > 0) {
                         const draft = { isDraft: true, items: cart, total: grandTotal, cashierName: cashierName, storeId: currentProfile.id, storeName: currentProfile.name, savedAt: new Date().toISOString() };
-                        localStorage.setItem('husna_offline_draft', JSON.stringify(draft));
+                        localStorage.setItem('rafa_offline_draft', JSON.stringify(draft));
                         showToast('Keranjang disimpan (offline draft)', 'info');
                     }
                     setIsOfflineMode(false);
@@ -7206,7 +7371,7 @@
                 setIsOfflineMode(false);
                 setActiveCartId(null);
                 localStorage.removeItem('activeCartId');
-                localStorage.removeItem('husna_offline_draft');
+                localStorage.removeItem('rafa_offline_draft');
                 // cashierName TETAP disimpan untuk sesi berikutnya
             };
             
@@ -9034,10 +9199,9 @@
                             batch.update(invRef, { [stockField]: window.increment(ri.qty * qtyToRetur), updatedAt: window.serverTimestamp() });
                         });
                     } else {
-                        // Item biasa — kalikan packageQtyPerUnit agar retur per box mengembalikan stok satuan yang benar
+                        // Item biasa
                         const invRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', item.id);
-                        const returStockQty = qtyToRetur * (item.packageQtyPerUnit || 1);
-                        batch.update(invRef, { [stockField]: window.increment(returStockQty) });
+                        batch.update(invRef, { [stockField]: window.increment(qtyToRetur) });
                     }
                     
                     const txRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'transactions', tx.id);
@@ -9049,7 +9213,7 @@
                     if (totalReturnedCount === totalItemsCount) newStatus = 'returned'; else if (totalReturnedCount > 0) newStatus = 'partial';
                     batch.update(txRef, { items: updatedItems, status: newStatus, returnedAt: window.serverTimestamp() });
                     await batch.commit();
-                    const label = item.isRacikanGroup ? 'Racikan' : `${qtyToRetur} ${item.selectedUnit || item.unit}${item.packageQtyPerUnit > 1 ? ` (${qtyToRetur * item.packageQtyPerUnit} ${item.unit} kembali ke stok)` : ''}`;
+                    const label = item.isRacikanGroup ? 'Racikan' : `${qtyToRetur} ${item.unit}`;
                     showToast(`Berhasil meretur ${label} ke Stok Toko`, "success");
                     setReturModal({ show: false, tx: null, item: null, index: -1 }); setSelectedTx(null);
                 } catch (error) { console.error("Retur error", error); showToast("Gagal melakukan retur", "error"); } finally { setProcessingRetur(false); }
@@ -9716,6 +9880,876 @@
             );
         };
 
+
+        const KeuanganView = ({ user, currentProfile, showToast, readOnly }) => {
+            const [activeSubTab, setActiveSubTab] = useState('penerimaan'); // 'penerimaan' | 'pengeluaran' | 'jurnal_umum'
+            const [entries, setEntries] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            // ===== JURNAL UMUM STATE =====
+            const [juEntries, setJuEntries] = useState([]);
+            const [juLoading, setJuLoading] = useState(true);
+            const [showJuModal, setShowJuModal] = useState(false);
+            const [juSubmitting, setJuSubmitting] = useState(false);
+            const [juEditingId, setJuEditingId] = useState(null);
+            const [juFormDate, setJuFormDate] = useState(new Date().toISOString().slice(0, 10));
+            const [juFormLines, setJuFormLines] = useState([
+                { keterangan: '', debit: '', kredit: '' },
+                { keterangan: '', debit: '', kredit: '' },
+            ]);
+
+            // Form state (shared)
+            const [showModal, setShowModal] = useState(false);
+            const [submitting, setSubmitting] = useState(false);
+            const [formDesc, setFormDesc]     = useState('');
+            const [formDate, setFormDate]     = useState(new Date().toISOString().slice(0, 10));
+            const [formCategory, setFormCategory] = useState('');
+            const [formAmount, setFormAmount] = useState(''); // untuk pengeluaran
+            const [editingId, setEditingId]   = useState(null);
+
+            // Form state khusus Penerimaan Kas (Jurnal)
+            const [formKas, setFormKas]                 = useState(''); // Debit: Kas
+            const [formPotongan, setFormPotongan]       = useState(''); // Debit: Potongan Penjualan
+            const [formPiutang, setFormPiutang]         = useState(''); // Kredit: Piutang
+            const [formPenjualan, setFormPenjualan]     = useState(''); // Kredit: Penjualan
+            const [formSerbi, setFormSerbi]             = useState(''); // Kredit: Serba-Serbi
+
+            // Form state khusus Pengeluaran Kas (Jurnal)
+            const [formRef, setFormRef]                         = useState(''); // Ref.
+            const [formUtang, setFormUtang]                     = useState(''); // Debit: Utang
+            const [formPembelian, setFormPembelian]             = useState(''); // Debit: Pembelian
+            const [formAkunLainnya, setFormAkunLainnya]         = useState(''); // Debit: Akun Lainnya
+            const [formKasOut, setFormKasOut]                   = useState(''); // Kredit: Kas
+            const [formPotonganPembelian, setFormPotonganPembelian] = useState(''); // Kredit: Potongan Pembelian
+
+            // Filter bulan
+            const thisMonth = new Date().toISOString().slice(0, 7);
+            const [filterMonth, setFilterMonth] = useState(thisMonth);
+
+            const CATEGORIES_OUT = ['Pembelian Obat', 'Gaji Karyawan', 'Listrik & Air', 'Sewa Tempat', 'ATK & Perlengkapan', 'Biaya Operasional', 'Pengeluaran Lain'];
+
+            useEffect(() => {
+                if (!user) return;
+                const q = window.query(
+                    window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'keuangan'),
+                    window.orderBy('date', 'desc'),
+                    window.limit(300)
+                );
+                const unsub = window.onSnapshot(q, (snapshot) => {
+                    // Keuangan: selalu tampilkan SEMUA toko (tidak difilter per profil)
+                    const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                    setEntries(all);
+                    setLoading(false);
+                });
+                return () => unsub();
+            }, [user]);
+
+            // Listener Jurnal Umum
+            useEffect(() => {
+                if (!user) return;
+                const q = window.query(
+                    window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'jurnal_umum'),
+                    window.orderBy('date', 'desc'),
+                    window.limit(500)
+                );
+                const unsub = window.onSnapshot(q, (snapshot) => {
+                    // Jurnal Umum: selalu tampilkan SEMUA toko (tidak difilter per profil)
+                    const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                    setJuEntries(all);
+                    setJuLoading(false);
+                });
+                return () => unsub();
+            }, [user]);
+
+            const currentType = activeSubTab === 'penerimaan' ? 'in' : 'out';
+
+            const filtered = entries.filter(e => e.type === currentType && e.date && e.date.startsWith(filterMonth));
+            // Urutkan ascending untuk penerimaan (tampilan jurnal)
+            const filteredAsc = activeSubTab === 'penerimaan' ? [...filtered].sort((a, b) => a.date.localeCompare(b.date)) : filtered;
+
+            const stats = React.useMemo(() => {
+                const inTotal  = entries.filter(e => e.type === 'in'  && e.date && e.date.startsWith(filterMonth)).reduce((a, b) => a + safeNumber(b.kas || b.amount), 0);
+                const outTotal = entries.filter(e => e.type === 'out' && e.date && e.date.startsWith(filterMonth)).reduce((a, b) => a + safeNumber(b.kasOut != null ? b.kasOut : b.amount), 0);
+                return { inTotal, outTotal, net: inTotal - outTotal };
+            }, [entries, filterMonth]);
+
+            // Totals untuk footer jurnal penerimaan
+            const jurnalTotals = React.useMemo(() => ({
+                kas:      filteredAsc.reduce((a, b) => a + safeNumber(b.kas || b.amount), 0),
+                potongan: filteredAsc.reduce((a, b) => a + safeNumber(b.potonganPenjualan), 0),
+                piutang:  filteredAsc.reduce((a, b) => a + safeNumber(b.piutang), 0),
+                penjualan:filteredAsc.reduce((a, b) => a + safeNumber(b.penjualan), 0),
+                serbi:    filteredAsc.reduce((a, b) => a + safeNumber(b.serbiSerbi), 0),
+            }), [filteredAsc]);
+
+            // Data pengeluaran ascending untuk jurnal
+            const filteredOutAsc = [...entries.filter(e => e.type === 'out' && e.date && e.date.startsWith(filterMonth))].sort((a, b) => a.date.localeCompare(b.date));
+
+            // Totals untuk footer jurnal pengeluaran
+            const jurnalTotalsOut = React.useMemo(() => ({
+                utang:             filteredOutAsc.reduce((a, b) => a + safeNumber(b.utang), 0),
+                pembelian:         filteredOutAsc.reduce((a, b) => a + safeNumber(b.pembelian), 0),
+                akunLainnya:       filteredOutAsc.reduce((a, b) => a + safeNumber(b.akunLainnya), 0),
+                kas:               filteredOutAsc.reduce((a, b) => a + safeNumber(b.kasOut != null ? b.kasOut : b.amount), 0),
+                potonganPembelian: filteredOutAsc.reduce((a, b) => a + safeNumber(b.potonganPembelian), 0),
+            }), [filteredOutAsc]);
+
+            const formatBulanIndo = (ym) => {
+                if (!ym) return '';
+                const [y, m] = ym.split('-');
+                const bulan = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+                return `${bulan[parseInt(m,10)-1]} ${y}`;
+            };
+
+            const resetInForm = () => { setFormKas(''); setFormPotongan(''); setFormPiutang(''); setFormPenjualan(''); setFormSerbi(''); setFormDesc(''); setFormDate(new Date().toISOString().slice(0,10)); };
+            const resetOutForm = () => { setFormRef(''); setFormUtang(''); setFormPembelian(''); setFormAkunLainnya(''); setFormKasOut(''); setFormPotonganPembelian(''); setFormDesc(''); setFormDate(new Date().toISOString().slice(0,10)); };
+
+            const openAdd = () => {
+                setEditingId(null);
+                resetInForm();
+                resetOutForm();
+                setFormAmount(''); setFormCategory('');
+                setShowModal(true);
+            };
+
+            const openEdit = (entry) => {
+                setEditingId(entry.id);
+                setFormDate(entry.date);
+                setFormDesc(entry.description);
+                if (entry.type === 'in') {
+                    setFormKas(entry.kas != null ? String(entry.kas) : String(entry.amount || ''));
+                    setFormPotongan(entry.potonganPenjualan != null ? String(entry.potonganPenjualan) : '');
+                    setFormPiutang(entry.piutang != null ? String(entry.piutang) : '');
+                    setFormPenjualan(entry.penjualan != null ? String(entry.penjualan) : '');
+                    setFormSerbi(entry.serbiSerbi != null ? String(entry.serbiSerbi) : '');
+                } else {
+                    setFormRef(entry.ref || '');
+                    setFormUtang(entry.utang != null ? String(entry.utang) : '');
+                    setFormPembelian(entry.pembelian != null ? String(entry.pembelian) : '');
+                    setFormAkunLainnya(entry.akunLainnya != null ? String(entry.akunLainnya) : '');
+                    setFormKasOut(entry.kasOut != null ? String(entry.kasOut) : String(entry.amount || ''));
+                    setFormPotonganPembelian(entry.potonganPembelian != null ? String(entry.potonganPembelian) : '');
+                    setFormAmount(String(entry.amount));
+                    setFormCategory(entry.category || '');
+                }
+                setShowModal(true);
+            };
+
+            const handleSubmit = async () => {
+                if (!formDate || !formDesc) { showToast("Tanggal & keterangan wajib diisi!", "error"); return; }
+                setSubmitting(true);
+                let payload;
+                if (activeSubTab === 'penerimaan') {
+                    const kas = safeNumber(formKas);
+                    const potongan = safeNumber(formPotongan);
+                    const piutang = safeNumber(formPiutang);
+                    const penjualan = safeNumber(formPenjualan);
+                    const serbi = safeNumber(formSerbi);
+                    // Validasi: Debit = Kredit
+                    const totalDebit = kas + potongan;
+                    const totalKredit = piutang + penjualan + serbi;
+                    if (totalDebit === 0) { showToast("Isi minimal satu kolom Debit!", "error"); setSubmitting(false); return; }
+                    payload = {
+                        type: 'in',
+                        amount: kas, // backward compat
+                        kas, potonganPenjualan: potongan, piutang, penjualan, serbiSerbi: serbi,
+                        description: formDesc,
+                        date: formDate,
+                        storeId: currentProfile.id === 'all_stores' ? 'default' : currentProfile.id,
+                        user: user.email,
+                        updatedAt: window.serverTimestamp()
+                    };
+                } else {
+                    const kasOut = safeNumber(formKasOut);
+                    const potonganPembelian = safeNumber(formPotonganPembelian);
+                    const utang = safeNumber(formUtang);
+                    const pembelian = safeNumber(formPembelian);
+                    const akunLainnya = safeNumber(formAkunLainnya);
+                    // Jika pakai format jurnal baru
+                    const totalDebitOut = utang + pembelian + akunLainnya;
+                    const totalKreditOut = kasOut + potonganPembelian;
+                    // amount = kasOut untuk backward compat (atau total kredit)
+                    const amountOut = kasOut || totalDebitOut || safeNumber(formAmount);
+                    if (amountOut === 0 && totalDebitOut === 0) { showToast("Isi minimal satu kolom jurnal!", "error"); setSubmitting(false); return; }
+                    payload = {
+                        type: 'out',
+                        amount: amountOut,
+                        ref: formRef,
+                        utang, pembelian, akunLainnya,
+                        kasOut, potonganPembelian,
+                        description: formDesc,
+                        category: formCategory,
+                        date: formDate,
+                        storeId: currentProfile.id === 'all_stores' ? 'default' : currentProfile.id,
+                        user: user.email,
+                        updatedAt: window.serverTimestamp()
+                    };
+                }
+                try {
+                    if (editingId) {
+                        await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'keuangan', editingId), payload);
+                        showToast("Data berhasil diperbarui");
+                    } else {
+                        payload.createdAt = window.serverTimestamp();
+                        await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'keuangan'), payload);
+                        showToast("Data berhasil disimpan");
+                    }
+                    setShowModal(false);
+                } catch (err) { showToast("Gagal menyimpan data", "error"); }
+                finally { setSubmitting(false); }
+            };
+
+            const handleDelete = async (id) => {
+                if (!confirm("Hapus data ini?")) return;
+                try {
+                    await window.deleteDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'keuangan', id));
+                    showToast("Data dihapus");
+                } catch (err) { showToast("Gagal menghapus", "error"); }
+            };
+
+            // ===== JURNAL UMUM FUNCTIONS =====
+            const juResetForm = () => {
+                setJuFormDate(new Date().toISOString().slice(0,10));
+                setJuFormLines([
+                    { keterangan: '', debit: '', kredit: '' },
+                    { keterangan: '', debit: '', kredit: '' },
+                ]);
+                setJuEditingId(null);
+            };
+
+            const juOpenAdd = () => {
+                juResetForm();
+                setShowJuModal(true);
+            };
+
+            const juOpenEdit = (entry) => {
+                setJuEditingId(entry.id);
+                setJuFormDate(entry.date);
+                setJuFormLines(entry.lines ? entry.lines.map(l => ({
+                    keterangan: l.keterangan || '',
+                    debit: l.debit ? String(l.debit) : '',
+                    kredit: l.kredit ? String(l.kredit) : '',
+                })) : [{ keterangan:'', debit:'', kredit:'' }]);
+                setShowJuModal(true);
+            };
+
+            const juHandleSubmit = async () => {
+                const validLines = juFormLines.filter(l => l.keterangan.trim() || safeNumber(l.debit) || safeNumber(l.kredit));
+                if (!juFormDate) { showToast("Tanggal wajib diisi!", "error"); return; }
+                if (validLines.length === 0) { showToast("Isi minimal satu baris jurnal!", "error"); return; }
+                const totalDebit  = validLines.reduce((a, l) => a + safeNumber(l.debit), 0);
+                const totalKredit = validLines.reduce((a, l) => a + safeNumber(l.kredit), 0);
+                if (totalDebit !== totalKredit || totalDebit === 0) {
+                    showToast(`Debit (${formatRupiah(totalDebit)}) ≠ Kredit (${formatRupiah(totalKredit)}). Periksa kembali!`, "error");
+                    return;
+                }
+                setJuSubmitting(true);
+                const payload = {
+                    date: juFormDate,
+                    lines: validLines.map(l => ({
+                        keterangan: l.keterangan.trim(),
+                        debit: safeNumber(l.debit),
+                        kredit: safeNumber(l.kredit),
+                    })),
+                    totalDebit,
+                    storeId: currentProfile.id === 'all_stores' ? 'default' : currentProfile.id,
+                    user: user.email,
+                    updatedAt: window.serverTimestamp(),
+                };
+                try {
+                    if (juEditingId) {
+                        await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'jurnal_umum', juEditingId), payload);
+                        showToast("Jurnal umum diperbarui");
+                    } else {
+                        payload.createdAt = window.serverTimestamp();
+                        await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'jurnal_umum'), payload);
+                        showToast("Jurnal umum disimpan");
+                    }
+                    setShowJuModal(false);
+                } catch (err) { showToast("Gagal menyimpan", "error"); }
+                finally { setJuSubmitting(false); }
+            };
+
+            const juHandleDelete = async (id) => {
+                if (!confirm("Hapus entri jurnal umum ini?")) return;
+                try {
+                    await window.deleteDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'jurnal_umum', id));
+                    showToast("Data dihapus");
+                } catch (err) { showToast("Gagal menghapus", "error"); }
+            };
+
+            const juAddLine = () => setJuFormLines(prev => [...prev, { keterangan:'', debit:'', kredit:'' }]);
+            const juRemoveLine = (i) => setJuFormLines(prev => prev.filter((_, idx) => idx !== i));
+            const juUpdateLine = (i, field, val) => setJuFormLines(prev => prev.map((l, idx) => idx === i ? { ...l, [field]: val } : l));
+
+            if (loading || juLoading) return <div className="flex justify-center items-center min-h-[70vh]"><div className="typing-dot bg-emerald-600"></div></div>;
+
+            const isIn = activeSubTab === 'penerimaan';
+            const isJu = activeSubTab === 'jurnal_umum';
+
+            // Format angka jurnal: kosong jika 0, rupiah jika ada
+            const fJurnal = (n) => n ? formatRupiah(n) : '';
+
+            // Tanggal singkat untuk jurnal (dd)
+            const fTglJurnal = (dateStr) => {
+                if (!dateStr) return '';
+                return dateStr.split('-')[2]; // ambil hanya tanggal
+            };
+
+            return (
+                <div className="max-w-5xl mx-auto space-y-4 pb-28">
+
+                    {/* Header */}
+                    <div>
+                        <h1 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <Icon name="scale-balanced" className="text-emerald-600" /> Keuangan
+                        </h1>
+                        <p className="text-[10px] text-slate-500 font-bold">Semua Toko — Data Gabungan</p>
+                    </div>
+
+                    {/* Summary Card */}
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl p-4 text-white shadow-lg shadow-green-200">
+                            <p className="text-green-100 text-[10px] font-bold uppercase mb-1">Penerimaan</p>
+                            <p className="text-sm font-black leading-tight">{formatRupiah(stats.inTotal)}</p>
+                        </div>
+                        <div className="bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl p-4 text-white shadow-lg shadow-red-200">
+                            <p className="text-red-100 text-[10px] font-bold uppercase mb-1">Pengeluaran</p>
+                            <p className="text-sm font-black leading-tight">{formatRupiah(stats.outTotal)}</p>
+                        </div>
+                        <div className={`bg-gradient-to-br ${stats.net >= 0 ? 'from-sky-500 to-blue-600 shadow-blue-200' : 'from-orange-500 to-amber-600 shadow-orange-200'} rounded-2xl p-4 text-white shadow-lg`}>
+                            <p className="text-sky-100 text-[10px] font-bold uppercase mb-1">Selisih</p>
+                            <p className="text-sm font-black leading-tight">{formatRupiah(stats.net)}</p>
+                        </div>
+                    </div>
+
+                    {/* Sub-tab Switch */}
+                    <div className="flex bg-white p-1.5 rounded-xl shadow-sm border border-slate-100">
+                        <button onClick={() => setActiveSubTab('penerimaan')} className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${activeSubTab === 'penerimaan' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400'}`}>
+                            <Icon name="circle-arrow-down" /> Penerimaan Kas
+                        </button>
+                        <button onClick={() => setActiveSubTab('pengeluaran')} className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${activeSubTab === 'pengeluaran' ? 'bg-red-600 text-white shadow-md' : 'text-slate-400'}`}>
+                            <Icon name="circle-arrow-up" /> Pengeluaran Kas
+                        </button>
+                        <button onClick={() => setActiveSubTab('jurnal_umum')} className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${activeSubTab === 'jurnal_umum' ? 'bg-violet-600 text-white shadow-md' : 'text-slate-400'}`}>
+                            <Icon name="book-open" /> Jurnal Umum
+                        </button>
+                    </div>
+
+                    {/* Filter Bulan */}
+                    <div className="flex items-center gap-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Periode:</label>
+                        <input type="month" value={filterMonth} onChange={e => setFilterMonth(e.target.value)}
+                            className="flex-1 p-2 bg-white border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:border-emerald-400" />
+                    </div>
+
+                    {/* ===== PENERIMAAN KAS - JURNAL TABLE ===== */}
+                    {isIn && (
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                            {/* Jurnal Header */}
+                            <div className="bg-gradient-to-r from-emerald-600 to-green-600 px-4 py-3 text-center">
+                                <p className="text-white font-black text-sm tracking-wide uppercase">Apotek Rafa Medica</p>
+                                <p className="text-emerald-100 font-bold text-xs mt-0.5">Jurnal Penerimaan Kas</p>
+                                <p className="text-emerald-200 text-[10px] font-medium mt-0.5">Periode {formatBulanIndo(filterMonth)}</p>
+                            </div>
+
+                            {/* Table scroll wrapper */}
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-[11px] border-collapse min-w-[600px]">
+                                    <thead>
+                                        <tr className="bg-slate-50">
+                                            {/* Grup header */}
+                                            <th className="border border-slate-200 px-2 py-2 text-center text-slate-600 font-bold" rowSpan={2}>Tgl</th>
+                                            <th className="border border-slate-200 px-2 py-2 text-center text-slate-600 font-bold" rowSpan={2}>Keterangan</th>
+                                            <th className="border border-slate-200 px-2 py-2 text-center text-emerald-700 font-black" colSpan={2}>Debit</th>
+                                            <th className="border border-slate-200 px-2 py-2 text-center text-sky-700 font-black" colSpan={3}>Kredit</th>
+                                            {!readOnly && <th className="border border-slate-200 px-2 py-2 text-center text-slate-400 font-bold" rowSpan={2}>•</th>}
+                                        </tr>
+                                        <tr className="bg-slate-50">
+                                            <th className="border border-slate-200 px-2 py-2 text-center text-emerald-600 font-bold whitespace-nowrap">Kas</th>
+                                            <th className="border border-slate-200 px-2 py-2 text-center text-emerald-600 font-bold whitespace-nowrap">Pot. Penj.</th>
+                                            <th className="border border-slate-200 px-2 py-2 text-center text-sky-600 font-bold whitespace-nowrap">Piutang</th>
+                                            <th className="border border-slate-200 px-2 py-2 text-center text-sky-600 font-bold whitespace-nowrap">Penjualan</th>
+                                            <th className="border border-slate-200 px-2 py-2 text-center text-sky-600 font-bold whitespace-nowrap">Serba-Serbi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredAsc.length === 0 && (
+                                            <tr>
+                                                <td colSpan={readOnly ? 7 : 8} className="border border-slate-200 text-center py-10 text-slate-300 text-xs">
+                                                    <Icon name="inbox" className="text-3xl mb-2 block mx-auto" />
+                                                    Belum ada penerimaan kas
+                                                </td>
+                                            </tr>
+                                        )}
+                                        {filteredAsc.map((entry, idx) => (
+                                            <tr key={entry.id} className={`fade-in hover:bg-emerald-50/30 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
+                                                <td className="border border-slate-200 px-2 py-2 text-center font-bold text-slate-700 whitespace-nowrap">{fTglJurnal(entry.date)}</td>
+                                                <td className="border border-slate-200 px-2 py-2 text-slate-700">{entry.description}</td>
+                                                <td className="border border-slate-200 px-2 py-2 text-right font-medium text-emerald-700 whitespace-nowrap">{fJurnal(entry.kas != null ? entry.kas : entry.amount)}</td>
+                                                <td className="border border-slate-200 px-2 py-2 text-right font-medium text-emerald-700 whitespace-nowrap">{fJurnal(entry.potonganPenjualan)}</td>
+                                                <td className="border border-slate-200 px-2 py-2 text-right font-medium text-sky-700 whitespace-nowrap">{fJurnal(entry.piutang)}</td>
+                                                <td className="border border-slate-200 px-2 py-2 text-right font-medium text-sky-700 whitespace-nowrap">{fJurnal(entry.penjualan)}</td>
+                                                <td className="border border-slate-200 px-2 py-2 text-right font-medium text-sky-700 whitespace-nowrap">{fJurnal(entry.serbiSerbi)}</td>
+                                                {!readOnly && (
+                                                    <td className="border border-slate-200 px-1 py-1 text-center">
+                                                        <div className="flex flex-col gap-0.5 items-center">
+                                                            <button onClick={() => openEdit(entry)} className="text-slate-300 hover:text-sky-500 p-0.5 transition-colors"><Icon name="pen-to-square" /></button>
+                                                            <button onClick={() => handleDelete(entry.id)} className="text-slate-300 hover:text-red-500 p-0.5 transition-colors"><Icon name="trash" /></button>
+                                                        </div>
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                    {/* Footer totals */}
+                                    {filteredAsc.length > 0 && (
+                                        <tfoot>
+                                            <tr className="bg-gradient-to-r from-emerald-50 to-green-50">
+                                                <td colSpan={2} className="border border-slate-200 px-2 py-2 font-black text-slate-700 text-right uppercase text-[10px]">Total</td>
+                                                <td className="border border-slate-200 px-2 py-2 text-right font-black text-emerald-700 whitespace-nowrap">{formatRupiah(jurnalTotals.kas)}</td>
+                                                <td className="border border-slate-200 px-2 py-2 text-right font-black text-emerald-700 whitespace-nowrap">{jurnalTotals.potongan ? formatRupiah(jurnalTotals.potongan) : '-'}</td>
+                                                <td className="border border-slate-200 px-2 py-2 text-right font-black text-sky-700 whitespace-nowrap">{jurnalTotals.piutang ? formatRupiah(jurnalTotals.piutang) : '-'}</td>
+                                                <td className="border border-slate-200 px-2 py-2 text-right font-black text-sky-700 whitespace-nowrap">{jurnalTotals.penjualan ? formatRupiah(jurnalTotals.penjualan) : '-'}</td>
+                                                <td className="border border-slate-200 px-2 py-2 text-right font-black text-sky-700 whitespace-nowrap">{jurnalTotals.serbi ? formatRupiah(jurnalTotals.serbi) : '-'}</td>
+                                                {!readOnly && <td className="border border-slate-200"></td>}
+                                            </tr>
+                                        </tfoot>
+                                    )}
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ===== PENGELUARAN KAS - JURNAL TABLE ===== */}
+                    {!isIn && !isJu && (
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                            {/* Jurnal Header */}
+                            <div className="bg-gradient-to-r from-red-600 to-rose-600 px-4 py-3 text-center">
+                                <p className="text-white font-black text-sm tracking-wide uppercase">Apotek Rafa Medica</p>
+                                <p className="text-red-100 font-bold text-xs mt-0.5">Jurnal Pengeluaran Kas</p>
+                                <p className="text-red-200 text-[10px] font-medium mt-0.5">Periode {formatBulanIndo(filterMonth)}</p>
+                            </div>
+
+                            {/* Table scroll wrapper */}
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-[11px] border-collapse min-w-[680px]">
+                                    <thead>
+                                        <tr className="bg-slate-50">
+                                            <th className="border border-slate-200 px-2 py-2 text-center text-slate-600 font-bold" rowSpan={2}>Tgl</th>
+                                            <th className="border border-slate-200 px-2 py-2 text-center text-slate-600 font-bold" rowSpan={2}>Keterangan</th>
+                                            <th className="border border-slate-200 px-2 py-2 text-center text-slate-600 font-bold" rowSpan={2}>Ref.</th>
+                                            <th className="border border-slate-200 px-2 py-2 text-center text-red-700 font-black" colSpan={3}>Debet</th>
+                                            <th className="border border-slate-200 px-2 py-2 text-center text-sky-700 font-black" colSpan={2}>Kredit</th>
+                                            {!readOnly && <th className="border border-slate-200 px-2 py-2 text-center text-slate-400 font-bold" rowSpan={2}>•</th>}
+                                        </tr>
+                                        <tr className="bg-slate-50">
+                                            <th className="border border-slate-200 px-2 py-2 text-center text-red-600 font-bold whitespace-nowrap">Utang</th>
+                                            <th className="border border-slate-200 px-2 py-2 text-center text-red-600 font-bold whitespace-nowrap">Pembelian</th>
+                                            <th className="border border-slate-200 px-2 py-2 text-center text-red-600 font-bold whitespace-nowrap">Akun Lainnya</th>
+                                            <th className="border border-slate-200 px-2 py-2 text-center text-sky-600 font-bold whitespace-nowrap">Kas</th>
+                                            <th className="border border-slate-200 px-2 py-2 text-center text-sky-600 font-bold whitespace-nowrap">Pot. Pembelian</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredOutAsc.length === 0 && (
+                                            <tr>
+                                                <td colSpan={readOnly ? 8 : 9} className="border border-slate-200 text-center py-10 text-slate-300 text-xs">
+                                                    <Icon name="inbox" className="text-3xl mb-2 block mx-auto" />
+                                                    Belum ada pengeluaran kas
+                                                </td>
+                                            </tr>
+                                        )}
+                                        {filteredOutAsc.map((entry, idx) => (
+                                            <tr key={entry.id} className={`fade-in hover:bg-red-50/30 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
+                                                <td className="border border-slate-200 px-2 py-2 text-center font-bold text-slate-700 whitespace-nowrap">{fTglJurnal(entry.date)}</td>
+                                                <td className="border border-slate-200 px-2 py-2 text-slate-700">{entry.description}</td>
+                                                <td className="border border-slate-200 px-2 py-2 text-center text-slate-500">{entry.ref || ''}</td>
+                                                <td className="border border-slate-200 px-2 py-2 text-right font-medium text-red-700 whitespace-nowrap">{fJurnal(entry.utang)}</td>
+                                                <td className="border border-slate-200 px-2 py-2 text-right font-medium text-red-700 whitespace-nowrap">{fJurnal(entry.pembelian)}</td>
+                                                <td className="border border-slate-200 px-2 py-2 text-right font-medium text-red-700 whitespace-nowrap">{fJurnal(entry.akunLainnya)}</td>
+                                                <td className="border border-slate-200 px-2 py-2 text-right font-medium text-sky-700 whitespace-nowrap">{fJurnal(entry.kasOut != null ? entry.kasOut : entry.amount)}</td>
+                                                <td className="border border-slate-200 px-2 py-2 text-right font-medium text-sky-700 whitespace-nowrap">{fJurnal(entry.potonganPembelian)}</td>
+                                                {!readOnly && (
+                                                    <td className="border border-slate-200 px-1 py-1 text-center">
+                                                        <div className="flex flex-col gap-0.5 items-center">
+                                                            <button onClick={() => openEdit(entry)} className="text-slate-300 hover:text-sky-500 p-0.5 transition-colors"><Icon name="pen-to-square" /></button>
+                                                            <button onClick={() => handleDelete(entry.id)} className="text-slate-300 hover:text-red-500 p-0.5 transition-colors"><Icon name="trash" /></button>
+                                                        </div>
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                    {/* Footer totals */}
+                                    {filteredOutAsc.length > 0 && (
+                                        <tfoot>
+                                            <tr className="bg-gradient-to-r from-red-50 to-rose-50">
+                                                <td colSpan={3} className="border border-slate-200 px-2 py-2 font-black text-slate-700 text-right uppercase text-[10px]">Total</td>
+                                                <td className="border border-slate-200 px-2 py-2 text-right font-black text-red-700 whitespace-nowrap">{jurnalTotalsOut.utang ? formatRupiah(jurnalTotalsOut.utang) : '-'}</td>
+                                                <td className="border border-slate-200 px-2 py-2 text-right font-black text-red-700 whitespace-nowrap">{jurnalTotalsOut.pembelian ? formatRupiah(jurnalTotalsOut.pembelian) : '-'}</td>
+                                                <td className="border border-slate-200 px-2 py-2 text-right font-black text-red-700 whitespace-nowrap">{jurnalTotalsOut.akunLainnya ? formatRupiah(jurnalTotalsOut.akunLainnya) : '-'}</td>
+                                                <td className="border border-slate-200 px-2 py-2 text-right font-black text-sky-700 whitespace-nowrap">{formatRupiah(jurnalTotalsOut.kas)}</td>
+                                                <td className="border border-slate-200 px-2 py-2 text-right font-black text-sky-700 whitespace-nowrap">{jurnalTotalsOut.potonganPembelian ? formatRupiah(jurnalTotalsOut.potonganPembelian) : '-'}</td>
+                                                {!readOnly && <td className="border border-slate-200"></td>}
+                                            </tr>
+                                        </tfoot>
+                                    )}
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ===== JURNAL UMUM TABLE ===== */}
+                    {isJu && (() => {
+                        const juFiltered = [...juEntries.filter(e => e.date && e.date.startsWith(filterMonth))].sort((a, b) => a.date.localeCompare(b.date));
+                        const juTotalDebit  = juFiltered.reduce((a, e) => a + safeNumber(e.totalDebit), 0);
+                        const juTotalKredit = juFiltered.reduce((a, e) => a + e.lines.reduce((s, l) => s + safeNumber(l.kredit), 0), 0);
+
+                        return (
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                                <div className="bg-gradient-to-r from-violet-600 to-purple-700 px-4 py-3 text-center">
+                                    <p className="text-white font-black text-sm tracking-wide uppercase">Apotek Rafa Medica</p>
+                                    <p className="text-violet-100 font-bold text-xs mt-0.5">Jurnal Umum</p>
+                                    <p className="text-violet-200 text-[10px] font-medium mt-0.5">Periode {formatBulanIndo(filterMonth)}</p>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-[11px] border-collapse min-w-[420px]">
+                                        <thead>
+                                            <tr className="bg-slate-50">
+                                                <th className="border border-slate-200 px-2 py-2 text-center text-slate-600 font-bold w-10">Tgl</th>
+                                                <th className="border border-slate-200 px-2 py-2 text-center text-slate-600 font-bold">Keterangan</th>
+                                                <th className="border border-slate-200 px-2 py-2 text-center text-violet-700 font-black whitespace-nowrap">Debit</th>
+                                                <th className="border border-slate-200 px-2 py-2 text-center text-sky-700 font-black whitespace-nowrap">Kredit</th>
+                                                {!readOnly && <th className="border border-slate-200 px-2 py-2 text-center text-slate-400 font-bold w-8">•</th>}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {juFiltered.length === 0 && (
+                                                <tr>
+                                                    <td colSpan={readOnly ? 4 : 5} className="border border-slate-200 text-center py-10 text-slate-300 text-xs">
+                                                        <Icon name="inbox" className="text-3xl mb-2 block mx-auto" />
+                                                        Belum ada entri jurnal umum
+                                                    </td>
+                                                </tr>
+                                            )}
+                                            {juFiltered.map((entry, eIdx) => (
+                                                entry.lines && entry.lines.map((line, lIdx) => (
+                                                    <tr key={`${entry.id}-${lIdx}`} className={`hover:bg-violet-50/20 transition-colors ${eIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}>
+                                                        <td className="border border-slate-200 px-2 py-1.5 text-center font-bold text-slate-700 whitespace-nowrap">
+                                                            {lIdx === 0 ? fTglJurnal(entry.date) : ''}
+                                                        </td>
+                                                        <td className={`border border-slate-200 px-2 py-1.5 text-slate-700 ${lIdx > 0 ? 'pl-6' : ''}`}>
+                                                            {line.keterangan}
+                                                        </td>
+                                                        <td className="border border-slate-200 px-2 py-1.5 text-right font-medium text-violet-700 whitespace-nowrap">
+                                                            {fJurnal(line.debit)}
+                                                        </td>
+                                                        <td className="border border-slate-200 px-2 py-1.5 text-right font-medium text-sky-700 whitespace-nowrap">
+                                                            {fJurnal(line.kredit)}
+                                                        </td>
+                                                        {!readOnly && (
+                                                            <td className="border border-slate-200 px-1 py-1 text-center" rowSpan={lIdx === 0 ? entry.lines.length : undefined} style={{display: lIdx !== 0 ? 'none' : undefined}}>
+                                                                <div className="flex flex-col gap-0.5 items-center">
+                                                                    <button onClick={() => juOpenEdit(entry)} className="text-slate-300 hover:text-sky-500 p-0.5 transition-colors"><Icon name="pen-to-square" /></button>
+                                                                    <button onClick={() => juHandleDelete(entry.id)} className="text-slate-300 hover:text-red-500 p-0.5 transition-colors"><Icon name="trash" /></button>
+                                                                </div>
+                                                            </td>
+                                                        )}
+                                                    </tr>
+                                                ))
+                                            ))}
+                                        </tbody>
+                                        {juFiltered.length > 0 && (
+                                            <tfoot>
+                                                <tr className="bg-gradient-to-r from-violet-50 to-purple-50">
+                                                    <td colSpan={2} className="border border-slate-200 px-2 py-2 font-black text-slate-700 text-right uppercase text-[10px]">Total</td>
+                                                    <td className="border border-slate-200 px-2 py-2 text-right font-black text-violet-700 whitespace-nowrap">{formatRupiah(juTotalDebit)}</td>
+                                                    <td className="border border-slate-200 px-2 py-2 text-right font-black text-sky-700 whitespace-nowrap">{formatRupiah(juTotalKredit)}</td>
+                                                    {!readOnly && <td className="border border-slate-200"></td>}
+                                                </tr>
+                                            </tfoot>
+                                        )}
+                                    </table>
+                                </div>
+                            </div>
+                        );
+                    })()}
+
+                    {/* FAB */}
+                    {!readOnly && (
+                        <button onClick={isJu ? juOpenAdd : openAdd}
+                            className={`fixed bottom-24 md:bottom-10 right-6 ${isJu ? 'bg-violet-600 shadow-violet-300' : isIn ? 'bg-emerald-600 shadow-emerald-300' : 'bg-red-600 shadow-red-300'} text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center z-30 active:scale-95 transition-all`}>
+                            <Icon name="plus" className="text-2xl" />
+                        </button>
+                    )}
+
+                    {/* ===== MODAL JURNAL UMUM ===== */}
+                    {showJuModal && (() => {
+                        const juLiveTotalDebit  = juFormLines.reduce((a, l) => a + safeNumber(l.debit), 0);
+                        const juLiveTotalKredit = juFormLines.reduce((a, l) => a + safeNumber(l.kredit), 0);
+                        const juBalanced = juLiveTotalDebit > 0 && juLiveTotalDebit === juLiveTotalKredit;
+                        return (
+                            <div className="fixed inset-0 bg-black/60 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm fade-in">
+                                <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
+                                    {/* Modal Header */}
+                                    <div className="p-5 flex-shrink-0 bg-gradient-to-r from-violet-600 to-purple-700">
+                                        <h3 className="font-bold text-white text-base flex items-center gap-2">
+                                            <Icon name="book-open" />
+                                            {juEditingId ? 'Edit' : 'Tambah'} Jurnal Umum
+                                        </h3>
+                                        <p className="text-violet-200 text-[10px] mt-1 font-medium">Debit harus sama dengan Kredit</p>
+                                    </div>
+                                    {/* Modal Body */}
+                                    <div className="p-4 space-y-3 overflow-y-auto flex-1">
+                                        {/* Tanggal */}
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Tanggal Transaksi</label>
+                                            <input type="date" value={juFormDate} onChange={e => setJuFormDate(e.target.value)}
+                                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:border-violet-400" />
+                                        </div>
+                                        {/* Baris jurnal */}
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-px flex-1 bg-violet-100"></div>
+                                                <span className="text-[10px] font-black text-violet-600 uppercase">Baris Jurnal</span>
+                                                <div className="h-px flex-1 bg-violet-100"></div>
+                                            </div>
+                                            {/* Header mini */}
+                                            <div className="grid grid-cols-[1fr_90px_90px_24px] gap-1 text-[9px] font-black text-slate-400 uppercase px-1">
+                                                <span>Keterangan / Akun</span>
+                                                <span className="text-center text-violet-600">Debit</span>
+                                                <span className="text-center text-sky-600">Kredit</span>
+                                                <span></span>
+                                            </div>
+                                            {juFormLines.map((line, i) => (
+                                                <div key={i} className="grid grid-cols-[1fr_90px_90px_24px] gap-1 items-center">
+                                                    <input
+                                                        type="text"
+                                                        placeholder={i === 0 ? "Mis: Kas..." : "Mis: Modal..."}
+                                                        value={line.keterangan}
+                                                        onChange={e => juUpdateLine(i, 'keterangan', e.target.value)}
+                                                        className="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none focus:border-violet-400 w-full"
+                                                    />
+                                                    <input
+                                                        type="number"
+                                                        placeholder="0"
+                                                        value={line.debit}
+                                                        onChange={e => juUpdateLine(i, 'debit', e.target.value)}
+                                                        className="p-2 bg-violet-50 border border-violet-200 rounded-lg text-xs font-bold text-right focus:outline-none focus:border-violet-500 w-full"
+                                                    />
+                                                    <input
+                                                        type="number"
+                                                        placeholder="0"
+                                                        value={line.kredit}
+                                                        onChange={e => juUpdateLine(i, 'kredit', e.target.value)}
+                                                        className="p-2 bg-sky-50 border border-sky-200 rounded-lg text-xs font-bold text-right focus:outline-none focus:border-sky-500 w-full"
+                                                    />
+                                                    <button onClick={() => juRemoveLine(i)} disabled={juFormLines.length <= 2} className="w-6 h-6 flex items-center justify-center text-slate-300 hover:text-red-400 disabled:opacity-20 transition-colors text-xs">
+                                                        <Icon name="xmark" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            <button onClick={juAddLine} className="w-full py-2 border-2 border-dashed border-violet-200 text-violet-400 hover:border-violet-400 hover:text-violet-600 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1">
+                                                <Icon name="plus" /> Tambah Baris
+                                            </button>
+                                        </div>
+                                        {/* Live balance */}
+                                        {(juLiveTotalDebit > 0 || juLiveTotalKredit > 0) && (
+                                            <div className={`rounded-xl p-3 flex items-center justify-between text-xs font-bold ${juBalanced ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                                                <span><Icon name={juBalanced ? "check-circle" : "triangle-exclamation"} className="mr-1" />Debit: {formatRupiah(juLiveTotalDebit)}</span>
+                                                <span>Kredit: {formatRupiah(juLiveTotalKredit)}</span>
+                                                {!juBalanced && <span className="text-[10px] font-black">Selisih: {formatRupiah(Math.abs(juLiveTotalDebit - juLiveTotalKredit))}</span>}
+                                            </div>
+                                        )}
+                                    </div>
+                                    {/* Footer */}
+                                    <div className="p-4 flex gap-2 flex-shrink-0 border-t border-slate-100">
+                                        <button onClick={() => setShowJuModal(false)}
+                                            className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors">
+                                            Batal
+                                        </button>
+                                        <button onClick={juHandleSubmit} disabled={juSubmitting}
+                                            className="flex-1 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold text-sm disabled:opacity-50 transition-colors">
+                                            {juSubmitting ? 'Menyimpan...' : (juEditingId ? 'Perbarui' : 'Simpan')}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
+
+                    {/* ===== MODAL ADD/EDIT ===== */}
+                    {showModal && (
+                        <div className="fixed inset-0 bg-black/60 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm fade-in">
+                            <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+                                {/* Modal Header */}
+                                <div className={`p-5 flex-shrink-0 ${isIn ? 'bg-gradient-to-r from-emerald-500 to-green-600' : 'bg-gradient-to-r from-red-500 to-rose-600'}`}>
+                                    <h3 className="font-bold text-white text-base flex items-center gap-2">
+                                        <Icon name={isIn ? "circle-arrow-down" : "circle-arrow-up"} />
+                                        {editingId ? 'Edit' : 'Tambah'} {isIn ? 'Penerimaan Kas' : 'Pengeluaran Kas'}
+                                    </h3>
+                                    {isIn && <p className="text-emerald-100 text-[10px] mt-1 font-medium">Isi kolom jurnal sesuai transaksi</p>}
+                                </div>
+                                {/* Modal Body (scrollable) */}
+                                <div className="p-5 space-y-3 overflow-y-auto flex-1">
+                                    {/* Tanggal & Keterangan (semua tipe) */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Tanggal</label>
+                                            <input type="date" value={formDate} onChange={e => setFormDate(e.target.value)}
+                                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:border-emerald-400" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Keterangan</label>
+                                            <input type="text" placeholder="Mis: Penjualan tunai..." value={formDesc} onChange={e => setFormDesc(e.target.value)}
+                                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-emerald-400" />
+                                        </div>
+                                    </div>
+
+                                    {/* ---- PENERIMAAN KAS: KOLOM JURNAL ---- */}
+                                    {isIn && (
+                                        <>
+                                            <div className="flex items-center gap-2 pt-1">
+                                                <div className="h-px flex-1 bg-emerald-100"></div>
+                                                <span className="text-[10px] font-black text-emerald-600 uppercase">Debit</span>
+                                                <div className="h-px flex-1 bg-emerald-100"></div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-emerald-600 uppercase block mb-1">Kas</label>
+                                                    <input type="number" placeholder="0" value={formKas} onChange={e => setFormKas(e.target.value)}
+                                                        className="w-full p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm font-bold focus:outline-none focus:border-emerald-500" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-emerald-600 uppercase block mb-1">Potongan Penjualan</label>
+                                                    <input type="number" placeholder="0" value={formPotongan} onChange={e => setFormPotongan(e.target.value)}
+                                                        className="w-full p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm font-bold focus:outline-none focus:border-emerald-500" />
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 pt-1">
+                                                <div className="h-px flex-1 bg-sky-100"></div>
+                                                <span className="text-[10px] font-black text-sky-600 uppercase">Kredit</span>
+                                                <div className="h-px flex-1 bg-sky-100"></div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-sky-600 uppercase block mb-1">Piutang</label>
+                                                    <input type="number" placeholder="0" value={formPiutang} onChange={e => setFormPiutang(e.target.value)}
+                                                        className="w-full p-3 bg-sky-50 border border-sky-200 rounded-xl text-sm font-bold focus:outline-none focus:border-sky-500" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-sky-600 uppercase block mb-1">Penjualan</label>
+                                                    <input type="number" placeholder="0" value={formPenjualan} onChange={e => setFormPenjualan(e.target.value)}
+                                                        className="w-full p-3 bg-sky-50 border border-sky-200 rounded-xl text-sm font-bold focus:outline-none focus:border-sky-500" />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-sky-600 uppercase block mb-1">Serba-Serbi</label>
+                                                <input type="number" placeholder="0" value={formSerbi} onChange={e => setFormSerbi(e.target.value)}
+                                                    className="w-full p-3 bg-sky-50 border border-sky-200 rounded-xl text-sm font-bold focus:outline-none focus:border-sky-500" />
+                                            </div>
+                                            {/* Live balance check */}
+                                            {(formKas || formPotongan || formPiutang || formPenjualan || formSerbi) && (() => {
+                                                const d = safeNumber(formKas) + safeNumber(formPotongan);
+                                                const k = safeNumber(formPiutang) + safeNumber(formPenjualan) + safeNumber(formSerbi);
+                                                const ok = d === k && d > 0;
+                                                return (
+                                                    <div className={`rounded-xl p-3 flex items-center justify-between text-xs font-bold ${ok ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                                                        <span><Icon name={ok ? "check-circle" : "triangle-exclamation"} className="mr-1" />
+                                                            Debit: {formatRupiah(d)}
+                                                        </span>
+                                                        <span>Kredit: {formatRupiah(k)}</span>
+                                                        {!ok && <span className="text-[10px] font-black">Selisih: {formatRupiah(Math.abs(d-k))}</span>}
+                                                    </div>
+                                                );
+                                            })()}
+                                        </>
+                                    )}
+
+                                    {/* ---- PENGELUARAN KAS ---- */}
+                                    {!isIn && (
+                                        <>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Ref. (opsional)</label>
+                                                <input type="text" placeholder="No. referensi..." value={formRef} onChange={e => setFormRef(e.target.value)}
+                                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-red-400" />
+                                            </div>
+                                            <div className="flex items-center gap-2 pt-1">
+                                                <div className="h-px flex-1 bg-red-100"></div>
+                                                <span className="text-[10px] font-black text-red-600 uppercase">Debet</span>
+                                                <div className="h-px flex-1 bg-red-100"></div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-red-600 uppercase block mb-1">Utang</label>
+                                                    <input type="number" placeholder="0" value={formUtang} onChange={e => setFormUtang(e.target.value)}
+                                                        className="w-full p-3 bg-red-50 border border-red-200 rounded-xl text-sm font-bold focus:outline-none focus:border-red-500" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-red-600 uppercase block mb-1">Pembelian</label>
+                                                    <input type="number" placeholder="0" value={formPembelian} onChange={e => setFormPembelian(e.target.value)}
+                                                        className="w-full p-3 bg-red-50 border border-red-200 rounded-xl text-sm font-bold focus:outline-none focus:border-red-500" />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-red-600 uppercase block mb-1">Akun Lainnya</label>
+                                                <input type="number" placeholder="0" value={formAkunLainnya} onChange={e => setFormAkunLainnya(e.target.value)}
+                                                    className="w-full p-3 bg-red-50 border border-red-200 rounded-xl text-sm font-bold focus:outline-none focus:border-red-500" />
+                                            </div>
+                                            <div className="flex items-center gap-2 pt-1">
+                                                <div className="h-px flex-1 bg-sky-100"></div>
+                                                <span className="text-[10px] font-black text-sky-600 uppercase">Kredit</span>
+                                                <div className="h-px flex-1 bg-sky-100"></div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-sky-600 uppercase block mb-1">Kas</label>
+                                                    <input type="number" placeholder="0" value={formKasOut} onChange={e => setFormKasOut(e.target.value)}
+                                                        className="w-full p-3 bg-sky-50 border border-sky-200 rounded-xl text-sm font-bold focus:outline-none focus:border-sky-500" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-sky-600 uppercase block mb-1">Pot. Pembelian</label>
+                                                    <input type="number" placeholder="0" value={formPotonganPembelian} onChange={e => setFormPotonganPembelian(e.target.value)}
+                                                        className="w-full p-3 bg-sky-50 border border-sky-200 rounded-xl text-sm font-bold focus:outline-none focus:border-sky-500" />
+                                                </div>
+                                            </div>
+                                            {/* Live balance check pengeluaran */}
+                                            {(formUtang || formPembelian || formAkunLainnya || formKasOut || formPotonganPembelian) && (() => {
+                                                const d = safeNumber(formUtang) + safeNumber(formPembelian) + safeNumber(formAkunLainnya);
+                                                const k = safeNumber(formKasOut) + safeNumber(formPotonganPembelian);
+                                                const ok = d === k && d > 0;
+                                                return (
+                                                    <div className={`rounded-xl p-3 flex items-center justify-between text-xs font-bold ${ok ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                                                        <span><Icon name={ok ? "check-circle" : "triangle-exclamation"} className="mr-1" />
+                                                            Debet: {formatRupiah(d)}
+                                                        </span>
+                                                        <span>Kredit: {formatRupiah(k)}</span>
+                                                        {!ok && <span className="text-[10px] font-black">Selisih: {formatRupiah(Math.abs(d-k))}</span>}
+                                                    </div>
+                                                );
+                                            })()}
+                                        </>
+                                    )}
+
+                                    <div className="flex gap-2 pt-2">
+                                        <button onClick={() => setShowModal(false)}
+                                            className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors">
+                                            Batal
+                                        </button>
+                                        <button onClick={handleSubmit} disabled={submitting}
+                                            className={`flex-1 py-3 ${isIn ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-600 hover:bg-red-700'} text-white rounded-xl font-bold text-sm disabled:opacity-50 transition-colors`}>
+                                            {submitting ? 'Menyimpan...' : (editingId ? 'Perbarui' : 'Simpan')}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
         const BulkImportView = ({ onImportComplete, user, currentProfile, readOnly }) => {
             const [textInput, setTextInput] = useState('');
             const [parsedItems, setParsedItems] = useState([]);
@@ -9981,7 +11015,7 @@
                     <div className="bg-gradient-to-r from-night-900 to-sky-900 rounded-3xl p-5 md:p-6 text-white relative overflow-hidden shadow-2xl border border-slate-700 group">
                         <div className="absolute right-0 top-0 w-48 h-48 bg-gold-400 opacity-10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
                         <div className="relative z-10 flex items-center justify-between">
-                            <div><h3 className="font-bold text-xl md:text-2xl text-sky-300 mb-1 flex items-center gap-2"><Icon name="cash-register" className="text-sky-400" /> Sistem Kasir Husna</h3><p className="text-xs md:text-sm text-slate-300 font-medium opacity-90">Kelola toko lebih cepat, lebih mudah, lebih akurat ⚡</p><div className="mt-3 inline-flex items-center gap-2 bg-green-500/20 px-3 py-1 rounded-full backdrop-blur-sm border border-green-500/30"><div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div><span className="text-[10px] font-bold tracking-wide text-green-300">ONLINE (FIREBASE)</span></div></div>
+                            <div><h3 className="font-bold text-xl md:text-2xl text-sky-300 mb-1 flex items-center gap-2"><Icon name="cash-register" className="text-sky-400" /> Sistem Kasir Apotek Rafa Medica</h3><p className="text-xs md:text-sm text-slate-300 font-medium opacity-90">Kelola toko lebih cepat, lebih mudah, lebih akurat ⚡</p><div className="mt-3 inline-flex items-center gap-2 bg-green-500/20 px-3 py-1 rounded-full backdrop-blur-sm border border-green-500/30"><div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div><span className="text-[10px] font-bold tracking-wide text-green-300">ONLINE (FIREBASE)</span></div></div>
                             <div className="text-4xl text-sky-400/80 animate-pulse"><Icon name="store" /></div>
                         </div>
                     </div>
@@ -11373,23 +12407,15 @@
                 return () => unsub();
             }, []);
 
-            const initializedSessionRef = React.useRef(null);
-
             useEffect(() => {
                 const active = sessions.find(s => s.status === 'open' && s.profileId === profileId);
                 if (active) {
                     setActiveSession(active);
                     setSessionId(active.id);
-                    // Hanya load physicalCounts saat pertama kali sesi ditemukan,
-                    // supaya snapshot berikutnya tidak overwrite input user
-                    if (initializedSessionRef.current !== active.id) {
-                        initializedSessionRef.current = active.id;
-                        const counts = {};
-                        (active.entries || []).forEach(e => { counts[e.itemId] = e.physicalQty; });
-                        setPhysicalCounts(counts);
-                    }
+                    const counts = {};
+                    (active.entries || []).forEach(e => { counts[e.itemId] = e.physicalQty; });
+                    setPhysicalCounts(counts);
                 } else {
-                    initializedSessionRef.current = null;
                     setActiveSession(null);
                     setSessionId(null);
                     setPhysicalCounts({});
@@ -11431,25 +12457,21 @@
                 setPhysicalCounts(prev => ({ ...prev, [itemId]: val === '' ? undefined : val }));
             };
 
-            const saveProgress = React.useCallback(async (counts, sid) => {
-                if (!sid) return;
-                const entries = Object.entries(counts)
+            const saveProgress = async () => {
+                if (!sessionId) return;
+                setSaving(true);
+                const entries = Object.entries(physicalCounts)
                     .filter(([, v]) => v !== undefined)
                     .map(([itemId, physicalQty]) => {
                         const item = items.find(i => i.id === itemId);
                         return { itemId, name: item?.name || '?', systemQty: Number(item?.qty || 0), physicalQty: Number(physicalQty), selisih: Number(physicalQty) - Number(item?.qty || 0), price: Number(item?.price || 0) };
                     });
                 try {
-                    await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'stock_opname', sid), { entries, updatedAt: window.serverTimestamp() });
-                } catch (e) { console.error('Auto-save SO error', e); }
-            }, [items]);
-
-            // Auto-save dengan debounce 1.5 detik setiap physicalCounts berubah
-            useEffect(() => {
-                if (!sessionId || Object.keys(physicalCounts).length === 0) return;
-                const timer = setTimeout(() => { saveProgress(physicalCounts, sessionId); }, 0);
-                return () => clearTimeout(timer);
-            }, [physicalCounts, sessionId]);
+                    await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'stock_opname', sessionId), { entries, updatedAt: window.serverTimestamp() });
+                    showToast('Progress tersimpan!');
+                } catch (e) { showToast('Gagal menyimpan', 'error'); }
+                setSaving(false);
+            };
 
             const finishSession = async () => {
                 if (!sessionId) return;
@@ -11503,7 +12525,7 @@
             const exportHistoryToExcel = async (detail) => {
                 try {
                     const workbook = new ExcelJS.Workbook();
-                    workbook.creator = 'Sistem Kasir Husna';
+                    workbook.creator = 'Sistem Kasir Apotek Rafa Medica';
                     workbook.created = new Date();
                     const sheet = workbook.addWorksheet('Stock Opname');
 
@@ -11775,7 +12797,7 @@
                                             <i className="fa-solid fa-ban text-[10px]"></i> Batalkan
                                             {!isOwner && <i className="fa-solid fa-lock text-[9px] opacity-60"></i>}
                                         </button>
-
+                                        <button onClick={saveProgress} disabled={saving} className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold px-3 py-1.5 rounded-lg transition-all">{saving ? '...' : ' Simpan'}</button>
                                         <button onClick={() => setShowFinishModal(true)} className="text-xs bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm transition-all"> Selesaikan</button>
                                     </div>
                                 </div>
@@ -12020,10 +13042,10 @@
         const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
         const getStoredSession = () => {
-            try { const s = localStorage.getItem('husna_auth_session'); return s ? JSON.parse(s) : null; } catch { return null; }
+            try { const s = localStorage.getItem('rafa_auth_session'); return s ? JSON.parse(s) : null; } catch { return null; }
         };
-        const saveSession = (userData) => localStorage.setItem('husna_auth_session', JSON.stringify(userData));
-        const clearSession = () => localStorage.removeItem('husna_auth_session');
+        const saveSession = (userData) => localStorage.setItem('rafa_auth_session', JSON.stringify(userData));
+        const clearSession = () => localStorage.removeItem('rafa_auth_session');
 
         // ==================== AUTH SCREEN ====================
         const AuthScreen = ({ onAuthSuccess }) => {
@@ -12209,7 +13231,7 @@
                                     <Icon name="shop" className="text-white text-2xl" />
                                 </div>
                             </div>
-                            <h1 className="font-black text-2xl text-slate-800 tracking-tight">Husna Group</h1>
+                            <h1 className="font-black text-2xl text-slate-800 tracking-tight">Apotek Rafa Medica</h1>
                             <p className="text-slate-500 text-sm font-medium mt-1">Sistem Kasir & Manajemen Stok</p>
                         </div>
 
@@ -12343,7 +13365,7 @@
 
                         {/* Footer */}
                         <div className="px-8 pb-6 text-center">
-                            <p className="text-xs text-slate-400">© Toko Husna • Sistem Kasir V37 <span className="mx-1">•</span> <Icon name="shield-halved" className="text-green-400" /> Aman & Terenkripsi</p>
+                            <p className="text-xs text-slate-400">© Apotek Rafa Medica • Sistem Kasir V37 <span className="mx-1">•</span> <Icon name="shield-halved" className="text-green-400" /> Aman & Terenkripsi</p>
                         </div>
                     </div>
                 </div>
@@ -14494,8 +15516,8 @@
             // ── Presence tracking ──
             // Gunakan sessionId unik per tab browser sebagai doc key presence
             const _sessionId = React.useRef((() => {
-                let sid = sessionStorage.getItem('_husna_sid');
-                if (!sid) { sid = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); sessionStorage.setItem('_husna_sid', sid); }
+                let sid = sessionStorage.getItem('_rafa_sid');
+                if (!sid) { sid = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); sessionStorage.setItem('_rafa_sid', sid); }
                 return sid;
             })());
             useEffect(() => {
@@ -14933,6 +15955,7 @@
                 { id: 'list',        label: 'Stok Barang',       icon: 'boxes-stacked',       enabled: isOwner || showMenu('showMenuStock', settingsData.showMenuStock),        readOnly: !isOwner && !menuOn('enableStock', settingsData.enableStock) }, 
                 { id: 'stock_opname',label: 'Stock Opname',      icon: 'clipboard-check',     enabled: isOwner || showMenu('showMenuStockOpname', settingsData.showMenuStockOpname), readOnly: !isOwner && !menuOn('enableStockOpname', settingsData.enableStockOpname) },
                 { id: 'cashbook',    label: 'Buku Kas',          icon: 'book',                enabled: isOwner || showMenu('showMenuCashbook', settingsData.showMenuCashbook),  readOnly: !isOwner && !menuOn('enableCashbook', settingsData.enableCashbook) },
+                { id: 'keuangan',    label: 'Keuangan',          icon: 'scale-balanced',      enabled: isOwner || showMenu('showMenuKeuangan', settingsData.showMenuKeuangan),  readOnly: !isOwner && !menuOn('enableKeuangan', settingsData.enableKeuangan) },
                 { id: 'catatan',     label: 'Catatan',           icon: 'thumbtack',           enabled: isOwner || showMenu('showMenuCatatan', settingsData.showMenuCatatan),    readOnly: !isOwner && !menuOn('enableCatatan', settingsData.enableCatatan) },
                 { id: 'add',         label: 'Input Manual',      icon: 'pen-to-square',       enabled: isOwner || showMenu('showMenuAdd', settingsData.showMenuAdd),            readOnly: !isOwner && !menuOn('enableInputManual', settingsData.enableInputManual) }, 
                 { id: 'import',      label: 'Import Masal',      icon: 'file-import',         enabled: isOwner || showMenu('showMenuImport', settingsData.showMenuImport),      readOnly: !isOwner && !menuOn('enableImport', settingsData.enableImport) }, 
@@ -15136,7 +16159,7 @@
                                                     </div>
                                                 </div>
                                             ))}
-                                            <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100"><p className="text-[10px] text-center text-slate-400 font-bold">Sistem Kasir Toko Husna • Selalu diperbarui 🚀</p><p className="text-[10px] text-center text-sky-400 font-bold mt-0.5">💬 Ada masukkan? Gunakan tab <b>Pesan &amp; Lapor</b> untuk hubungi admin!</p></div>
+                                            <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100"><p className="text-[10px] text-center text-slate-400 font-bold">Sistem Kasir Apotek Rafa Medica • Selalu diperbarui 🚀</p><p className="text-[10px] text-center text-sky-400 font-bold mt-0.5">💬 Ada masukkan? Gunakan tab <b>Pesan &amp; Lapor</b> untuk hubungi admin!</p></div>
                                         </div>
                                     )}
 
@@ -15251,6 +16274,7 @@
                         {activeTab === 'history' && (<HistoryView user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} items={inventoryData} readOnly={menuItems.find(m=>m.id==='history')?.readOnly} isOwner={isOwner} authSession={authSession} />)}
                         {activeTab === 'purchases' && (<PurchaseView user={user} showToast={showToast} items={inventoryData} currentProfile={currentProfile} settings={settingsData} readOnly={menuItems.find(m=>m.id==='purchases')?.readOnly} />)}
                         {activeTab === 'cashbook' && (<CashBookView user={user} currentProfile={currentProfile} showToast={showToast} readOnly={menuItems.find(m=>m.id==='cashbook')?.readOnly} />)}
+                        {activeTab === 'keuangan' && (<KeuanganView user={user} currentProfile={currentProfile} showToast={showToast} readOnly={menuItems.find(m=>m.id==='keuangan')?.readOnly} />)}
                         {activeTab === 'list' && (<ListView items={inventoryData} loading={loading} settings={settingsData} searchQuery={searchQuery} setSearchQuery={setSearchQuery} showOnlyLowStock={showOnlyLowStock} setShowOnlyLowStock={setShowOnlyLowStock} selectedRacks={selectedRacks} setSelectedRacks={setSelectedRacks} uniqueRacksData={uniqueRacksData} onCopySuccess={showToast} onEdit={(item) => { setFormData({...item}); setEditingItem(item); setActiveTab('add'); }} onDelete={(item) => setDeleteModal({ show: true, item: item })} onDeleteRack={(rackName) => setDeleteRackModal({ show: true, rackName })} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='list')?.readOnly} isOwner={isOwner} />)}
                         {activeTab === 'add' && (<FormView formData={formData} setFormData={setFormData} onSubmit={handleSubmit} isEditing={!!editingItem} submitting={submitting} onCancel={() => { setEditingItem(null); setFormData({name:'', qty:'', unit:'Pcs', exp:'', rack:'', price:'', costPrice:'', minStock: '', defaultDiscount: '', defaultDiscountType: '%', packagePrices: []}); setActiveTab('list'); }} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='add')?.readOnly} />)}
                         {activeTab === 'import' && (<BulkImportView user={user} onImportComplete={(count) => { showToast(`${count} Barang berhasil diimport`); setActiveTab('list'); }} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='import')?.readOnly} />)}
