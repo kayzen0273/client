@@ -15050,7 +15050,7 @@
             const handleSaveSettings = async (newSettings) => { if(!user) return; setSubmitting(true); try { const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'settings', 'global'); await window.setDoc(docRef, newSettings); showToast("Pengaturan disimpan"); } catch(error) { console.error(error); showToast("Gagal simpan pengaturan", "error"); } finally { setSubmitting(false); } };
             const handleDelete = async () => { if (!deleteModal.item || !user) return; try { const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', deleteModal.item.id); await window.deleteDoc(docRef); showToast("Barang dihapus (dari semua toko)"); } catch (error) { showToast("Gagal menghapus", "error"); } finally { setDeleteModal({ show: false, item: null }); } };
             const handleConfirmDeleteRack = async () => { if (!deleteRackModal.rackName || !user) return; const rackName = deleteRackModal.rackName; try { const batch = window.writeBatch(window.db); const itemsToUpdate = inventoryData.filter(item => item.rack && item.rack.includes(rackName)); if (itemsToUpdate.length === 0) { showToast("Tidak ada item di rak ini"); setDeleteRackModal({ show: false, rackName: null }); return; } itemsToUpdate.forEach(item => { const newRacks = item.rack.split(',').map(r => r.trim()).filter(r => r !== rackName); const newRackString = newRacks.length > 0 ? newRacks.join(', ') : '-'; const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', item.id); batch.update(docRef, { rack: newRackString }); }); await batch.commit(); showToast(`Rak "${rackName}" berhasil dihapus`); setSelectedRacks([]); } catch (err) { console.error("Failed delete rack", err); showToast("Gagal menghapus rak", "error"); } finally { setDeleteRackModal({ show: false, rackName: null }); } };
-            const handleNavClick = (tabId, event) => { setActiveTab(tabId); if (tabId !== 'list') setShowOnlyLowStock(false); setIsSidebarOpen(false); if (!['cashier','history','rekap_barang'].includes(tabId)) setKasirDropdownOpen(false); if (!['list','stock_opname','add','import','transfer_barang'].includes(tabId)) setBarangDropdownOpen(false); if (!['purchases'].includes(tabId)) setPembelianDropdownOpen(false); };
+            const handleNavClick = (tabId, event) => { setActiveTab(tabId); if (tabId !== 'list') setShowOnlyLowStock(false); setIsSidebarOpen(false); if (['cashier','history','rekap_barang'].includes(tabId)) setKasirDropdownOpen(true); else setKasirDropdownOpen(false); if (['list','stock_opname','add','import','transfer_barang'].includes(tabId)) setBarangDropdownOpen(true); else setBarangDropdownOpen(false); if (['purchases'].includes(tabId)) setPembelianDropdownOpen(true); else setPembelianDropdownOpen(false); };
             
             const handleLogout = () => {
                 clearSession();
@@ -15222,19 +15222,17 @@
                                         const isKasirGroupActive = kasirSubIds.includes(activeTab);
                                         return (
                                             <div key="kasir-group">
-                                                {/* Tombol induk Kasir */}
+                                                {/* Tombol induk Kasir — hanya toggle dropdown */}
                                                 <button
-                                                    onClick={(e) => { setKasirDropdownOpen(true); handleNavClick('cashier', e); }}
-                                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative group text-slate-500"
+                                                    onClick={() => setKasirDropdownOpen(prev => !prev)}
+                                                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative group ${isKasirGroupActive ? 'text-slate-800' : 'text-slate-500'}`}
                                                 >
                                                     <div className="relative w-5 flex-shrink-0">
-                                                        <Icon name="cash-register" className="text-base text-slate-400" />
+                                                        <Icon name="cash-register" className={`text-base ${isKasirGroupActive ? 'text-slate-700' : 'text-slate-400'}`} />
                                                         {menu.badge > 0 && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center leading-none shadow-sm animate-pulse">{menu.badge > 9 ? '9+' : menu.badge}</span>}
                                                     </div>
                                                     <span className="flex-1 text-left">Kasir</span>
-                                                    <span onClick={(e) => { e.stopPropagation(); setKasirDropdownOpen(prev => !prev); }} className="p-1 -mr-1">
-                                                        <Icon name={kasirDropdownOpen ? 'chevron-up' : 'chevron-down'} className="text-xs text-slate-300" />
-                                                    </span>
+                                                    <Icon name={kasirDropdownOpen ? 'chevron-up' : 'chevron-down'} className="text-xs text-slate-300" />
                                                 </button>
                                                 {/* Dropdown sub-menu */}
                                                 {kasirDropdownOpen && (
@@ -15243,8 +15241,9 @@
                                                             <button
                                                                 key={sub.id}
                                                                 onClick={(e) => handleNavClick(sub.id, e)}
-                                                                className={`w-full flex items-center px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${activeTab === sub.id ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}
+                                                                className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${activeTab === sub.id ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}
                                                             >
+                                                                <Icon name={sub.icon} className={`text-sm flex-shrink-0 ${activeTab === sub.id ? 'text-white' : 'text-slate-400'}`} />
                                                                 <span className="flex-1 text-left">{sub.label}</span>
                                                             </button>
                                                         ))}
@@ -15266,21 +15265,19 @@
                                         const isBarangGroupActive = barangSubIds.includes(activeTab);
                                         return (
                                             <div key="barang-group">
-                                                {/* Tombol induk Barang */}
+                                                {/* Tombol induk Barang — hanya toggle dropdown */}
                                                 <button
-                                                    onClick={(e) => { setBarangDropdownOpen(true); handleNavClick('list', e); }}
+                                                    onClick={() => setBarangDropdownOpen(prev => !prev)}
                                                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative group ${isBarangGroupActive ? 'text-slate-800' : 'text-slate-500'}`}
                                                 >
                                                     <div className="relative w-5 flex-shrink-0">
                                                         <Icon name="box-open" className={`text-base ${isBarangGroupActive ? 'text-slate-700' : 'text-slate-400'}`} />
                                                     </div>
                                                     <span className="flex-1 text-left">Barang</span>
-                                                    <span onClick={(e) => { e.stopPropagation(); setBarangDropdownOpen(prev => !prev); }} className="p-1 -mr-1">
-                                                        <Icon name={(barangDropdownOpen || isBarangGroupActive) ? 'chevron-up' : 'chevron-down'} className="text-xs text-slate-300" />
-                                                    </span>
+                                                    <Icon name={barangDropdownOpen ? 'chevron-up' : 'chevron-down'} className="text-xs text-slate-300" />
                                                 </button>
                                                 {/* Dropdown sub-menu */}
-                                                {(barangDropdownOpen || isBarangGroupActive) && (
+                                                {barangDropdownOpen && (
                                                     <div className="ml-3 mt-0.5 pl-3 space-y-0.5">
                                                         {barangSubItems.map(sub => {
                                                             const subEnabled = isOwner || showMenu(sub.showKey, settingsData[sub.showKey]);
@@ -15312,21 +15309,19 @@
                                         const isPembelianGroupActive = pembelianSubIds.includes(activeTab);
                                         return (
                                             <div key="pembelian-group">
-                                                {/* Tombol induk Pembelian */}
+                                                {/* Tombol induk Pembelian — hanya toggle dropdown */}
                                                 <button
-                                                    onClick={(e) => { setPembelianDropdownOpen(true); handleNavClick('purchases', e); }}
+                                                    onClick={() => setPembelianDropdownOpen(prev => !prev)}
                                                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative group ${isPembelianGroupActive ? 'text-slate-800' : 'text-slate-500'}`}
                                                 >
                                                     <div className="relative w-5 flex-shrink-0">
                                                         <Icon name="cart-shopping" className={`text-base ${isPembelianGroupActive ? 'text-slate-700' : 'text-slate-400'}`} />
                                                     </div>
                                                     <span className="flex-1 text-left">Pembelian</span>
-                                                    <span onClick={(e) => { e.stopPropagation(); setPembelianDropdownOpen(prev => !prev); }} className="p-1 -mr-1">
-                                                        <Icon name={(pembelianDropdownOpen || isPembelianGroupActive) ? 'chevron-up' : 'chevron-down'} className="text-xs text-slate-300" />
-                                                    </span>
+                                                    <Icon name={pembelianDropdownOpen ? 'chevron-up' : 'chevron-down'} className="text-xs text-slate-300" />
                                                 </button>
                                                 {/* Dropdown sub-menu */}
-                                                {(pembelianDropdownOpen || isPembelianGroupActive) && (
+                                                {pembelianDropdownOpen && (
                                                     <div className="ml-3 mt-0.5 pl-3 space-y-0.5">
                                                         {pembelianSubItems.map(sub => {
                                                             const subEnabled = isOwner || showMenu(sub.showKey, settingsData[sub.showKey]);
