@@ -15265,9 +15265,9 @@
                                         const isBarangGroupActive = barangSubIds.includes(activeTab);
                                         return (
                                             <div key="barang-group">
-                                                {/* Tombol induk Barang — hanya toggle dropdown */}
+                                                {/* Tombol induk Barang — navigasi ke submenu pertama */}
                                                 <button
-                                                    onClick={() => setBarangDropdownOpen(prev => !prev)}
+                                                    onClick={() => { setBarangDropdownOpen(true); setActiveTab('list'); setShowOnlyLowStock(false); }}
                                                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative group ${isBarangGroupActive ? 'text-slate-800' : 'text-slate-500'}`}
                                                 >
                                                     <div className="relative w-5 flex-shrink-0">
@@ -15309,9 +15309,9 @@
                                         const isPembelianGroupActive = pembelianSubIds.includes(activeTab);
                                         return (
                                             <div key="pembelian-group">
-                                                {/* Tombol induk Pembelian — hanya toggle dropdown */}
+                                                {/* Tombol induk Pembelian — navigasi ke submenu pertama */}
                                                 <button
-                                                    onClick={() => setPembelianDropdownOpen(prev => !prev)}
+                                                    onClick={() => { setPembelianDropdownOpen(true); setActiveTab('purchases'); setShowOnlyLowStock(false); }}
                                                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative group ${isPembelianGroupActive ? 'text-slate-800' : 'text-slate-500'}`}
                                                 >
                                                     <div className="relative w-5 flex-shrink-0">
