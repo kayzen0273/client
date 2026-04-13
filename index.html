@@ -10565,7 +10565,7 @@
                                 </div>
 
                                 {/* Daftar Item */}
-                                <div className="rounded-2xl bg-white border border-slate-100 overflow-hidden shadow-sm">
+                                <div className="divide-y divide-slate-100">
                                     {pagedItems.map((item, index) => {
                                         const globalIndex = (katPage - 1) * KAT_PAGE_SIZE + index;
                                         const threshold = item.minStock ? safeNumber(item.minStock) : lowStockThreshold;
@@ -10579,8 +10579,8 @@
                                         const markup = costPrice > 0 && sellPrice > 0 ? (((sellPrice - costPrice) / costPrice) * 100).toFixed(2) + '%' : '-';
                                         const margin = costPrice > 0 && sellPrice > 0 ? (((sellPrice - costPrice) / sellPrice) * 100).toFixed(2) + '%' : '-';
                                         return (
-                                            <div key={item.id} className={`border-b border-slate-100 last:border-0 px-4 py-3.5 transition-colors ${isLow ? 'bg-amber-50/50' : index % 2 === 1 ? 'bg-slate-50/50' : 'bg-white'}`}>
-                                                {/* Baris 1: Nomor + Nama */}
+                                            <div key={item.id} className={`py-3.5 px-1 ${isLow ? 'bg-amber-50/40' : ''}`}>
+                                                {/* Nomor + Nama */}
                                                 <div className="flex items-start gap-2 mb-2.5">
                                                     <span className="text-xs font-bold text-slate-400 pt-0.5 w-5 flex-shrink-0 text-right">{globalIndex + 1}</span>
                                                     <div className="flex-1 min-w-0">
@@ -10598,37 +10598,37 @@
                                                     </div>
                                                 </div>
 
-                                                {/* Grid Info Harga — mirip Farmacare */}
-                                                <div className="ml-7 grid grid-cols-2 gap-x-3 gap-y-2 mb-3">
-                                                    <div className="bg-slate-50 rounded-lg px-2.5 py-1.5">
-                                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Barcode</p>
-                                                        <p className="text-[11px] font-bold text-slate-600 mt-0.5">{item.barcode || '-'}</p>
+                                                {/* Info 2-kolom — gaya Farmacare, tanpa kotak */}
+                                                <div className="ml-7 grid grid-cols-2 gap-x-4 gap-y-2 mb-2.5">
+                                                    <div>
+                                                        <p className="text-[10px] font-bold text-slate-500">Barcode</p>
+                                                        <p className="text-xs font-semibold text-slate-700 mt-0.5">{item.barcode || '-'}</p>
                                                     </div>
-                                                    <div className="bg-slate-50 rounded-lg px-2.5 py-1.5">
-                                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Stok</p>
-                                                        <p className={`text-[11px] font-black mt-0.5 ${isLow ? 'text-amber-600' : 'text-slate-700'}`}>{item.qty} <span className="font-normal text-[9px] text-slate-400">{item.unit || 'Pcs'}</span></p>
+                                                    <div>
+                                                        <p className="text-[10px] font-bold text-slate-500">Stok</p>
+                                                        <p className={`text-xs font-bold mt-0.5 ${isLow ? 'text-amber-600' : 'text-slate-700'}`}>{item.qty} <span className="font-normal text-slate-400 text-[10px]">{item.unit || 'Pcs'}</span></p>
                                                     </div>
-                                                    <div className="bg-slate-50 rounded-lg px-2.5 py-1.5">
-                                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Harga pokok</p>
-                                                        <p className="text-[11px] font-bold text-orange-600 mt-0.5">{costPrice > 0 ? formatRupiah(costPrice) : '-'}</p>
+                                                    <div>
+                                                        <p className="text-[10px] font-bold text-slate-500">Harga pokok</p>
+                                                        <p className="text-xs font-bold text-orange-600 mt-0.5">{costPrice > 0 ? formatRupiah(costPrice) : '-'}</p>
                                                     </div>
-                                                    <div className="bg-slate-50 rounded-lg px-2.5 py-1.5">
-                                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Harga jual</p>
-                                                        <p className="text-[11px] font-bold text-teal-700 mt-0.5">{sellPrice > 0 ? formatRupiah(sellPrice) : '-'}</p>
+                                                    <div>
+                                                        <p className="text-[10px] font-bold text-slate-500">Harga jual</p>
+                                                        <p className="text-xs font-bold text-teal-700 mt-0.5">{sellPrice > 0 ? formatRupiah(sellPrice) : '-'}</p>
                                                     </div>
-                                                    <div className="bg-slate-50 rounded-lg px-2.5 py-1.5">
-                                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Markup</p>
-                                                        <p className="text-[11px] font-bold text-slate-600 mt-0.5">{markup}</p>
+                                                    <div>
+                                                        <p className="text-[10px] font-bold text-slate-500">Markup</p>
+                                                        <p className="text-xs font-semibold text-slate-700 mt-0.5">{markup}</p>
                                                     </div>
-                                                    <div className="bg-slate-50 rounded-lg px-2.5 py-1.5">
-                                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Margin</p>
-                                                        <p className="text-[11px] font-bold text-slate-600 mt-0.5">{margin}</p>
+                                                    <div>
+                                                        <p className="text-[10px] font-bold text-slate-500">Margin</p>
+                                                        <p className="text-xs font-semibold text-slate-700 mt-0.5">{margin}</p>
                                                     </div>
                                                 </div>
 
                                                 {/* Breakdown multi-toko */}
                                                 {currentProfile.id === 'all_stores' && item._breakdown && item._breakdown.length > 0 && (
-                                                    <div className="ml-7 mb-3 flex flex-col gap-1">
+                                                    <div className="ml-7 mb-2.5 flex flex-col gap-1">
                                                         {item._breakdown.map((info, idx) => {
                                                             const si = info.lastIndexOf(':');
                                                             const sn = info.substring(0, si).trim();
@@ -10644,7 +10644,7 @@
                                                 )}
 
                                                 {/* Action Buttons */}
-                                                <div className="ml-7 flex items-center gap-1.5">
+                                                <div className="ml-7 flex items-center gap-1.5 mt-1">
                                                     {settings?.showNoteButton !== false && (
                                                         <button onClick={() => setNoteModalItem(item)} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition-colors ${item.itemNote ? 'bg-sky-50 text-sky-600 border-sky-200 hover:bg-sky-100' : 'bg-white text-slate-400 border-slate-200 hover:text-sky-500 hover:border-sky-200'}`}>
                                                             <Icon name="circle-info" className="text-[10px]" /> Catatan
@@ -10656,7 +10656,7 @@
                                                         </button>
                                                     )}
                                                     {!readOnly && (
-                                                        <button onClick={() => onDelete(item)} className="w-7 h-7 flex items-center justify-center rounded-lg text-[11px] font-bold text-red-400 bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 transition-colors ml-0.5">
+                                                        <button onClick={() => onDelete(item)} className="w-7 h-7 flex items-center justify-center rounded-lg text-red-400 bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 transition-colors ml-0.5">
                                                             <Icon name="trash" className="text-[10px]" />
                                                         </button>
                                                     )}
@@ -10666,11 +10666,11 @@
                                     })}
                                 </div>
 
-                                {/* Pagination — sama seperti Riwayat Kasir */}
+                                {/* Pagination */}
                                 {katTotalPages > 1 && (
                                     <div className="flex items-center justify-center gap-2 pt-4 pb-6">
                                         <button
-                                            onClick={() => { setKatPage(p => Math.max(1, p - 1)); window.scrollTo({top:0,behavior:'smooth'}); }}
+                                            onClick={() => setKatPage(p => Math.max(1, p - 1))}
                                             disabled={katPage === 1}
                                             className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all active:scale-95 ${katPage === 1 ? 'border-slate-100 text-slate-300 bg-slate-50 cursor-not-allowed' : 'border-slate-200 text-slate-500 bg-white hover:bg-teal-50 hover:border-teal-300 hover:text-teal-600 shadow-sm'}`}
                                         >
@@ -10680,7 +10680,7 @@
                                             {katPage} dari {katTotalPages}
                                         </span>
                                         <button
-                                            onClick={() => { setKatPage(p => Math.min(katTotalPages, p + 1)); window.scrollTo({top:0,behavior:'smooth'}); }}
+                                            onClick={() => setKatPage(p => Math.min(katTotalPages, p + 1))}
                                             disabled={katPage === katTotalPages}
                                             className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all active:scale-95 ${katPage === katTotalPages ? 'border-slate-100 text-slate-300 bg-slate-50 cursor-not-allowed' : 'border-slate-200 text-slate-500 bg-white hover:bg-teal-50 hover:border-teal-300 hover:text-teal-600 shadow-sm'}`}
                                         >
