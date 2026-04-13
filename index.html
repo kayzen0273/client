@@ -15222,7 +15222,7 @@
                                             <div key="kasir-group">
                                                 {/* Tombol induk Kasir */}
                                                 <button
-                                                    onClick={() => setKasirDropdownOpen(prev => !prev)}
+                                                    onClick={(e) => { setKasirDropdownOpen(true); handleNavClick('cashier', e); }}
                                                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative group text-slate-500"
                                                 >
                                                     <div className="relative w-5 flex-shrink-0">
@@ -15230,7 +15230,9 @@
                                                         {menu.badge > 0 && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center leading-none shadow-sm animate-pulse">{menu.badge > 9 ? '9+' : menu.badge}</span>}
                                                     </div>
                                                     <span className="flex-1 text-left">Kasir</span>
-                                                    <Icon name={kasirDropdownOpen ? 'chevron-up' : 'chevron-down'} className="text-xs transition-transform text-slate-300" />
+                                                    <span onClick={(e) => { e.stopPropagation(); setKasirDropdownOpen(prev => !prev); }} className="p-1 -mr-1">
+                                                        <Icon name={kasirDropdownOpen ? 'chevron-up' : 'chevron-down'} className="text-xs text-slate-300" />
+                                                    </span>
                                                 </button>
                                                 {/* Dropdown sub-menu */}
                                                 {kasirDropdownOpen && (
