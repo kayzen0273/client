@@ -15223,25 +15223,24 @@
                                                 {/* Tombol induk Kasir */}
                                                 <button
                                                     onClick={() => setKasirDropdownOpen(prev => !prev)}
-                                                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative group ${isKasirGroupActive ? 'bg-sky-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100'}`}
+                                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative group text-slate-500 hover:bg-slate-100"
                                                 >
                                                     <div className="relative w-5 flex-shrink-0">
-                                                        <Icon name="cash-register" className={`text-base ${isKasirGroupActive ? 'text-white' : 'text-slate-400'}`} />
+                                                        <Icon name="cash-register" className="text-base text-slate-400" />
                                                         {menu.badge > 0 && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center leading-none shadow-sm animate-pulse">{menu.badge > 9 ? '9+' : menu.badge}</span>}
                                                     </div>
                                                     <span className="flex-1 text-left">Kasir</span>
-                                                    <Icon name={kasirDropdownOpen ? 'chevron-up' : 'chevron-down'} className={`text-xs transition-transform ${isKasirGroupActive ? 'text-white/80' : 'text-slate-300'}`} />
+                                                    <Icon name={kasirDropdownOpen ? 'chevron-up' : 'chevron-down'} className="text-xs transition-transform text-slate-300" />
                                                 </button>
                                                 {/* Dropdown sub-menu */}
                                                 {kasirDropdownOpen && (
-                                                    <div className="ml-3 mt-0.5 pl-3 border-l-2 border-sky-200 space-y-0.5">
+                                                    <div className="ml-3 mt-0.5 pl-3 space-y-0.5">
                                                         {kasirSubItems.map(sub => (
                                                             <button
                                                                 key={sub.id}
                                                                 onClick={(e) => handleNavClick(sub.id, e)}
-                                                                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${activeTab === sub.id ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}
+                                                                className={`w-full flex items-center px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${activeTab === sub.id ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}
                                                             >
-                                                                <Icon name={sub.icon} className={`text-sm ${activeTab === sub.id ? 'text-white' : 'text-sky-400'}`} />
                                                                 <span className="flex-1 text-left">{sub.label}</span>
                                                             </button>
                                                         ))}
