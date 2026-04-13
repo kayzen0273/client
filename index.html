@@ -9724,7 +9724,15 @@
             const [progress, setProgress] = useState(0);
 
             if (readOnly) {
-                return <AksesTerbatasScreen />;
+                return (
+                    <div className="fade-in max-w-xl mx-auto w-full pt-10 text-center">
+                        <div className="bg-white/90 p-8 rounded-3xl shadow-soft">
+                            <div className="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl"><Icon name="lock" className="text-amber-500" /></div>
+                            <h3 className="text-xl font-bold text-slate-800 mb-2">Akses Terbatas</h3>
+                            <p className="text-slate-500 text-sm">Kamu tidak punya akses untuk Import Masal. Hubungi owner untuk mengaktifkan akses ini.</p>
+                        </div>
+                    </div>
+                );
             }
 
             if (currentProfile.id === 'all_stores') {
@@ -10485,7 +10493,16 @@
             const unitOptions = [ "Pcs", "Box", "Botol", "Strip", "Tube", "Ampul", "Vial", "Tablet", "Kapsul", "Sachet", "Pack", "Roll", "Set", "Lembar", "Pasang", "Galon" ];
             
             if (readOnly) {
-                return <AksesTerbatasScreen />;
+                return (
+                    <div className="fade-in max-w-xl mx-auto w-full pt-10 text-center">
+                        <div className="bg-white/90 p-8 rounded-3xl shadow-soft">
+                            <div className="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl"><Icon name="lock" className="text-amber-500" /></div>
+                            <h3 className="text-xl font-bold text-slate-800 mb-2">Akses Terbatas</h3>
+                            <p className="text-slate-500 text-sm mb-4">Kamu tidak punya akses untuk menambah atau mengedit barang. Hubungi owner untuk mengaktifkan akses Input Manual.</p>
+                            <button onClick={onCancel} className="px-6 py-2.5 bg-sky-500 text-white rounded-xl font-bold text-sm hover:bg-sky-600 transition-all active:scale-95">Kembali ke Stok Barang</button>
+                        </div>
+                    </div>
+                );
             }
 
             if (currentProfile.id === 'all_stores') {
@@ -14349,77 +14366,6 @@
 
 
 
-                // ====== AKSES TERBATAS SCREEN ======
-                const AksesTerbatasScreen = ({ message }) => (
-                    <div className="fade-in flex items-start justify-center pt-6 px-4 min-h-[60vh]">
-                        <div className="bg-white rounded-3xl shadow-soft border border-slate-100 p-8 w-full max-w-sm text-center">
-                            {/* Ilustrasi tablet + rantai + gembok */}
-                            <div className="flex justify-center mb-6">
-                                <svg viewBox="0 0 260 220" width="220" height="185" xmlns="http://www.w3.org/2000/svg">
-                                    {/* Gembok kecil kiri atas */}
-                                    <g opacity="0.25" transform="translate(18,18)">
-                                        <rect x="2" y="12" width="26" height="20" rx="4" fill="#94a3b8"/>
-                                        <path d="M8 12V9a7 7 0 0114 0v3" stroke="#94a3b8" strokeWidth="3" fill="none" strokeLinecap="round"/>
-                                        <circle cx="15" cy="22" r="3" fill="#cbd5e1"/>
-                                    </g>
-                                    {/* Ikon tangan kanan atas */}
-                                    <g opacity="0.20" transform="translate(198,14)">
-                                        <path d="M20 2v18M15 6v14M10 8v12M5 10v10M0 12v8" stroke="#94a3b8" strokeWidth="3.5" strokeLinecap="round"/>
-                                    </g>
-                                    {/* Tablet body */}
-                                    <rect x="58" y="28" width="144" height="164" rx="14" fill="#1e293b"/>
-                                    <rect x="66" y="38" width="128" height="134" rx="8" fill="#f8fafc"/>
-                                    {/* Tombol home tablet */}
-                                    <circle cx="130" cy="186" r="7" fill="#334155"/>
-                                    {/* Kamera tablet */}
-                                    <circle cx="130" cy="34" r="3" fill="#334155"/>
-                                    {/* Konten di layar: avatar abu */}
-                                    <circle cx="130" cy="82" r="22" fill="#cbd5e1"/>
-                                    <path d="M107 120 Q130 108 153 120" stroke="#cbd5e1" strokeWidth="3" fill="none" strokeLinecap="round"/>
-                                    {/* Baris teks abu */}
-                                    <rect x="90" y="132" width="80" height="8" rx="4" fill="#e2e8f0"/>
-                                    <rect x="100" y="146" width="60" height="8" rx="4" fill="#e2e8f0"/>
-                                    {/* Tombol abu */}
-                                    <rect x="104" y="158" width="52" height="10" rx="5" fill="#cbd5e1"/>
-
-                                    {/* Rantai — diagonal kiri-atas ke kanan-bawah */}
-                                    {[[-8,40],[10,62],[28,84],[46,106],[64,128],[82,150]].map(([cx,cy],i) => (
-                                        <g key={i} transform={`translate(${cx},${cy}) rotate(45)`}>
-                                            <rect x="-10" y="-6" width="20" height="12" rx="6" fill="none" stroke="#94a3b8" strokeWidth="4"/>
-                                        </g>
-                                    ))}
-                                    {/* Rantai — diagonal kanan-atas ke kiri-bawah */}
-                                    {[[268,40],[250,62],[232,84],[214,106],[196,128],[178,150]].map(([cx,cy],i) => (
-                                        <g key={i+10} transform={`translate(${cx},${cy}) rotate(-45)`}>
-                                            <rect x="-10" y="-6" width="20" height="12" rx="6" fill="none" stroke="#94a3b8" strokeWidth="4"/>
-                                        </g>
-                                    ))}
-
-                                    {/* Gembok utama di tengah */}
-                                    <rect x="104" y="100" width="52" height="42" rx="9" fill="#0f766e"/>
-                                    <path d="M116 100V90a14 14 0 0128 0v10" stroke="#0f766e" strokeWidth="6" fill="none" strokeLinecap="round"/>
-                                    <circle cx="130" cy="121" r="7" fill="#ccfbf1"/>
-                                    <rect x="127" y="121" width="6" height="10" rx="3" fill="#ccfbf1"/>
-
-                                    {/* Tanaman kiri bawah */}
-                                    <g opacity="0.5" transform="translate(14,152)">
-                                        <path d="M16 50 Q16 30 6 18 Q16 22 22 35 Q22 20 30 10 Q30 28 22 40 Q28 28 38 26 Q32 38 22 42 L22 50Z" fill="#0d9488"/>
-                                    </g>
-                                    {/* Tanaman kanan bawah (outline) */}
-                                    <g opacity="0.25" transform="translate(210,155)">
-                                        <path d="M16 45 Q16 28 8 18 Q16 22 20 32 Q22 18 30 10 Q28 26 20 38 Q26 28 36 26 Q30 36 20 40 L20 45Z" fill="none" stroke="#94a3b8" strokeWidth="2"/>
-                                    </g>
-                                </svg>
-                            </div>
-                            <h3 className="text-lg font-black text-slate-800 mb-3">Oops! Akses Terbatas</h3>
-                            <p className="text-slate-500 text-sm leading-relaxed">
-                                {message || "Hai, sepertinya kamu belum memiliki akses ke halaman ini.\nTapi jangan khawatir, kamu bisa menanyakan hak akses ini kepada pemilik apotek."}
-                            </p>
-                        </div>
-                    </div>
-                );
-                // ====== END AKSES TERBATAS SCREEN ======
-
                 // ====== REKAP BARANG TERJUAL VIEW ======
                 const RekapBarangView = ({ user, currentProfile, settings }) => {
                     const [transactions, setTransactions] = useState([]);
@@ -14602,6 +14548,7 @@
             const [user, setUser] = useState(null);
             const [isSidebarOpen, setIsSidebarOpen] = useState(false);
             const [kasirDropdownOpen, setKasirDropdownOpen] = useState(true);
+            const [barangDropdownOpen, setBarangDropdownOpen] = useState(false);
             const [receiptToPrint, setReceiptToPrint] = useState(null);
             const [isGeneratingImage, setIsGeneratingImage] = useState(false);
             const [activeStoreId, setActiveStoreId] = useState(localStorage.getItem('activeStoreId') || 'default');
@@ -15102,7 +15049,7 @@
             const handleSaveSettings = async (newSettings) => { if(!user) return; setSubmitting(true); try { const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'settings', 'global'); await window.setDoc(docRef, newSettings); showToast("Pengaturan disimpan"); } catch(error) { console.error(error); showToast("Gagal simpan pengaturan", "error"); } finally { setSubmitting(false); } };
             const handleDelete = async () => { if (!deleteModal.item || !user) return; try { const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', deleteModal.item.id); await window.deleteDoc(docRef); showToast("Barang dihapus (dari semua toko)"); } catch (error) { showToast("Gagal menghapus", "error"); } finally { setDeleteModal({ show: false, item: null }); } };
             const handleConfirmDeleteRack = async () => { if (!deleteRackModal.rackName || !user) return; const rackName = deleteRackModal.rackName; try { const batch = window.writeBatch(window.db); const itemsToUpdate = inventoryData.filter(item => item.rack && item.rack.includes(rackName)); if (itemsToUpdate.length === 0) { showToast("Tidak ada item di rak ini"); setDeleteRackModal({ show: false, rackName: null }); return; } itemsToUpdate.forEach(item => { const newRacks = item.rack.split(',').map(r => r.trim()).filter(r => r !== rackName); const newRackString = newRacks.length > 0 ? newRacks.join(', ') : '-'; const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', item.id); batch.update(docRef, { rack: newRackString }); }); await batch.commit(); showToast(`Rak "${rackName}" berhasil dihapus`); setSelectedRacks([]); } catch (err) { console.error("Failed delete rack", err); showToast("Gagal menghapus rak", "error"); } finally { setDeleteRackModal({ show: false, rackName: null }); } };
-            const handleNavClick = (tabId, event) => { setActiveTab(tabId); if (tabId !== 'list') setShowOnlyLowStock(false); setIsSidebarOpen(false); if (!['cashier','history','rekap_barang'].includes(tabId)) setKasirDropdownOpen(false); };
+            const handleNavClick = (tabId, event) => { setActiveTab(tabId); if (tabId !== 'list') setShowOnlyLowStock(false); setIsSidebarOpen(false); if (!['cashier','history','rekap_barang'].includes(tabId)) setKasirDropdownOpen(false); if (!['list','stock_opname'].includes(tabId)) setBarangDropdownOpen(false); };
             
             const handleLogout = () => {
                 clearSession();
@@ -15305,8 +15252,57 @@
                                             </div>
                                         );
                                     }
+                                    // --- BARANG: render sebagai dropdown group ---
+                                    if (menu.id === 'list') {
+                                        const barangSubItems = [
+                                            { id: 'list', label: 'Stok Barang', icon: 'boxes-stacked' },
+                                            { id: 'stock_opname', label: 'Stock Opname', icon: 'clipboard-check' },
+                                        ];
+                                        const barangSubIds = barangSubItems.map(s => s.id);
+                                        const isBarangGroupActive = barangSubIds.includes(activeTab);
+                                        return (
+                                            <div key="barang-group">
+                                                {/* Tombol induk Barang */}
+                                                <button
+                                                    onClick={(e) => { setBarangDropdownOpen(true); handleNavClick('list', e); }}
+                                                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative group ${isBarangGroupActive ? 'text-slate-800' : 'text-slate-500'}`}
+                                                >
+                                                    <div className="relative w-5 flex-shrink-0">
+                                                        <Icon name="box-open" className={`text-base ${isBarangGroupActive ? 'text-slate-700' : 'text-slate-400'}`} />
+                                                    </div>
+                                                    <span className="flex-1 text-left">Barang</span>
+                                                    <span onClick={(e) => { e.stopPropagation(); setBarangDropdownOpen(prev => !prev); }} className="p-1 -mr-1">
+                                                        <Icon name={barangDropdownOpen ? 'chevron-up' : 'chevron-down'} className="text-xs text-slate-300" />
+                                                    </span>
+                                                </button>
+                                                {/* Dropdown sub-menu */}
+                                                {(barangDropdownOpen || isBarangGroupActive) && (
+                                                    <div className="ml-3 mt-0.5 pl-3 space-y-0.5">
+                                                        {barangSubItems.map(sub => {
+                                                            const subEnabled = sub.id === 'list'
+                                                                ? (isOwner || showMenu('showMenuStock', settingsData.showMenuStock))
+                                                                : (isOwner || showMenu('showMenuStockOpname', settingsData.showMenuStockOpname));
+                                                            if (!subEnabled) return null;
+                                                            return (
+                                                                <button
+                                                                    key={sub.id}
+                                                                    onClick={(e) => handleNavClick(sub.id, e)}
+                                                                    className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${activeTab === sub.id ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}
+                                                                >
+                                                                    <Icon name={sub.icon} className={`text-sm flex-shrink-0 ${activeTab === sub.id ? 'text-white' : 'text-slate-400'}`} />
+                                                                    <span className="flex-1 text-left">{sub.label}</span>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    }
                                     // --- Sembunyikan "Riwayat" dari menu utama karena sudah masuk dropdown Kasir ---
                                     if (menu.id === 'history') return null;
+                                    // --- Sembunyikan "Stock Opname" dari menu utama karena sudah masuk dropdown Barang ---
+                                    if (menu.id === 'stock_opname') return null;
                                     // --- Menu biasa ---
                                     return (
                                         <button key={menu.id} onClick={(e) => handleNavClick(menu.id, e)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative overflow-hidden group ${activeTab === menu.id ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100'}`}>
