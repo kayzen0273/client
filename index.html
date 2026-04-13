@@ -14549,6 +14549,7 @@
             const [isSidebarOpen, setIsSidebarOpen] = useState(false);
             const [kasirDropdownOpen, setKasirDropdownOpen] = useState(true);
             const [barangDropdownOpen, setBarangDropdownOpen] = useState(false);
+            const [pembelianDropdownOpen, setPembelianDropdownOpen] = useState(false);
             const [receiptToPrint, setReceiptToPrint] = useState(null);
             const [isGeneratingImage, setIsGeneratingImage] = useState(false);
             const [activeStoreId, setActiveStoreId] = useState(localStorage.getItem('activeStoreId') || 'default');
@@ -15049,7 +15050,7 @@
             const handleSaveSettings = async (newSettings) => { if(!user) return; setSubmitting(true); try { const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'settings', 'global'); await window.setDoc(docRef, newSettings); showToast("Pengaturan disimpan"); } catch(error) { console.error(error); showToast("Gagal simpan pengaturan", "error"); } finally { setSubmitting(false); } };
             const handleDelete = async () => { if (!deleteModal.item || !user) return; try { const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', deleteModal.item.id); await window.deleteDoc(docRef); showToast("Barang dihapus (dari semua toko)"); } catch (error) { showToast("Gagal menghapus", "error"); } finally { setDeleteModal({ show: false, item: null }); } };
             const handleConfirmDeleteRack = async () => { if (!deleteRackModal.rackName || !user) return; const rackName = deleteRackModal.rackName; try { const batch = window.writeBatch(window.db); const itemsToUpdate = inventoryData.filter(item => item.rack && item.rack.includes(rackName)); if (itemsToUpdate.length === 0) { showToast("Tidak ada item di rak ini"); setDeleteRackModal({ show: false, rackName: null }); return; } itemsToUpdate.forEach(item => { const newRacks = item.rack.split(',').map(r => r.trim()).filter(r => r !== rackName); const newRackString = newRacks.length > 0 ? newRacks.join(', ') : '-'; const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', item.id); batch.update(docRef, { rack: newRackString }); }); await batch.commit(); showToast(`Rak "${rackName}" berhasil dihapus`); setSelectedRacks([]); } catch (err) { console.error("Failed delete rack", err); showToast("Gagal menghapus rak", "error"); } finally { setDeleteRackModal({ show: false, rackName: null }); } };
-            const handleNavClick = (tabId, event) => { setActiveTab(tabId); if (tabId !== 'list') setShowOnlyLowStock(false); setIsSidebarOpen(false); if (!['cashier','history','rekap_barang'].includes(tabId)) setKasirDropdownOpen(false); if (!['list','stock_opname'].includes(tabId)) setBarangDropdownOpen(false); };
+            const handleNavClick = (tabId, event) => { setActiveTab(tabId); if (tabId !== 'list') setShowOnlyLowStock(false); setIsSidebarOpen(false); if (!['cashier','history','rekap_barang'].includes(tabId)) setKasirDropdownOpen(false); if (!['list','stock_opname','add','import','transfer_barang'].includes(tabId)) setBarangDropdownOpen(false); if (!['purchases'].includes(tabId)) setPembelianDropdownOpen(false); };
             
             const handleLogout = () => {
                 clearSession();
@@ -15255,8 +15256,11 @@
                                     // --- BARANG: render sebagai dropdown group ---
                                     if (menu.id === 'list') {
                                         const barangSubItems = [
-                                            { id: 'list', label: 'Stok Barang', icon: 'boxes-stacked' },
-                                            { id: 'stock_opname', label: 'Stock Opname', icon: 'clipboard-check' },
+                                            { id: 'list',            label: 'Stok Barang',    icon: 'boxes-stacked',  showKey: 'showMenuStock',         enableKey: 'enableStock' },
+                                            { id: 'stock_opname',    label: 'Stock Opname',   icon: 'clipboard-check',showKey: 'showMenuStockOpname',    enableKey: 'enableStockOpname' },
+                                            { id: 'add',             label: 'Input Manual',   icon: 'pen-to-square',  showKey: 'showMenuAdd',            enableKey: 'enableInputManual' },
+                                            { id: 'import',          label: 'Import Masal',   icon: 'file-import',    showKey: 'showMenuImport',         enableKey: 'enableImport' },
+                                            { id: 'transfer_barang', label: 'Transfer Barang',icon: 'right-left',     showKey: 'showMenuTransferBarang', enableKey: 'enableTransferBarang' },
                                         ];
                                         const barangSubIds = barangSubItems.map(s => s.id);
                                         const isBarangGroupActive = barangSubIds.includes(activeTab);
@@ -15272,17 +15276,16 @@
                                                     </div>
                                                     <span className="flex-1 text-left">Barang</span>
                                                     <span onClick={(e) => { e.stopPropagation(); setBarangDropdownOpen(prev => !prev); }} className="p-1 -mr-1">
-                                                        <Icon name={barangDropdownOpen ? 'chevron-up' : 'chevron-down'} className="text-xs text-slate-300" />
+                                                        <Icon name={(barangDropdownOpen || isBarangGroupActive) ? 'chevron-up' : 'chevron-down'} className="text-xs text-slate-300" />
                                                     </span>
                                                 </button>
                                                 {/* Dropdown sub-menu */}
                                                 {(barangDropdownOpen || isBarangGroupActive) && (
                                                     <div className="ml-3 mt-0.5 pl-3 space-y-0.5">
                                                         {barangSubItems.map(sub => {
-                                                            const subEnabled = sub.id === 'list'
-                                                                ? (isOwner || showMenu('showMenuStock', settingsData.showMenuStock))
-                                                                : (isOwner || showMenu('showMenuStockOpname', settingsData.showMenuStockOpname));
+                                                            const subEnabled = isOwner || showMenu(sub.showKey, settingsData[sub.showKey]);
                                                             if (!subEnabled) return null;
+                                                            const subReadOnly = !isOwner && !menuOn(sub.enableKey, settingsData[sub.enableKey]);
                                                             return (
                                                                 <button
                                                                     key={sub.id}
@@ -15291,6 +15294,53 @@
                                                                 >
                                                                     <Icon name={sub.icon} className={`text-sm flex-shrink-0 ${activeTab === sub.id ? 'text-white' : 'text-slate-400'}`} />
                                                                     <span className="flex-1 text-left">{sub.label}</span>
+                                                                    {subReadOnly && activeTab !== sub.id && <Icon name="eye" className="text-[9px] text-slate-300 flex-shrink-0" title="Lihat saja" />}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    }
+                                    // --- PEMBELIAN: render sebagai dropdown group ---
+                                    if (menu.id === 'purchases') {
+                                        const pembelianSubItems = [
+                                            { id: 'purchases', label: 'Faktur Pembelian', icon: 'file-invoice-dollar', showKey: 'showMenuPurchases', enableKey: 'enablePurchases' },
+                                        ];
+                                        const pembelianSubIds = pembelianSubItems.map(s => s.id);
+                                        const isPembelianGroupActive = pembelianSubIds.includes(activeTab);
+                                        return (
+                                            <div key="pembelian-group">
+                                                {/* Tombol induk Pembelian */}
+                                                <button
+                                                    onClick={(e) => { setPembelianDropdownOpen(true); handleNavClick('purchases', e); }}
+                                                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative group ${isPembelianGroupActive ? 'text-slate-800' : 'text-slate-500'}`}
+                                                >
+                                                    <div className="relative w-5 flex-shrink-0">
+                                                        <Icon name="cart-shopping" className={`text-base ${isPembelianGroupActive ? 'text-slate-700' : 'text-slate-400'}`} />
+                                                    </div>
+                                                    <span className="flex-1 text-left">Pembelian</span>
+                                                    <span onClick={(e) => { e.stopPropagation(); setPembelianDropdownOpen(prev => !prev); }} className="p-1 -mr-1">
+                                                        <Icon name={(pembelianDropdownOpen || isPembelianGroupActive) ? 'chevron-up' : 'chevron-down'} className="text-xs text-slate-300" />
+                                                    </span>
+                                                </button>
+                                                {/* Dropdown sub-menu */}
+                                                {(pembelianDropdownOpen || isPembelianGroupActive) && (
+                                                    <div className="ml-3 mt-0.5 pl-3 space-y-0.5">
+                                                        {pembelianSubItems.map(sub => {
+                                                            const subEnabled = isOwner || showMenu(sub.showKey, settingsData[sub.showKey]);
+                                                            if (!subEnabled) return null;
+                                                            const subReadOnly = !isOwner && !menuOn(sub.enableKey, settingsData[sub.enableKey]);
+                                                            return (
+                                                                <button
+                                                                    key={sub.id}
+                                                                    onClick={(e) => handleNavClick(sub.id, e)}
+                                                                    className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${activeTab === sub.id ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}
+                                                                >
+                                                                    <Icon name={sub.icon} className={`text-sm flex-shrink-0 ${activeTab === sub.id ? 'text-white' : 'text-slate-400'}`} />
+                                                                    <span className="flex-1 text-left">{sub.label}</span>
+                                                                    {subReadOnly && activeTab !== sub.id && <Icon name="eye" className="text-[9px] text-slate-300 flex-shrink-0" title="Lihat saja" />}
                                                                 </button>
                                                             );
                                                         })}
@@ -15301,8 +15351,8 @@
                                     }
                                     // --- Sembunyikan "Riwayat" dari menu utama karena sudah masuk dropdown Kasir ---
                                     if (menu.id === 'history') return null;
-                                    // --- Sembunyikan "Stock Opname" dari menu utama karena sudah masuk dropdown Barang ---
-                                    if (menu.id === 'stock_opname') return null;
+                                    // --- Sembunyikan item-item yang sudah masuk dropdown Barang ---
+                                    if (['stock_opname','add','import','transfer_barang'].includes(menu.id)) return null;
                                     // --- Menu biasa ---
                                     return (
                                         <button key={menu.id} onClick={(e) => handleNavClick(menu.id, e)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative overflow-hidden group ${activeTab === menu.id ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100'}`}>
