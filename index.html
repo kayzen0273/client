@@ -14528,6 +14528,632 @@
                 };
                 // ====== END REKAP BARANG TERJUAL VIEW ======
 
+                // ====== LAPORAN PENDAPATAN VIEW ======
+                const LaporanPendapatanView = ({ user, currentProfile, settings, inventoryItems }) => {
+                    const [monthOffset, setMonthOffset] = React.useState(0);
+                    const [transactions, setTransactions] = React.useState([]);
+                    const [loading, setLoading] = React.useState(true);
+
+                    React.useEffect(() => {
+                        if (!user) return;
+                        const q = window.query(
+                            window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'transactions'),
+                            window.orderBy('date', 'desc'),
+                            window.limit(3000)
+                        );
+                        const unsub = window.onSnapshot(q, (snap) => {
+                            let allTx = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                            if (currentProfile.id !== 'all_stores') {
+                                allTx = allTx.filter(t => t.storeId === currentProfile.id || t.storeName === currentProfile.name);
+                            }
+                            setTransactions(allTx);
+                            setLoading(false);
+                        }, () => setLoading(false));
+                        return () => unsub();
+                    }, [user, currentProfile]);
+
+                    const getMonthMeta = (offset) => {
+                        const now = new Date();
+                        const d = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+                        return {
+                            start: new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0),
+                            end:   new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59),
+                            label: d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }),
+                            shortLabel: d.toLocaleDateString('id-ID', { month: 'short', year: '2-digit' }),
+                            daysInMonth: new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(),
+                            year: d.getFullYear(),
+                            month: d.getMonth(),
+                        };
+                    };
+
+                    const filterTxByMeta = (meta) => transactions.filter(tx => {
+                        if (tx.status === 'returned') return false;
+                        const d = tx.date?.toDate ? tx.date.toDate() : (tx.date ? new Date(tx.date) : null);
+                        return d && d >= meta.start && d <= meta.end;
+                    });
+
+                    const calcStats = (txList) => {
+                        let penjualan = 0, pendapatan = 0, count = 0, uangR = 0, pembulatan = 0, returVal = 0;
+                        txList.forEach(tx => {
+                            count++;
+                            tx.items?.forEach(item => {
+                                const netQty = (item.cartQty || 0) - (item.returnedQty || 0);
+                                const gross = (item.cartQty || 0) * (item.originalPrice || item.price || 0);
+                                penjualan += gross;
+                                if (item.returnedQty > 0) returVal += item.returnedQty * (item.originalPrice || item.price || 0);
+                                if (item.isRacikanGroup && item.racikanInfo?.uangR) uangR += parseInt(item.racikanInfo.uangR) || 0;
+                            });
+                            pendapatan += (tx.total || 0);
+                            pembulatan += (tx.pembulatan || 0);
+                        });
+                        return { penjualan, pendapatan, count, uangR, pembulatan, returVal };
+                    };
+
+                    const meta = React.useMemo(() => getMonthMeta(monthOffset), [monthOffset]);
+                    const monthTx = React.useMemo(() => filterTxByMeta(meta), [transactions, meta]);
+                    const stats = React.useMemo(() => calcStats(monthTx), [monthTx]);
+
+                    // Compare: previous month
+                    const prevMeta = React.useMemo(() => getMonthMeta(monthOffset - 1), [monthOffset]);
+                    const prevStats = React.useMemo(() => calcStats(filterTxByMeta(prevMeta)), [transactions, prevMeta]);
+
+                    // Daily breakdown
+                    const dailyData = React.useMemo(() => {
+                        const map = {};
+                        for (let i = 1; i <= meta.daysInMonth; i++) {
+                            const key = `${meta.year}-${String(meta.month + 1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+                            map[key] = { day: i, pendapatan: 0, count: 0, uangR: 0, pembulatan: 0 };
+                        }
+                        monthTx.forEach(tx => {
+                            const d = tx.date?.toDate ? tx.date.toDate() : new Date(tx.date);
+                            const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                            if (map[key]) {
+                                map[key].pendapatan += tx.total || 0;
+                                map[key].count++;
+                                tx.items?.forEach(item => { if (item.isRacikanGroup && item.racikanInfo?.uangR) map[key].uangR += parseInt(item.racikanInfo.uangR) || 0; });
+                                map[key].pembulatan += tx.pembulatan || 0;
+                            }
+                        });
+                        return Object.values(map).filter(d => d.count > 0).sort((a,b) => b.day - a.day);
+                    }, [monthTx, meta]);
+
+                    const pct = (curr, prev) => {
+                        if (!prev) return null;
+                        const p = ((curr - prev) / prev * 100);
+                        return { val: p, up: p >= 0 };
+                    };
+
+                    const Trend = ({ curr, prev }) => {
+                        const t = pct(curr, prev);
+                        if (!t || Math.abs(t.val) < 0.1) return null;
+                        return (
+                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ml-1 ${t.up ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
+                                {t.up ? '▲' : '▼'} {Math.abs(t.val).toFixed(1)}%
+                            </span>
+                        );
+                    };
+
+                    const maxDayPendapatan = Math.max(...dailyData.map(d => d.pendapatan), 1);
+
+                    return (
+                        <div className="fade-in space-y-5">
+                            {/* Header */}
+                            <div className="flex items-center justify-between flex-wrap gap-3">
+                                <div>
+                                    <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2">
+                                        <Icon name="chart-line" className="text-emerald-500" /> Laporan Pendapatan
+                                    </h2>
+                                    <p className="text-sm text-slate-400 mt-0.5">{currentProfile.name} · Realtime</p>
+                                </div>
+                                {/* Month Picker */}
+                                <div className="flex items-center gap-2 bg-white rounded-2xl border border-slate-200 shadow-sm px-3 py-2">
+                                    <button onClick={() => setMonthOffset(p => p - 1)} className="w-8 h-8 rounded-xl hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-all active:scale-90">
+                                        <Icon name="chevron-left" className="text-sm" />
+                                    </button>
+                                    <div className="text-center min-w-[130px]">
+                                        <p className="text-sm font-black text-slate-800 capitalize">{meta.label}</p>
+                                        {monthOffset < 0 && <p className="text-[10px] text-slate-400">vs {prevMeta.shortLabel}</p>}
+                                    </div>
+                                    <button onClick={() => setMonthOffset(p => Math.min(0, p + 1))} disabled={monthOffset >= 0} className="w-8 h-8 rounded-xl hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-all active:scale-90 disabled:opacity-30">
+                                        <Icon name="chevron-right" className="text-sm" />
+                                    </button>
+                                    {monthOffset < 0 && (
+                                        <button onClick={() => setMonthOffset(0)} className="ml-1 text-[10px] font-black text-sky-500 hover:text-sky-700 px-2 py-1 bg-sky-50 rounded-lg transition-colors">Bulan ini</button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {loading ? (
+                                <div className="flex items-center justify-center py-20">
+                                    <div className="w-10 h-10 border-4 border-emerald-200 border-t-emerald-500 rounded-full animate-spin"></div>
+                                </div>
+                            ) : (
+                                <>
+                                {/* KPI Cards */}
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                                    {[
+                                        { label: 'Total Penjualan', val: stats.penjualan, prev: prevStats.penjualan, icon: 'bag-shopping', color: 'sky', desc: 'Sebelum retur' },
+                                        { label: 'Total Pendapatan', val: stats.pendapatan, prev: prevStats.pendapatan, icon: 'coins', color: 'emerald', desc: 'Setelah diskon & pembulatan', highlight: true },
+                                        { label: 'Uang Resep (R/)', val: stats.uangR, prev: prevStats.uangR, icon: 'mortar-pestle', color: 'teal', desc: 'Biaya racikan' },
+                                        { label: 'Total Pembulatan', val: stats.pembulatan, prev: prevStats.pembulatan, icon: 'circle-half-stroke', color: 'violet', desc: 'Selisih pembulatan' },
+                                        { label: 'Jumlah Transaksi', val: stats.count, prev: prevStats.count, icon: 'receipt', color: 'amber', desc: 'Transaksi berhasil', isCnt: true },
+                                    ].map(k => (
+                                        <div key={k.label} className={`bg-white rounded-2xl p-4 border shadow-sm ${k.highlight ? 'border-emerald-200 bg-emerald-50/50' : 'border-slate-100'}`}>
+                                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-2 bg-${k.color}-100`}>
+                                                <Icon name={k.icon} className={`text-${k.color}-600 text-sm`} />
+                                            </div>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{k.label}</p>
+                                            <div className="flex items-baseline gap-1 mt-0.5 flex-wrap">
+                                                <p className={`text-xl font-black ${k.highlight ? 'text-emerald-700' : 'text-slate-800'}`}>
+                                                    {k.isCnt ? k.val.toLocaleString('id-ID') : formatRupiah(k.val)}
+                                                </p>
+                                                {monthOffset < 0 && <Trend curr={k.val} prev={k.prev} />}
+                                            </div>
+                                            <p className="text-[10px] text-slate-400 mt-0.5">{k.desc}</p>
+                                            {monthOffset < 0 && <p className="text-[10px] text-slate-300 mt-0.5">{prevMeta.shortLabel}: {k.isCnt ? k.prev.toLocaleString('id-ID') : formatRupiah(k.prev)}</p>}
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Avg per transaction */}
+                                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-wrap gap-6">
+                                    <div>
+                                        <p className="text-xs text-slate-400 font-bold uppercase">Rata-rata / Transaksi</p>
+                                        <p className="text-2xl font-black text-slate-800 mt-0.5">{stats.count > 0 ? formatRupiah(Math.round(stats.pendapatan / stats.count)) : '-'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-slate-400 font-bold uppercase">Total Retur</p>
+                                        <p className="text-2xl font-black text-red-500 mt-0.5">-{formatRupiah(stats.returVal)}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-slate-400 font-bold uppercase">Hari Aktif</p>
+                                        <p className="text-2xl font-black text-sky-600 mt-0.5">{dailyData.length} <span className="text-sm font-bold text-slate-400">hari</span></p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-slate-400 font-bold uppercase">Rata-rata / Hari Aktif</p>
+                                        <p className="text-2xl font-black text-slate-800 mt-0.5">{dailyData.length > 0 ? formatRupiah(Math.round(stats.pendapatan / dailyData.length)) : '-'}</p>
+                                    </div>
+                                </div>
+
+                                {/* Bar chart visual */}
+                                {dailyData.length > 0 && (
+                                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                                        <h3 className="text-sm font-black text-slate-700 mb-4">Pendapatan Harian — {meta.label}</h3>
+                                        <div className="flex items-end gap-1 h-24 overflow-x-auto pb-2">
+                                            {Array.from({ length: meta.daysInMonth }, (_, i) => i + 1).map(day => {
+                                                const key = `${meta.year}-${String(meta.month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+                                                const found = dailyData.find(d => d.day === day);
+                                                const val = found ? found.pendapatan : 0;
+                                                const h = val > 0 ? Math.max(6, Math.round((val / maxDayPendapatan) * 80)) : 2;
+                                                return (
+                                                    <div key={day} className="flex flex-col items-center gap-1 flex-shrink-0" style={{width: `${Math.max(12, Math.floor(100/meta.daysInMonth))}px`}}>
+                                                        <div
+                                                            className={`w-full rounded-t-sm transition-all ${val > 0 ? 'bg-emerald-400 hover:bg-emerald-500' : 'bg-slate-100'}`}
+                                                            style={{ height: `${h}px` }}
+                                                            title={val > 0 ? `Tgl ${day}: ${formatRupiah(val)}` : ''}
+                                                        />
+                                                        {meta.daysInMonth <= 20 && <span className="text-[8px] text-slate-400">{day}</span>}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        {meta.daysInMonth > 20 && (
+                                            <div className="flex justify-between text-[9px] text-slate-400 mt-1">
+                                                <span>1</span><span>{Math.round(meta.daysInMonth/2)}</span><span>{meta.daysInMonth}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Detail Table */}
+                                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                                    <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                                        <h3 className="text-sm font-black text-slate-700">Detail Pendapatan Harian</h3>
+                                        <span className="text-xs text-slate-400 font-medium">{dailyData.length} hari aktif</span>
+                                    </div>
+                                    {dailyData.length === 0 ? (
+                                        <div className="text-center py-12 text-slate-400">
+                                            <Icon name="chart-line" className="text-3xl mb-2" />
+                                            <p className="text-sm font-medium">Belum ada transaksi di bulan ini</p>
+                                        </div>
+                                    ) : (
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-sm">
+                                                <thead className="bg-slate-50 text-left">
+                                                    <tr>
+                                                        {['Tanggal','Pendapatan','Transaksi','Uang R/','Pembulatan'].map(h => (
+                                                            <th key={h} className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase">{h}</th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-50">
+                                                    {dailyData.map(d => {
+                                                        const tanggal = new Date(meta.year, meta.month, d.day);
+                                                        return (
+                                                            <tr key={d.day} className="hover:bg-slate-50/50 transition-colors">
+                                                                <td className="px-4 py-3 font-bold text-slate-700">
+                                                                    {tanggal.toLocaleDateString('id-ID', { weekday:'short', day:'2-digit', month:'short' })}
+                                                                </td>
+                                                                <td className="px-4 py-3 font-black text-emerald-700">{formatRupiah(d.pendapatan)}</td>
+                                                                <td className="px-4 py-3 text-slate-600 font-medium">{d.count} trx</td>
+                                                                <td className="px-4 py-3 text-teal-600 font-medium">{d.uangR > 0 ? formatRupiah(d.uangR) : '-'}</td>
+                                                                <td className="px-4 py-3 text-violet-600 font-medium">{d.pembulatan !== 0 ? formatRupiah(d.pembulatan) : '-'}</td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                                <tfoot className="bg-emerald-50 border-t border-emerald-100">
+                                                    <tr>
+                                                        <td className="px-4 py-3 font-black text-slate-700">TOTAL</td>
+                                                        <td className="px-4 py-3 font-black text-emerald-700">{formatRupiah(stats.pendapatan)}</td>
+                                                        <td className="px-4 py-3 font-black text-slate-700">{stats.count} trx</td>
+                                                        <td className="px-4 py-3 font-black text-teal-700">{formatRupiah(stats.uangR)}</td>
+                                                        <td className="px-4 py-3 font-black text-violet-700">{formatRupiah(stats.pembulatan)}</td>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                                </>
+                            )}
+                        </div>
+                    );
+                };
+                // ====== END LAPORAN PENDAPATAN VIEW ======
+
+                // ====== LAPORAN LABA RUGI VIEW ======
+                const LaporanLabaRugiView = ({ user, currentProfile, settings, inventoryItems }) => {
+                    const [monthOffset, setMonthOffset] = React.useState(0);
+                    const [transactions, setTransactions] = React.useState([]);
+                    const [loading, setLoading] = React.useState(true);
+                    const [sortField, setSortField] = React.useState('laba'); // 'laba','revenue','sold','margin'
+                    const [sortDir, setSortDir] = React.useState('desc');
+                    const [activeTab, setActiveTab] = React.useState('semua'); // 'semua','tipis','ok','bagus','terlaris'
+
+                    React.useEffect(() => {
+                        if (!user) return;
+                        const q = window.query(
+                            window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'transactions'),
+                            window.orderBy('date', 'desc'),
+                            window.limit(3000)
+                        );
+                        const unsub = window.onSnapshot(q, (snap) => {
+                            let allTx = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                            if (currentProfile.id !== 'all_stores') {
+                                allTx = allTx.filter(t => t.storeId === currentProfile.id || t.storeName === currentProfile.name);
+                            }
+                            setTransactions(allTx);
+                            setLoading(false);
+                        }, () => setLoading(false));
+                        return () => unsub();
+                    }, [user, currentProfile]);
+
+                    const getMonthMeta = (offset) => {
+                        const now = new Date();
+                        const d = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+                        return {
+                            start: new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0),
+                            end:   new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59),
+                            label: d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }),
+                            shortLabel: d.toLocaleDateString('id-ID', { month: 'short', year: '2-digit' }),
+                        };
+                    };
+
+                    const meta = React.useMemo(() => getMonthMeta(monthOffset), [monthOffset]);
+                    const prevMeta = React.useMemo(() => getMonthMeta(monthOffset - 1), [monthOffset]);
+
+                    // Build item-level P&L from transactions in selected month
+                    const itemPnL = React.useMemo(() => {
+                        const map = {}; // key = item.id || item.name
+
+                        const monthTx = transactions.filter(tx => {
+                            if (tx.status === 'returned') return false;
+                            const d = tx.date?.toDate ? tx.date.toDate() : (tx.date ? new Date(tx.date) : null);
+                            return d && d >= meta.start && d <= meta.end;
+                        });
+
+                        // Build a costPrice lookup from inventory
+                        const costLookup = {};
+                        (inventoryItems || []).forEach(inv => {
+                            costLookup[inv.id] = safeNumber(inv.costPrice);
+                            costLookup[inv.name?.toLowerCase()] = safeNumber(inv.costPrice);
+                        });
+
+                        monthTx.forEach(tx => {
+                            (tx.items || []).forEach(item => {
+                                if (item.isRacikanGroup) {
+                                    // Expand racikan sub-items
+                                    (item.racikanItems || []).forEach(ri => {
+                                        const key = ri.id || ri.name;
+                                        const netQty = (ri.qty || 0) - ((ri.returnedQty || 0));
+                                        if (netQty <= 0) return;
+                                        const sellP = safeNumber(ri.price || ri.selectedPrice || 0);
+                                        const costP = safeNumber(ri.costPrice) || costLookup[ri.id] || costLookup[ri.name?.toLowerCase()] || 0;
+                                        if (!map[key]) map[key] = { name: ri.name || key, sold: 0, revenue: 0, cogs: 0 };
+                                        map[key].sold += netQty;
+                                        map[key].revenue += netQty * sellP;
+                                        map[key].cogs += netQty * costP;
+                                    });
+                                    return;
+                                }
+                                const netQty = (item.cartQty || 0) - (item.returnedQty || 0);
+                                if (netQty <= 0) return;
+                                const key = item.id || item.name;
+                                const sellP = safeNumber(item.originalPrice || item.price || 0);
+                                const costP = safeNumber(item.costPrice) || costLookup[item.id] || costLookup[item.name?.toLowerCase()] || 0;
+                                if (!map[key]) map[key] = { name: item.name || key, sold: 0, revenue: 0, cogs: 0 };
+                                map[key].sold += netQty;
+                                map[key].revenue += netQty * sellP;
+                                map[key].cogs += netQty * costP;
+                            });
+                        });
+
+                        return Object.values(map).map(it => {
+                            const laba = it.revenue - it.cogs;
+                            const margin = it.revenue > 0 ? (laba / it.revenue * 100) : (it.cogs > 0 ? -100 : 0);
+                            return { ...it, laba, margin };
+                        });
+                    }, [transactions, meta, inventoryItems]);
+
+                    // Aggregate totals
+                    const totals = React.useMemo(() => {
+                        const totalRevenue = itemPnL.reduce((s, i) => s + i.revenue, 0);
+                        const totalCogs = itemPnL.reduce((s, i) => s + i.cogs, 0);
+                        const totalLaba = totalRevenue - totalCogs;
+                        const avgMargin = totalRevenue > 0 ? (totalLaba / totalRevenue * 100) : 0;
+                        const noCostItems = itemPnL.filter(i => i.cogs === 0).length;
+                        return { totalRevenue, totalCogs, totalLaba, avgMargin, noCostItems };
+                    }, [itemPnL]);
+
+                    // Prev month for comparison
+                    const prevItemPnL = React.useMemo(() => {
+                        const map = {};
+                        const prevTx = transactions.filter(tx => {
+                            if (tx.status === 'returned') return false;
+                            const d = tx.date?.toDate ? tx.date.toDate() : (tx.date ? new Date(tx.date) : null);
+                            return d && d >= prevMeta.start && d <= prevMeta.end;
+                        });
+                        const costLookup = {};
+                        (inventoryItems || []).forEach(inv => { costLookup[inv.id] = safeNumber(inv.costPrice); costLookup[inv.name?.toLowerCase()] = safeNumber(inv.costPrice); });
+                        prevTx.forEach(tx => {
+                            (tx.items || []).forEach(item => {
+                                if (item.isRacikanGroup) return;
+                                const netQty = (item.cartQty || 0) - (item.returnedQty || 0);
+                                if (netQty <= 0) return;
+                                const key = item.id || item.name;
+                                const sellP = safeNumber(item.originalPrice || item.price || 0);
+                                const costP = safeNumber(item.costPrice) || costLookup[item.id] || costLookup[item.name?.toLowerCase()] || 0;
+                                if (!map[key]) map[key] = { name: item.name || key, revenue: 0, cogs: 0 };
+                                map[key].revenue += netQty * sellP;
+                                map[key].cogs += netQty * costP;
+                            });
+                        });
+                        const list = Object.values(map).map(it => { const laba = it.revenue - it.cogs; return { ...it, laba }; });
+                        const totalRevenue = list.reduce((s, i) => s + i.revenue, 0);
+                        const totalLaba = list.reduce((s, i) => s + i.laba, 0);
+                        return { totalRevenue, totalLaba };
+                    }, [transactions, prevMeta, inventoryItems]);
+
+                    const handleSort = (field) => {
+                        if (sortField === field) setSortDir(d => d === 'desc' ? 'asc' : 'desc');
+                        else { setSortField(field); setSortDir('desc'); }
+                    };
+
+                    const marginCategories = React.useMemo(() => ({
+                        tipis: itemPnL.filter(i => i.cogs > 0 && i.margin >= 0 && i.margin < 10),
+                        ok: itemPnL.filter(i => i.cogs > 0 && i.margin >= 20 && i.margin <= 25),
+                        bagus: itemPnL.filter(i => i.cogs > 0 && i.margin > 35),
+                        rugi: itemPnL.filter(i => i.laba < 0),
+                        terlaris: [...itemPnL].sort((a, b) => b.sold - a.sold).slice(0, 10),
+                    }), [itemPnL]);
+
+                    const displayItems = React.useMemo(() => {
+                        let base = itemPnL;
+                        if (activeTab === 'tipis') base = marginCategories.tipis;
+                        else if (activeTab === 'ok') base = marginCategories.ok;
+                        else if (activeTab === 'bagus') base = marginCategories.bagus;
+                        else if (activeTab === 'rugi') base = marginCategories.rugi;
+                        else if (activeTab === 'terlaris') base = marginCategories.terlaris;
+
+                        return [...base].sort((a, b) => {
+                            const dir = sortDir === 'desc' ? -1 : 1;
+                            return (a[sortField] - b[sortField]) * dir;
+                        });
+                    }, [itemPnL, activeTab, sortField, sortDir, marginCategories]);
+
+                    const SortTh = ({ field, label }) => (
+                        <th onClick={() => handleSort(field)} className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase cursor-pointer hover:text-slate-600 select-none whitespace-nowrap">
+                            {label} {sortField === field ? (sortDir === 'desc' ? '↓' : '↑') : '↕'}
+                        </th>
+                    );
+
+                    const MarginBadge = ({ margin, cogs }) => {
+                        if (cogs === 0) return <span className="text-[10px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded-full font-bold">No HPP</span>;
+                        if (margin < 0) return <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-bold">Rugi</span>;
+                        if (margin < 10) return <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full font-bold">Tipis</span>;
+                        if (margin <= 20) return <span className="text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-full font-bold">Normal</span>;
+                        if (margin <= 25) return <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full font-bold">OK</span>;
+                        if (margin <= 35) return <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-bold">Bagus</span>;
+                        return <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-bold">Premium</span>;
+                    };
+
+                    const pctChange = (curr, prev) => {
+                        if (!prev) return null;
+                        const p = ((curr - prev) / Math.abs(prev) * 100);
+                        return { val: p, up: p >= 0 };
+                    };
+                    const TrendPill = ({ curr, prev }) => {
+                        const t = pctChange(curr, prev);
+                        if (!t || Math.abs(t.val) < 0.1) return null;
+                        return <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ml-1 ${t.up ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>{t.up ? '▲' : '▼'} {Math.abs(t.val).toFixed(1)}%</span>;
+                    };
+
+                    const tabs = [
+                        { id: 'semua', label: 'Semua', count: itemPnL.length, color: 'slate' },
+                        { id: 'terlaris', label: '🏆 Terlaris', count: Math.min(10, itemPnL.length), color: 'amber' },
+                        { id: 'bagus', label: '✅ Margin >35%', count: marginCategories.bagus.length, color: 'emerald' },
+                        { id: 'ok', label: '🔵 20-25%', count: marginCategories.ok.length, color: 'sky' },
+                        { id: 'tipis', label: '⚠️ Tipis <10%', count: marginCategories.tipis.length, color: 'orange' },
+                        { id: 'rugi', label: '🔴 Rugi', count: marginCategories.rugi.length, color: 'red' },
+                    ];
+
+                    return (
+                        <div className="fade-in space-y-5">
+                            {/* Header */}
+                            <div className="flex items-center justify-between flex-wrap gap-3">
+                                <div>
+                                    <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2">
+                                        <Icon name="scale-balanced" className="text-violet-500" /> Laba/Rugi Kotor Barang
+                                    </h2>
+                                    <p className="text-sm text-slate-400 mt-0.5">{currentProfile.name} · Realtime</p>
+                                </div>
+                                {/* Month Picker */}
+                                <div className="flex items-center gap-2 bg-white rounded-2xl border border-slate-200 shadow-sm px-3 py-2">
+                                    <button onClick={() => setMonthOffset(p => p - 1)} className="w-8 h-8 rounded-xl hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-all active:scale-90">
+                                        <Icon name="chevron-left" className="text-sm" />
+                                    </button>
+                                    <div className="text-center min-w-[130px]">
+                                        <p className="text-sm font-black text-slate-800 capitalize">{meta.label}</p>
+                                        {monthOffset < 0 && <p className="text-[10px] text-slate-400">vs {prevMeta.shortLabel}</p>}
+                                    </div>
+                                    <button onClick={() => setMonthOffset(p => Math.min(0, p + 1))} disabled={monthOffset >= 0} className="w-8 h-8 rounded-xl hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-all active:scale-90 disabled:opacity-30">
+                                        <Icon name="chevron-right" className="text-sm" />
+                                    </button>
+                                    {monthOffset < 0 && (
+                                        <button onClick={() => setMonthOffset(0)} className="ml-1 text-[10px] font-black text-sky-500 hover:text-sky-700 px-2 py-1 bg-sky-50 rounded-lg transition-colors">Bulan ini</button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {loading ? (
+                                <div className="flex items-center justify-center py-20">
+                                    <div className="w-10 h-10 border-4 border-violet-200 border-t-violet-500 rounded-full animate-spin"></div>
+                                </div>
+                            ) : (
+                                <>
+                                {/* KPI Cards */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    {[
+                                        { label: 'Total Revenue', val: totals.totalRevenue, prev: prevItemPnL.totalRevenue, icon: 'bag-shopping', color: 'sky', fmt: true },
+                                        { label: 'Total HPP (COGS)', val: totals.totalCogs, prev: null, icon: 'boxes-stacked', color: 'slate', fmt: true },
+                                        { label: 'Laba Kotor', val: totals.totalLaba, prev: prevItemPnL.totalLaba, icon: 'coins', color: totals.totalLaba >= 0 ? 'emerald' : 'red', fmt: true, highlight: true },
+                                        { label: 'Margin Rata-rata', val: totals.avgMargin, prev: null, icon: 'percent', color: totals.avgMargin > 25 ? 'emerald' : totals.avgMargin > 10 ? 'amber' : 'red', isPercent: true },
+                                    ].map(k => (
+                                        <div key={k.label} className={`bg-white rounded-2xl p-4 border shadow-sm ${k.highlight ? (totals.totalLaba >= 0 ? 'border-emerald-200 bg-emerald-50/40' : 'border-red-200 bg-red-50/40') : 'border-slate-100'}`}>
+                                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-2 bg-${k.color}-100`}>
+                                                <Icon name={k.icon} className={`text-${k.color}-600 text-sm`} />
+                                            </div>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{k.label}</p>
+                                            <div className="flex items-baseline gap-1 mt-0.5 flex-wrap">
+                                                <p className={`text-xl font-black text-${k.color}-${k.color === 'slate' ? '700' : '700'}`}>
+                                                    {k.isPercent ? `${totals.avgMargin.toFixed(1)}%` : formatRupiah(k.val)}
+                                                </p>
+                                                {monthOffset < 0 && k.prev !== null && <TrendPill curr={k.val} prev={k.prev} />}
+                                            </div>
+                                            {monthOffset < 0 && k.prev !== null && <p className="text-[10px] text-slate-300 mt-0.5">{prevMeta.shortLabel}: {formatRupiah(k.prev)}</p>}
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Margin category summary */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    {[
+                                        { label: 'Margin <10% (Tipis)', count: marginCategories.tipis.length, icon: 'triangle-exclamation', bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', sub: 'Perlu evaluasi harga' },
+                                        { label: 'Margin 20–25%', count: marginCategories.ok.length, icon: 'thumbs-up', bg: 'bg-sky-50', border: 'border-sky-200', text: 'text-sky-700', sub: 'Margin standar' },
+                                        { label: 'Margin >35%', count: marginCategories.bagus.length, icon: 'star', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', sub: 'Margin premium' },
+                                        { label: 'Merugi', count: marginCategories.rugi.length, icon: 'circle-exclamation', bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', sub: 'Harga < HPP!' },
+                                    ].map(c => (
+                                        <div key={c.label} className={`${c.bg} ${c.border} border rounded-2xl p-4`}>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <Icon name={c.icon} className={`${c.text} text-sm`} />
+                                                <p className={`text-xl font-black ${c.text}`}>{c.count} <span className="text-sm font-bold">item</span></p>
+                                            </div>
+                                            <p className="text-[10px] font-bold text-slate-500">{c.label}</p>
+                                            <p className="text-[10px] text-slate-400">{c.sub}</p>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {totals.noCostItems > 0 && (
+                                    <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center gap-2 text-sm text-amber-700">
+                                        <Icon name="triangle-exclamation" className="flex-shrink-0" />
+                                        <span><b>{totals.noCostItems} barang</b> tidak memiliki Harga Pokok (HPP). Laba/ruginya tidak terhitung akurat. Tambahkan HPP di menu Barang → Input Manual.</span>
+                                    </div>
+                                )}
+
+                                {/* Tabs */}
+                                <div className="flex gap-2 flex-wrap">
+                                    {tabs.map(t => (
+                                        <button key={t.id} onClick={() => setActiveTab(t.id)}
+                                            className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${activeTab === t.id ? 'bg-slate-800 text-white shadow-sm' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}>
+                                            {t.label} <span className="ml-1 opacity-70">({t.count})</span>
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Items Table */}
+                                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                                    {displayItems.length === 0 ? (
+                                        <div className="text-center py-12 text-slate-400">
+                                            <Icon name="scale-balanced" className="text-3xl mb-2" />
+                                            <p className="text-sm font-medium">Tidak ada data untuk filter ini</p>
+                                        </div>
+                                    ) : (
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-sm">
+                                                <thead className="bg-slate-50 text-left sticky top-0">
+                                                    <tr>
+                                                        <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase">#</th>
+                                                        <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase">Nama Barang</th>
+                                                        <SortTh field="sold" label="Terjual" />
+                                                        <SortTh field="revenue" label="Revenue" />
+                                                        <SortTh field="cogs" label="HPP" />
+                                                        <SortTh field="laba" label="Laba Kotor" />
+                                                        <SortTh field="margin" label="Margin" />
+                                                        <th className="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase">Kategori</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-50">
+                                                    {displayItems.map((item, idx) => (
+                                                        <tr key={item.name + idx} className="hover:bg-slate-50/50 transition-colors">
+                                                            <td className="px-3 py-3 text-slate-400 text-xs">{idx + 1}</td>
+                                                            <td className="px-3 py-3 font-bold text-slate-700 max-w-[160px] truncate">{item.name}</td>
+                                                            <td className="px-3 py-3 text-slate-600 font-medium">{item.sold.toLocaleString('id-ID')}</td>
+                                                            <td className="px-3 py-3 text-sky-700 font-medium">{formatRupiah(item.revenue)}</td>
+                                                            <td className="px-3 py-3 text-slate-500 font-medium">{item.cogs > 0 ? formatRupiah(item.cogs) : <span className="text-slate-300">-</span>}</td>
+                                                            <td className={`px-3 py-3 font-black ${item.laba >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                                                                {item.laba >= 0 ? '' : '-'}{formatRupiah(Math.abs(item.laba))}
+                                                            </td>
+                                                            <td className={`px-3 py-3 font-black text-sm ${item.margin > 35 ? 'text-purple-600' : item.margin >= 20 ? 'text-emerald-600' : item.margin >= 10 ? 'text-amber-600' : item.margin >= 0 ? 'text-orange-600' : 'text-red-600'}`}>
+                                                                {item.cogs > 0 ? `${item.margin.toFixed(1)}%` : '-'}
+                                                            </td>
+                                                            <td className="px-3 py-3">
+                                                                <MarginBadge margin={item.margin} cogs={item.cogs} />
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                                <tfoot className="bg-slate-50 border-t border-slate-200">
+                                                    <tr>
+                                                        <td colSpan={3} className="px-3 py-3 font-black text-slate-600 text-xs uppercase">Total {displayItems.length} item</td>
+                                                        <td className="px-3 py-3 font-black text-sky-700">{formatRupiah(displayItems.reduce((s,i)=>s+i.revenue,0))}</td>
+                                                        <td className="px-3 py-3 font-black text-slate-600">{formatRupiah(displayItems.reduce((s,i)=>s+i.cogs,0))}</td>
+                                                        <td className={`px-3 py-3 font-black ${displayItems.reduce((s,i)=>s+i.laba,0) >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{formatRupiah(displayItems.reduce((s,i)=>s+i.laba,0))}</td>
+                                                        <td colSpan={2}></td>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                                </>
+                            )}
+                        </div>
+                    );
+                };
+                // ====== END LAPORAN LABA RUGI VIEW ======
+
                 const App = () => {
             const [inventoryData, setInventoryData] = useState([]);
             const [rawInventory, setRawInventory] = useState([]); // Store original data from DB
@@ -14550,6 +15176,7 @@
             const [kasirDropdownOpen, setKasirDropdownOpen] = useState(true);
             const [barangDropdownOpen, setBarangDropdownOpen] = useState(false);
             const [pembelianDropdownOpen, setPembelianDropdownOpen] = useState(false);
+            const [laporanDropdownOpen, setLaporanDropdownOpen] = useState(false);
             const [receiptToPrint, setReceiptToPrint] = useState(null);
             const [isGeneratingImage, setIsGeneratingImage] = useState(false);
             const [activeStoreId, setActiveStoreId] = useState(localStorage.getItem('activeStoreId') || 'default');
@@ -15104,6 +15731,8 @@
                 { id: 'rekam_medis', label: 'Rekam Medis',       icon: 'stethoscope',         enabled: isOwner || showMenu('showMenuRekamMedis', settingsData.showMenuRekamMedis), readOnly: !isOwner && !menuOn('enableRekamMedis', settingsData.enableRekamMedis) },
                 { id: 'jadwal_shift', label: 'Jadwal Shift',     icon: 'calendar-days',       enabled: isOwner || showMenu('showMenuJadwalShift', settingsData.showMenuJadwalShift), readOnly: !isOwner && !menuOn('enableJadwalShift', settingsData.enableJadwalShift) },
                 { id: 'transfer_barang', label: 'Transfer Barang', icon: 'right-left',         enabled: isOwner || showMenu('showMenuTransferBarang', settingsData.showMenuTransferBarang), readOnly: !isOwner && !menuOn('enableTransferBarang', settingsData.enableTransferBarang) },
+                { id: 'laporan_pendapatan', label: 'Laporan Pendapatan', icon: 'chart-line',   enabled: isOwner },
+                { id: 'laporan_laba_rugi',  label: 'Laba/Rugi Kotor',   icon: 'scale-balanced', enabled: isOwner },
                 { id: 'pengguna_akun', label: 'Pengguna Akun',   icon: 'users',               enabled: true, readOnly: false },
                 { id: 'settings',    label: 'Pengaturan',        icon: 'gears',               enabled: true, readOnly: false },
             ];
@@ -15360,6 +15989,49 @@
                                     if (menu.id === 'history') return null;
                                     // --- Sembunyikan item-item yang sudah masuk dropdown Barang ---
                                     if (['stock_opname','add','import','transfer_barang'].includes(menu.id)) return null;
+                                    // --- Sembunyikan sub-item Laporan (sudah dalam dropdown) ---
+                                    if (menu.id === 'laporan_laba_rugi') return null;
+                                    // --- LAPORAN: render sebagai dropdown group ---
+                                    if (menu.id === 'laporan_pendapatan') {
+                                        const laporanSubItems = [
+                                            { id: 'laporan_pendapatan', label: 'Laporan Pendapatan', icon: 'chart-line' },
+                                            { id: 'laporan_laba_rugi',  label: 'Laba/Rugi Kotor Barang', icon: 'scale-balanced' },
+                                        ];
+                                        const laporanSubIds = laporanSubItems.map(s => s.id);
+                                        const isLaporanGroupActive = laporanSubIds.includes(activeTab);
+                                        return (
+                                            <div key="laporan-group">
+                                                <div className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative group cursor-pointer ${isLaporanGroupActive ? 'text-slate-800' : 'text-slate-500'}`}
+                                                    onClick={() => { setLaporanDropdownOpen(true); setActiveTab('laporan_pendapatan'); setShowOnlyLowStock(false); }}
+                                                >
+                                                    <div className="relative w-5 flex-shrink-0">
+                                                        <Icon name="chart-bar" className={`text-base ${isLaporanGroupActive ? 'text-slate-700' : 'text-slate-400'}`} />
+                                                    </div>
+                                                    <span className="flex-1 text-left">Laporan</span>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setLaporanDropdownOpen(prev => !prev); }}
+                                                        className="w-6 h-6 flex items-center justify-center rounded-lg transition-all flex-shrink-0"
+                                                    >
+                                                        <Icon name={laporanDropdownOpen ? 'chevron-up' : 'chevron-down'} className="text-xs text-slate-300" />
+                                                    </button>
+                                                </div>
+                                                {laporanDropdownOpen && (
+                                                    <div className="ml-3 mt-0.5 pl-3 space-y-0.5">
+                                                        {laporanSubItems.map(sub => (
+                                                            <button
+                                                                key={sub.id}
+                                                                onClick={(e) => handleNavClick(sub.id, e)}
+                                                                className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${activeTab === sub.id ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}
+                                                            >
+                                                                <Icon name={sub.icon} className={`text-sm flex-shrink-0 ${activeTab === sub.id ? 'text-white' : 'text-slate-400'}`} />
+                                                                <span className="flex-1 text-left">{sub.label}</span>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    }
                                     // --- Menu biasa ---
                                     return (
                                         <button key={menu.id} onClick={(e) => handleNavClick(menu.id, e)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative overflow-hidden group ${activeTab === menu.id ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100'}`}>
@@ -15591,6 +16263,8 @@
                         {activeTab === 'catatan' && (<PapanCatatan user={user} readOnly={menuItems.find(m=>m.id==='catatan')?.readOnly} />)}
                         {activeTab === 'jadwal_shift' && (<JadwalShiftView user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='jadwal_shift')?.readOnly} isOwner={isOwner} authSession={authSession} settings={settingsData} />)}
                         {activeTab === 'transfer_barang' && (<TransferBarangView user={user} showToast={showToast} rawInventory={rawInventory} settings={settingsData} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='transfer_barang')?.readOnly} authSession={authSession} />)}
+                        {activeTab === 'laporan_pendapatan' && (<LaporanPendapatanView user={user} currentProfile={currentProfile} settings={settingsData} inventoryItems={inventoryData} />)}
+                        {activeTab === 'laporan_laba_rugi' && (<LaporanLabaRugiView user={user} currentProfile={currentProfile} settings={settingsData} inventoryItems={inventoryData} />)}
                     </main>
                     <ConfirmModal isOpen={deleteModal.show} title="Hapus Barang?" message={`Yakin ingin menghapus permanen "${deleteModal.item?.name}"? Barang ini akan hilang dari SEMUA toko.`} onConfirm={handleDelete} onCancel={() => setDeleteModal({ show: false, item: null })} />
                     <ConfirmModal isOpen={deleteRackModal.show} title="Hapus Rak?" message={`Yakin ingin menghapus rak "${deleteRackModal.rackName}"? Semua barang di rak ini akan menjadi 'No Rack' (-).`} onConfirm={handleConfirmDeleteRack} onCancel={() => setDeleteRackModal({ show: false, rackName: null })} confirmText="Ya, Hapus Rak" />
