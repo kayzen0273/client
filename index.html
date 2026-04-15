@@ -121,7 +121,7 @@
 
     <style>
         html, body { overscroll-behavior-y: none; }
-        body { font-family: 'Inter', sans-serif; background-color: #f0f9ff; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -142,7 +142,7 @@
         @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 
         .kasir-pattern {
-            background-color: #f0f9ff;
+            background-color: #f3f4f6;
             background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%230ea5e9' fill-opacity='0.04'%3E%3Crect x='10' y='10' width='8' height='12' rx='1'/%3E%3Crect x='10' y='26' width='8' height='2' rx='1'/%3E%3Crect x='10' y='30' width='5' height='2' rx='1'/%3E%3Crect x='10' y='34' width='8' height='2' rx='1'/%3E%3Ccircle cx='42' cy='20' r='6'/%3E%3Crect x='36' y='30' width='12' height='8' rx='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
         }
 
@@ -274,7 +274,7 @@
         .exp-banner-exit  { animation: expBannerOut 0.4s  ease-in            forwards; }
     </style>
 </head>
-<body class="islamic-pattern relative">
+<body class="bg-gray-100 flex justify-center min-h-screen">
     <div id="root" class="relative z-10"></div>
 
     <!-- React App (Babel) -->
@@ -15085,8 +15085,8 @@
             const visibleMenuItems = menuItems.filter(m => m.enabled);
 
             return (
-                <div className={`min-h-screen flex flex-col md:flex-row bg-sky-50/50 transition-colors duration-500 ${activeStoreId === 'all_stores' ? 'theme-all-stores' : ''}`}>
-                    <RamadhanDecor /> <Toast show={toast.show} message={toast.message} type={toast.type} /> <ExpiryBanner items={expiryAlertItems} thresholdDays={(settingsData.expiryNotifMonths || 3) * 30} durationMs={(settingsData.expiryNotifSeconds || 3) * 1000} /> {isSidebarOpen && (<div className="fixed inset-0 bg-slate-900/50 z-40 md:hidden backdrop-blur-sm fade-in" onClick={() => setIsSidebarOpen(false)}></div>)}
+                <div className={`w-full max-w-[480px] bg-white min-h-screen shadow-lg flex flex-col transition-colors duration-500 ${activeStoreId === 'all_stores' ? 'theme-all-stores' : ''}`}>
+                    <RamadhanDecor /> <Toast show={toast.show} message={toast.message} type={toast.type} /> <ExpiryBanner items={expiryAlertItems} thresholdDays={(settingsData.expiryNotifMonths || 3) * 30} durationMs={(settingsData.expiryNotifSeconds || 3) * 1000} /> {isSidebarOpen && (<div className="fixed inset-0 bg-slate-900/50 z-40 backdrop-blur-sm fade-in" onClick={() => setIsSidebarOpen(false)}></div>)}
                     
                     {/* HIDDEN RECEIPT CONTAINER (UPDATED FOR DYNAMIC STORE) */}
                     {receiptToPrint && ( <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', zIndex: -1 }}> 
@@ -15139,7 +15139,7 @@
                         </div> 
                     </div> )}
 
-                    <aside className={`fixed top-0 left-0 h-full z-50 w-72 md:w-80 bg-white/95 backdrop-blur-xl md:backdrop-blur-md md:bg-white border-r border-slate-200 md:border-white/20 shadow-2xl md:shadow-soft transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:min-h-screen ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                    <aside className={`fixed top-0 left-0 h-full z-50 w-72 bg-white/95 backdrop-blur-xl border-r border-slate-200 shadow-2xl transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                         <div className="p-4 pb-3 h-full flex flex-col">
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-3 relative z-50">
@@ -15374,9 +15374,9 @@
                             </div>
                         </div>
                     </aside>
-                    <main className="flex-1 md:ml-0 p-4 md:p-8 max-w-7xl mx-auto w-full mb-0">
+                    <main className="flex-1 p-4 w-full mb-0">
                         {/* HEADER MOBILE - Gaya Halaman Kasir */}
-                        <div className="md:hidden -mx-4 -mt-4 mb-4 flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white relative z-30">
+                        <div className="-mx-4 -mt-4 mb-4 flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white relative z-30">
                             {/* Hamburger Menu */}
                             <button onClick={() => setIsSidebarOpen(true)} className="pt-1 px-1 active:scale-95 transition-all" style={{color:'#15847b', fontSize:'18px'}}>
                                 <i className="fa-solid fa-bars"></i>
