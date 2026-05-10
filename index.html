@@ -10617,7 +10617,7 @@
                                     activity: 'Beli',
                                     date: d.date,
                                     qty: safeNumber(it.qty),
-                                    oleh: d.createdBy || d.updatedBy || '-',
+                                    oleh: d.createdByName || d.cashierName || d.createdBy || '-',
                                     ref: doc.id,
                                     batchNo: it.batchNo || '',
                                     exp: it.exp || '',
