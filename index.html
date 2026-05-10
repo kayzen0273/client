@@ -11103,6 +11103,26 @@
             const [localSearch, setLocalSearch] = useState(searchQuery);
             const sortDropdownRef = useRef(null);
 
+            // Filter states (applied)
+            const [filterMarginMin, setFilterMarginMin] = useState('');
+            const [filterMarginMax, setFilterMarginMax] = useState('');
+            const [filterMarkupMin, setFilterMarkupMin] = useState('');
+            const [filterMarkupMax, setFilterMarkupMax] = useState('');
+            const [filterDiskon, setFilterDiskon] = useState('semua'); // 'semua','ada','tidak'
+            const [filterKategori, setFilterKategori] = useState('');
+            const [filterGolongan, setFilterGolongan] = useState('');
+            const [filterBarcode, setFilterBarcode] = useState('semua'); // 'semua','ada','tidak'
+            // Temp filter states (pending)
+            const [tmpMarginMin, setTmpMarginMin] = useState('');
+            const [tmpMarginMax, setTmpMarginMax] = useState('');
+            const [tmpMarkupMin, setTmpMarkupMin] = useState('');
+            const [tmpMarkupMax, setTmpMarkupMax] = useState('');
+            const [tmpDiskon, setTmpDiskon] = useState('semua');
+            const [tmpKategori, setTmpKategori] = useState('');
+            const [tmpGolongan, setTmpGolongan] = useState('');
+            const [tmpBarcode, setTmpBarcode] = useState('semua');
+            const [activeFilterEdit, setActiveFilterEdit] = useState(null); // null | 'margin'|'markup'|'diskon'|'kategori'|'golongan'|'barcode'
+
             // Kembali ke product detail setelah navigasi dari detail faktur
             useEffect(() => {
                 if (returnDetailItem) {
@@ -11135,7 +11155,17 @@
                     const matchesLowStock = showOnlyLowStock ? safeNumber(i.qty) < threshold : true;
                     let matchesRack = true;
                     if (selectedRacks.length > 0) { const itemRackLower = (i.rack || '-').toLowerCase(); matchesRack = selectedRacks.some(selected => itemRackLower.includes(selected.toLowerCase())); }
-                    return matchesLowStock && matchesRack;
+                    // Margin filter
+                    const sell = safeNumber(i.price); const cost = safeNumber(i.costPrice);
+                    const margin = sell > 0 ? ((sell - cost) / sell) * 100 : 0;
+                    const markup = cost > 0 ? ((sell - cost) / cost) * 100 : 0;
+                    const matchMargin = (filterMarginMin === '' || margin >= parseFloat(filterMarginMin)) && (filterMarginMax === '' || margin <= parseFloat(filterMarginMax));
+                    const matchMarkup = (filterMarkupMin === '' || markup >= parseFloat(filterMarkupMin)) && (filterMarkupMax === '' || markup <= parseFloat(filterMarkupMax));
+                    const matchDiskon = filterDiskon === 'semua' ? true : filterDiskon === 'ada' ? (safeNumber(i.discount) > 0) : (safeNumber(i.discount) === 0 || !i.discount);
+                    const matchKategori = !filterKategori ? true : (i.category || '').toLowerCase().includes(filterKategori.toLowerCase());
+                    const matchGolongan = !filterGolongan ? true : (i.golongan || i.group || '').toLowerCase().includes(filterGolongan.toLowerCase());
+                    const matchBarcode = filterBarcode === 'semua' ? true : filterBarcode === 'ada' ? !!(i.barcode && i.barcode !== '-') : !(i.barcode && i.barcode !== '-');
+                    return matchesLowStock && matchesRack && matchMargin && matchMarkup && matchDiskon && matchKategori && matchGolongan && matchBarcode;
                 });
                 result = [...result];
                 if (sortBy === 'az') result.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'id'));
@@ -11153,7 +11183,7 @@
                 else if (sortBy === 'markup_asc') result.sort((a, b) => { const mA = safeNumber(a.costPrice) > 0 ? (safeNumber(a.price) - safeNumber(a.costPrice)) / safeNumber(a.costPrice) : 0; const mB = safeNumber(b.costPrice) > 0 ? (safeNumber(b.price) - safeNumber(b.costPrice)) / safeNumber(b.costPrice) : 0; return mA - mB; });
                 else if (sortBy === 'markup_desc') result.sort((a, b) => { const mA = safeNumber(a.costPrice) > 0 ? (safeNumber(a.price) - safeNumber(a.costPrice)) / safeNumber(a.costPrice) : 0; const mB = safeNumber(b.costPrice) > 0 ? (safeNumber(b.price) - safeNumber(b.costPrice)) / safeNumber(b.costPrice) : 0; return mB - mA; });
                 return result;
-            }, [items, searchQuery, showOnlyLowStock, selectedRacks, fuse, lowStockThreshold, sortBy]);
+            }, [items, searchQuery, showOnlyLowStock, selectedRacks, fuse, lowStockThreshold, sortBy, filterMarginMin, filterMarginMax, filterMarkupMin, filterMarkupMax, filterDiskon, filterKategori, filterGolongan, filterBarcode]);
 
             useEffect(() => { setDisplayedLimit(ITEMS_PER_PAGE); }, [searchQuery, showOnlyLowStock, selectedRacks]);
             useEffect(() => { setLocalSearch(searchQuery); }, [searchQuery]);
@@ -11333,13 +11363,20 @@
                                 Export Excel
                             </button>
                             )}
-                            
-                            <div className="relative min-w-0" ref={dropdownRef}>
-                                <button onClick={() => setIsRackDropdownOpen(!isRackDropdownOpen)} className={`w-full py-2.5 px-3.5 rounded-xl border border-slate-200 bg-white text-[10px] sm:text-xs font-bold text-slate-700 shadow-sm flex items-center justify-between transition-all hover:bg-slate-50 ${isRackDropdownOpen ? 'ring-2 ring-sky-400' : ''}`}>
-                                    <span className="truncate flex-1 text-left">{getRackLabel()}</span>
-                                    <Icon name="chevron-down" className={`text-xs text-slate-400 ml-2 transition-transform flex-shrink-0 ${isRackDropdownOpen ? 'rotate-180' : ''}`} />
+
+                            {/* Stok Menipis + Rak dalam satu baris */}
+                            <div className="col-span-2 sm:col-span-2 flex gap-2">
+                                <button onClick={() => setShowOnlyLowStock(!showOnlyLowStock)} className={`flex-shrink-0 py-2.5 px-3.5 rounded-xl font-bold text-[10px] sm:text-xs flex items-center justify-center gap-2 transition-all border shadow-sm whitespace-nowrap ${showOnlyLowStock ? 'bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                                    <Icon name="triangle-exclamation" className="text-sm" />
+                                    {showOnlyLowStock ? 'Reset' : 'Stok Menipis'}
                                 </button>
-                                {isRackDropdownOpen && (<div className="absolute top-full left-0 sm:right-0 sm:left-auto mt-2 w-full sm:w-[280px] md:w-72 bg-white rounded-xl shadow-2xl border border-slate-100 z-[60] overflow-hidden fade-in origin-top"><div className="p-3 border-b border-slate-50 sticky top-0 bg-white z-10"><div className="relative mb-2"><input autoFocus type="text" placeholder="Cari rak..." className="w-full pl-8 pr-8 py-2 rounded-lg bg-slate-50 border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-sky-100 focus:border-sky-400 outline-none transition-all" value={rackSearch} onChange={(e) => setRackSearch(e.target.value)} /><Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400" />{rackSearch && (<button onClick={() => setRackSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors"><Icon name="xmark" className="text-[10px]" /></button>)}</div><button onClick={() => setSelectedRacks([])} className="w-full py-1.5 text-[10px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors">Reset (Tampilkan Semua)</button></div><div className="max-h-[240px] overflow-y-auto custom-scrollbar p-1.5 space-y-0.5">{filteredRacks.map(rack => { const isSelected = selectedRacks.includes(rack.name); return (<div key={rack.name} onClick={() => toggleRack(rack.name)} className={`group w-full text-left px-3 py-2.5 rounded-lg text-xs font-medium hover:bg-slate-50 transition-colors flex items-center justify-between cursor-pointer ${isSelected ? 'bg-sky-50/60' : ''}`}><div className="flex items-center gap-3 truncate flex-1"><div className="relative w-4 h-4 flex-shrink-0"><input type="checkbox" checked={isSelected} readOnly className="peer appearance-none w-4 h-4 border-2 border-slate-300 rounded checked:bg-sky-500 checked:border-sky-500 transition-all cursor-pointer" /><Icon name="check" className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" /></div><span className="truncate flex-1">{rack.name}</span></div><div className="flex items-center gap-2">{rack.hasNew && (<span className="flex-shrink-0 bg-rose-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-sm animate-pulse">NEW</span>)}<button onClick={(e) => { e.stopPropagation(); onDeleteRack(rack.name); }} className="w-6 h-6 flex items-center justify-center rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100" title="Hapus Rak"><Icon name="trash-can" /></button></div></div>); })}{filteredRacks.length === 0 && (<div className="flex flex-col items-center justify-center py-6 text-slate-400"><Icon name="box-open" className="text-xl mb-1 opacity-50" /><p className="text-[10px]">Rak tidak ditemukan</p></div>)}</div></div>)}
+                                <div className="relative flex-1 min-w-0" ref={dropdownRef}>
+                                    <button onClick={() => setIsRackDropdownOpen(!isRackDropdownOpen)} className={`w-full py-2.5 px-3.5 rounded-xl border border-slate-200 bg-white text-[10px] sm:text-xs font-bold text-slate-700 shadow-sm flex items-center justify-between transition-all hover:bg-slate-50 ${isRackDropdownOpen ? 'ring-2 ring-sky-400' : ''}`}>
+                                        <span className="truncate flex-1 text-left">{getRackLabel()}</span>
+                                        <Icon name="chevron-down" className={`text-xs text-slate-400 ml-2 transition-transform flex-shrink-0 ${isRackDropdownOpen ? 'rotate-180' : ''}`} />
+                                    </button>
+                                    {isRackDropdownOpen && (<div className="absolute top-full left-0 sm:right-0 sm:left-auto mt-2 w-full sm:w-[280px] md:w-72 bg-white rounded-xl shadow-2xl border border-slate-100 z-[60] overflow-hidden fade-in origin-top"><div className="p-3 border-b border-slate-50 sticky top-0 bg-white z-10"><div className="relative mb-2"><input autoFocus type="text" placeholder="Cari rak..." className="w-full pl-8 pr-8 py-2 rounded-lg bg-slate-50 border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-sky-100 focus:border-sky-400 outline-none transition-all" value={rackSearch} onChange={(e) => setRackSearch(e.target.value)} /><Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400" />{rackSearch && (<button onClick={() => setRackSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors"><Icon name="xmark" className="text-[10px]" /></button>)}</div><button onClick={() => setSelectedRacks([])} className="w-full py-1.5 text-[10px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors">Reset (Tampilkan Semua)</button></div><div className="max-h-[240px] overflow-y-auto custom-scrollbar p-1.5 space-y-0.5">{filteredRacks.map(rack => { const isSelected = selectedRacks.includes(rack.name); return (<div key={rack.name} onClick={() => toggleRack(rack.name)} className={`group w-full text-left px-3 py-2.5 rounded-lg text-xs font-medium hover:bg-slate-50 transition-colors flex items-center justify-between cursor-pointer ${isSelected ? 'bg-sky-50/60' : ''}`}><div className="flex items-center gap-3 truncate flex-1"><div className="relative w-4 h-4 flex-shrink-0"><input type="checkbox" checked={isSelected} readOnly className="peer appearance-none w-4 h-4 border-2 border-slate-300 rounded checked:bg-sky-500 checked:border-sky-500 transition-all cursor-pointer" /><Icon name="check" className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" /></div><span className="truncate flex-1">{rack.name}</span></div><div className="flex items-center gap-2">{rack.hasNew && (<span className="flex-shrink-0 bg-rose-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-sm animate-pulse">NEW</span>)}<button onClick={(e) => { e.stopPropagation(); onDeleteRack(rack.name); }} className="w-6 h-6 flex items-center justify-center rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100" title="Hapus Rak"><Icon name="trash-can" /></button></div></div>); })}{filteredRacks.length === 0 && (<div className="flex flex-col items-center justify-center py-6 text-slate-400"><Icon name="box-open" className="text-xl mb-1 opacity-50" /><p className="text-[10px]">Rak tidak ditemukan</p></div>)}</div></div>)}
+                                </div>
                             </div>
                         </div>
                     </header>
@@ -11354,11 +11391,16 @@
                     </div>
                     {/* Filter & Sort Row */}
                     <div className="flex gap-2">
-                        <button onClick={() => setShowFilterPanel(!showFilterPanel)} className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-bold transition-all shadow-sm ${showFilterPanel || showOnlyLowStock || selectedRacks.length > 0 ? 'bg-teal-50 border-teal-300 text-teal-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
-                            <Icon name="sliders" className="text-sm" />
-                            <span>Filter</span>
-                            {(showOnlyLowStock || selectedRacks.length > 0) && <span className="bg-teal-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{(showOnlyLowStock ? 1 : 0) + selectedRacks.length}</span>}
-                        </button>
+                        {(() => {
+                            const activeCount = [filterMarginMin||filterMarginMax, filterMarkupMin||filterMarkupMax, filterDiskon!=='semua', filterKategori, filterGolongan, filterBarcode!=='semua'].filter(Boolean).length;
+                            return (
+                                <button onClick={() => { setTmpMarginMin(filterMarginMin); setTmpMarginMax(filterMarginMax); setTmpMarkupMin(filterMarkupMin); setTmpMarkupMax(filterMarkupMax); setTmpDiskon(filterDiskon); setTmpKategori(filterKategori); setTmpGolongan(filterGolongan); setTmpBarcode(filterBarcode); setActiveFilterEdit(null); setShowFilterPanel(true); }} className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-bold transition-all shadow-sm ${activeCount > 0 ? 'bg-teal-50 border-teal-300 text-teal-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                                    <Icon name="sliders" className="text-sm" />
+                                    <span>Filter</span>
+                                    {activeCount > 0 && <span className="bg-teal-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{activeCount}</span>}
+                                </button>
+                            );
+                        })()}
                         <div className="relative flex-1" ref={sortDropdownRef}>
                             <button onClick={() => setIsSortDropdownOpen(!isSortDropdownOpen)} className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-bold transition-all shadow-sm ${isSortDropdownOpen ? 'bg-teal-50 border-teal-300 text-teal-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                                 <Icon name="arrow-down-up-across-line" className="text-sm" />
@@ -11393,21 +11435,108 @@
                             )}
                         </div>
                     </div>
-                    {/* Filter Panel - Expandable */}
+                    {/* Filter Modal - Full Screen */}
                     {showFilterPanel && (
-                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 space-y-2 fade-in">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Filter Barang</p>
-                            <button onClick={() => setShowOnlyLowStock(!showOnlyLowStock)} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg border text-xs font-bold transition-all ${showOnlyLowStock ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'}`}>
-                                <Icon name="triangle-exclamation" className="text-sm" />
-                                <span>Stok Menipis</span>
-                                {showOnlyLowStock && <Icon name="check" className="ml-auto text-amber-600" />}
-                            </button>
-                            {selectedRacks.length > 0 && (
-                                <button onClick={() => setSelectedRacks([])} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-xs font-bold text-slate-500 hover:bg-slate-100 transition-all">
-                                    <Icon name="xmark" className="text-sm" />
-                                    <span>Reset Filter Rak ({selectedRacks.length} terpilih)</span>
+                        <div className="fixed inset-0 bg-white z-[200] flex flex-col fade-in">
+                            {/* Header */}
+                            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                                <button onClick={() => setShowFilterPanel(false)} className="flex items-center gap-2 text-teal-600 font-semibold text-sm">
+                                    <Icon name="xmark" className="text-base" />
+                                    <span>Daftar Barang</span>
                                 </button>
-                            )}
+                                <button onClick={() => { setFilterMarginMin(tmpMarginMin); setFilterMarginMax(tmpMarginMax); setFilterMarkupMin(tmpMarkupMin); setFilterMarkupMax(tmpMarkupMax); setFilterDiskon(tmpDiskon); setFilterKategori(tmpKategori); setFilterGolongan(tmpGolongan); setFilterBarcode(tmpBarcode); setShowFilterPanel(false); }} className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold rounded-lg transition-all active:scale-95">
+                                    Pasang
+                                </button>
+                            </div>
+                            {/* Body */}
+                            <div className="flex-1 overflow-y-auto">
+                                <h1 className="text-3xl font-extrabold text-slate-900 px-4 pt-5 pb-4">Filter</h1>
+                                {/* Filter Rows */}
+                                {[
+                                    { key: 'margin', label: 'Margin', desc: tmpMarginMin||tmpMarginMax ? `${tmpMarginMin||'0'}% – ${tmpMarginMax||'∞'}%` : null },
+                                    { key: 'markup', label: 'Markup', desc: tmpMarkupMin||tmpMarkupMax ? `${tmpMarkupMin||'0'}% – ${tmpMarkupMax||'∞'}%` : null },
+                                    { key: 'diskon', label: 'Diskon', desc: tmpDiskon !== 'semua' ? (tmpDiskon === 'ada' ? 'Ada diskon' : 'Tidak ada diskon') : null },
+                                    { key: 'kategori', label: 'Kategori', desc: tmpKategori || null },
+                                    { key: 'golongan', label: 'Golongan', desc: tmpGolongan || null },
+                                    { key: 'barcode', label: 'Barcode', desc: tmpBarcode !== 'semua' ? (tmpBarcode === 'ada' ? 'Ada barcode' : 'Tidak ada barcode') : null },
+                                ].map(row => (
+                                    <div key={row.key}>
+                                        <div className="flex items-center justify-between px-4 py-4">
+                                            <div>
+                                                <p className="text-sm font-semibold text-slate-800">{row.label}</p>
+                                                {row.desc && <p className="text-xs text-teal-600 mt-0.5">{row.desc}</p>}
+                                            </div>
+                                            <button onClick={() => setActiveFilterEdit(activeFilterEdit === row.key ? null : row.key)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-teal-500 text-teal-600 text-xs font-bold hover:bg-teal-50 transition-all active:scale-95">
+                                                <span>Ubah</span>
+                                                <Icon name="pen" className="text-xs" />
+                                            </button>
+                                        </div>
+                                        {/* Inline edit panel */}
+                                        {activeFilterEdit === row.key && (
+                                            <div className="mx-4 mb-3 bg-slate-50 rounded-xl p-3 border border-slate-200 fade-in">
+                                                {(row.key === 'margin' || row.key === 'markup') && (
+                                                    <div className="space-y-2">
+                                                        <p className="text-[10px] font-bold text-slate-500 uppercase">{row.label} (%)</p>
+                                                        <div className="flex items-center gap-2">
+                                                            <input type="number" placeholder="Min" className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium outline-none focus:border-teal-400" value={row.key === 'margin' ? tmpMarginMin : tmpMarkupMin} onChange={e => row.key === 'margin' ? setTmpMarginMin(e.target.value) : setTmpMarkupMin(e.target.value)} />
+                                                            <span className="text-slate-400 text-xs">–</span>
+                                                            <input type="number" placeholder="Maks" className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium outline-none focus:border-teal-400" value={row.key === 'margin' ? tmpMarginMax : tmpMarkupMax} onChange={e => row.key === 'margin' ? setTmpMarginMax(e.target.value) : setTmpMarkupMax(e.target.value)} />
+                                                        </div>
+                                                        <button onClick={() => { row.key === 'margin' ? (setTmpMarginMin(''), setTmpMarginMax('')) : (setTmpMarkupMin(''), setTmpMarkupMax('')); }} className="text-xs text-slate-400 hover:text-red-500 transition-colors">Reset</button>
+                                                    </div>
+                                                )}
+                                                {row.key === 'diskon' && (
+                                                    <div className="space-y-1.5">
+                                                        <p className="text-[10px] font-bold text-slate-500 uppercase mb-2">Filter Diskon</p>
+                                                        {[{v:'semua',l:'Semua'},{v:'ada',l:'Ada Diskon'},{v:'tidak',l:'Tidak Ada Diskon'}].map(opt => (
+                                                            <button key={opt.v} onClick={() => setTmpDiskon(opt.v)} className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${tmpDiskon === opt.v ? 'bg-teal-50 border border-teal-300 text-teal-700' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                                                                <span>{opt.l}</span>
+                                                                {tmpDiskon === opt.v && <Icon name="check" className="text-teal-600" />}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                {(row.key === 'kategori' || row.key === 'golongan') && (
+                                                    <div className="space-y-2">
+                                                        <p className="text-[10px] font-bold text-slate-500 uppercase">{row.label}</p>
+                                                        <input type="text" placeholder={`Ketik ${row.label.toLowerCase()}...`} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium outline-none focus:border-teal-400" value={row.key === 'kategori' ? tmpKategori : tmpGolongan} onChange={e => row.key === 'kategori' ? setTmpKategori(e.target.value) : setTmpGolongan(e.target.value)} />
+                                                        {/* Suggestions */}
+                                                        {(() => {
+                                                            const suggestions = [...new Set(items.map(i => row.key === 'kategori' ? (i.category||'') : (i.golongan||i.group||'')).filter(Boolean))].sort();
+                                                            return suggestions.length > 0 && (
+                                                                <div className="flex flex-wrap gap-1.5 mt-1">
+                                                                    {suggestions.slice(0,10).map(s => (
+                                                                        <button key={s} onClick={() => row.key === 'kategori' ? setTmpKategori(s) : setTmpGolongan(s)} className={`px-2 py-1 rounded-md text-[10px] font-semibold border transition-all ${(row.key === 'kategori' ? tmpKategori : tmpGolongan) === s ? 'bg-teal-50 border-teal-300 text-teal-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>{s}</button>
+                                                                    ))}
+                                                                    <button onClick={() => row.key === 'kategori' ? setTmpKategori('') : setTmpGolongan('')} className="px-2 py-1 rounded-md text-[10px] font-semibold border border-slate-200 text-slate-400 hover:text-red-500 transition-all">Reset</button>
+                                                                </div>
+                                                            );
+                                                        })()}
+                                                    </div>
+                                                )}
+                                                {row.key === 'barcode' && (
+                                                    <div className="space-y-1.5">
+                                                        <p className="text-[10px] font-bold text-slate-500 uppercase mb-2">Filter Barcode</p>
+                                                        {[{v:'semua',l:'Semua'},{v:'ada',l:'Ada Barcode'},{v:'tidak',l:'Tidak Ada Barcode'}].map(opt => (
+                                                            <button key={opt.v} onClick={() => setTmpBarcode(opt.v)} className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${tmpBarcode === opt.v ? 'bg-teal-50 border border-teal-300 text-teal-700' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                                                                <span>{opt.l}</span>
+                                                                {tmpBarcode === opt.v && <Icon name="check" className="text-teal-600" />}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                        <div className="h-px bg-slate-100 mx-0" />
+                                    </div>
+                                ))}
+                                {/* Reset All */}
+                                <div className="px-4 py-4">
+                                    <button onClick={() => { setTmpMarginMin(''); setTmpMarginMax(''); setTmpMarkupMin(''); setTmpMarkupMax(''); setTmpDiskon('semua'); setTmpKategori(''); setTmpGolongan(''); setTmpBarcode('semua'); setActiveFilterEdit(null); }} className="w-full py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-all">
+                                        Reset Semua Filter
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     )}
                     <div className="flex-1 overflow-y-auto pb-32 pr-1 custom-scrollbar">
