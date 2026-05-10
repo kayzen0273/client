@@ -11142,8 +11142,16 @@
                 else if (sortBy === 'za') result.sort((a, b) => (b.name || '').localeCompare(a.name || '', 'id'));
                 else if (sortBy === 'stok_asc') result.sort((a, b) => safeNumber(a.qty) - safeNumber(b.qty));
                 else if (sortBy === 'stok_desc') result.sort((a, b) => safeNumber(b.qty) - safeNumber(a.qty));
-                else if (sortBy === 'harga_asc') result.sort((a, b) => safeNumber(a.price) - safeNumber(b.price));
-                else if (sortBy === 'harga_desc') result.sort((a, b) => safeNumber(b.price) - safeNumber(a.price));
+                else if (sortBy === 'satuan_az') result.sort((a, b) => (a.unit || '').localeCompare(b.unit || '', 'id'));
+                else if (sortBy === 'satuan_za') result.sort((a, b) => (b.unit || '').localeCompare(a.unit || '', 'id'));
+                else if (sortBy === 'hpp_asc') result.sort((a, b) => safeNumber(a.costPrice) - safeNumber(b.costPrice));
+                else if (sortBy === 'hpp_desc') result.sort((a, b) => safeNumber(b.costPrice) - safeNumber(a.costPrice));
+                else if (sortBy === 'hj_asc') result.sort((a, b) => safeNumber(a.price) - safeNumber(b.price));
+                else if (sortBy === 'hj_desc') result.sort((a, b) => safeNumber(b.price) - safeNumber(a.price));
+                else if (sortBy === 'margin_asc') result.sort((a, b) => { const mA = safeNumber(a.price) > 0 ? (safeNumber(a.price) - safeNumber(a.costPrice)) / safeNumber(a.price) : 0; const mB = safeNumber(b.price) > 0 ? (safeNumber(b.price) - safeNumber(b.costPrice)) / safeNumber(b.price) : 0; return mA - mB; });
+                else if (sortBy === 'margin_desc') result.sort((a, b) => { const mA = safeNumber(a.price) > 0 ? (safeNumber(a.price) - safeNumber(a.costPrice)) / safeNumber(a.price) : 0; const mB = safeNumber(b.price) > 0 ? (safeNumber(b.price) - safeNumber(b.costPrice)) / safeNumber(b.price) : 0; return mB - mA; });
+                else if (sortBy === 'markup_asc') result.sort((a, b) => { const mA = safeNumber(a.costPrice) > 0 ? (safeNumber(a.price) - safeNumber(a.costPrice)) / safeNumber(a.costPrice) : 0; const mB = safeNumber(b.costPrice) > 0 ? (safeNumber(b.price) - safeNumber(b.costPrice)) / safeNumber(b.costPrice) : 0; return mA - mB; });
+                else if (sortBy === 'markup_desc') result.sort((a, b) => { const mA = safeNumber(a.costPrice) > 0 ? (safeNumber(a.price) - safeNumber(a.costPrice)) / safeNumber(a.costPrice) : 0; const mB = safeNumber(b.costPrice) > 0 ? (safeNumber(b.price) - safeNumber(b.costPrice)) / safeNumber(b.costPrice) : 0; return mB - mA; });
                 return result;
             }, [items, searchQuery, showOnlyLowStock, selectedRacks, fuse, lowStockThreshold, sortBy]);
 
@@ -11354,7 +11362,7 @@
                         <div className="relative flex-1" ref={sortDropdownRef}>
                             <button onClick={() => setIsSortDropdownOpen(!isSortDropdownOpen)} className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-bold transition-all shadow-sm ${isSortDropdownOpen ? 'bg-teal-50 border-teal-300 text-teal-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                                 <Icon name="arrow-down-up-across-line" className="text-sm" />
-                                <span className="truncate">{sortBy === 'az' ? 'Nama dari A-Z' : sortBy === 'za' ? 'Nama dari Z-A' : sortBy === 'stok_asc' ? 'Stok Terkecil' : sortBy === 'stok_desc' ? 'Stok Terbesar' : sortBy === 'harga_asc' ? 'Harga Terendah' : 'Harga Tertinggi'}</span>
+                                <span className="truncate">{sortBy === 'az' ? 'Nama dari A-Z' : sortBy === 'za' ? 'Nama dari Z-A' : sortBy === 'stok_asc' ? 'Stok tersedikit' : sortBy === 'stok_desc' ? 'Stok terbanyak' : sortBy === 'satuan_az' ? 'Satuan A-Z' : sortBy === 'satuan_za' ? 'Satuan Z-A' : sortBy === 'hpp_asc' ? 'H. Pokok terkecil' : sortBy === 'hpp_desc' ? 'H. Pokok terbesar' : sortBy === 'hj_asc' ? 'H. Jual terkecil' : sortBy === 'hj_desc' ? 'H. Jual terbesar' : sortBy === 'margin_asc' ? 'Margin terkecil' : sortBy === 'margin_desc' ? 'Margin terbesar' : sortBy === 'markup_asc' ? 'Markup terkecil' : 'Markup terbesar'}</span>
                                 <Icon name="chevron-down" className={`text-[10px] text-slate-400 flex-shrink-0 transition-transform ${isSortDropdownOpen ? 'rotate-180' : ''}`} />
                             </button>
                             {isSortDropdownOpen && (
@@ -11362,10 +11370,18 @@
                                     {[
                                         { value: 'az', label: 'Nama dari A-Z', icon: 'arrow-down-a-z' },
                                         { value: 'za', label: 'Nama dari Z-A', icon: 'arrow-down-z-a' },
-                                        { value: 'stok_desc', label: 'Stok Terbesar', icon: 'arrow-down-wide-short' },
-                                        { value: 'stok_asc', label: 'Stok Terkecil', icon: 'arrow-up-wide-short' },
-                                        { value: 'harga_desc', label: 'Harga Tertinggi', icon: 'arrow-down-wide-short' },
-                                        { value: 'harga_asc', label: 'Harga Terendah', icon: 'arrow-up-wide-short' },
+                                        { value: 'stok_asc', label: 'Stok tersedikit', icon: 'arrow-up-1-9' },
+                                        { value: 'stok_desc', label: 'Stok terbanyak', icon: 'arrow-down-9-1' },
+                                        { value: 'satuan_az', label: 'Urut satuan A-Z', icon: 'arrow-down-a-z' },
+                                        { value: 'satuan_za', label: 'Urut satuan Z-A', icon: 'arrow-down-z-a' },
+                                        { value: 'hpp_asc', label: 'Harga pokok terkecil', icon: 'arrow-up-1-9' },
+                                        { value: 'hpp_desc', label: 'Harga pokok terbesar', icon: 'arrow-down-9-1' },
+                                        { value: 'hj_asc', label: 'Harga jual terkecil', icon: 'arrow-up-1-9' },
+                                        { value: 'hj_desc', label: 'Harga jual terbesar', icon: 'arrow-down-9-1' },
+                                        { value: 'margin_asc', label: 'Margin terkecil', icon: 'arrow-up-1-9' },
+                                        { value: 'margin_desc', label: 'Margin terbesar', icon: 'arrow-down-9-1' },
+                                        { value: 'markup_asc', label: 'Markup terkecil', icon: 'arrow-up-1-9' },
+                                        { value: 'markup_desc', label: 'Markup terbesar', icon: 'arrow-down-9-1' },
                                     ].map(opt => (
                                         <button key={opt.value} onClick={() => { setSortBy(opt.value); setIsSortDropdownOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-2.5 text-xs font-medium transition-colors text-left ${sortBy === opt.value ? 'bg-teal-50 text-teal-700 font-bold' : 'text-slate-600 hover:bg-slate-50'}`}>
                                             <Icon name={opt.icon} className="w-4 text-center flex-shrink-0" />
