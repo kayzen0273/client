@@ -10358,6 +10358,8 @@
             const [stockHistory, setStockHistory] = useState([]);
             const [loadingBatch, setLoadingBatch] = useState(false);
             const [loadingHistory, setLoadingHistory] = useState(false);
+            const [priceHistory, setPriceHistory] = useState([]);
+            const [loadingPriceHistory, setLoadingPriceHistory] = useState(false);
 
             // Parse units
             const units = React.useMemo(() => {
@@ -10441,8 +10443,30 @@
                 });
             }, [activeTab, item.name]);
 
+            // Load price history from priceHistory subcollection
+            useEffect(() => {
+                if (activeTab !== 'riwayat_harga' || !item.id) return;
+                setLoadingPriceHistory(true);
+                const q = window.query(
+                    window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'priceHistory'),
+                    window.where('itemId', '==', item.id),
+                    window.orderBy('changedAt', 'desc'),
+                    window.limit(50)
+                );
+                window.getDocs(q).then(snap => {
+                    const rows = [];
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        rows.push({ ...d, id: doc.id });
+                    });
+                    setPriceHistory(rows);
+                    setLoadingPriceHistory(false);
+                }).catch(() => setLoadingPriceHistory(false));
+            }, [activeTab, item.id]);
+
             const tabs = [
                 { id: 'detail', label: 'Detail Harga' },
+                { id: 'riwayat_harga', label: 'Riwayat harga' },
                 { id: 'batch', label: 'Batch pada stok', sub: 'dalam butir' },
                 { id: 'riwayat', label: 'Riwayat stok', sub: 'dalam butir' },
             ];
@@ -10544,7 +10568,7 @@
                                 {/* Footer */}
                                 <div className="px-4 pt-4 pb-6">
                                     <p className="text-[11px] italic text-slate-400">Harga barang dikenakan PPN</p>
-                                    {item.updatedAt && <p className="text-[10px] text-slate-400 mt-0.5">Terakhir diperbarui oleh {item.updatedBy || '-'}, {item.updatedAt?.toDate ? item.updatedAt.toDate().toLocaleDateString('id-ID', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '-'} WIB. <span className="text-teal-500 cursor-pointer">Lihat riwayat</span></p>}
+                                    {item.updatedAt && <p className="text-[10px] text-slate-400 mt-0.5">Terakhir diperbarui oleh {item.updatedBy || '-'}, {item.updatedAt?.toDate ? item.updatedAt.toDate().toLocaleDateString('id-ID', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '-'} WIB. <span className="text-teal-500 cursor-pointer underline" onClick={() => setActiveTab('riwayat_harga')}>Lihat riwayat</span></p>}
                                 </div>
                             </div>
                         )}
@@ -10620,6 +10644,66 @@
                                                 </p>
                                             </div>
                                         ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Tab: Riwayat harga */}
+                        {activeTab === 'riwayat_harga' && (
+                            <div className="px-4 pb-6">
+                                {loadingPriceHistory ? (
+                                    <div className="flex items-center justify-center py-12 text-slate-400 text-sm gap-2"><div className="w-4 h-4 border-2 border-slate-200 border-t-teal-500 rounded-full animate-spin"></div>Memuat riwayat...</div>
+                                ) : priceHistory.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-14 opacity-40">
+                                        <Icon name="clock-rotate-left" className="text-3xl text-slate-400 mb-2" />
+                                        <p className="text-sm text-slate-500 font-semibold">Belum ada riwayat perubahan harga</p>
+                                        <p className="text-xs text-slate-400 mt-1">Riwayat akan muncul saat harga diubah</p>
+                                    </div>
+                                ) : (
+                                    <div className="divide-y divide-slate-100">
+                                        {priceHistory.map((h, idx) => {
+                                            const tgl = h.changedAt?.toDate ? h.changedAt.toDate() : (h.changedAt ? new Date(h.changedAt) : null);
+                                            const tglStr = tgl ? tgl.toLocaleDateString('id-ID', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '-';
+                                            const hargaLama = safeNumber(h.oldPrice);
+                                            const hargaBaru = safeNumber(h.newPrice);
+                                            const naik = hargaBaru > hargaLama;
+                                            const turun = hargaBaru < hargaLama;
+                                            return (
+                                                <div key={h.id || idx} className="py-4">
+                                                    <p className="text-[10px] text-slate-400 mb-1">{tglStr} WIB</p>
+                                                    <p className="text-xs font-bold text-slate-700 mb-0.5">{h.source === 'manual' ? 'Update harga manual' : h.source === 'purchase' ? `Catat faktur ${h.noFaktur || ''}` : 'Update harga'}</p>
+                                                    {h.noFaktur && <p className="text-[10px] text-teal-600 font-semibold mb-0.5">Faktur: {h.noFaktur}</p>}
+                                                    <p className="text-[10px] text-slate-400 mb-3">Oleh {h.changedBy || '-'}</p>
+                                                    <div className="bg-slate-50 rounded-xl p-3 space-y-2">
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            <div>
+                                                                <p className="text-[10px] text-slate-500 font-bold mb-0.5">Diskon</p>
+                                                                <p className="text-xs text-slate-700">Rp0</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[10px] text-slate-500 font-bold mb-0.5">Multi satuan</p>
+                                                                <p className="text-xs text-slate-700">Tidak</p>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[10px] text-slate-500 font-bold mb-1">Harga jual</p>
+                                                            {hargaLama > 0 && hargaLama !== hargaBaru ? (
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                    <span className="text-xs text-slate-400 line-through">{formatRupiah(hargaLama)}</span>
+                                                                    <span className="text-xs text-slate-400">→</span>
+                                                                    <span className={`text-sm font-bold ${naik ? 'text-emerald-600' : turun ? 'text-rose-500' : 'text-slate-700'}`}>{formatRupiah(hargaBaru)}</span>
+                                                                    {naik && <span className="text-[9px] font-bold bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded-full">▲ Naik</span>}
+                                                                    {turun && <span className="text-[9px] font-bold bg-rose-50 text-rose-500 px-1.5 py-0.5 rounded-full">▼ Turun</span>}
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-sm font-bold text-slate-700">{formatRupiah(hargaBaru)}</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>
@@ -15455,7 +15539,8 @@
                         defaultDiscount: formData.defaultDiscount ? safeNumber(formData.defaultDiscount) : 0,
                         defaultDiscountType: formData.defaultDiscountType || '%',
                         packagePrices: (formData.packagePrices || []).filter(p => p.name && p.qty > 0 && p.price > 0),
-                        updatedAt: window.serverTimestamp()
+                        updatedAt: window.serverTimestamp(),
+                        updatedBy: authSession?.namaLengkap || authSession?.username || 'Pengguna'
                     };
                     const stockUpdate = { [`stocks.${activeStoreId}`]: newQty };
 
@@ -15466,6 +15551,22 @@
                         const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', editingItem.id);
                         await window.updateDoc(docRef, { ...baseData, ...stockUpdate }); 
                         savedItemId = editingItem.id;
+                        // 📝 Simpan riwayat harga jika harga berubah
+                        const oldPrice = safeNumber(editingItem.price);
+                        const newPrice = safeNumber(formData.price);
+                        if (newPrice !== oldPrice || !editingItem.price) {
+                            try {
+                                await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'priceHistory'), {
+                                    itemId: editingItem.id,
+                                    itemName: formData.name,
+                                    oldPrice: oldPrice,
+                                    newPrice: newPrice,
+                                    changedBy: authSession?.namaLengkap || authSession?.username || 'Pengguna',
+                                    changedAt: window.serverTimestamp(),
+                                    source: 'manual',
+                                });
+                            } catch (phErr) { console.warn('Gagal simpan riwayat harga:', phErr); }
+                        }
                         showToast(`Stok untuk ${currentProfile.name} diperbarui`);
                     } else {
                         const existingItem = rawInventory.find(i => i.name.toLowerCase() === formData.name.toLowerCase());
@@ -15473,10 +15574,41 @@
                              const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', existingItem.id);
                              await window.updateDoc(docRef, { ...baseData, ...stockUpdate });
                              savedItemId = existingItem.id;
+                             // 📝 Simpan riwayat harga
+                             const oldPrice2 = safeNumber(existingItem.price);
+                             const newPrice2 = safeNumber(formData.price);
+                             if (newPrice2 !== oldPrice2) {
+                                 try {
+                                     await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'priceHistory'), {
+                                         itemId: existingItem.id,
+                                         itemName: formData.name,
+                                         oldPrice: oldPrice2,
+                                         newPrice: newPrice2,
+                                         changedBy: authSession?.namaLengkap || authSession?.username || 'Pengguna',
+                                         changedAt: window.serverTimestamp(),
+                                         source: 'manual',
+                                     });
+                                 } catch (phErr) { console.warn('Gagal simpan riwayat harga:', phErr); }
+                             }
                              showToast(`Barang sudah ada. Stok ${currentProfile.name} diupdate.`);
                         } else {
                             const newDoc = await window.addDoc(collectionRef, { ...baseData, stocks: { [activeStoreId]: newQty }, qty: newQty, createdAt: window.serverTimestamp() }); 
                             savedItemId = newDoc.id;
+                            // 📝 Simpan riwayat harga pertama kali
+                            const firstPrice = safeNumber(formData.price);
+                            if (firstPrice > 0) {
+                                try {
+                                    await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'priceHistory'), {
+                                        itemId: newDoc.id,
+                                        itemName: formData.name,
+                                        oldPrice: 0,
+                                        newPrice: firstPrice,
+                                        changedBy: authSession?.namaLengkap || authSession?.username || 'Pengguna',
+                                        changedAt: window.serverTimestamp(),
+                                        source: 'manual',
+                                    });
+                                } catch (phErr) { console.warn('Gagal simpan riwayat harga:', phErr); }
+                            }
                             showToast("Barang baru ditambahkan");
                         }
                     }
