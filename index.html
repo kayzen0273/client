@@ -10346,11 +10346,186 @@
             );
         };
 
+        const ProductDetailPage = ({ item, onBack, onEdit, onDelete, settings, readOnly, isOwner, lowStockThreshold }) => {
+            const threshold = item.minStock ? safeNumber(item.minStock) : lowStockThreshold;
+            const isLow = safeNumber(item.qty) < threshold;
+            const daysLeft = getDaysRemaining(item.exp);
+            const isExpired = daysLeft !== null && daysLeft < 0;
+            const isNearExp = daysLeft !== null && daysLeft < 90 && !isExpired;
+            const expColor = isExpired ? 'text-red-600 bg-red-50' : (isNearExp ? 'text-amber-600 bg-amber-50' : 'text-slate-500 bg-slate-50');
+
+            // Parse units from item — support single unit or multiple via item.units array
+            const units = React.useMemo(() => {
+                if (item.units && Array.isArray(item.units) && item.units.length > 0) {
+                    return item.units;
+                }
+                // fallback: single unit from item
+                return [{ name: item.unit || 'Pcs', abbr: item.unit || 'Pcs', qtyPerUnit: 1, price: item.price || 0, discount: null }];
+            }, [item]);
+
+            return (
+                <div className="fade-in h-full flex flex-col relative z-10 bg-slate-50 min-h-screen">
+                    {/* Header */}
+                    <div className="bg-white border-b border-slate-100 sticky top-0 z-20 shadow-sm">
+                        <div className="flex items-center gap-3 px-4 py-3">
+                            <button onClick={onBack} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors text-teal-600">
+                                <Icon name="arrow-left" />
+                            </button>
+                            <span className="font-bold text-slate-700 text-base">Stok</span>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto pb-24 custom-scrollbar">
+                        {/* Action buttons */}
+                        <div className="flex gap-2 px-4 pt-4 justify-end flex-wrap">
+                            {!readOnly && (
+                                <>
+                                    <button onClick={() => { onDelete(item); onBack(); }} className="py-2 px-4 rounded-xl border border-slate-200 bg-white text-xs font-bold text-red-500 hover:bg-red-50 transition-all active:scale-95 shadow-sm flex items-center gap-1.5">
+                                        <Icon name="trash" /> Hapus
+                                    </button>
+                                    <button onClick={() => { onEdit(item); onBack(); }} className="py-2 px-4 rounded-xl bg-teal-500 text-white text-xs font-bold hover:bg-teal-600 transition-all active:scale-95 shadow-sm flex items-center gap-1.5">
+                                        <Icon name="pen" /> Update stok
+                                    </button>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Product name */}
+                        <div className="px-4 pt-3 pb-2">
+                            <h1 className="text-2xl font-extrabold text-slate-800 leading-tight">{item.name}</h1>
+                            {item.rack && item.rack !== '-' && (
+                                <p className="text-xs text-slate-400 mt-1 flex items-center gap-1"><Icon name="location-dot" /> {item.rack}</p>
+                            )}
+                        </div>
+
+                        {/* Stok + Stok minimum + Rata2 jual */}
+                        <div className="px-4 pt-2 pb-4 grid grid-cols-2 gap-4">
+                            <div>
+                                <p className="text-xs font-bold text-slate-500 mb-1">Stok</p>
+                                <p className={`text-3xl font-extrabold ${isLow ? 'text-amber-600' : 'text-slate-800'}`}>
+                                    {item.qty} <span className="text-base font-bold text-slate-500">{item.unit || 'Pcs'}</span>
+                                </p>
+                                {isLow && <span className="text-[9px] font-black text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">Stok Menipis</span>}
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-slate-500 mb-1">Stok minimum</p>
+                                <p className="text-3xl font-extrabold text-slate-800">
+                                    {threshold} <span className="text-base font-bold text-slate-500">{item.unit || 'Pcs'}</span>
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Exp */}
+                        {item.exp && (
+                            <div className="mx-4 mb-4 rounded-xl px-4 py-3 flex items-center gap-2 border border-slate-100 bg-white shadow-sm">
+                                <Icon name={isExpired ? 'triangle-exclamation' : 'calendar-days'} className={isExpired ? 'text-red-500' : isNearExp ? 'text-amber-500' : 'text-slate-400'} />
+                                <div>
+                                    <p className="text-[10px] font-bold text-slate-500">Kadaluarsa</p>
+                                    <p className={`text-sm font-bold ${isExpired ? 'text-red-600' : isNearExp ? 'text-amber-600' : 'text-slate-700'}`}>{formatDateIndo(item.exp)}{daysLeft !== null && (<span className="ml-1.5 text-[10px] font-semibold opacity-70">{isExpired ? `(${Math.abs(daysLeft)} hari lalu)` : `(${daysLeft} hari lagi)`}</span>)}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Tabs-like detail section */}
+                        <div className="mx-4 mb-4 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                            <div className="border-b border-slate-100 px-4 py-3">
+                                <p className="text-sm font-bold text-teal-600">Detail Harga</p>
+                            </div>
+
+                            {/* Harga per satuan */}
+                            <div className="divide-y divide-slate-50">
+                                {units.map((u, idx) => {
+                                    const unitName = u.name || u.unit || item.unit || 'Pcs';
+                                    const abbr = u.abbr || u.unit || unitName;
+                                    const qtyPerUnit = u.qtyPerUnit || u.ratio || 1;
+                                    const unitPrice = u.price || (safeNumber(item.price) * qtyPerUnit);
+                                    const discount = u.discount || null;
+                                    return (
+                                        <div key={idx} className="px-4 py-4">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className="text-xs font-semibold text-slate-400 w-5">{idx + 1}</span>
+                                                <p className="text-sm font-bold text-teal-600">{unitName}</p>
+                                            </div>
+                                            <div className="ml-7 grid grid-cols-2 gap-y-2">
+                                                <div>
+                                                    <p className="text-[10px] font-bold text-slate-700">Singkatan</p>
+                                                    <p className="text-xs text-slate-600">{abbr}{qtyPerUnit > 1 ? ` (${qtyPerUnit}s)` : ''}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-bold text-slate-700">Diskon</p>
+                                                    <p className="text-xs text-slate-600">{discount ? discount : '-'}</p>
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <p className="text-[10px] font-bold text-slate-700">Harga jual</p>
+                                                    <p className="text-sm font-bold text-slate-800">{unitPrice > 0 ? formatRupiah(unitPrice) : '-'}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Info tambahan */}
+                        <div className="mx-4 mb-4 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                            <div className="border-b border-slate-100 px-4 py-3">
+                                <p className="text-sm font-bold text-slate-700">Info Lain</p>
+                            </div>
+                            <div className="px-4 py-4 grid grid-cols-2 gap-y-3 gap-x-4">
+                                <div>
+                                    <p className="text-[10px] font-bold text-slate-500">Barcode</p>
+                                    <p className="text-xs text-slate-800">{item.barcode || '-'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-slate-500">Kategori</p>
+                                    <p className="text-xs text-slate-800">{item.category || 'Reguler'}</p>
+                                </div>
+                                {safeNumber(item.costPrice) > 0 && (
+                                    <div>
+                                        <p className="text-[10px] font-bold text-slate-500">Harga pokok</p>
+                                        <p className="text-xs text-slate-800">{formatRupiah(safeNumber(item.costPrice))}</p>
+                                    </div>
+                                )}
+                                {safeNumber(item.price) > 0 && (
+                                    <div>
+                                        <p className="text-[10px] font-bold text-slate-500">Harga jual</p>
+                                        <p className="text-xs text-slate-800">{formatRupiah(safeNumber(item.price))}</p>
+                                    </div>
+                                )}
+                                {safeNumber(item.costPrice) > 0 && safeNumber(item.price) > 0 && (() => {
+                                    const cost = safeNumber(item.costPrice); const sell = safeNumber(item.price);
+                                    const markup = cost > 0 ? (((sell - cost) / cost) * 100).toFixed(2) + '%' : '-';
+                                    const margin = sell > 0 ? (((sell - cost) / sell) * 100).toFixed(2) + '%' : '-';
+                                    return (<>
+                                        <div><p className="text-[10px] font-bold text-slate-500">Markup</p><p className="text-xs text-slate-800">{markup}</p></div>
+                                        <div><p className="text-[10px] font-bold text-slate-500">Margin</p><p className="text-xs text-slate-800">{margin}</p></div>
+                                    </>);
+                                })()}
+                            </div>
+                            {item.itemNote && (
+                                <div className="mx-4 mb-4 p-3 bg-teal-50 rounded-xl border border-teal-100">
+                                    <p className="text-[10px] font-bold text-teal-700 mb-1"><Icon name="circle-info" className="mr-1" />Catatan</p>
+                                    <p className="text-xs text-teal-800 whitespace-pre-wrap">{item.itemNote}</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer info */}
+                        <div className="px-4 pb-4">
+                            <p className="text-[10px] italic text-slate-400">Harga barang dikenakan PPN</p>
+                            {item.updatedAt && <p className="text-[10px] text-slate-400 mt-0.5">Terakhir diperbarui: {item.updatedAt?.toDate ? formatDateIndo(item.updatedAt.toDate().toISOString().split('T')[0]) : '-'}</p>}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         const ListView = ({ items, searchQuery, setSearchQuery, onEdit, onDelete, onDeleteRack, showOnlyLowStock, setShowOnlyLowStock, selectedRacks, setSelectedRacks, uniqueRacksData, onCopySuccess, loading, settings, currentProfile, readOnly, isOwner }) => {
             const [isRackDropdownOpen, setIsRackDropdownOpen] = useState(false);
             const [rackSearch, setRackSearch] = useState('');
             const dropdownRef = useRef(null);
             const [noteModalItem, setNoteModalItem] = useState(null);
+            const [selectedDetailItem, setSelectedDetailItem] = useState(null);
             
             const ITEMS_PER_PAGE = 20;
             const [displayedLimit, setDisplayedLimit] = useState(ITEMS_PER_PAGE);
@@ -10508,6 +10683,21 @@
             const filteredRacks = uniqueRacksData.filter(r => r.name.toLowerCase().includes(rackSearch.toLowerCase()));
             const displayedItems = filteredItems.slice(0, displayedLimit);
 
+            if (selectedDetailItem) {
+                return (
+                    <ProductDetailPage
+                        item={selectedDetailItem}
+                        onBack={() => setSelectedDetailItem(null)}
+                        onEdit={onEdit}
+                        onDelete={onDelete}
+                        settings={settings}
+                        readOnly={readOnly}
+                        isOwner={isOwner}
+                        lowStockThreshold={settings.lowStockThreshold || DEFAULT_SETTINGS.lowStockThreshold}
+                    />
+                );
+            }
+
             return (
                 <div className="space-y-4 fade-in h-full flex flex-col relative z-10">
                     
@@ -10558,11 +10748,10 @@
                     </header>
                     <div className="relative group z-10"><input type="text" placeholder="Cari nama barang..." className="w-full pl-9 pr-3 py-3 rounded-xl border-0 bg-white/90 backdrop-blur-sm shadow-soft ring-1 ring-slate-100 outline-none transition-all placeholder:text-slate-400 font-medium text-sm focus:ring-2 focus:ring-sky-500" defaultValue={searchQuery} onChange={e => debouncedSetSearchQuery(e.target.value)} /><Icon name="magnifying-glass" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm transition-colors group-focus-within:text-slate-600" /></div>
                     <div className="flex-1 overflow-y-auto pb-32 pr-1 custom-scrollbar">
-                        {loading ? (<div className="flex flex-col items-center justify-center py-20"><div className="typing-dot bg-sky-500"></div><p className="text-xs text-slate-400 mt-2">Menghubungkan Database...</p></div>) : filteredItems.length === 0 ? (<div className="flex flex-col items-center justify-center py-20 opacity-40"><div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3"><Icon name="box-open" className="text-2xl text-slate-400" /></div><p className="font-semibold text-slate-500 text-center text-sm">Tidak ada data</p></div>) : (<><div className="">{displayedItems.map((item, index) => { const threshold = item.minStock ? safeNumber(item.minStock) : lowStockThreshold; const isLow = safeNumber(item.qty) < threshold; const isNew = isNewItem(item.createdAt); const animDelay = `${index * 50}ms`; const nameClass = searchQuery ? "type-effect-wrapper" : ""; const daysLeft = getDaysRemaining(item.exp); const isExpired = daysLeft !== null && daysLeft < 0; const isNearExp = daysLeft !== null && daysLeft < 90 && !isExpired; const expColor = isExpired ? 'text-red-600' : (isNearExp ? 'text-amber-600' : 'text-slate-400'); const expIcon = isExpired ? 'triangle-exclamation' : 'calendar-days'; return (<div key={item.id + searchQuery} style={{ animationDelay: animDelay }} className={`slide-up border-b py-3.5 ${isLow ? 'border-amber-100' : 'border-slate-100'}`}>
+                        {loading ? (<div className="flex flex-col items-center justify-center py-20"><div className="typing-dot bg-sky-500"></div><p className="text-xs text-slate-400 mt-2">Menghubungkan Database...</p></div>) : filteredItems.length === 0 ? (<div className="flex flex-col items-center justify-center py-20 opacity-40"><div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3"><Icon name="box-open" className="text-2xl text-slate-400" /></div><p className="font-semibold text-slate-500 text-center text-sm">Tidak ada data</p></div>) : (<><div className="">{displayedItems.map((item, index) => { const threshold = item.minStock ? safeNumber(item.minStock) : lowStockThreshold; const isLow = safeNumber(item.qty) < threshold; const isNew = isNewItem(item.createdAt); const animDelay = `${index * 50}ms`; const nameClass = searchQuery ? "type-effect-wrapper" : ""; const daysLeft = getDaysRemaining(item.exp); const isExpired = daysLeft !== null && daysLeft < 0; const isNearExp = daysLeft !== null && daysLeft < 90 && !isExpired; const expColor = isExpired ? 'text-red-600' : (isNearExp ? 'text-amber-600' : 'text-slate-400'); const expIcon = isExpired ? 'triangle-exclamation' : 'calendar-days'; return (<div key={item.id + searchQuery} style={{ animationDelay: animDelay }} onClick={() => setSelectedDetailItem(item)} className={`slide-up border-b py-3.5 cursor-pointer hover:bg-slate-50 transition-colors active:bg-slate-100 ${isLow ? 'border-amber-100' : 'border-slate-100'}`}>
                             <div className="flex items-start gap-2">
                                 <span className="text-xs font-semibold text-slate-800 mt-0.5 w-5 flex-shrink-0">{index + 1}</span>
                                 <div className="flex-1 min-w-0">
-                                    {/* Nama barang */}
                                     <div className="flex items-center gap-1.5 flex-wrap">
                                         <h4 className={`font-bold text-sm leading-snug whitespace-normal break-words ${nameClass} ${isLow ? 'text-amber-700' : 'text-teal-700'}`}>{item.name}</h4>
                                         {isNew && <span className="bg-rose-500 text-white text-[8px] font-black px-1 py-0.5 rounded-sm animate-pulse flex-shrink-0">NEW</span>}
@@ -10597,12 +10786,13 @@
                                         </div>
                                     )}
                                     {/* Tombol aksi */}
-                                    <div className="flex items-center gap-3 mt-1.5">
+                                    <div className="flex items-center gap-3 mt-1.5" onClick={e => e.stopPropagation()}>
                                         {settings?.showNoteButton !== false && <button onClick={() => setNoteModalItem(item)} className={`flex items-center gap-1 text-xs font-semibold transition-colors ${item.itemNote ? 'text-teal-600 hover:text-teal-800' : 'text-slate-400 hover:text-teal-600'}`}><Icon name="circle-info" /><span>Catatan</span></button>}
                                         {!readOnly && <button onClick={() => onDelete(item)} className="flex items-center gap-1 text-xs font-semibold text-slate-400 hover:text-red-500 transition-colors ml-auto"><Icon name="trash" /></button>}
                                         {!readOnly && <button onClick={() => onEdit(item)} className="flex items-center gap-1 text-xs font-semibold text-teal-600 hover:text-teal-800 transition-colors"><Icon name="pen" /><span>Edit barang</span></button>}
                                     </div>
                                 </div>
+                                <Icon name="chevron-right" className="text-slate-300 text-xs mt-1 flex-shrink-0" />
                             </div>
                         </div>
                         ); })}</div><div ref={loaderRef} className="h-10 flex items-center justify-center w-full mt-4 pb-20 md:pb-0">{displayedLimit < filteredItems.length ? (<div className="flex items-center gap-2 text-slate-400 text-xs"><div className="w-4 h-4 border-2 border-slate-300 border-t-sky-500 rounded-full animate-spin"></div><span>Memuat...</span></div>) : filteredItems.length > 0 && ( <span className="text-[10px] text-slate-300">Semua data ditampilkan</span> )}</div></>)}
