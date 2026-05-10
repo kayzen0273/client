@@ -11438,19 +11438,13 @@
                     {/* Filter Modal - Full Screen */}
                     {showFilterPanel && (
                         <div className="fixed inset-0 bg-white z-[200] flex flex-col fade-in">
-                            {/* Header */}
-                            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-                                <button onClick={() => setShowFilterPanel(false)} className="flex items-center gap-2 text-teal-600 font-semibold text-sm">
-                                    <Icon name="xmark" className="text-base" />
-                                    <span>Daftar Barang</span>
-                                </button>
-                                <button onClick={() => { setFilterMarginMin(tmpMarginMin); setFilterMarginMax(tmpMarginMax); setFilterMarkupMin(tmpMarkupMin); setFilterMarkupMax(tmpMarkupMax); setFilterDiskon(tmpDiskon); setFilterKategori(tmpKategori); setFilterGolongan(tmpGolongan); setFilterBarcode(tmpBarcode); setShowFilterPanel(false); }} className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold rounded-lg transition-all active:scale-95">
-                                    Pasang
-                                </button>
-                            </div>
+                            {/* Close button - floating top right */}
+                            <button onClick={() => setShowFilterPanel(false)} className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all">
+                                <Icon name="xmark" className="text-sm" />
+                            </button>
                             {/* Body */}
-                            <div className="flex-1 overflow-y-auto">
-                                <h1 className="text-3xl font-extrabold text-slate-900 px-4 pt-5 pb-4">Filter</h1>
+                            <div className="flex-1 overflow-y-auto pb-24">
+                                <h1 className="text-3xl font-extrabold text-slate-900 px-4 pt-6 pb-4">Filter</h1>
                                 {/* Filter Rows */}
                                 {[
                                     { key: 'margin', label: 'Margin', desc: tmpMarginMin||tmpMarginMax ? `${tmpMarginMin||'0'}% – ${tmpMarginMax||'∞'}%` : null },
@@ -11536,6 +11530,12 @@
                                         Reset Semua Filter
                                     </button>
                                 </div>
+                            </div>
+                            {/* Pasang - Fixed Bottom */}
+                            <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-100">
+                                <button onClick={() => { setFilterMarginMin(tmpMarginMin); setFilterMarginMax(tmpMarginMax); setFilterMarkupMin(tmpMarkupMin); setFilterMarkupMax(tmpMarkupMax); setFilterDiskon(tmpDiskon); setFilterKategori(tmpKategori); setFilterGolongan(tmpGolongan); setFilterBarcode(tmpBarcode); setShowFilterPanel(false); }} className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold rounded-xl transition-all active:scale-95 shadow-lg">
+                                    Pasang Filter
+                                </button>
                             </div>
                         </div>
                     )}
