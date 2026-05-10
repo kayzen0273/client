@@ -3686,7 +3686,7 @@
         };
 
         // --- PURCHASE VIEW ---
-        const PurchaseView = ({ user, showToast, items, currentProfile, settings, readOnly, authSession }) => {
+        const PurchaseView = ({ user, showToast, items, currentProfile, settings, readOnly, authSession, defaultOpenPurchaseId, onClearPendingPurchase }) => {
             const [purchases, setPurchases] = useState([]);
             const [suppliers, setSuppliers] = useState([]);
             const [loading, setLoading] = useState(true);
@@ -4039,6 +4039,16 @@
             ).slice(0, 10);
 
             // Filter purchases by store
+            // Auto-open faktur ketika navigasi dari riwayat stok
+            useEffect(() => {
+                if (!defaultOpenPurchaseId || purchases.length === 0) return;
+                const target = purchases.find(p => p.id === defaultOpenPurchaseId);
+                if (target) {
+                    handleOpenDetail(target);
+                    onClearPendingPurchase && onClearPendingPurchase();
+                }
+            }, [defaultOpenPurchaseId, purchases]);
+
             const storePurchases = purchases.filter(p => {
                 if (currentProfile.id === 'all_stores') return true;
                 if (!p.storeId) return currentProfile.id === 'default'; // backward compat: data lama tanpa storeId → default
@@ -8754,7 +8764,7 @@
         };
 
         // --- UPDATED: HISTORY VIEW ---
-        const HistoryView = ({ user, showToast, settings, onGenerateImage, currentProfile, items, readOnly, isOwner, authSession }) => {
+        const HistoryView = ({ user, showToast, settings, onGenerateImage, currentProfile, items, readOnly, isOwner, authSession, defaultOpenTransactionId, onClearPendingTransaction }) => {
             const [transactions, setTransactions] = useState([]);
             const [loading, setLoading] = useState(true);
             const [selectedTx, setSelectedTx] = useState(null);
@@ -8775,6 +8785,16 @@
             const [daysOffset, setDaysOffset] = useState(0);   // 0 = 7 hari terakhir, -7 = 7 hari sebelumnya, dst
             const [monthOffset, setMonthOffset] = useState(0); // 0 = bulan ini, -1 = bulan lalu, dst
             const [daysOffset30, setDaysOffset30] = useState(0); // 0 = 30 hari terakhir
+
+            // Auto-open transaksi ketika navigasi dari riwayat stok
+            useEffect(() => {
+                if (!defaultOpenTransactionId || transactions.length === 0) return;
+                const target = transactions.find(t => t.id === defaultOpenTransactionId);
+                if (target) {
+                    setSelectedTx(target);
+                    onClearPendingTransaction && onClearPendingTransaction();
+                }
+            }, [defaultOpenTransactionId, transactions]);
 
             const [historySearch, setHistorySearch] = useState('');
             const [historySearchInput, setHistorySearchInput] = useState('');
@@ -10507,7 +10527,7 @@
         };
         // ====== END HALAMAN RIWAYAT PERUBAHAN HARGA ======
 
-        const ProductDetailPage = ({ item, onBack, onEdit, onDelete, settings, readOnly, isOwner, lowStockThreshold, currentProfile }) => {
+        const ProductDetailPage = ({ item, onBack, onEdit, onDelete, settings, readOnly, isOwner, lowStockThreshold, currentProfile, onNavigateToPurchases, onNavigateToHistory }) => {
             const threshold = item.minStock ? safeNumber(item.minStock) : lowStockThreshold;
             const isLow = safeNumber(item.qty) < threshold;
             const daysLeft = getDaysRemaining(item.exp);
@@ -10924,16 +10944,31 @@
                                                         if (h.activity === 'Beli') {
                                                             keteranganDisplay = (
                                                                 <div>
-                                                                    {h.noFaktur && <p className="text-xs text-teal-600 font-semibold">{h.noFaktur}</p>}
-                                                                    {h.supplier && <p className="text-xs text-slate-600 font-medium">{h.supplier}</p>}
-                                                                    {!h.noFaktur && !h.supplier && <p className="text-xs text-slate-400">-</p>}
+                                                                    {h.noFaktur ? (
+                                                                        <button
+                                                                            onClick={() => onNavigateToPurchases && onNavigateToPurchases(h.ref)}
+                                                                            className="text-xs text-teal-600 font-semibold underline underline-offset-2 hover:text-teal-800 active:opacity-70 transition-colors text-left"
+                                                                        >{h.noFaktur}</button>
+                                                                    ) : h.ref ? (
+                                                                        <button
+                                                                            onClick={() => onNavigateToPurchases && onNavigateToPurchases(h.ref)}
+                                                                            className="text-xs text-teal-600 font-semibold underline underline-offset-2 hover:text-teal-800 active:opacity-70 transition-colors text-left"
+                                                                        >Lihat Faktur</button>
+                                                                    ) : null}
+                                                                    {h.supplier && <p className="text-xs text-slate-600 font-medium mt-0.5">{h.supplier}</p>}
+                                                                    {!h.noFaktur && !h.ref && !h.supplier && <p className="text-xs text-slate-400">-</p>}
                                                                 </div>
                                                             );
                                                         } else if (h.activity === 'Stok opname') {
                                                             keteranganDisplay = <p className="text-xs text-teal-600 font-semibold">{h.keterangan || 'Stok opname'}</p>;
                                                         } else {
-                                                            // Jual — tampilkan no. transaksi
-                                                            keteranganDisplay = <p className="text-xs text-teal-600 font-semibold">{h.keterangan || '-'}</p>;
+                                                            // Jual — tampilkan no. transaksi sebagai link
+                                                            keteranganDisplay = h.keterangan ? (
+                                                                <button
+                                                                    onClick={() => onNavigateToHistory && onNavigateToHistory(h.ref)}
+                                                                    className="text-xs text-teal-600 font-semibold underline underline-offset-2 hover:text-teal-800 active:opacity-70 transition-colors text-left"
+                                                                >{h.keterangan}</button>
+                                                            ) : <p className="text-xs text-slate-400">-</p>;
                                                         }
 
                                                         return (
@@ -10959,7 +10994,7 @@
                                                                         <p className={`text-xs font-bold ${signColor}`}>{sign}{h.qty}</p>
                                                                     </div>
                                                                     <div>
-                                                                        <p className="text-[10px] font-bold text-slate-500 mb-0.5">{h.activity === 'Beli' ? 'Faktur / Supplier' : 'Keterangan'}</p>
+                                                                        <p className="text-[10px] font-bold text-slate-500 mb-0.5">Keterangan</p>
                                                                         {keteranganDisplay}
                                                                     </div>
                                                                 </div>
@@ -10999,15 +11034,30 @@
                                                                         <p className="text-xs text-slate-700">{h.supplier || '-'}</p>
                                                                     </div>
                                                                     <div>
-                                                                        <p className="text-[10px] font-bold text-slate-500 mb-0.5">{h.activity === 'Beli' ? 'Faktur / Supplier' : 'Keterangan'}</p>
+                                                                        <p className="text-[10px] font-bold text-slate-500 mb-0.5">Keterangan</p>
                                                                         {h.activity === 'Beli' ? (
                                                                             <div>
-                                                                                {h.noFaktur && <p className="text-xs text-teal-600 font-semibold">{h.noFaktur}</p>}
-                                                                                {h.supplier && <p className="text-xs text-slate-600 font-medium">{h.supplier}</p>}
-                                                                                {!h.noFaktur && !h.supplier && <p className="text-xs text-slate-400">-</p>}
+                                                                                {h.noFaktur ? (
+                                                                                    <button
+                                                                                        onClick={() => onNavigateToPurchases && onNavigateToPurchases(h.ref)}
+                                                                                        className="text-xs text-teal-600 font-semibold underline underline-offset-2 hover:text-teal-800 active:opacity-70 transition-colors text-left"
+                                                                                    >{h.noFaktur}</button>
+                                                                                ) : h.ref ? (
+                                                                                    <button
+                                                                                        onClick={() => onNavigateToPurchases && onNavigateToPurchases(h.ref)}
+                                                                                        className="text-xs text-teal-600 font-semibold underline underline-offset-2 hover:text-teal-800 active:opacity-70 transition-colors text-left"
+                                                                                    >Lihat Faktur</button>
+                                                                                ) : null}
+                                                                                {h.supplier && <p className="text-xs text-slate-600 font-medium mt-0.5">{h.supplier}</p>}
+                                                                                {!h.noFaktur && !h.ref && !h.supplier && <p className="text-xs text-slate-400">-</p>}
                                                                             </div>
+                                                                        ) : h.keterangan ? (
+                                                                            <button
+                                                                                onClick={() => onNavigateToHistory && onNavigateToHistory(h.ref)}
+                                                                                className="text-xs text-teal-600 font-semibold underline underline-offset-2 hover:text-teal-800 active:opacity-70 transition-colors text-left"
+                                                                            >{h.keterangan}</button>
                                                                         ) : (
-                                                                            <p className="text-xs text-teal-600 font-semibold">{h.keterangan || '-'}</p>
+                                                                            <p className="text-xs text-slate-400">-</p>
                                                                         )}
                                                                     </div>
                                                                 </div>
@@ -11027,7 +11077,7 @@
             );
         };
 
-        const ListView = ({ items, searchQuery, setSearchQuery, onEdit, onDelete, onDeleteRack, showOnlyLowStock, setShowOnlyLowStock, selectedRacks, setSelectedRacks, uniqueRacksData, onCopySuccess, loading, settings, currentProfile, readOnly, isOwner }) => {
+        const ListView = ({ items, searchQuery, setSearchQuery, onEdit, onDelete, onDeleteRack, showOnlyLowStock, setShowOnlyLowStock, selectedRacks, setSelectedRacks, uniqueRacksData, onCopySuccess, loading, settings, currentProfile, readOnly, isOwner, onNavigateToPurchases, onNavigateToHistory }) => {
             const [isRackDropdownOpen, setIsRackDropdownOpen] = useState(false);
             const [rackSearch, setRackSearch] = useState('');
             const dropdownRef = useRef(null);
@@ -11202,6 +11252,8 @@
                         isOwner={isOwner}
                         lowStockThreshold={settings.lowStockThreshold || DEFAULT_SETTINGS.lowStockThreshold}
                         currentProfile={currentProfile}
+                        onNavigateToPurchases={onNavigateToPurchases}
+                        onNavigateToHistory={onNavigateToHistory}
                     />
                 );
             }
@@ -15396,6 +15448,8 @@
             const [settingsData, setSettingsData] = useState(DEFAULT_SETTINGS); 
             const [loading, setLoading] = useState(true);
             const [activeTab, setActiveTab] = useState('cashier'); 
+            const [pendingPurchaseId, setPendingPurchaseId] = useState(null);
+            const [pendingTransactionId, setPendingTransactionId] = useState(null);
             const [searchQuery, setSearchQuery] = useState('');
             const [showOnlyLowStock, setShowOnlyLowStock] = useState(false);
             const [selectedRacks, setSelectedRacks] = useState([]);
@@ -16498,11 +16552,11 @@
                         <NegativeStockBanner items={inventoryData} settings={settingsData} onNavigateToPurchases={() => setActiveTab('purchases')} />
                         {activeTab === 'home' && (<DashboardView items={inventoryData} settings={settingsData} currentProfile={currentProfile} isOwner={isOwner} onShowLowStock={() => { setActiveTab('list'); setShowOnlyLowStock(true); }} />)}
                         {activeTab === 'cashier' && (<CashierView items={inventoryData} user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='cashier')?.readOnly} authSession={authSession} onNavigateToAdd={() => setActiveTab('add')} isOwner={isOwner} />)}
-                        {activeTab === 'history' && (<HistoryView user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} items={inventoryData} readOnly={menuItems.find(m=>m.id==='history')?.readOnly} isOwner={isOwner} authSession={authSession} />)}
+                        {activeTab === 'history' && (<HistoryView user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} items={inventoryData} readOnly={menuItems.find(m=>m.id==='history')?.readOnly} isOwner={isOwner} authSession={authSession} defaultOpenTransactionId={pendingTransactionId} onClearPendingTransaction={() => setPendingTransactionId(null)} />)}
                         {activeTab === 'rekap_barang' && (<RekapBarangView user={user} currentProfile={currentProfile} settings={settingsData} />)}
-                        {activeTab === 'purchases' && (<PurchaseView user={user} showToast={showToast} items={inventoryData} currentProfile={currentProfile} settings={settingsData} readOnly={menuItems.find(m=>m.id==='purchases')?.readOnly} authSession={authSession} />)}
+                        {activeTab === 'purchases' && (<PurchaseView user={user} showToast={showToast} items={inventoryData} currentProfile={currentProfile} settings={settingsData} readOnly={menuItems.find(m=>m.id==='purchases')?.readOnly} authSession={authSession} defaultOpenPurchaseId={pendingPurchaseId} onClearPendingPurchase={() => setPendingPurchaseId(null)} />)}
                         {activeTab === 'cashbook' && (<CashBookView user={user} currentProfile={currentProfile} showToast={showToast} readOnly={menuItems.find(m=>m.id==='cashbook')?.readOnly} />)}
-                        {activeTab === 'list' && (<ListView items={inventoryData} loading={loading} settings={settingsData} searchQuery={searchQuery} setSearchQuery={setSearchQuery} showOnlyLowStock={showOnlyLowStock} setShowOnlyLowStock={setShowOnlyLowStock} selectedRacks={selectedRacks} setSelectedRacks={setSelectedRacks} uniqueRacksData={uniqueRacksData} onCopySuccess={showToast} onEdit={(item) => { setFormData({...item}); setEditingItem(item); setActiveTab('add'); }} onDelete={(item) => setDeleteModal({ show: true, item: item })} onDeleteRack={(rackName) => setDeleteRackModal({ show: true, rackName })} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='list')?.readOnly} isOwner={isOwner} />)}
+                        {activeTab === 'list' && (<ListView items={inventoryData} loading={loading} settings={settingsData} searchQuery={searchQuery} setSearchQuery={setSearchQuery} showOnlyLowStock={showOnlyLowStock} setShowOnlyLowStock={setShowOnlyLowStock} selectedRacks={selectedRacks} setSelectedRacks={setSelectedRacks} uniqueRacksData={uniqueRacksData} onCopySuccess={showToast} onEdit={(item) => { setFormData({...item}); setEditingItem(item); setActiveTab('add'); }} onDelete={(item) => setDeleteModal({ show: true, item: item })} onDeleteRack={(rackName) => setDeleteRackModal({ show: true, rackName })} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='list')?.readOnly} isOwner={isOwner} onNavigateToPurchases={(purchaseId) => { setPendingPurchaseId(purchaseId); setActiveTab('purchases'); }} onNavigateToHistory={(transactionId) => { setPendingTransactionId(transactionId); setActiveTab('history'); }} />)}
                         {activeTab === 'add' && (<FormView formData={formData} setFormData={setFormData} onSubmit={handleSubmit} isEditing={!!editingItem} submitting={submitting} onCancel={() => { setEditingItem(null); setFormData({name:'', qty:'', unit:'Pcs', exp:'', rack:'', price:'', costPrice:'', minStock: '', defaultDiscount: '', defaultDiscountType: '%', packagePrices: []}); setActiveTab('list'); }} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='add')?.readOnly} />)}
                         {activeTab === 'import' && (<BulkImportView user={user} onImportComplete={(count) => { showToast(`${count} Barang berhasil diimport`); setActiveTab('list'); }} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='import')?.readOnly} />)}
                         {activeTab === 'stock_opname' && (<StockOpnameView items={inventoryData} user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='stock_opname')?.readOnly} isOwner={isOwner} />)}
