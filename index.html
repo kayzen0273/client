@@ -10629,6 +10629,9 @@
                     });
                     setStockHistory(withTotal.slice(0, 100));
                     setLoadingHistory(false);
+                }).catch((err) => {
+                    console.error('Gagal memuat riwayat stok:', err);
+                    setLoadingHistory(false);
                 });
             }, [activeTab, item.name, item.qty]);
 
