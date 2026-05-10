@@ -11450,18 +11450,18 @@
                     {showFilterPanel && (
                         <div className="fixed inset-0 bg-white z-[200] flex flex-col fade-in">
                             {/* Header */}
-                            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-                                <button onClick={() => setShowFilterPanel(false)} className="flex items-center gap-2 text-teal-600 font-semibold text-base">
-                                    <Icon name="xmark" className="text-lg" />
+                            <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100">
+                                <button onClick={() => setShowFilterPanel(false)} className="flex items-center gap-1.5 text-teal-600 font-semibold text-sm">
+                                    <Icon name="xmark" className="text-base" />
                                     <span>Katalog</span>
                                 </button>
-                                <button onClick={() => { setFilterMarginMin(tmpMarginMin); setFilterMarginMax(tmpMarginMax); setFilterMarkupMin(tmpMarkupMin); setFilterMarkupMax(tmpMarkupMax); setFilterDiskon(tmpDiskon); setFilterKategori(tmpKategori); setFilterGolongan(tmpGolongan); setFilterBarcode(tmpBarcode); setShowFilterPanel(false); }} className="px-6 py-2.5 bg-teal-700 hover:bg-teal-800 text-white text-sm font-bold rounded-xl transition-all active:scale-95 shadow-sm">
+                                <button onClick={() => { setFilterMarginMin(tmpMarginMin); setFilterMarginMax(tmpMarginMax); setFilterMarkupMin(tmpMarkupMin); setFilterMarkupMax(tmpMarkupMax); setFilterDiskon(tmpDiskon); setFilterKategori(tmpKategori); setFilterGolongan(tmpGolongan); setFilterBarcode(tmpBarcode); setShowFilterPanel(false); }} className="px-5 py-1.5 bg-teal-700 hover:bg-teal-800 text-white text-sm font-bold rounded-lg transition-all active:scale-95 shadow-sm">
                                     Pasang
                                 </button>
                             </div>
                             {/* Body */}
                             <div className="flex-1 overflow-y-auto">
-                                <h1 className="text-4xl font-extrabold text-slate-900 px-4 pt-6 pb-5">Filter</h1>
+                                <h1 className="text-2xl font-extrabold text-slate-900 px-4 pt-4 pb-3">Filter</h1>
                                 {/* Filter Rows */}
                                 {[
                                     { key: 'margin', label: 'Margin', desc: tmpMarginMin||tmpMarginMax ? `${tmpMarginMin||'0'}% – ${tmpMarginMax||'∞'}%` : null },
@@ -11472,14 +11472,14 @@
                                     { key: 'barcode', label: 'Barcode', desc: tmpBarcode !== 'semua' ? (tmpBarcode === 'ada' ? 'Ada barcode' : 'Tidak ada barcode') : null },
                                 ].map(row => (
                                     <div key={row.key}>
-                                        <div className="flex items-center justify-between px-4 py-4">
+                                        <div className="flex items-center justify-between px-4 py-3">
                                             <div>
-                                                <p className="text-base font-semibold text-slate-800">{row.label}</p>
+                                                <p className="text-sm font-semibold text-slate-800">{row.label}</p>
                                                 {row.desc && <p className="text-xs text-teal-600 mt-0.5">{row.desc}</p>}
                                             </div>
-                                            <button onClick={() => setActiveFilterEdit(activeFilterEdit === row.key ? null : row.key)} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-teal-500 text-teal-600 text-sm font-semibold hover:bg-teal-50 transition-all active:scale-95">
+                                            <button onClick={() => setActiveFilterEdit(activeFilterEdit === row.key ? null : row.key)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-teal-500 text-teal-600 text-xs font-semibold hover:bg-teal-50 transition-all active:scale-95">
                                                 <span>Ubah</span>
-                                                <Icon name="pen" className="text-xs" />
+                                                <Icon name="pen" className="text-[10px]" />
                                             </button>
                                         </div>
                                         {/* Inline edit panel */}
