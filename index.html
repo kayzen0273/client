@@ -11133,6 +11133,28 @@
             const [tmpGolongan, setTmpGolongan] = useState('');
             const [tmpBarcode, setTmpBarcode] = useState('semua');
             const [activeFilterEdit, setActiveFilterEdit] = useState(null); // null | 'margin'|'markup'|'diskon'|'kategori'|'golongan'|'barcode'
+            const [filterSubPage, setFilterSubPage] = useState(null); // null | 'margin' | 'markup'
+            const [tmpMarginPreset, setTmpMarginPreset] = useState('semua');
+            const [tmpMarkupPreset, setTmpMarkupPreset] = useState('semua');
+
+            const MARGIN_PRESETS = [
+                { value: 'semua',   label: 'Margin',                  min: '',   max: ''   },
+                { value: 'unknown', label: 'Tak diketahui',           min: null, max: null },
+                { value: 'lt10',    label: '<10% (Sangat rendah)',     min: '',   max: '10' },
+                { value: '10to20',  label: '10% – <20% (Rendah)',     min: '10', max: '20' },
+                { value: '20to25',  label: '20% – 25% (Sehat)',       min: '20', max: '25' },
+                { value: '25to35',  label: '>25% – 35% (Tinggi)',     min: '25', max: '35' },
+                { value: 'gt35',    label: '>35% (Sangat tinggi)',     min: '35', max: ''   },
+            ];
+            const MARKUP_PRESETS = [
+                { value: 'semua',   label: 'Markup',                  min: '',   max: ''   },
+                { value: 'unknown', label: 'Tak diketahui',           min: null, max: null },
+                { value: 'lt10',    label: '<10% (Sangat rendah)',     min: '',   max: '10' },
+                { value: '10to20',  label: '10% – <20% (Rendah)',     min: '10', max: '20' },
+                { value: '20to25',  label: '20% – 25% (Sehat)',       min: '20', max: '25' },
+                { value: '25to35',  label: '>25% – 35% (Tinggi)',     min: '25', max: '35' },
+                { value: 'gt35',    label: '>35% (Sangat tinggi)',     min: '35', max: ''   },
+            ];
 
             // Kembali ke product detail setelah navigasi dari detail faktur
             useEffect(() => {
@@ -11405,7 +11427,7 @@
                         {(() => {
                             const activeCount = [filterMarginMin||filterMarginMax, filterMarkupMin||filterMarkupMax, filterDiskon!=='semua', filterKategori, filterGolongan, filterBarcode!=='semua'].filter(Boolean).length;
                             return (
-                                <button onClick={() => { setTmpMarginMin(filterMarginMin); setTmpMarginMax(filterMarginMax); setTmpMarkupMin(filterMarkupMin); setTmpMarkupMax(filterMarkupMax); setTmpDiskon(filterDiskon); setTmpKategori(filterKategori); setTmpGolongan(filterGolongan); setTmpBarcode(filterBarcode); setActiveFilterEdit(null); setShowFilterPanel(true); }} className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-bold transition-all shadow-sm ${activeCount > 0 ? 'bg-teal-50 border-teal-300 text-teal-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                                <button onClick={() => { setTmpMarginMin(filterMarginMin); setTmpMarginMax(filterMarginMax); setTmpMarkupMin(filterMarkupMin); setTmpMarkupMax(filterMarkupMax); setTmpDiskon(filterDiskon); setTmpKategori(filterKategori); setTmpGolongan(filterGolongan); setTmpBarcode(filterBarcode); setActiveFilterEdit(null); setFilterSubPage(null); setShowFilterPanel(true); }} className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-bold transition-all shadow-sm ${activeCount > 0 ? 'bg-teal-50 border-teal-300 text-teal-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                                     <Icon name="sliders" className="text-sm" />
                                     <span>Filter</span>
                                     {activeCount > 0 && <span className="bg-teal-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{activeCount}</span>}
@@ -11449,105 +11471,134 @@
                     {/* Filter Modal - Full Screen */}
                     {showFilterPanel && (
                         <div className="fixed inset-0 bg-white z-[200] flex flex-col">
-                            {/* Header */}
-                            <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100">
-                                <button onClick={() => setShowFilterPanel(false)} className="flex items-center gap-1.5 text-teal-600 font-semibold text-sm">
-                                    <Icon name="xmark" className="text-base" />
-                                    <span>Katalog</span>
-                                </button>
-                                <button onClick={() => { setFilterMarginMin(tmpMarginMin); setFilterMarginMax(tmpMarginMax); setFilterMarkupMin(tmpMarkupMin); setFilterMarkupMax(tmpMarkupMax); setFilterDiskon(tmpDiskon); setFilterKategori(tmpKategori); setFilterGolongan(tmpGolongan); setFilterBarcode(tmpBarcode); setShowFilterPanel(false); }} className="px-5 py-1.5 bg-teal-700 hover:bg-teal-800 text-white text-sm font-bold rounded-lg transition-all active:scale-95 shadow-sm">
-                                    Pasang
-                                </button>
-                            </div>
-                            {/* Body */}
-                            <div className="flex-1 overflow-y-auto">
-                                <h1 className="text-2xl font-extrabold text-slate-900 px-4 pt-4 pb-3">Filter</h1>
-                                {/* Filter Rows */}
-                                {[
-                                    { key: 'margin', label: 'Margin', desc: tmpMarginMin||tmpMarginMax ? `${tmpMarginMin||'0'}% – ${tmpMarginMax||'∞'}%` : null },
-                                    { key: 'markup', label: 'Markup', desc: tmpMarkupMin||tmpMarkupMax ? `${tmpMarkupMin||'0'}% – ${tmpMarkupMax||'∞'}%` : null },
-                                    { key: 'diskon', label: 'Diskon', desc: tmpDiskon !== 'semua' ? (tmpDiskon === 'ada' ? 'Ada diskon' : 'Tidak ada diskon') : null },
-                                    { key: 'kategori', label: 'Kategori', desc: tmpKategori || null },
-                                    { key: 'golongan', label: 'Golongan', desc: tmpGolongan || null },
-                                    { key: 'barcode', label: 'Barcode', desc: tmpBarcode !== 'semua' ? (tmpBarcode === 'ada' ? 'Ada barcode' : 'Tidak ada barcode') : null },
-                                ].map(row => (
-                                    <div key={row.key}>
-                                        <div className="flex items-center justify-between px-4 py-3">
-                                            <div>
-                                                <p className="text-sm font-semibold text-slate-800">{row.label}</p>
-                                                {row.desc && <p className="text-xs text-teal-600 mt-0.5">{row.desc}</p>}
-                                            </div>
-                                            <button onClick={() => setActiveFilterEdit(activeFilterEdit === row.key ? null : row.key)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-teal-500 text-teal-600 text-xs font-semibold hover:bg-teal-50 transition-all active:scale-95">
-                                                <span>Ubah</span>
-                                                <Icon name="pen" className="text-[10px]" />
+
+                            {/* ── SUB-PAGE: Margin / Markup ── */}
+                            {(filterSubPage === 'margin' || filterSubPage === 'markup') && (() => {
+                                const isMargin = filterSubPage === 'margin';
+                                const presets = isMargin ? MARGIN_PRESETS : MARKUP_PRESETS;
+                                const currentPreset = isMargin ? tmpMarginPreset : tmpMarkupPreset;
+                                const setPreset = isMargin ? setTmpMarginPreset : setTmpMarkupPreset;
+                                const applyPreset = (p) => {
+                                    setPreset(p.value);
+                                    if (isMargin) { setTmpMarginMin(p.min ?? ''); setTmpMarginMax(p.max ?? ''); }
+                                    else { setTmpMarkupMin(p.min ?? ''); setTmpMarkupMax(p.max ?? ''); }
+                                };
+                                return (
+                                    <div className="flex flex-col h-full">
+                                        <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100">
+                                            <button onClick={() => setFilterSubPage(null)} className="flex items-center gap-1.5 text-teal-600 font-semibold text-sm">
+                                                <Icon name="arrow-left" className="text-base" />
+                                            </button>
+                                            <button onClick={() => setFilterSubPage(null)} className="px-5 py-1.5 bg-teal-700 hover:bg-teal-800 text-white text-sm font-bold rounded-lg transition-all active:scale-95 shadow-sm">
+                                                Filter
                                             </button>
                                         </div>
-                                        {/* Inline edit panel */}
-                                        {activeFilterEdit === row.key && (
-                                            <div className="mx-4 mb-3 bg-slate-50 rounded-xl p-3 border border-slate-200 fade-in">
-                                                {(row.key === 'margin' || row.key === 'markup') && (
-                                                    <div className="space-y-2">
-                                                        <p className="text-[10px] font-bold text-slate-500 uppercase">{row.label} (%)</p>
-                                                        <div className="flex items-center gap-2">
-                                                            <input type="number" placeholder="Min" className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium outline-none focus:border-teal-400" value={row.key === 'margin' ? tmpMarginMin : tmpMarkupMin} onChange={e => row.key === 'margin' ? setTmpMarginMin(e.target.value) : setTmpMarkupMin(e.target.value)} />
-                                                            <span className="text-slate-400 text-xs">–</span>
-                                                            <input type="number" placeholder="Maks" className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium outline-none focus:border-teal-400" value={row.key === 'margin' ? tmpMarginMax : tmpMarkupMax} onChange={e => row.key === 'margin' ? setTmpMarginMax(e.target.value) : setTmpMarkupMax(e.target.value)} />
+                                        <div className="flex-1 overflow-y-auto">
+                                            <h1 className="text-2xl font-extrabold text-slate-900 px-4 pt-4 pb-3">{isMargin ? 'Margin' : 'Markup'}</h1>
+                                            {presets.map((p, i) => (
+                                                <div key={p.value}>
+                                                    <button onClick={() => applyPreset(p)} className="w-full flex items-center gap-4 px-4 py-3.5 text-left hover:bg-slate-50 transition-colors active:bg-slate-100">
+                                                        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${currentPreset === p.value ? 'border-teal-600 bg-teal-600' : 'border-slate-300'}`}>
+                                                            {currentPreset === p.value && <Icon name="check" className="text-white text-[10px]" />}
                                                         </div>
-                                                        <button onClick={() => { row.key === 'margin' ? (setTmpMarginMin(''), setTmpMarginMax('')) : (setTmpMarkupMin(''), setTmpMarkupMax('')); }} className="text-xs text-slate-400 hover:text-red-500 transition-colors">Reset</button>
-                                                    </div>
-                                                )}
-                                                {row.key === 'diskon' && (
-                                                    <div className="space-y-1.5">
-                                                        <p className="text-[10px] font-bold text-slate-500 uppercase mb-2">Filter Diskon</p>
-                                                        {[{v:'semua',l:'Semua'},{v:'ada',l:'Ada Diskon'},{v:'tidak',l:'Tidak Ada Diskon'}].map(opt => (
-                                                            <button key={opt.v} onClick={() => setTmpDiskon(opt.v)} className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${tmpDiskon === opt.v ? 'bg-teal-50 border border-teal-300 text-teal-700' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
-                                                                <span>{opt.l}</span>
-                                                                {tmpDiskon === opt.v && <Icon name="check" className="text-teal-600" />}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                                {(row.key === 'kategori' || row.key === 'golongan') && (
-                                                    <div className="space-y-2">
-                                                        <p className="text-[10px] font-bold text-slate-500 uppercase">{row.label}</p>
-                                                        <input type="text" placeholder={`Ketik ${row.label.toLowerCase()}...`} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium outline-none focus:border-teal-400" value={row.key === 'kategori' ? tmpKategori : tmpGolongan} onChange={e => row.key === 'kategori' ? setTmpKategori(e.target.value) : setTmpGolongan(e.target.value)} />
-                                                        {/* Suggestions */}
-                                                        {(() => {
-                                                            const suggestions = [...new Set(items.map(i => row.key === 'kategori' ? (i.category||'') : (i.golongan||i.group||'')).filter(Boolean))].sort();
-                                                            return suggestions.length > 0 && (
-                                                                <div className="flex flex-wrap gap-1.5 mt-1">
-                                                                    {suggestions.slice(0,10).map(s => (
-                                                                        <button key={s} onClick={() => row.key === 'kategori' ? setTmpKategori(s) : setTmpGolongan(s)} className={`px-2 py-1 rounded-md text-[10px] font-semibold border transition-all ${(row.key === 'kategori' ? tmpKategori : tmpGolongan) === s ? 'bg-teal-50 border-teal-300 text-teal-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>{s}</button>
-                                                                    ))}
-                                                                    <button onClick={() => row.key === 'kategori' ? setTmpKategori('') : setTmpGolongan('')} className="px-2 py-1 rounded-md text-[10px] font-semibold border border-slate-200 text-slate-400 hover:text-red-500 transition-all">Reset</button>
-                                                                </div>
-                                                            );
-                                                        })()}
-                                                    </div>
-                                                )}
-                                                {row.key === 'barcode' && (
-                                                    <div className="space-y-1.5">
-                                                        <p className="text-[10px] font-bold text-slate-500 uppercase mb-2">Filter Barcode</p>
-                                                        {[{v:'semua',l:'Semua'},{v:'ada',l:'Ada Barcode'},{v:'tidak',l:'Tidak Ada Barcode'}].map(opt => (
-                                                            <button key={opt.v} onClick={() => setTmpBarcode(opt.v)} className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${tmpBarcode === opt.v ? 'bg-teal-50 border border-teal-300 text-teal-700' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
-                                                                <span>{opt.l}</span>
-                                                                {tmpBarcode === opt.v && <Icon name="check" className="text-teal-600" />}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                        <div className="h-px bg-slate-100 mx-0" />
+                                                        <span className="text-sm font-semibold text-slate-800">{p.label}</span>
+                                                    </button>
+                                                    <div className="h-px bg-slate-100 mx-4" />
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
-                                ))}
-                                {/* Reset All */}
-                                <div className="px-4 py-4">
-                                    <button onClick={() => { setTmpMarginMin(''); setTmpMarginMax(''); setTmpMarkupMin(''); setTmpMarkupMax(''); setTmpDiskon('semua'); setTmpKategori(''); setTmpGolongan(''); setTmpBarcode('semua'); setActiveFilterEdit(null); }} className="w-full py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-all">
-                                        Reset Semua Filter
-                                    </button>
-                                </div>
-                            </div>
+                                );
+                            })()}
+
+                            {/* ── MAIN FILTER PAGE ── */}
+                            {!filterSubPage && (
+                                <>
+                                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100">
+                                        <button onClick={() => setShowFilterPanel(false)} className="flex items-center gap-1.5 text-teal-600 font-semibold text-sm">
+                                            <Icon name="xmark" className="text-base" />
+                                            <span>Katalog</span>
+                                        </button>
+                                        <button onClick={() => { setFilterMarginMin(tmpMarginMin); setFilterMarginMax(tmpMarginMax); setFilterMarkupMin(tmpMarkupMin); setFilterMarkupMax(tmpMarkupMax); setFilterDiskon(tmpDiskon); setFilterKategori(tmpKategori); setFilterGolongan(tmpGolongan); setFilterBarcode(tmpBarcode); setShowFilterPanel(false); }} className="px-5 py-1.5 bg-teal-700 hover:bg-teal-800 text-white text-sm font-bold rounded-lg transition-all active:scale-95 shadow-sm">
+                                            Pasang
+                                        </button>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto">
+                                        <h1 className="text-2xl font-extrabold text-slate-900 px-4 pt-4 pb-3">Filter</h1>
+                                        {[
+                                            { key: 'margin',   label: 'Margin',   subPage: true,  desc: tmpMarginPreset !== 'semua' ? (MARGIN_PRESETS.find(p=>p.value===tmpMarginPreset)||{}).label : null },
+                                            { key: 'markup',   label: 'Markup',   subPage: true,  desc: tmpMarkupPreset !== 'semua' ? (MARKUP_PRESETS.find(p=>p.value===tmpMarkupPreset)||{}).label : null },
+                                            { key: 'diskon',   label: 'Diskon',   subPage: false, desc: tmpDiskon !== 'semua' ? (tmpDiskon === 'ada' ? 'Ada diskon' : 'Tidak ada diskon') : null },
+                                            { key: 'kategori', label: 'Kategori', subPage: false, desc: tmpKategori || null },
+                                            { key: 'golongan', label: 'Golongan', subPage: false, desc: tmpGolongan || null },
+                                            { key: 'barcode',  label: 'Barcode',  subPage: false, desc: tmpBarcode !== 'semua' ? (tmpBarcode === 'ada' ? 'Ada barcode' : 'Tidak ada barcode') : null },
+                                        ].map(row => (
+                                            <div key={row.key}>
+                                                <div className="flex items-center justify-between px-4 py-3">
+                                                    <div>
+                                                        <p className="text-sm font-semibold text-slate-800">{row.label}</p>
+                                                        {row.desc && <p className="text-xs text-teal-600 mt-0.5">{row.desc}</p>}
+                                                    </div>
+                                                    <button
+                                                        onClick={() => row.subPage ? setFilterSubPage(row.key) : setActiveFilterEdit(activeFilterEdit === row.key ? null : row.key)}
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-teal-500 text-teal-600 text-xs font-semibold hover:bg-teal-50 transition-all active:scale-95"
+                                                    >
+                                                        <span>Ubah</span>
+                                                        <Icon name="pen" className="text-[10px]" />
+                                                    </button>
+                                                </div>
+                                                {/* Inline edit untuk non-subpage */}
+                                                {!row.subPage && activeFilterEdit === row.key && (
+                                                    <div className="mx-4 mb-3 bg-slate-50 rounded-xl p-3 border border-slate-200">
+                                                        {row.key === 'diskon' && (
+                                                            <div className="space-y-1.5">
+                                                                {[{v:'semua',l:'Semua'},{v:'ada',l:'Ada Diskon'},{v:'tidak',l:'Tidak Ada Diskon'}].map(opt => (
+                                                                    <button key={opt.v} onClick={() => setTmpDiskon(opt.v)} className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${tmpDiskon === opt.v ? 'bg-teal-50 border border-teal-300 text-teal-700' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                                                                        <span>{opt.l}</span>
+                                                                        {tmpDiskon === opt.v && <Icon name="check" className="text-teal-600" />}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                        {(row.key === 'kategori' || row.key === 'golongan') && (
+                                                            <div className="space-y-2">
+                                                                <input type="text" placeholder={`Ketik ${row.label.toLowerCase()}...`} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium outline-none focus:border-teal-400" value={row.key === 'kategori' ? tmpKategori : tmpGolongan} onChange={e => row.key === 'kategori' ? setTmpKategori(e.target.value) : setTmpGolongan(e.target.value)} />
+                                                                {(() => {
+                                                                    const suggestions = [...new Set(items.map(i => row.key === 'kategori' ? (i.category||'') : (i.golongan||i.group||'')).filter(Boolean))].sort();
+                                                                    return suggestions.length > 0 && (
+                                                                        <div className="flex flex-wrap gap-1.5 mt-1">
+                                                                            {suggestions.slice(0,10).map(s => (
+                                                                                <button key={s} onClick={() => row.key === 'kategori' ? setTmpKategori(s) : setTmpGolongan(s)} className={`px-2 py-1 rounded-md text-[10px] font-semibold border transition-all ${(row.key === 'kategori' ? tmpKategori : tmpGolongan) === s ? 'bg-teal-50 border-teal-300 text-teal-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>{s}</button>
+                                                                            ))}
+                                                                            <button onClick={() => row.key === 'kategori' ? setTmpKategori('') : setTmpGolongan('')} className="px-2 py-1 rounded-md text-[10px] font-semibold border border-slate-200 text-slate-400 hover:text-red-500 transition-all">Reset</button>
+                                                                        </div>
+                                                                    );
+                                                                })()}
+                                                            </div>
+                                                        )}
+                                                        {row.key === 'barcode' && (
+                                                            <div className="space-y-1.5">
+                                                                {[{v:'semua',l:'Semua'},{v:'ada',l:'Ada Barcode'},{v:'tidak',l:'Tidak Ada Barcode'}].map(opt => (
+                                                                    <button key={opt.v} onClick={() => setTmpBarcode(opt.v)} className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${tmpBarcode === opt.v ? 'bg-teal-50 border border-teal-300 text-teal-700' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                                                                        <span>{opt.l}</span>
+                                                                        {tmpBarcode === opt.v && <Icon name="check" className="text-teal-600" />}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                <div className="h-px bg-slate-100" />
+                                            </div>
+                                        ))}
+                                        <div className="px-4 py-4">
+                                            <button onClick={() => { setTmpMarginMin(''); setTmpMarginMax(''); setTmpMarginPreset('semua'); setTmpMarkupMin(''); setTmpMarkupMax(''); setTmpMarkupPreset('semua'); setTmpDiskon('semua'); setTmpKategori(''); setTmpGolongan(''); setTmpBarcode('semua'); setActiveFilterEdit(null); }} className="w-full py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-all">
+                                                Reset Semua Filter
+                                            </button>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     )}
                     <div className="flex-1 overflow-y-auto pb-32 pr-1 custom-scrollbar">
