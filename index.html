@@ -10469,7 +10469,7 @@
         };
         // ====== END HALAMAN RIWAYAT PERUBAHAN HARGA ======
 
-        const ProductDetailPage = ({ item, onBack, onEdit, onDelete, settings, readOnly, isOwner, lowStockThreshold }) => {
+        const ProductDetailPage = ({ item, onBack, onEdit, onDelete, settings, readOnly, isOwner, lowStockThreshold, currentProfile }) => {
             const threshold = item.minStock ? safeNumber(item.minStock) : lowStockThreshold;
             const isLow = safeNumber(item.qty) < threshold;
             const daysLeft = getDaysRemaining(item.exp);
@@ -10529,13 +10529,20 @@
                 setLoadingHistory(true);
                 const itemName = (item.name || '').toLowerCase().trim();
 
-                // Transaksi penjualan (keluar) — ambil semua, filter by nama di client
+                // Transaksi penjualan (keluar) — ambil semua, filter by nama & toko di client
+                const activeStoreId = currentProfile?.id || 'default';
+                const isAllStores = activeStoreId === 'all_stores';
                 const prom1 = window.getDocs(
                     window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'transactions')
                 ).then(snap => {
                     const rows = [];
                     snap.forEach(doc => {
                         const d = doc.data();
+                        // Filter per toko — skip jika bukan toko aktif
+                        if (!isAllStores) {
+                            const txStore = d.storeId || 'default';
+                            if (txStore !== activeStoreId) return;
+                        }
                         (d.items || []).forEach(it => {
                             if ((it.name || '').toLowerCase().trim() === itemName) {
                                 rows.push({
@@ -10555,13 +10562,18 @@
                     return rows;
                 }).catch(() => []);
 
-                // Faktur pembelian (masuk) — ambil semua, filter by nama di client
+                // Faktur pembelian (masuk) — ambil semua, filter by nama & toko di client
                 const prom2 = window.getDocs(
                     window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'purchases')
                 ).then(snap => {
                     const rows = [];
                     snap.forEach(doc => {
                         const d = doc.data();
+                        // Filter per toko
+                        if (!isAllStores) {
+                            const pStore = d.storeId || 'default';
+                            if (pStore !== activeStoreId) return;
+                        }
                         (d.items || []).forEach(it => {
                             if ((it.name || '').toLowerCase().trim() === itemName) {
                                 rows.push({
@@ -10585,7 +10597,7 @@
                     return rows;
                 }).catch(() => []);
 
-                // Stock opname — ambil semua, filter by nama di client
+                // Stock opname — ambil semua, filter by nama & toko di client
                 const prom3 = window.getDocs(
                     window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'stock_opname')
                 ).then(snap => {
@@ -10593,6 +10605,11 @@
                     snap.forEach(doc => {
                         const d = doc.data();
                         if (d.status !== 'closed') return;
+                        // Filter per toko
+                        if (!isAllStores) {
+                            const soStore = d.profileId || d.storeId || 'default';
+                            if (soStore !== activeStoreId) return;
+                        }
                         (d.entries || []).forEach(e => {
                             if ((e.name || '').toLowerCase().trim() === itemName && e.selisih !== 0) {
                                 const selisih = safeNumber(e.selisih);
@@ -11141,6 +11158,7 @@
                         readOnly={readOnly}
                         isOwner={isOwner}
                         lowStockThreshold={settings.lowStockThreshold || DEFAULT_SETTINGS.lowStockThreshold}
+                        currentProfile={currentProfile}
                     />
                 );
             }
