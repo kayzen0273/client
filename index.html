@@ -272,6 +272,7 @@
         @keyframes expBannerOut { from { transform: translateY(0);     opacity: 1; } to { transform: translateY(-110%); opacity: 0; } }
         .exp-banner-enter { animation: expBannerIn  0.45s cubic-bezier(0.16,1,0.3,1) forwards; }
         .exp-banner-exit  { animation: expBannerOut 0.4s  ease-in            forwards; }
+        body.filter-panel-open .mobile-topbar { display: none !important; }
     </style>
 </head>
 <body class="relative">
@@ -11103,6 +11104,16 @@
             const [localSearch, setLocalSearch] = useState(searchQuery);
             const sortDropdownRef = useRef(null);
 
+            // Sembunyikan header mobile saat filter panel terbuka
+            useEffect(() => {
+                if (showFilterPanel) {
+                    document.body.classList.add('filter-panel-open');
+                } else {
+                    document.body.classList.remove('filter-panel-open');
+                }
+                return () => document.body.classList.remove('filter-panel-open');
+            }, [showFilterPanel]);
+
             // Filter states (applied)
             const [filterMarginMin, setFilterMarginMin] = useState('');
             const [filterMarginMax, setFilterMarginMax] = useState('');
@@ -11438,13 +11449,19 @@
                     {/* Filter Modal - Full Screen */}
                     {showFilterPanel && (
                         <div className="fixed inset-0 bg-white z-[200] flex flex-col fade-in">
-                            {/* Close button - floating top right */}
-                            <button onClick={() => setShowFilterPanel(false)} className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all">
-                                <Icon name="xmark" className="text-sm" />
-                            </button>
+                            {/* Header */}
+                            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                                <button onClick={() => setShowFilterPanel(false)} className="flex items-center gap-2 text-teal-600 font-semibold text-sm">
+                                    <Icon name="xmark" className="text-base" />
+                                    <span>Daftar Barang</span>
+                                </button>
+                                <button onClick={() => { setFilterMarginMin(tmpMarginMin); setFilterMarginMax(tmpMarginMax); setFilterMarkupMin(tmpMarkupMin); setFilterMarkupMax(tmpMarkupMax); setFilterDiskon(tmpDiskon); setFilterKategori(tmpKategori); setFilterGolongan(tmpGolongan); setFilterBarcode(tmpBarcode); setShowFilterPanel(false); }} className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold rounded-lg transition-all active:scale-95">
+                                    Pasang
+                                </button>
+                            </div>
                             {/* Body */}
-                            <div className="flex-1 overflow-y-auto pb-24">
-                                <h1 className="text-3xl font-extrabold text-slate-900 px-4 pt-6 pb-4">Filter</h1>
+                            <div className="flex-1 overflow-y-auto">
+                                <h1 className="text-3xl font-extrabold text-slate-900 px-4 pt-5 pb-4">Filter</h1>
                                 {/* Filter Rows */}
                                 {[
                                     { key: 'margin', label: 'Margin', desc: tmpMarginMin||tmpMarginMax ? `${tmpMarginMin||'0'}% – ${tmpMarginMax||'∞'}%` : null },
@@ -11530,12 +11547,6 @@
                                         Reset Semua Filter
                                     </button>
                                 </div>
-                            </div>
-                            {/* Pasang - Fixed Bottom */}
-                            <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-100">
-                                <button onClick={() => { setFilterMarginMin(tmpMarginMin); setFilterMarginMax(tmpMarginMax); setFilterMarkupMin(tmpMarkupMin); setFilterMarkupMax(tmpMarkupMax); setFilterDiskon(tmpDiskon); setFilterKategori(tmpKategori); setFilterGolongan(tmpGolongan); setFilterBarcode(tmpBarcode); setShowFilterPanel(false); }} className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold rounded-xl transition-all active:scale-95 shadow-lg">
-                                    Pasang Filter
-                                </button>
                             </div>
                         </div>
                     )}
@@ -16568,7 +16579,7 @@
                         </aside>
                     <main className="flex-1 md:ml-0 p-4 md:p-8 max-w-7xl mx-auto w-full mb-0">
                         {/* ── FARMACARE-STYLE TOPBAR (mobile only) ── */}
-                        <div className="md:hidden -mx-4 -mt-4 mb-5 flex items-center bg-white border-b border-slate-200 px-3.5 gap-2.5 sticky top-0 z-30" style={{minHeight:'54px'}}>
+                        <div className="mobile-topbar md:hidden -mx-4 -mt-4 mb-5 flex items-center bg-white border-b border-slate-200 px-3.5 gap-2.5 sticky top-0 z-30" style={{minHeight:'54px'}}>
                             {/* Hamburger */}
                             <button onClick={() => setIsSidebarOpen(true)} className="flex items-center justify-center p-1.5 rounded-lg active:bg-slate-100 transition-colors flex-shrink-0">
                                 <svg width="18" height="13" viewBox="0 0 18 13" fill="none">
