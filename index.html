@@ -3686,7 +3686,7 @@
         };
 
         // --- PURCHASE VIEW ---
-        const PurchaseView = ({ user, showToast, items, currentProfile, settings, readOnly }) => {
+        const PurchaseView = ({ user, showToast, items, currentProfile, settings, readOnly, authSession }) => {
             const [purchases, setPurchases] = useState([]);
             const [suppliers, setSuppliers] = useState([]);
             const [loading, setLoading] = useState(true);
@@ -4193,7 +4193,7 @@
                         updatedAt: window.serverTimestamp(),
                         ...(attachmentData ? { attachmentData, attachmentType, attachmentName } : {}),
                         ...(editingPurchaseId ? {} : {
-                            createdByName: currentProfile.name || user?.displayName || user?.email || 'Tidak diketahui',
+                            createdByName: authSession?.namaLengkap || authSession?.username || user?.email || 'Tidak diketahui',
                             createdByUid: user?.uid || '',
                         })
                     };
@@ -5294,7 +5294,7 @@
                                         {selectedPurchase.dueDate && <div><p className="text-[10px] text-gray-400">Jatuh Tempo</p><p className="text-xs font-bold text-slate-800">{new Date(selectedPurchase.dueDate).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})}</p></div>}
                                         <div className="col-span-2 border-t border-slate-200 pt-2 mt-1">
                                             <p className="text-[10px] text-gray-400">✍️ Dicatat oleh</p>
-                                            <p className="text-xs font-bold text-teal-700">{selectedPurchase.createdByName || selectedPurchase.storeName || '-'}</p>
+                                            <p className="text-xs font-bold text-teal-700">{selectedPurchase.createdByName || '-'}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -16500,7 +16500,7 @@
                         {activeTab === 'cashier' && (<CashierView items={inventoryData} user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='cashier')?.readOnly} authSession={authSession} onNavigateToAdd={() => setActiveTab('add')} isOwner={isOwner} />)}
                         {activeTab === 'history' && (<HistoryView user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} items={inventoryData} readOnly={menuItems.find(m=>m.id==='history')?.readOnly} isOwner={isOwner} authSession={authSession} />)}
                         {activeTab === 'rekap_barang' && (<RekapBarangView user={user} currentProfile={currentProfile} settings={settingsData} />)}
-                        {activeTab === 'purchases' && (<PurchaseView user={user} showToast={showToast} items={inventoryData} currentProfile={currentProfile} settings={settingsData} readOnly={menuItems.find(m=>m.id==='purchases')?.readOnly} />)}
+                        {activeTab === 'purchases' && (<PurchaseView user={user} showToast={showToast} items={inventoryData} currentProfile={currentProfile} settings={settingsData} readOnly={menuItems.find(m=>m.id==='purchases')?.readOnly} authSession={authSession} />)}
                         {activeTab === 'cashbook' && (<CashBookView user={user} currentProfile={currentProfile} showToast={showToast} readOnly={menuItems.find(m=>m.id==='cashbook')?.readOnly} />)}
                         {activeTab === 'list' && (<ListView items={inventoryData} loading={loading} settings={settingsData} searchQuery={searchQuery} setSearchQuery={setSearchQuery} showOnlyLowStock={showOnlyLowStock} setShowOnlyLowStock={setShowOnlyLowStock} selectedRacks={selectedRacks} setSelectedRacks={setSelectedRacks} uniqueRacksData={uniqueRacksData} onCopySuccess={showToast} onEdit={(item) => { setFormData({...item}); setEditingItem(item); setActiveTab('add'); }} onDelete={(item) => setDeleteModal({ show: true, item: item })} onDeleteRack={(rackName) => setDeleteRackModal({ show: true, rackName })} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='list')?.readOnly} isOwner={isOwner} />)}
                         {activeTab === 'add' && (<FormView formData={formData} setFormData={setFormData} onSubmit={handleSubmit} isEditing={!!editingItem} submitting={submitting} onCancel={() => { setEditingItem(null); setFormData({name:'', qty:'', unit:'Pcs', exp:'', rack:'', price:'', costPrice:'', minStock: '', defaultDiscount: '', defaultDiscountType: '%', packagePrices: []}); setActiveTab('list'); }} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='add')?.readOnly} />)}
