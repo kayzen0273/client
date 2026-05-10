@@ -10544,7 +10544,7 @@
                                     activity: 'Jual',
                                     date: d.date || d.createdAt,
                                     qty: safeNumber(it.qty),
-                                    oleh: d.kasir || d.user || '-',
+                                    oleh: d.cashierName || d.kasir || d.user || '-',
                                     ref: d.id || doc.id,
                                     batchNo: it.batchNo || '',
                                     exp: it.exp || '',
