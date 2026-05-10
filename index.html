@@ -10482,6 +10482,8 @@
             const [loadingBatch, setLoadingBatch] = useState(false);
             const [loadingHistory, setLoadingHistory] = useState(false);
             const [showPriceHistory, setShowPriceHistory] = useState(false);
+            const [stockViewMode, setStockViewMode] = useState('kegiatan'); // 'kegiatan' | 'batch'
+            const [sortAsc, setSortAsc] = useState(false); // false = terbaru dulu
 
             // Parse units
             const units = React.useMemo(() => {
@@ -10521,11 +10523,13 @@
                 }).catch(() => setLoadingBatch(false));
             }, [activeTab, item.name]);
 
-            // Load stock history from transactions + purchases
+            // Load stock history from transactions + purchases + stock opname
             useEffect(() => {
                 if (activeTab !== 'riwayat') return;
                 setLoadingHistory(true);
                 const itemName = (item.name || '').toLowerCase().trim();
+
+                // Transaksi penjualan (keluar)
                 const prom1 = window.getDocs(window.query(
                     window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'transactions'),
                     window.orderBy('date', 'desc'), window.limit(300)
@@ -10535,13 +10539,24 @@
                         const d = doc.data();
                         (d.items || []).forEach(it => {
                             if ((it.name || '').toLowerCase().trim() === itemName) {
-                                rows.push({ type: 'keluar', date: d.date || d.createdAt, qty: safeNumber(it.qty), note: d.kasir || d.user || '-', ref: d.id || doc.id });
+                                rows.push({
+                                    type: 'keluar',
+                                    activity: 'Jual',
+                                    date: d.date || d.createdAt,
+                                    qty: safeNumber(it.qty),
+                                    oleh: d.kasir || d.user || '-',
+                                    ref: d.id || doc.id,
+                                    batchNo: it.batchNo || '',
+                                    exp: it.exp || '',
+                                    keterangan: `#${(d.id || doc.id || '').slice(-10).toUpperCase()}`,
+                                });
                             }
                         });
                     });
                     return rows;
                 }).catch(() => []);
 
+                // Faktur pembelian (masuk)
                 const prom2 = window.getDocs(window.query(
                     window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'purchases'),
                     window.orderBy('date', 'desc'), window.limit(200)
@@ -10551,19 +10566,67 @@
                         const d = doc.data();
                         (d.items || []).forEach(it => {
                             if ((it.name || '').toLowerCase().trim() === itemName) {
-                                rows.push({ type: 'masuk', date: d.date, qty: safeNumber(it.qty), note: d.supplier || d.noFaktur || '-', ref: doc.id });
+                                rows.push({
+                                    type: 'masuk',
+                                    activity: 'Beli',
+                                    date: d.date,
+                                    qty: safeNumber(it.qty),
+                                    oleh: d.createdBy || d.updatedBy || '-',
+                                    ref: doc.id,
+                                    batchNo: it.batchNo || '',
+                                    exp: it.exp || '',
+                                    keterangan: d.noFaktur || d.supplier || doc.id,
+                                });
                             }
                         });
                     });
                     return rows;
                 }).catch(() => []);
 
-                Promise.all([prom1, prom2]).then(([out, inn]) => {
-                    const all = [...inn, ...out].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-                    setStockHistory(all.slice(0, 100));
+                // Stock opname
+                const prom3 = window.getDocs(window.query(
+                    window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'stock_opname'),
+                    window.orderBy('finishedAt', 'desc'), window.limit(100)
+                )).then(snap => {
+                    const rows = [];
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        if (d.status !== 'closed') return;
+                        (d.entries || []).forEach(e => {
+                            if ((e.name || '').toLowerCase().trim() === itemName && e.selisih !== 0) {
+                                const selisih = safeNumber(e.selisih);
+                                const tgl = d.finishedAt?.toDate ? d.finishedAt.toDate().toISOString().slice(0,10) : d.finishedAt || '';
+                                rows.push({
+                                    type: selisih > 0 ? 'masuk' : 'keluar',
+                                    activity: 'Stok opname',
+                                    date: tgl,
+                                    qty: Math.abs(selisih),
+                                    oleh: d.closedBy || d.createdBy || '-',
+                                    ref: doc.id,
+                                    batchNo: '',
+                                    exp: '',
+                                    keterangan: `Stok opname ${tgl ? new Date(tgl).toLocaleDateString('id-ID', { year:'numeric', month:'short', day:'numeric' }) : ''}`,
+                                });
+                            }
+                        });
+                    });
+                    return rows;
+                }).catch(() => []);
+
+                Promise.all([prom1, prom2, prom3]).then(([keluar, masuk, opname]) => {
+                    const all = [...keluar, ...masuk, ...opname].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+                    // Hitung running total dari sekarang mundur ke belakang
+                    let runningTotal = safeNumber(item.qty);
+                    const withTotal = all.map(h => {
+                        const entry = { ...h, totalAfter: runningTotal };
+                        if (h.type === 'keluar') runningTotal += h.qty;
+                        else runningTotal -= h.qty;
+                        return entry;
+                    });
+                    setStockHistory(withTotal.slice(0, 100));
                     setLoadingHistory(false);
                 });
-            }, [activeTab, item.name]);
+            }, [activeTab, item.name, item.qty]);
 
             const tabs = [
                 { id: 'detail', label: 'Detail Harga' },
@@ -10717,40 +10780,144 @@
 
                         {/* Tab: Riwayat stok */}
                         {activeTab === 'riwayat' && (
-                            <div className="px-4">
+                            <div>
+                                {/* Header kontrol */}
+                                <div className="px-4 pt-2 pb-3 space-y-3">
+                                    {/* Toggle Per kegiatan / Per batch + Unduh */}
+                                    <div className="flex items-center gap-3">
+                                        <button onClick={() => setStockViewMode('kegiatan')} className="flex items-center gap-2">
+                                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${stockViewMode === 'kegiatan' ? 'border-teal-600 bg-teal-600' : 'border-slate-300 bg-white'}`}>
+                                                {stockViewMode === 'kegiatan' && <Icon name="check" className="text-white text-[9px]" />}
+                                            </div>
+                                            <span className="text-sm font-semibold text-slate-700 leading-tight">Per<br/>kegiatan</span>
+                                        </button>
+                                        <button onClick={() => setStockViewMode('batch')} className="flex items-center gap-2">
+                                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${stockViewMode === 'batch' ? 'border-teal-600 bg-teal-600' : 'border-slate-300 bg-white'}`}>
+                                                {stockViewMode === 'batch' && <Icon name="check" className="text-white text-[9px]" />}
+                                            </div>
+                                            <span className="text-sm font-semibold text-slate-700 leading-tight">Per<br/>batch</span>
+                                        </button>
+                                        <button className="ml-auto flex items-center gap-1.5 border border-teal-600 text-teal-600 text-xs font-semibold px-3 py-2 rounded-lg hover:bg-teal-50 transition-colors active:scale-95">
+                                            <Icon name="download" className="text-xs" />
+                                            Unduh kartu stok
+                                        </button>
+                                    </div>
+                                    {/* Sort dropdown */}
+                                    <button onClick={() => setSortAsc(v => !v)} className="flex items-center justify-between w-48 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 font-medium bg-white hover:bg-slate-50 transition-colors">
+                                        <span>{sortAsc ? 'Tanggal terlama' : 'Tanggal terbaru'}</span>
+                                        <Icon name="chevron-down" className="text-slate-400 text-xs" />
+                                    </button>
+                                </div>
+
                                 {loadingHistory ? (
                                     <div className="flex items-center justify-center py-12 text-slate-400 text-sm gap-2"><div className="w-4 h-4 border-2 border-slate-200 border-t-teal-500 rounded-full animate-spin"></div>Memuat riwayat...</div>
                                 ) : stockHistory.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center py-14 opacity-40">
+                                    <div className="flex flex-col items-center justify-center py-14 opacity-40 px-4 text-center">
                                         <Icon name="clock-rotate-left" className="text-3xl text-slate-400 mb-2" />
                                         <p className="text-sm text-slate-500 font-semibold">Belum ada riwayat</p>
                                         <p className="text-xs text-slate-400 mt-1">Riwayat muncul setelah ada transaksi atau input faktur</p>
                                     </div>
-                                ) : (
-                                    <div className="divide-y divide-slate-100">
-                                        <div className="grid grid-cols-3 pb-2 gap-2">
-                                            <p className="text-[10px] font-bold text-slate-500 uppercase">Tanggal</p>
-                                            <p className="text-[10px] font-bold text-slate-500 uppercase">Tipe</p>
-                                            <p className="text-[10px] font-bold text-slate-500 uppercase">Qty</p>
-                                        </div>
-                                        {stockHistory.map((h, idx) => (
-                                            <div key={idx} className="grid grid-cols-3 py-3 gap-2 items-start">
-                                                <div>
-                                                    <p className="text-xs text-slate-700">{h.date ? formatDateIndo(h.date) : '-'}</p>
-                                                    <p className="text-[10px] text-slate-400 mt-0.5 truncate">{h.note}</p>
-                                                </div>
-                                                <div>
-                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${h.type === 'masuk' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600'}`}>
-                                                        {h.type === 'masuk' ? '▲ Masuk' : '▼ Keluar'}
-                                                    </span>
-                                                </div>
-                                                <p className={`text-sm font-bold ${h.type === 'masuk' ? 'text-emerald-600' : 'text-rose-500'}`}>
-                                                    {h.type === 'masuk' ? '+' : '-'}{h.qty} {item.unit || 'Pcs'}
-                                                </p>
+                                ) : (() => {
+                                    const sorted = sortAsc ? [...stockHistory].reverse() : stockHistory;
+                                    // Header tabel
+                                    const colLabel = stockViewMode === 'kegiatan' ? 'Kegiatan' : 'Batch';
+                                    return (
+                                        <div>
+                                            {/* Header kolom */}
+                                            <div className="flex justify-between px-4 pb-2 border-b border-slate-200">
+                                                <span className="text-[11px] font-bold text-slate-700">{colLabel}</span>
+                                                <span className="text-[11px] font-bold text-slate-700">Total</span>
                                             </div>
-                                        ))}
-                                    </div>
-                                )}
+                                            {/* Rows */}
+                                            <div>
+                                                {sorted.map((h, idx) => {
+                                                    const tgl = h.date ? (() => {
+                                                        try {
+                                                            const d = h.date?.toDate ? h.date.toDate() : new Date(h.date);
+                                                            return d.toLocaleDateString('id-ID', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) + ' WIB';
+                                                        } catch { return h.date; }
+                                                    })() : '-';
+                                                    const batchLabel = h.batchNo ? `${h.batchNo}${h.exp ? ` (${h.exp})` : ''}` : '[tanpa-faktur]';
+                                                    const sign = h.type === 'masuk' ? '+' : '-';
+                                                    const signColor = h.type === 'masuk' ? 'text-emerald-600' : 'text-rose-500';
+                                                    const bgRow = idx % 2 === 1 ? 'bg-slate-50/70' : 'bg-white';
+
+                                                    if (stockViewMode === 'kegiatan') {
+                                                        return (
+                                                            <div key={idx} className={`px-4 py-4 border-b border-slate-100 ${bgRow}`}>
+                                                                <div className="flex justify-between items-start mb-2">
+                                                                    <div>
+                                                                        <span className="text-[10px] text-slate-400">{idx + 1}&nbsp;&nbsp;{tgl}</span>
+                                                                        <p className="text-sm font-bold text-slate-800 mt-0.5">{h.activity || (h.type === 'masuk' ? 'Beli' : 'Jual')}</p>
+                                                                    </div>
+                                                                    <span className="text-sm font-bold text-slate-800">{h.totalAfter ?? '-'}</span>
+                                                                </div>
+                                                                <div className="grid grid-cols-2 gap-y-2 gap-x-4 mt-1">
+                                                                    <div>
+                                                                        <p className="text-[10px] font-bold text-slate-500 mb-0.5">Batch</p>
+                                                                        <p className={`text-xs ${signColor} font-semibold`}>{sign}{h.qty} x {batchLabel}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-bold text-slate-500 mb-0.5">Oleh</p>
+                                                                        <p className="text-xs text-slate-700">{h.oleh || '-'}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-bold text-slate-500 mb-0.5">Masuk/keluar</p>
+                                                                        <p className={`text-xs font-bold ${signColor}`}>{sign}{h.qty}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-bold text-slate-500 mb-0.5">Keterangan</p>
+                                                                        <p className="text-xs text-teal-600 font-semibold">{h.keterangan || '-'}</p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    } else {
+                                                        // Per batch view
+                                                        return (
+                                                            <div key={idx} className={`px-4 py-4 border-b border-slate-100 ${bgRow}`}>
+                                                                <div className="flex justify-between items-start mb-2">
+                                                                    <div>
+                                                                        <span className="text-[10px] text-slate-400">{idx + 1}&nbsp;&nbsp;{tgl}</span>
+                                                                        <p className="text-sm font-bold text-slate-800 mt-0.5">{h.batchNo || '[tanpa-faktur]'}</p>
+                                                                        <p className="text-[10px] text-slate-400">ED {h.exp || '-'}</p>
+                                                                    </div>
+                                                                    <span className="text-sm font-bold text-slate-800">{h.totalAfter ?? '-'}</span>
+                                                                </div>
+                                                                <div className="grid grid-cols-2 gap-y-2 gap-x-4 mt-1">
+                                                                    <div>
+                                                                        <p className="text-[10px] font-bold text-slate-500 mb-0.5">Tipe batch <span className="text-teal-500 cursor-help">?</span></p>
+                                                                        <p className="text-xs text-slate-700">Reguler</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-bold text-slate-500 mb-0.5">Oleh</p>
+                                                                        <p className="text-xs text-slate-700">{h.oleh || '-'}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-bold text-slate-500 mb-0.5">Kegiatan</p>
+                                                                        <p className="text-xs text-slate-700">{h.activity || (h.type === 'masuk' ? 'Beli' : 'Jual')}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-bold text-slate-500 mb-0.5">Masuk/keluar</p>
+                                                                        <p className={`text-xs font-bold ${signColor}`}>{sign}{h.qty}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-bold text-slate-500 mb-0.5">Dari/ke</p>
+                                                                        <p className="text-xs text-slate-700">-</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-bold text-slate-500 mb-0.5">Keterangan</p>
+                                                                        <p className="text-xs text-teal-600 font-semibold">{h.keterangan || '-'}</p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    }
+                                                })}
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         )}
 
