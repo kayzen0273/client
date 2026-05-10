@@ -10529,20 +10529,19 @@
                 setLoadingHistory(true);
                 const itemName = (item.name || '').toLowerCase().trim();
 
-                // Transaksi penjualan (keluar) — ambil semua, filter by nama & toko di client
+                // Transaksi penjualan (keluar) — filter per toko langsung di Firestore
                 const activeStoreId = currentProfile?.id || 'default';
                 const isAllStores = activeStoreId === 'all_stores';
-                const prom1 = window.getDocs(
-                    window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'transactions')
-                ).then(snap => {
+                const txQuery = isAllStores
+                    ? window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'transactions')
+                    : window.query(
+                        window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'transactions'),
+                        window.where('storeId', '==', activeStoreId)
+                      );
+                const prom1 = window.getDocs(txQuery).then(snap => {
                     const rows = [];
                     snap.forEach(doc => {
                         const d = doc.data();
-                        // Filter per toko — skip jika bukan toko aktif
-                        if (!isAllStores) {
-                            const txStore = d.storeId || 'default';
-                            if (txStore !== activeStoreId) return;
-                        }
                         (d.items || []).forEach(it => {
                             if ((it.name || '').toLowerCase().trim() === itemName) {
                                 rows.push({
@@ -10562,18 +10561,17 @@
                     return rows;
                 }).catch(() => []);
 
-                // Faktur pembelian (masuk) — ambil semua, filter by nama & toko di client
-                const prom2 = window.getDocs(
-                    window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'purchases')
-                ).then(snap => {
+                // Faktur pembelian (masuk) — filter per toko langsung di Firestore
+                const purchaseQuery = isAllStores
+                    ? window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'purchases')
+                    : window.query(
+                        window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'purchases'),
+                        window.where('storeId', '==', activeStoreId)
+                      );
+                const prom2 = window.getDocs(purchaseQuery).then(snap => {
                     const rows = [];
                     snap.forEach(doc => {
                         const d = doc.data();
-                        // Filter per toko
-                        if (!isAllStores) {
-                            const pStore = d.storeId || 'default';
-                            if (pStore !== activeStoreId) return;
-                        }
                         (d.items || []).forEach(it => {
                             if ((it.name || '').toLowerCase().trim() === itemName) {
                                 rows.push({
@@ -10597,19 +10595,22 @@
                     return rows;
                 }).catch(() => []);
 
-                // Stock opname — ambil semua, filter by nama & toko di client
-                const prom3 = window.getDocs(
-                    window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'stock_opname')
-                ).then(snap => {
+                // Stock opname — filter per toko langsung di Firestore
+                const opnameQuery = isAllStores
+                    ? window.query(
+                        window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'stock_opname'),
+                        window.where('status', '==', 'closed')
+                      )
+                    : window.query(
+                        window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'stock_opname'),
+                        window.where('status', '==', 'closed'),
+                        window.where('profileId', '==', activeStoreId)
+                      );
+                const prom3 = window.getDocs(opnameQuery).then(snap => {
                     const rows = [];
                     snap.forEach(doc => {
                         const d = doc.data();
                         if (d.status !== 'closed') return;
-                        // Filter per toko
-                        if (!isAllStores) {
-                            const soStore = d.profileId || d.storeId || 'default';
-                            if (soStore !== activeStoreId) return;
-                        }
                         (d.entries || []).forEach(e => {
                             if ((e.name || '').toLowerCase().trim() === itemName && e.selisih !== 0) {
                                 const selisih = safeNumber(e.selisih);
@@ -10643,7 +10644,11 @@
                         .map(h => ({ ...h, _dateISO: toISO(h.date) }))
                         .sort((a, b) => b._dateISO.localeCompare(a._dateISO));
                     // Hitung running total dari sekarang mundur ke belakang
-                    let runningTotal = safeNumber(item.qty);
+                    // Stok awal: pakai per-toko jika ada, fallback ke item.qty
+                    const storeQty = (item.stocks && activeStoreId !== 'all_stores')
+                        ? safeNumber(item.stocks[activeStoreId] ?? item.qty)
+                        : safeNumber(item.qty);
+                    let runningTotal = storeQty;
                     const withTotal = all.map(h => {
                         const entry = { ...h, totalAfter: runningTotal };
                         if (h.type === 'keluar') runningTotal += h.qty;
@@ -10656,7 +10661,7 @@
                     console.error('Gagal memuat riwayat stok:', err);
                     setLoadingHistory(false);
                 });
-            }, [activeTab, item.name, item.qty]);
+            }, [activeTab, item.name, item.qty, currentProfile?.id]);
 
             const tabs = [
                 { id: 'detail', label: 'Detail Harga' },
