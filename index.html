@@ -11366,7 +11366,7 @@
                                 <Icon name="chevron-down" className={`text-[10px] text-slate-400 flex-shrink-0 transition-transform ${isSortDropdownOpen ? 'rotate-180' : ''}`} />
                             </button>
                             {isSortDropdownOpen && (
-                                <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-xl shadow-2xl border border-slate-100 z-[70] overflow-hidden fade-in">
+                                <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-xl shadow-2xl border border-slate-100 z-[70] overflow-hidden fade-in" style={{maxHeight: '260px', overflowY: 'auto'}}>
                                     {[
                                         { value: 'az', label: 'Nama dari A-Z', icon: 'arrow-down-a-z' },
                                         { value: 'za', label: 'Nama dari Z-A', icon: 'arrow-down-z-a' },
