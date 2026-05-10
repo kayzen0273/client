@@ -10540,14 +10540,14 @@
         };
         // ====== END HALAMAN RIWAYAT PERUBAHAN HARGA ======
 
-        const ProductDetailPage = ({ item, onBack, onEdit, onDelete, settings, readOnly, isOwner, lowStockThreshold, currentProfile, onNavigateToPurchases, onNavigateToHistory }) => {
+        const ProductDetailPage = ({ item, onBack, onEdit, onDelete, settings, readOnly, isOwner, lowStockThreshold, currentProfile, onNavigateToPurchases, onNavigateToHistory, initialTab }) => {
             const threshold = item.minStock ? safeNumber(item.minStock) : lowStockThreshold;
             const isLow = safeNumber(item.qty) < threshold;
             const daysLeft = getDaysRemaining(item.exp);
             const isExpired = daysLeft !== null && daysLeft < 0;
             const isNearExp = daysLeft !== null && daysLeft < 90 && !isExpired;
 
-            const [activeTab, setActiveTab] = useState('detail');
+            const [activeTab, setActiveTab] = useState(initialTab || 'detail');
             const [batches, setBatches] = useState([]);
             const [stockHistory, setStockHistory] = useState([]);
             const [loadingBatch, setLoadingBatch] = useState(false);
@@ -10654,10 +10654,10 @@
                                     ref: doc.id,
                                     batchNo: it.batchNo || '',
                                     exp: it.exp || '',
-                                    noFaktur: d.noFaktur || '',
+                                    noFaktur: d.invoiceNumber || '',
                                     supplier: d.supplier || '',
-                                    keterangan: d.noFaktur
-                                        ? (d.supplier ? `${d.noFaktur} · ${d.supplier}` : d.noFaktur)
+                                    keterangan: d.invoiceNumber
+                                        ? (d.supplier ? `${d.invoiceNumber} · ${d.supplier}` : d.invoiceNumber)
                                         : (d.supplier || doc.id),
                                 });
                             }
@@ -11090,16 +11090,18 @@
             );
         };
 
-        const ListView = ({ items, searchQuery, setSearchQuery, onEdit, onDelete, onDeleteRack, showOnlyLowStock, setShowOnlyLowStock, selectedRacks, setSelectedRacks, uniqueRacksData, onCopySuccess, loading, settings, currentProfile, readOnly, isOwner, onNavigateToPurchases, onNavigateToHistory, returnDetailItem, onClearReturnDetailItem }) => {
+        const ListView = ({ items, searchQuery, setSearchQuery, onEdit, onDelete, onDeleteRack, showOnlyLowStock, setShowOnlyLowStock, selectedRacks, setSelectedRacks, uniqueRacksData, onCopySuccess, loading, settings, currentProfile, readOnly, isOwner, onNavigateToPurchases, onNavigateToHistory, returnDetailItem, onClearReturnDetailItem, returnInitialTab }) => {
             const [isRackDropdownOpen, setIsRackDropdownOpen] = useState(false);
             const [rackSearch, setRackSearch] = useState('');
             const dropdownRef = useRef(null);
             const [noteModalItem, setNoteModalItem] = useState(null);
             const [selectedDetailItem, setSelectedDetailItem] = useState(null);
+            const [detailInitialTab, setDetailInitialTab] = useState(null);
 
             // Kembali ke product detail setelah navigasi dari detail faktur
             useEffect(() => {
                 if (returnDetailItem) {
+                    setDetailInitialTab(returnInitialTab || null);
                     setSelectedDetailItem(returnDetailItem);
                     onClearReturnDetailItem && onClearReturnDetailItem();
                 }
@@ -11265,7 +11267,7 @@
                 return (
                     <ProductDetailPage
                         item={selectedDetailItem}
-                        onBack={() => setSelectedDetailItem(null)}
+                        onBack={() => { setSelectedDetailItem(null); setDetailInitialTab(null); }}
                         onEdit={onEdit}
                         onDelete={onDelete}
                         settings={settings}
@@ -11275,6 +11277,7 @@
                         currentProfile={currentProfile}
                         onNavigateToPurchases={onNavigateToPurchases}
                         onNavigateToHistory={onNavigateToHistory}
+                        initialTab={detailInitialTab}
                     />
                 );
             }
@@ -15472,6 +15475,7 @@
             const [pendingPurchaseId, setPendingPurchaseId] = useState(null);
             const [pendingTransactionId, setPendingTransactionId] = useState(null);
             const [returnDetailItem, setReturnDetailItem] = useState(null);
+            const [returnInitialTab, setReturnInitialTab] = useState(null);
             const [searchQuery, setSearchQuery] = useState('');
             const [showOnlyLowStock, setShowOnlyLowStock] = useState(false);
             const [selectedRacks, setSelectedRacks] = useState([]);
@@ -16578,7 +16582,7 @@
                         {activeTab === 'rekap_barang' && (<RekapBarangView user={user} currentProfile={currentProfile} settings={settingsData} />)}
                         {activeTab === 'purchases' && (<PurchaseView user={user} showToast={showToast} items={inventoryData} currentProfile={currentProfile} settings={settingsData} readOnly={menuItems.find(m=>m.id==='purchases')?.readOnly} authSession={authSession} defaultOpenPurchaseId={pendingPurchaseId} onClearPendingPurchase={() => setPendingPurchaseId(null)} onBackFromDetail={() => setActiveTab('list')} />)}
                         {activeTab === 'cashbook' && (<CashBookView user={user} currentProfile={currentProfile} showToast={showToast} readOnly={menuItems.find(m=>m.id==='cashbook')?.readOnly} />)}
-                        {activeTab === 'list' && (<ListView items={inventoryData} loading={loading} settings={settingsData} searchQuery={searchQuery} setSearchQuery={setSearchQuery} showOnlyLowStock={showOnlyLowStock} setShowOnlyLowStock={setShowOnlyLowStock} selectedRacks={selectedRacks} setSelectedRacks={setSelectedRacks} uniqueRacksData={uniqueRacksData} onCopySuccess={showToast} onEdit={(item) => { setFormData({...item}); setEditingItem(item); setActiveTab('add'); }} onDelete={(item) => setDeleteModal({ show: true, item: item })} onDeleteRack={(rackName) => setDeleteRackModal({ show: true, rackName })} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='list')?.readOnly} isOwner={isOwner} onNavigateToPurchases={(purchaseId, returnItem) => { setPendingPurchaseId(purchaseId); if (returnItem) setReturnDetailItem(returnItem); setActiveTab('purchases'); }} onNavigateToHistory={(transactionId) => { setPendingTransactionId(transactionId); setActiveTab('history'); }} returnDetailItem={returnDetailItem} onClearReturnDetailItem={() => setReturnDetailItem(null)} />)}
+                        {activeTab === 'list' && (<ListView items={inventoryData} loading={loading} settings={settingsData} searchQuery={searchQuery} setSearchQuery={setSearchQuery} showOnlyLowStock={showOnlyLowStock} setShowOnlyLowStock={setShowOnlyLowStock} selectedRacks={selectedRacks} setSelectedRacks={setSelectedRacks} uniqueRacksData={uniqueRacksData} onCopySuccess={showToast} onEdit={(item) => { setFormData({...item}); setEditingItem(item); setActiveTab('add'); }} onDelete={(item) => setDeleteModal({ show: true, item: item })} onDeleteRack={(rackName) => setDeleteRackModal({ show: true, rackName })} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='list')?.readOnly} isOwner={isOwner} onNavigateToPurchases={(purchaseId, returnItem) => { setPendingPurchaseId(purchaseId); if (returnItem) { setReturnDetailItem(returnItem); setReturnInitialTab('riwayat'); } setActiveTab('purchases'); }} onNavigateToHistory={(transactionId) => { setPendingTransactionId(transactionId); setActiveTab('history'); }} returnDetailItem={returnDetailItem} onClearReturnDetailItem={() => { setReturnDetailItem(null); setReturnInitialTab(null); }} returnInitialTab={returnInitialTab} />)}
                         {activeTab === 'add' && (<FormView formData={formData} setFormData={setFormData} onSubmit={handleSubmit} isEditing={!!editingItem} submitting={submitting} onCancel={() => { setEditingItem(null); setFormData({name:'', qty:'', unit:'Pcs', exp:'', rack:'', price:'', costPrice:'', minStock: '', defaultDiscount: '', defaultDiscountType: '%', packagePrices: []}); setActiveTab('list'); }} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='add')?.readOnly} />)}
                         {activeTab === 'import' && (<BulkImportView user={user} onImportComplete={(count) => { showToast(`${count} Barang berhasil diimport`); setActiveTab('list'); }} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='import')?.readOnly} />)}
                         {activeTab === 'stock_opname' && (<StockOpnameView items={inventoryData} user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='stock_opname')?.readOnly} isOwner={isOwner} />)}
