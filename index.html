@@ -10558,63 +10558,62 @@
                     </header>
                     <div className="relative group z-10"><input type="text" placeholder="Cari nama barang..." className="w-full pl-9 pr-3 py-3 rounded-xl border-0 bg-white/90 backdrop-blur-sm shadow-soft ring-1 ring-slate-100 outline-none transition-all placeholder:text-slate-400 font-medium text-sm focus:ring-2 focus:ring-sky-500" defaultValue={searchQuery} onChange={e => debouncedSetSearchQuery(e.target.value)} /><Icon name="magnifying-glass" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm transition-colors group-focus-within:text-slate-600" /></div>
                     <div className="flex-1 overflow-y-auto pb-32 pr-1 custom-scrollbar">
-                        {loading ? (<div className="flex flex-col items-center justify-center py-20"><div className="typing-dot bg-sky-500"></div><p className="text-xs text-slate-400 mt-2">Menghubungkan Database...</p></div>) : filteredItems.length === 0 ? (<div className="flex flex-col items-center justify-center py-20 opacity-40"><div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3"><Icon name="box-open" className="text-2xl text-slate-400" /></div><p className="font-semibold text-slate-500 text-center text-sm">Tidak ada data</p></div>) : (<><div className="space-y-2">{displayedItems.map((item, index) => { const threshold = item.minStock ? safeNumber(item.minStock) : lowStockThreshold; const isLow = safeNumber(item.qty) < threshold; const isNew = isNewItem(item.createdAt); const animDelay = `${index * 50}ms`; const nameClass = searchQuery ? "type-effect-wrapper" : ""; const daysLeft = getDaysRemaining(item.exp); const isExpired = daysLeft !== null && daysLeft < 0; const isNearExp = daysLeft !== null && daysLeft < 90 && !isExpired; const expColor = isExpired ? 'text-red-600' : (isNearExp ? 'text-amber-600' : 'text-slate-400'); const expIcon = isExpired ? 'triangle-exclamation' : 'calendar-days'; return (<div key={item.id + searchQuery} style={{ animationDelay: animDelay }} className={`slide-up rounded-xl border transition-all card-hover group ${isLow ? 'border-amber-200 bg-amber-50/40' : 'border-slate-100 bg-white/90 hover:border-slate-200'} shadow-sm backdrop-blur-sm overflow-hidden`}>
-                            {/* Header kartu: nama barang + stok */}
-                            <div className={`px-3 pt-3 pb-2 ${isLow ? 'bg-amber-50/60' : 'bg-sky-50/40'}`}>
-                                <div className="flex items-start justify-between gap-2">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                            <h4 className={`font-bold text-slate-800 text-sm leading-snug whitespace-normal break-words ${nameClass} ${isLow ? 'text-amber-900' : 'text-sky-800'}`}>{item.name}</h4>
-                                            {isNew && <span className="bg-rose-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-sm animate-pulse shadow-sm flex-shrink-0">NEW</span>}
-                                            {item.isKonsinyasi && <span className="bg-fuchsia-100 text-fuchsia-700 text-[8px] font-black px-1.5 py-0.5 rounded-sm flex-shrink-0 border border-fuchsia-200">konsinyasi</span>}
-                                        </div>
-                                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                            {item.rack && item.rack !== '-' && <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400"><Icon name="location-dot" className="text-[9px]" />{item.rack}</span>}
-                                            {item.exp && (<span className={`inline-flex items-center gap-1 text-[10px] font-semibold ${expColor}`}><Icon name={expIcon} className="text-[9px]" />{formatDateIndo(item.exp)}</span>)}
-                                        </div>
+                        {loading ? (<div className="flex flex-col items-center justify-center py-20"><div className="typing-dot bg-sky-500"></div><p className="text-xs text-slate-400 mt-2">Menghubungkan Database...</p></div>) : filteredItems.length === 0 ? (<div className="flex flex-col items-center justify-center py-20 opacity-40"><div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3"><Icon name="box-open" className="text-2xl text-slate-400" /></div><p className="font-semibold text-slate-500 text-center text-sm">Tidak ada data</p></div>) : (<><div className="">{displayedItems.map((item, index) => { const threshold = item.minStock ? safeNumber(item.minStock) : lowStockThreshold; const isLow = safeNumber(item.qty) < threshold; const isNew = isNewItem(item.createdAt); const animDelay = `${index * 50}ms`; const nameClass = searchQuery ? "type-effect-wrapper" : ""; const daysLeft = getDaysRemaining(item.exp); const isExpired = daysLeft !== null && daysLeft < 0; const isNearExp = daysLeft !== null && daysLeft < 90 && !isExpired; const expColor = isExpired ? 'text-red-600' : (isNearExp ? 'text-amber-600' : 'text-slate-400'); const expIcon = isExpired ? 'triangle-exclamation' : 'calendar-days'; return (<div key={item.id + searchQuery} style={{ animationDelay: animDelay }} className={`slide-up border-b py-4 ${isLow ? 'border-amber-100' : 'border-slate-100'}`}>
+                            {/* Baris nomor + nama */}
+                            <div className="flex items-start gap-3">
+                                <span className="text-sm font-semibold text-slate-400 mt-0.5 w-5 flex-shrink-0">{index + 1}</span>
+                                <div className="flex-1 min-w-0">
+                                    {/* Nama barang */}
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        <h4 className={`font-bold text-base leading-snug whitespace-normal break-words ${nameClass} ${isLow ? 'text-amber-700' : 'text-teal-700'}`}>{item.name}</h4>
+                                        {isNew && <span className="bg-rose-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-sm animate-pulse shadow-sm flex-shrink-0">NEW</span>}
+                                        {item.isKonsinyasi && <span className="bg-fuchsia-100 text-fuchsia-700 text-[8px] font-black px-1.5 py-0.5 rounded-sm flex-shrink-0 border border-fuchsia-200">konsinyasi</span>}
+                                        {isLow && <span className="text-[9px] font-black text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-sm border border-amber-200">Stok Menipis</span>}
                                     </div>
-                                    <div className="flex-shrink-0 text-right">
-                                        <div className={`text-lg font-black leading-tight ${isLow ? 'text-amber-600' : 'text-slate-800'}`}>{item.qty} <span className="text-[11px] font-semibold text-slate-400">{item.unit || 'Pcs'}</span></div>
-                                        {isLow && <span className="text-[9px] font-black text-amber-600 uppercase tracking-wide">Stok Menipis</span>}
+                                    {/* Rak / kategori sub-info */}
+                                    {item.rack && item.rack !== '-' && <p className="text-sm text-slate-500 mt-0.5">{item.rack}</p>}
+                                    {/* Stok + satuan */}
+                                    <p className="text-sm text-slate-600 mt-0.5">
+                                        <span className={`font-semibold ${isLow ? 'text-amber-600' : 'text-slate-700'}`}>{item.qty} {item.unit || 'Pcs'}</span>
+                                        {item.exp && (<span className={`ml-2 text-xs ${expColor}`}><Icon name={expIcon} className="text-[9px] mr-0.5" />{formatDateIndo(item.exp)}</span>)}
+                                    </p>
+                                    {/* Grid 2 kolom: label atas, nilai bawah */}
+                                    <div className="grid grid-cols-2 gap-x-6 gap-y-3 mt-3">
+                                        {/* Barcode */}
+                                        <div><p className="text-sm font-bold text-slate-700">Barcode</p><p className="text-sm text-slate-500 mt-0.5">{item.barcode || '-'}</p></div>
+                                        {/* Kategori */}
+                                        <div><p className="text-sm font-bold text-slate-700">Kategori</p><p className="text-sm text-slate-500 mt-0.5">{item.category || 'Reguler'}</p></div>
+                                        {/* Harga pokok */}
+                                        {safeNumber(item.costPrice) > 0 && (<div><p className="text-sm font-bold text-slate-700">Harga pokok</p><p className="text-sm text-slate-500 mt-0.5">{formatRupiah(safeNumber(item.costPrice))}</p></div>)}
+                                        {/* Harga jual */}
+                                        {safeNumber(item.price) > 0 && (<div><p className="text-sm font-bold text-slate-700">Harga jual</p><p className="text-sm text-slate-500 mt-0.5">{formatRupiah(safeNumber(item.price))}</p></div>)}
+                                        {/* Markup & Margin */}
+                                        {safeNumber(item.costPrice) > 0 && safeNumber(item.price) > 0 && (() => { const cost = safeNumber(item.costPrice); const sell = safeNumber(item.price); const markup = cost > 0 ? (((sell - cost) / cost) * 100).toFixed(2) + '%' : '-'; const margin = sell > 0 ? (((sell - cost) / sell) * 100).toFixed(2) + '%' : '-'; return (<><div><p className="text-sm font-bold text-slate-700">Markup</p><p className="text-sm text-slate-500 mt-0.5">{markup}</p></div><div><p className="text-sm font-bold text-slate-700">Margin</p><p className="text-sm text-slate-500 mt-0.5">{margin}</p></div></>); })()}
+                                    </div>
+                                    {/* Rincian stok gabungan semua toko */}
+                                    {currentProfile.id === 'all_stores' && item._breakdown && item._breakdown.length > 0 && (
+                                        <div className="mt-3 flex flex-col gap-1 w-full">
+                                            {item._breakdown.map((info, idx) => {
+                                                const separatorIndex = info.lastIndexOf(':');
+                                                const storeName = info.substring(0, separatorIndex).trim();
+                                                const storeQty = info.substring(separatorIndex + 1).trim();
+                                                const isZero = parseInt(storeQty) === 0;
+                                                return (
+                                                    <div key={idx} className="flex justify-between items-center text-xs">
+                                                        <span className={`${isZero ? 'text-slate-400' : 'text-slate-600'}`}>{storeName}</span>
+                                                        <span className={`font-semibold ${isZero ? 'text-slate-400' : 'text-slate-700'}`}>{storeQty}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                    {/* Tombol aksi */}
+                                    <div className="flex items-center gap-3 mt-3">
+                                        {settings?.showNoteButton !== false && <button onClick={() => setNoteModalItem(item)} className={`flex items-center gap-1.5 text-sm font-semibold transition-colors ${item.itemNote ? 'text-teal-600 hover:text-teal-800' : 'text-slate-400 hover:text-teal-600'}`}><Icon name="circle-info" /><span>Catatan</span></button>}
+                                        {!readOnly && <button onClick={() => onDelete(item)} className="flex items-center gap-1.5 text-sm font-semibold text-slate-400 hover:text-red-500 transition-colors ml-auto"><Icon name="trash" /></button>}
+                                        {!readOnly && <button onClick={() => onEdit(item)} className="flex items-center gap-1.5 text-sm font-semibold text-teal-600 hover:text-teal-800 transition-colors"><Icon name="pen" /><span>Edit barang</span></button>}
                                     </div>
                                 </div>
-                            </div>
-                            {/* Grid info: barcode, kategori, harga pokok, harga jual, markup, margin */}
-                            <div className="px-3 pb-2 pt-1.5">
-                                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                                    <div className="flex justify-between items-center"><span className="text-[10px] font-bold text-slate-500">Barcode</span><span className="text-[10px] font-semibold text-slate-600">{item.barcode || '-'}</span></div>
-                                    <div className="flex justify-between items-center"><span className="text-[10px] font-bold text-slate-500">Kategori</span><span className="text-[10px] font-semibold text-slate-600">{item.category || 'Reguler'}</span></div>
-                                    {safeNumber(item.costPrice) > 0 && (<div className="flex justify-between items-center"><span className="text-[10px] font-bold text-slate-500">Harga pokok</span><span className="text-[10px] font-semibold text-orange-600">{formatRupiah(safeNumber(item.costPrice))}</span></div>)}
-                                    {safeNumber(item.price) > 0 && (<div className="flex justify-between items-center"><span className="text-[10px] font-bold text-slate-500">Harga jual</span><span className="text-[10px] font-bold text-green-700">{formatRupiah(safeNumber(item.price))}</span></div>)}
-                                    {safeNumber(item.costPrice) > 0 && safeNumber(item.price) > 0 && (() => { const cost = safeNumber(item.costPrice); const sell = safeNumber(item.price); const markup = cost > 0 ? (((sell - cost) / cost) * 100).toFixed(2) + '%' : '-'; const margin = sell > 0 ? (((sell - cost) / sell) * 100).toFixed(2) + '%' : '-'; return (<><div className="flex justify-between items-center"><span className="text-[10px] font-bold text-slate-500">Markup</span><span className="text-[10px] font-semibold text-slate-700">{markup}</span></div><div className="flex justify-between items-center"><span className="text-[10px] font-bold text-slate-500">Margin</span><span className="text-[10px] font-semibold text-slate-700">{margin}</span></div></>); })()}
-                                </div>
-                                {/* Rincian stok gabungan */}
-                            {/* Rincian Stok Gabungan - Tampilan Baru Berbaris (Fixed for Truncate issue) */}
-                            {currentProfile.id === 'all_stores' && item._breakdown && item._breakdown.length > 0 && (
-                                <div className="mt-2 flex flex-col gap-1 w-full">
-                                    {item._breakdown.map((info, idx) => {
-                                        // Handle splitting carefully in case name has colon, though assuming safe split for now based on generation logic
-                                        const separatorIndex = info.lastIndexOf(':');
-                                        const storeName = info.substring(0, separatorIndex).trim();
-                                        const storeQty = info.substring(separatorIndex + 1).trim();
-                                        const isZero = parseInt(storeQty) === 0;
-
-                                        return (
-                                            <div key={idx} className="flex justify-between items-center text-[10px] bg-slate-50 border border-slate-200 px-2 py-1 rounded">
-                                                <span className="text-slate-500 font-medium mr-2 text-left">{storeName}</span>
-                                                <span className={`font-bold px-1.5 rounded border ${isZero ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-white text-slate-800 border-slate-100'}`}>{storeQty}</span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                            </div>
-                            {/* Tombol aksi bawah - gaya farmacare */}
-                            <div className={`flex items-center gap-2 px-3 py-2 border-t ${isLow ? 'border-amber-100 bg-amber-50/30' : 'border-slate-100 bg-slate-50/50'}`}>
-                                {settings?.showNoteButton !== false && <button onClick={() => setNoteModalItem(item)} title={item.itemNote ? "Lihat catatan" : "Tambah catatan"} className={`flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1.5 rounded-lg border transition-colors ${item.itemNote ? 'bg-sky-50 text-sky-600 border-sky-200 hover:bg-sky-100' : 'bg-white text-slate-400 border-slate-200 hover:text-sky-500 hover:border-sky-200'}`}><Icon name="circle-info" /><span>Catatan</span></button>}
-                                <div className="flex-1" />
-                                {!readOnly && <button onClick={() => onDelete(item)} className="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-white text-red-400 border border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"><Icon name="trash" /><span>Hapus</span></button>}
-                                {!readOnly && <button onClick={() => onEdit(item)} className={`flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-lg border transition-colors ${isLow ? 'bg-amber-500 text-white border-amber-500 hover:bg-amber-600' : 'bg-teal-600 text-white border-teal-600 hover:bg-teal-700'}`}><Icon name="pen" /><span>Edit barang</span></button>}
                             </div>
                         </div>
                         ); })}</div><div ref={loaderRef} className="h-10 flex items-center justify-center w-full mt-4 pb-20 md:pb-0">{displayedLimit < filteredItems.length ? (<div className="flex items-center gap-2 text-slate-400 text-xs"><div className="w-4 h-4 border-2 border-slate-300 border-t-sky-500 rounded-full animate-spin"></div><span>Memuat...</span></div>) : filteredItems.length > 0 && ( <span className="text-[10px] text-slate-300">Semua data ditampilkan</span> )}</div></>)}
