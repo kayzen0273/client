@@ -11196,8 +11196,8 @@
                     const sell = safeNumber(i.price); const cost = safeNumber(i.costPrice);
                     const margin = sell > 0 ? ((sell - cost) / sell) * 100 : 0;
                     const markup = cost > 0 ? ((sell - cost) / cost) * 100 : 0;
-                    const matchMargin = filterMarginPresets.length === 0 ? true : filterMarginPresets.some(p => matchPreset(p, margin, sell, cost));
-                    const matchMarkup = filterMarkupPresets.length === 0 ? true : filterMarkupPresets.some(p => matchPreset(p, markup, sell, cost));
+                    const matchMargin = filterMarginPresets.length === 0 || filterMarginPresets.length === 6 ? true : filterMarginPresets.some(p => matchPreset(p, margin, sell, cost));
+                    const matchMarkup = filterMarkupPresets.length === 0 || filterMarkupPresets.length === 6 ? true : filterMarkupPresets.some(p => matchPreset(p, markup, sell, cost));
                     const matchDiskon = filterDiskon === 'semua' ? true : filterDiskon === 'ada' ? (safeNumber(i.discount) > 0) : (safeNumber(i.discount) === 0 || !i.discount);
                     const matchKategori = !filterKategori ? true : (i.category || '').toLowerCase().includes(filterKategori.toLowerCase());
                     const matchGolongan = !filterGolongan ? true : (i.golongan || i.group || '').toLowerCase().includes(filterGolongan.toLowerCase());
@@ -11515,27 +11515,25 @@
                                             {/* Options list */}
                                             {presets.map((p) => {
                                                 const isSemua_ = p.value === 'semua';
-                                                const isChecked = isSemua_ ? isSemua : selected.includes(p.value);
+                                                const specificValues = presets.filter(x => x.value !== 'semua').map(x => x.value);
+                                                const allChecked = specificValues.every(v => selected.includes(v));
+                                                const isChecked = isSemua_ ? allChecked : selected.includes(p.value);
                                                 return (
                                                     <div key={p.value}>
                                                         <button
                                                             onClick={() => {
-                                                                if (isSemua_) { setSelected([]); }
-                                                                else { setSelected(togglePreset(selected, p.value)); }
+                                                                if (isSemua_) {
+                                                                    // Toggle semua: jika sudah semua terceklis → kosongkan, jika belum → pilih semua
+                                                                    setSelected(allChecked ? [] : [...specificValues]);
+                                                                } else {
+                                                                    setSelected(togglePreset(selected, p.value));
+                                                                }
                                                             }}
                                                             className="w-full flex items-center gap-4 px-4 py-3.5 text-left hover:bg-slate-50 transition-colors active:bg-slate-100"
                                                         >
-                                                            {isSemua_ ? (
-                                                                /* Radio-style circle for "semua" */
-                                                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${isChecked ? 'border-teal-600' : 'border-slate-300'}`}>
-                                                                    {isChecked && <div className="w-2.5 h-2.5 rounded-full bg-teal-600" />}
-                                                                </div>
-                                                            ) : (
-                                                                /* Checkbox for specific options */
-                                                                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${isChecked ? 'border-teal-600 bg-teal-600' : 'border-slate-300'}`}>
-                                                                    {isChecked && <Icon name="check" className="text-white text-[10px]" />}
-                                                                </div>
-                                                            )}
+                                                            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${isChecked ? 'border-teal-600 bg-teal-600' : 'border-slate-300'}`}>
+                                                                {isChecked && <Icon name="check" className="text-white text-[10px]" />}
+                                                            </div>
                                                             <span className="text-sm font-semibold text-slate-800">{p.label}</span>
                                                         </button>
                                                         <div className="h-px bg-slate-100 mx-4" />
