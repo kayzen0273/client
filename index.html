@@ -11119,15 +11119,15 @@
             const [filterMarkupPresets, setFilterMarkupPresets] = useState([]);
             const [filterDiskonSelected, setFilterDiskonSelected] = useState([]);
             const [filterKategoriSelected, setFilterKategoriSelected] = useState([]);
-            const [filterGolongan, setFilterGolongan] = useState('');
-            const [filterBarcode, setFilterBarcode] = useState('semua');
+            const [filterGolonganSelected, setFilterGolonganSelected] = useState([]);
+            const [filterBarcodeSelected, setFilterBarcodeSelected] = useState([]);
             // Temp filter states (pending)
             const [tmpMarginSelected, setTmpMarginSelected] = useState([]);
             const [tmpMarkupSelected, setTmpMarkupSelected] = useState([]);
             const [tmpDiskonSelected, setTmpDiskonSelected] = useState([]);
             const [tmpKategoriSelected, setTmpKategoriSelected] = useState([]);
-            const [tmpGolongan, setTmpGolongan] = useState('');
-            const [tmpBarcode, setTmpBarcode] = useState('semua');
+            const [tmpGolonganSelected, setTmpGolonganSelected] = useState([]);
+            const [tmpBarcodeSelected, setTmpBarcodeSelected] = useState([]);
             const [activeFilterEdit, setActiveFilterEdit] = useState(null);
             const [filterSubPage, setFilterSubPage] = useState(null);
 
@@ -11164,6 +11164,11 @@
                 { value: 'tidak',      label: 'Tanpa diskon'                },
                 { value: 'ada',        label: 'Dengan diskon'               },
                 { value: 'lebih',      label: 'Diskon lebih dari harga jual'},
+            ];
+            const BARCODE_PRESETS = [
+                { value: 'semua', label: 'Barcode'          },
+                { value: 'tidak', label: 'Tidak ada barcode'},
+                { value: 'ada',   label: 'Ada barcode'      },
             ];
             const matchPreset = (preset, val, sell, cost) => {
                 if (preset === 'unknown') return sell === 0 || cost === 0;
@@ -11221,8 +11226,13 @@
                         return true;
                     });
                     const matchKategori = filterKategoriSelected.length === 0 ? true : filterKategoriSelected.some(v => (i.category || '').toLowerCase() === v.toLowerCase());
-                    const matchGolongan = !filterGolongan ? true : (i.golongan || i.group || '').toLowerCase().includes(filterGolongan.toLowerCase());
-                    const matchBarcode = filterBarcode === 'semua' ? true : filterBarcode === 'ada' ? !!(i.barcode && i.barcode !== '-') : !(i.barcode && i.barcode !== '-');
+                    const matchGolongan = filterGolonganSelected.length === 0 ? true : filterGolonganSelected.some(v => (i.golongan || i.group || '').toLowerCase() === v.toLowerCase());
+                    const matchBarcode = filterBarcodeSelected.length === 0 || filterBarcodeSelected.length === 2 ? true : filterBarcodeSelected.some(v => {
+                        const hasBarcode = !!(i.barcode && i.barcode !== '-');
+                        if (v === 'ada')   return hasBarcode;
+                        if (v === 'tidak') return !hasBarcode;
+                        return true;
+                    });
                     return matchesLowStock && matchesRack && matchMargin && matchMarkup && matchDiskon && matchKategori && matchGolongan && matchBarcode;
                 });
                 result = [...result];
@@ -11241,7 +11251,7 @@
                 else if (sortBy === 'markup_asc') result.sort((a, b) => { const mA = safeNumber(a.costPrice) > 0 ? (safeNumber(a.price) - safeNumber(a.costPrice)) / safeNumber(a.costPrice) : 0; const mB = safeNumber(b.costPrice) > 0 ? (safeNumber(b.price) - safeNumber(b.costPrice)) / safeNumber(b.costPrice) : 0; return mA - mB; });
                 else if (sortBy === 'markup_desc') result.sort((a, b) => { const mA = safeNumber(a.costPrice) > 0 ? (safeNumber(a.price) - safeNumber(a.costPrice)) / safeNumber(a.costPrice) : 0; const mB = safeNumber(b.costPrice) > 0 ? (safeNumber(b.price) - safeNumber(b.costPrice)) / safeNumber(b.costPrice) : 0; return mB - mA; });
                 return result;
-            }, [items, searchQuery, showOnlyLowStock, selectedRacks, fuse, lowStockThreshold, sortBy, filterMarginPresets, filterMarkupPresets, filterDiskonSelected, filterKategoriSelected, filterGolongan, filterBarcode]);
+            }, [items, searchQuery, showOnlyLowStock, selectedRacks, fuse, lowStockThreshold, sortBy, filterMarginPresets, filterMarkupPresets, filterDiskonSelected, filterKategoriSelected, filterGolonganSelected, filterBarcodeSelected]);
 
             useEffect(() => { setDisplayedLimit(ITEMS_PER_PAGE); }, [searchQuery, showOnlyLowStock, selectedRacks]);
             useEffect(() => { setLocalSearch(searchQuery); }, [searchQuery]);
@@ -11450,9 +11460,9 @@
                     {/* Filter & Sort Row */}
                     <div className="flex gap-2">
                         {(() => {
-                            const activeCount = [filterMarginPresets.length > 0, filterMarkupPresets.length > 0, filterDiskonSelected.length > 0, filterKategoriSelected.length > 0, filterGolongan, filterBarcode!=='semua'].filter(Boolean).length;
+                            const activeCount = [filterMarginPresets.length > 0, filterMarkupPresets.length > 0, filterDiskonSelected.length > 0, filterKategoriSelected.length > 0, filterGolonganSelected.length > 0, filterBarcodeSelected.length > 0].filter(Boolean).length;
                             return (
-                                <button onClick={() => { setTmpMarginSelected([...filterMarginPresets]); setTmpMarkupSelected([...filterMarkupPresets]); setTmpDiskonSelected([...filterDiskonSelected]); setTmpKategoriSelected([...filterKategoriSelected]); setTmpGolongan(filterGolongan); setTmpBarcode(filterBarcode); setActiveFilterEdit(null); setFilterSubPage(null); setShowFilterPanel(true); }} className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-bold transition-all shadow-sm ${activeCount > 0 ? 'bg-teal-50 border-teal-300 text-teal-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                                <button onClick={() => { setTmpMarginSelected([...filterMarginPresets]); setTmpMarkupSelected([...filterMarkupPresets]); setTmpDiskonSelected([...filterDiskonSelected]); setTmpKategoriSelected([...filterKategoriSelected]); setTmpGolonganSelected([...filterGolonganSelected]); setTmpBarcodeSelected([...filterBarcodeSelected]); setActiveFilterEdit(null); setFilterSubPage(null); setShowFilterPanel(true); }} className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-bold transition-all shadow-sm ${activeCount > 0 ? 'bg-teal-50 border-teal-300 text-teal-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                                     <Icon name="sliders" className="text-sm" />
                                     <span>Filter</span>
                                     {activeCount > 0 && <span className="bg-teal-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{activeCount}</span>}
@@ -11497,17 +11507,25 @@
                     {showFilterPanel && (
                         <div className="fixed inset-0 bg-white z-[200] flex flex-col">
 
-                            {/* ── SUB-PAGE: Margin / Markup / Diskon / Kategori ── */}
-                            {['margin','markup','diskon','kategori'].includes(filterSubPage) && (() => {
+                            {/* ── SUB-PAGES ── */}
+                            {['margin','markup','diskon','kategori','golongan','barcode'].includes(filterSubPage) && (() => {
+                                // Golongan: preset dinamis dari items
+                                const golonganOptions = [...new Set(items.map(i => (i.golongan||i.group||'')).filter(Boolean))].sort();
+                                const GOLONGAN_PRESETS = [
+                                    { value: 'semua', label: 'Golongan' },
+                                    ...golonganOptions.map(v => ({ value: v, label: v }))
+                                ];
                                 const cfg = {
-                                    margin:   { presets: MARGIN_PRESETS,   selected: tmpMarginSelected,   setSelected: setTmpMarginSelected,   total: 6, title: 'Margin'   },
-                                    markup:   { presets: MARKUP_PRESETS,   selected: tmpMarkupSelected,   setSelected: setTmpMarkupSelected,   total: 6, title: 'Markup'   },
-                                    diskon:   { presets: DISKON_PRESETS,   selected: tmpDiskonSelected,   setSelected: setTmpDiskonSelected,   total: 3, title: 'Diskon'   },
-                                    kategori: { presets: KATEGORI_PRESETS, selected: tmpKategoriSelected, setSelected: setTmpKategoriSelected, total: 7, title: 'Kategori' },
+                                    margin:   { presets: MARGIN_PRESETS,   selected: tmpMarginSelected,   setSelected: setTmpMarginSelected,   title: 'Margin'   },
+                                    markup:   { presets: MARKUP_PRESETS,   selected: tmpMarkupSelected,   setSelected: setTmpMarkupSelected,   title: 'Markup'   },
+                                    diskon:   { presets: DISKON_PRESETS,   selected: tmpDiskonSelected,   setSelected: setTmpDiskonSelected,   title: 'Diskon'   },
+                                    kategori: { presets: KATEGORI_PRESETS, selected: tmpKategoriSelected, setSelected: setTmpKategoriSelected, title: 'Kategori' },
+                                    golongan: { presets: GOLONGAN_PRESETS, selected: tmpGolonganSelected, setSelected: setTmpGolonganSelected, title: 'Golongan' },
+                                    barcode:  { presets: BARCODE_PRESETS,  selected: tmpBarcodeSelected,  setSelected: setTmpBarcodeSelected,  title: 'Barcode'  },
                                 }[filterSubPage];
                                 const { presets, selected, setSelected, title } = cfg;
                                 const specificValues = presets.filter(x => x.value !== 'semua').map(x => x.value);
-                                const allChecked = specificValues.every(v => selected.includes(v));
+                                const allChecked = specificValues.length > 0 && specificValues.every(v => selected.includes(v));
                                 return (
                                     <div className="flex flex-col h-full">
                                         <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100">
@@ -11527,7 +11545,7 @@
                                                         const p = presets.find(x => x.value === v);
                                                         return (
                                                             <span key={v} className="flex items-center gap-1.5 bg-slate-100 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-full">
-                                                                {p?.label}
+                                                                {p?.label || v}
                                                                 <button onClick={() => setSelected(selected.filter(s => s !== v))} className="text-teal-600 hover:text-red-500 transition-colors ml-0.5">
                                                                     <Icon name="xmark" className="text-xs" />
                                                                 </button>
@@ -11571,19 +11589,19 @@
                                             <Icon name="xmark" className="text-base" />
                                             <span>Katalog</span>
                                         </button>
-                                        <button onClick={() => { setFilterMarginPresets([...tmpMarginSelected]); setFilterMarkupPresets([...tmpMarkupSelected]); setFilterDiskonSelected([...tmpDiskonSelected]); setFilterKategoriSelected([...tmpKategoriSelected]); setFilterGolongan(tmpGolongan); setFilterBarcode(tmpBarcode); setShowFilterPanel(false); }} className="px-5 py-1.5 bg-teal-700 hover:bg-teal-800 text-white text-sm font-bold rounded-lg transition-all active:scale-95 shadow-sm">
+                                        <button onClick={() => { setFilterMarginPresets([...tmpMarginSelected]); setFilterMarkupPresets([...tmpMarkupSelected]); setFilterDiskonSelected([...tmpDiskonSelected]); setFilterKategoriSelected([...tmpKategoriSelected]); setFilterGolonganSelected([...tmpGolonganSelected]); setFilterBarcodeSelected([...tmpBarcodeSelected]); setShowFilterPanel(false); }} className="px-5 py-1.5 bg-teal-700 hover:bg-teal-800 text-white text-sm font-bold rounded-lg transition-all active:scale-95 shadow-sm">
                                             Pasang
                                         </button>
                                     </div>
                                     <div className="flex-1 overflow-y-auto">
                                         <h1 className="text-2xl font-extrabold text-slate-900 px-4 pt-4 pb-3">Filter</h1>
                                         {[
-                                            { key: 'margin',   label: 'Margin',   subPage: true,  desc: tmpMarginSelected.length > 0 ? tmpMarginSelected.map(v => MARGIN_PRESETS.find(p=>p.value===v)?.label).filter(Boolean).join(', ') : null },
-                                            { key: 'markup',   label: 'Markup',   subPage: true,  desc: tmpMarkupSelected.length > 0 ? tmpMarkupSelected.map(v => MARKUP_PRESETS.find(p=>p.value===v)?.label).filter(Boolean).join(', ') : null },
-                                            { key: 'diskon',   label: 'Diskon',   subPage: true,  desc: tmpDiskonSelected.length > 0 ? tmpDiskonSelected.map(v => DISKON_PRESETS.find(p=>p.value===v)?.label).filter(Boolean).join(', ') : null },
-                                            { key: 'kategori', label: 'Kategori', subPage: true,  desc: tmpKategoriSelected.length > 0 ? tmpKategoriSelected.join(', ') : null },
-                                            { key: 'golongan', label: 'Golongan', subPage: false, desc: tmpGolongan || null },
-                                            { key: 'barcode',  label: 'Barcode',  subPage: false, desc: tmpBarcode !== 'semua' ? (tmpBarcode === 'ada' ? 'Ada barcode' : 'Tidak ada barcode') : null },
+                                            { key: 'margin',   label: 'Margin',   desc: tmpMarginSelected.length   > 0 ? tmpMarginSelected.map(v   => MARGIN_PRESETS.find(p=>p.value===v)?.label).filter(Boolean).join(', ')   : null },
+                                            { key: 'markup',   label: 'Markup',   desc: tmpMarkupSelected.length   > 0 ? tmpMarkupSelected.map(v   => MARKUP_PRESETS.find(p=>p.value===v)?.label).filter(Boolean).join(', ')   : null },
+                                            { key: 'diskon',   label: 'Diskon',   desc: tmpDiskonSelected.length   > 0 ? tmpDiskonSelected.map(v   => DISKON_PRESETS.find(p=>p.value===v)?.label).filter(Boolean).join(', ')   : null },
+                                            { key: 'kategori', label: 'Kategori', desc: tmpKategoriSelected.length > 0 ? tmpKategoriSelected.join(', ') : null },
+                                            { key: 'golongan', label: 'Golongan', desc: tmpGolonganSelected.length > 0 ? tmpGolonganSelected.join(', ') : null },
+                                            { key: 'barcode',  label: 'Barcode',  desc: tmpBarcodeSelected.length  > 0 ? tmpBarcodeSelected.map(v   => BARCODE_PRESETS.find(p=>p.value===v)?.label).filter(Boolean).join(', ')  : null },
                                         ].map(row => (
                                             <div key={row.key}>
                                                 <div className="flex items-center justify-between px-4 py-3">
@@ -11591,50 +11609,16 @@
                                                         <p className="text-sm font-semibold text-slate-800">{row.label}</p>
                                                         {row.desc && <p className="text-xs text-teal-600 mt-0.5 max-w-[200px] truncate">{row.desc}</p>}
                                                     </div>
-                                                    <button
-                                                        onClick={() => row.subPage ? setFilterSubPage(row.key) : setActiveFilterEdit(activeFilterEdit === row.key ? null : row.key)}
-                                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-teal-500 text-teal-600 text-xs font-semibold hover:bg-teal-50 transition-all active:scale-95"
-                                                    >
+                                                    <button onClick={() => setFilterSubPage(row.key)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-teal-500 text-teal-600 text-xs font-semibold hover:bg-teal-50 transition-all active:scale-95">
                                                         <span>Ubah</span>
                                                         <Icon name="pen" className="text-[10px]" />
                                                     </button>
                                                 </div>
-                                                {/* Inline edit untuk Golongan & Barcode */}
-                                                {!row.subPage && activeFilterEdit === row.key && (
-                                                    <div className="mx-4 mb-3 bg-slate-50 rounded-xl p-3 border border-slate-200">
-                                                        {(row.key === 'golongan') && (
-                                                            <div className="space-y-2">
-                                                                <input type="text" placeholder="Ketik golongan..." className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium outline-none focus:border-teal-400" value={tmpGolongan} onChange={e => setTmpGolongan(e.target.value)} />
-                                                                {(() => {
-                                                                    const suggestions = [...new Set(items.map(i => (i.golongan||i.group||'')).filter(Boolean))].sort();
-                                                                    return suggestions.length > 0 && (
-                                                                        <div className="flex flex-wrap gap-1.5 mt-1">
-                                                                            {suggestions.slice(0,10).map(s => (
-                                                                                <button key={s} onClick={() => setTmpGolongan(s)} className={`px-2 py-1 rounded-md text-[10px] font-semibold border transition-all ${tmpGolongan === s ? 'bg-teal-50 border-teal-300 text-teal-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>{s}</button>
-                                                                            ))}
-                                                                            <button onClick={() => setTmpGolongan('')} className="px-2 py-1 rounded-md text-[10px] font-semibold border border-slate-200 text-slate-400 hover:text-red-500 transition-all">Reset</button>
-                                                                        </div>
-                                                                    );
-                                                                })()}
-                                                            </div>
-                                                        )}
-                                                        {row.key === 'barcode' && (
-                                                            <div className="space-y-1.5">
-                                                                {[{v:'semua',l:'Semua'},{v:'ada',l:'Ada Barcode'},{v:'tidak',l:'Tidak Ada Barcode'}].map(opt => (
-                                                                    <button key={opt.v} onClick={() => setTmpBarcode(opt.v)} className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${tmpBarcode === opt.v ? 'bg-teal-50 border border-teal-300 text-teal-700' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
-                                                                        <span>{opt.l}</span>
-                                                                        {tmpBarcode === opt.v && <Icon name="check" className="text-teal-600" />}
-                                                                    </button>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
                                                 <div className="h-px bg-slate-100" />
                                             </div>
                                         ))}
                                         <div className="px-4 py-4">
-                                            <button onClick={() => { setTmpMarginSelected([]); setTmpMarkupSelected([]); setTmpDiskonSelected([]); setTmpKategoriSelected([]); setTmpGolongan(''); setTmpBarcode('semua'); setActiveFilterEdit(null); }} className="w-full py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-all">
+                                            <button onClick={() => { setTmpMarginSelected([]); setTmpMarkupSelected([]); setTmpDiskonSelected([]); setTmpKategoriSelected([]); setTmpGolonganSelected([]); setTmpBarcodeSelected([]); }} className="w-full py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-all">
                                                 Reset Semua Filter
                                             </button>
                                         </div>
