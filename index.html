@@ -11226,7 +11226,7 @@
                         return true;
                     });
                     const matchKategori = filterKategoriSelected.length === 0 ? true : filterKategoriSelected.some(v => (i.category || '').toLowerCase() === v.toLowerCase());
-                    const matchGolongan = filterGolonganSelected.length === 0 ? true : filterGolonganSelected.some(v => (i.golongan || i.group || '').toLowerCase() === v.toLowerCase());
+                    const matchGolongan = filterGolonganSelected.length === 0 ? true : filterGolonganSelected.some(v => (i.rack || '').split(',').map(r => r.trim()).includes(v));
                     const matchBarcode = filterBarcodeSelected.length === 0 || filterBarcodeSelected.length === 2 ? true : filterBarcodeSelected.some(v => {
                         const hasBarcode = !!(i.barcode && i.barcode !== '-');
                         if (v === 'ada')   return hasBarcode;
@@ -11509,11 +11509,10 @@
 
                             {/* ── SUB-PAGES ── */}
                             {['margin','markup','diskon','kategori','golongan','barcode'].includes(filterSubPage) && (() => {
-                                // Golongan: preset dinamis dari items
-                                const golonganOptions = [...new Set(items.map(i => (i.golongan||i.group||'')).filter(Boolean))].sort();
+                                // Golongan: preset dinamis dari nama rak
                                 const GOLONGAN_PRESETS = [
                                     { value: 'semua', label: 'Golongan' },
-                                    ...golonganOptions.map(v => ({ value: v, label: v }))
+                                    ...uniqueRacksData.map(r => ({ value: r.name, label: r.name }))
                                 ];
                                 const cfg = {
                                     margin:   { presets: MARGIN_PRESETS,   selected: tmpMarginSelected,   setSelected: setTmpMarginSelected,   title: 'Margin'   },
