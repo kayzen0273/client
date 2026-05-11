@@ -11554,7 +11554,54 @@
                                                 </div>
                                             )}
                                             {/* Options list */}
-                                            {presets.map((p) => {
+                                            {filterSubPage === 'golongan' ? (() => {
+                                                // Golongan: "Pilih Semua" full-width, lalu grid 2 kolom compact
+                                                const semuaPreset = presets.find(p => p.value === 'semua');
+                                                const otherPresets = presets.filter(p => p.value !== 'semua');
+                                                return (
+                                                    <div>
+                                                        {/* Baris Pilih Semua */}
+                                                        {semuaPreset && (
+                                                            <div>
+                                                                <button
+                                                                    onClick={() => setSelected(allChecked ? [] : [...specificValues])}
+                                                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50 transition-colors active:bg-slate-100"
+                                                                >
+                                                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${allChecked ? 'border-teal-600 bg-teal-600' : 'border-slate-300'}`}>
+                                                                        {allChecked && <Icon name="check" className="text-white text-[8px]" />}
+                                                                    </div>
+                                                                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Pilih Semua</span>
+                                                                </button>
+                                                                <div className="h-px bg-slate-100" />
+                                                            </div>
+                                                        )}
+                                                        {/* Grid 2 kolom untuk opsi golongan */}
+                                                        <div className="grid grid-cols-2 gap-1.5 px-3 py-2">
+                                                            {otherPresets.map((p) => {
+                                                                const isChecked = selected.includes(p.value);
+                                                                return (
+                                                                    <button
+                                                                        key={p.value}
+                                                                        onClick={() => setSelected(togglePreset(selected, p.value))}
+                                                                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-all active:scale-95 border ${isChecked ? 'bg-teal-50 border-teal-300 text-teal-800' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'}`}
+                                                                    >
+                                                                        <div className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${isChecked ? 'border-teal-600 bg-teal-600' : 'border-slate-300'}`}>
+                                                                            {isChecked && <Icon name="check" className="text-white text-[7px]" />}
+                                                                        </div>
+                                                                        <span className="text-xs font-semibold truncate leading-tight">{p.label}</span>
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                            {otherPresets.length === 0 && (
+                                                                <div className="col-span-2 flex flex-col items-center justify-center py-8 text-slate-400">
+                                                                    <Icon name="box-open" className="text-2xl mb-2 opacity-40" />
+                                                                    <p className="text-xs">Belum ada golongan/rak</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })() : presets.map((p) => {
                                                 const isSemua_ = p.value === 'semua';
                                                 const isChecked = isSemua_ ? allChecked : selected.includes(p.value);
                                                 return (
