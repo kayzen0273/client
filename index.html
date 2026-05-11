@@ -15186,38 +15186,36 @@
 
             return (
                 <div style={{maxWidth:'480px',margin:'0 auto'}}>
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-4">
-                        <h1 className="text-2xl font-black text-slate-800">Stok</h1>
-                        <button
-                            style={{display:'flex',alignItems:'center',gap:'6px',padding:'7px 14px',borderRadius:'10px',border:'1.5px solid #e2e8f0',background:'#fff',color:'#475569',fontSize:'13px',fontWeight:700,cursor:'pointer',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}
-                        >
+                    {/* Header + Info Stok Mati & Konsinyasi sejajar */}
+                    <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'20px'}}>
+                        {/* Judul */}
+                        <h1 className="text-2xl font-black text-slate-800" style={{flexShrink:0}}>Stok</h1>
+
+                        {/* Stok Mati */}
+                        <div style={{flex:1,background:'#fff',borderRadius:'12px',padding:'8px 12px'}}>
+                            <div style={{display:'flex',alignItems:'center',gap:'4px',marginBottom:'2px'}}>
+                                <span style={{fontSize:'11px',fontWeight:700,color:'#334155',borderBottom:'1.5px dashed #94a3b8',paddingBottom:'1px'}}>Stok mati</span>
+                                <span style={{width:'13px',height:'13px',borderRadius:'50%',border:'1.5px solid #94a3b8',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:'8px',color:'#64748b',fontWeight:900,cursor:'pointer',flexShrink:0}}>?</span>
+                            </div>
+                            <div style={{fontSize:'18px',fontWeight:900,color:'#1e293b',lineHeight:1.1,marginBottom:'3px'}}>{stokMatiItems.length} <span style={{fontSize:'11px',fontWeight:700}}>barang</span></div>
+                            <a href="#" style={{color:'#0d9488',fontSize:'10px',fontWeight:700,textDecoration:'none',display:'flex',alignItems:'center',gap:'3px'}}>
+                                Lihat detail <Icon name="arrow-right" style={{fontSize:'9px'}} />
+                            </a>
+                        </div>
+
+                        {/* Nilai Konsinyasi */}
+                        <div style={{flex:1,background:'#fff',borderRadius:'12px',padding:'8px 12px'}}>
+                            <div style={{fontSize:'11px',fontWeight:700,color:'#334155',marginBottom:'2px'}}>Total nilai stok konsinyasi</div>
+                            <div style={{fontSize:'16px',fontWeight:900,color:'#1e293b',lineHeight:1.1,marginBottom:'3px'}}>{formatRupiahLocal(totalNilaiKonsinyasi)}</div>
+                            <a href="#" style={{color:'#0d9488',fontSize:'10px',fontWeight:700,textDecoration:'none',display:'flex',alignItems:'center',gap:'3px'}}>
+                                Lihat detail <Icon name="arrow-right" style={{fontSize:'9px'}} />
+                            </a>
+                        </div>
+
+                        {/* Tombol Unduh */}
+                        <button style={{display:'flex',alignItems:'center',gap:'6px',padding:'7px 14px',borderRadius:'10px',border:'1.5px solid #e2e8f0',background:'#fff',color:'#475569',fontSize:'13px',fontWeight:700,cursor:'pointer',boxShadow:'0 1px 4px rgba(0,0,0,0.06)',flexShrink:0}}>
                             <Icon name="download" className="text-sm" /> Unduh
                         </button>
-                    </div>
-
-                    {/* Stok Mati & Konsinyasi - side by side */}
-                    <div style={{display:'flex',gap:'10px',marginBottom:'20px'}}>
-                        {/* Stok Mati Card */}
-                        <div style={{flex:1,background:'#fff',borderRadius:'14px',padding:'14px 16px'}}>
-                            <div style={{display:'flex',alignItems:'center',gap:'6px',marginBottom:'4px'}}>
-                                <span style={{fontSize:'12px',fontWeight:700,color:'#334155',borderBottom:'1.5px dashed #94a3b8',paddingBottom:'1px'}}>Stok mati</span>
-                                <span style={{width:'15px',height:'15px',borderRadius:'50%',border:'1.5px solid #94a3b8',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:'9px',color:'#64748b',fontWeight:900,cursor:'pointer',flexShrink:0}}>?</span>
-                            </div>
-                            <div style={{fontSize:'26px',fontWeight:900,color:'#1e293b',lineHeight:1.1,marginBottom:'6px'}}>{stokMatiItems.length} <span style={{fontSize:'14px',fontWeight:700}}>barang</span></div>
-                            <a href="#" style={{color:'#0d9488',fontSize:'12px',fontWeight:700,textDecoration:'none',display:'flex',alignItems:'center',gap:'4px'}}>
-                                Lihat detail <Icon name="arrow-right" className="text-xs" />
-                            </a>
-                        </div>
-
-                        {/* Nilai Konsinyasi Card */}
-                        <div style={{flex:1,background:'#fff',borderRadius:'14px',padding:'14px 16px'}}>
-                            <div style={{fontSize:'12px',fontWeight:700,color:'#334155',marginBottom:'4px'}}>Total nilai stok konsinyasi</div>
-                            <div style={{fontSize:'22px',fontWeight:900,color:'#1e293b',lineHeight:1.1,marginBottom:'6px'}}>{formatRupiahLocal(totalNilaiKonsinyasi)}</div>
-                            <a href="#" style={{color:'#0d9488',fontSize:'12px',fontWeight:700,textDecoration:'none',display:'flex',alignItems:'center',gap:'4px'}}>
-                                Lihat detail <Icon name="arrow-right" className="text-xs" />
-                            </a>
-                        </div>
                     </div>
 
                     {/* Search */}
