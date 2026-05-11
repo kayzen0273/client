@@ -11091,6 +11091,381 @@
             );
         };
 
+        // ─── STOK VIEW ───────────────────────────────────────────────────────────
+        const StokView = ({ items, settings, currentProfile }) => {
+            const [search, setSearch] = React.useState('');
+            const [sortBy, setSortBy] = React.useState('name_asc');
+            const [selectedIds, setSelectedIds] = React.useState([]);
+            const [showSortDropdown, setShowSortDropdown] = React.useState(false);
+            const [showFilterModal, setShowFilterModal] = React.useState(false);
+            const [filterPriority, setFilterPriority] = React.useState('all');
+            const [showStokMatiDetail, setShowStokMatiDetail] = React.useState(false);
+            const [showKonsinyasiDetail, setShowKonsinyasiDetail] = React.useState(false);
+            const [selectedItem, setSelectedItem] = React.useState(null);
+
+            const storeItems = React.useMemo(() => {
+                if (!currentProfile || currentProfile.id === 'all_stores') return items;
+                return items;
+            }, [items, currentProfile]);
+
+            // Stok mati: items with qty <= 0 (tidak ada stok fisik) atau item yang sangat jarang terjual
+            const stokMatiItems = React.useMemo(() => storeItems.filter(i => safeNumber(i.qty) <= 0), [storeItems]);
+
+            // Konsinyasi items
+            const konsinyasiItems = React.useMemo(() => storeItems.filter(i => i.isKonsinyasi), [storeItems]);
+            const totalNilaiKonsinyasi = React.useMemo(() =>
+                konsinyasiItems.reduce((s, i) => s + safeNumber(i.costPrice) * safeNumber(i.qty), 0),
+                [konsinyasiItems]);
+
+            const getPriority = (item) => {
+                const qty = safeNumber(item.qty);
+                const minStock = safeNumber(item.minStock) || 5;
+                if (qty <= 0) return { label: 'Stok mati', type: 'dead' };
+                if (qty <= minStock) return { label: 'Rendah', code: 'C', type: 'low' };
+                if (qty <= minStock * 3) return { label: 'Sedang', code: 'B', type: 'med' };
+                return { label: 'Tinggi', code: 'A', type: 'high' };
+            };
+
+            const formatExpDate = (dateStr) => {
+                if (!dateStr) return '-';
+                try {
+                    const d = new Date(dateStr);
+                    const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+                    return `${d.getFullYear()} ${months[d.getMonth()]} ${String(d.getDate()).padStart(2,'0')}`;
+                } catch(e) { return dateStr; }
+            };
+
+            const isNearExpiry = (dateStr) => {
+                if (!dateStr) return false;
+                const days = getDaysRemaining(dateStr);
+                return days !== null && days <= 90;
+            };
+
+            const sortOptions = [
+                { value: 'name_asc', label: 'Nama A-Z' },
+                { value: 'name_desc', label: 'Nama Z-A' },
+                { value: 'qty_asc', label: 'Stok Terendah' },
+                { value: 'qty_desc', label: 'Stok Tertinggi' },
+                { value: 'exp_asc', label: 'ED Terdekat' },
+            ];
+
+            const displayItems = React.useMemo(() => {
+                let result = storeItems.filter(i =>
+                    i.name && i.name.toLowerCase().includes(search.toLowerCase())
+                );
+                if (filterPriority !== 'all') {
+                    result = result.filter(i => {
+                        const p = getPriority(i);
+                        return p.type === filterPriority;
+                    });
+                }
+                if (sortBy === 'name_asc') result.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                else if (sortBy === 'name_desc') result.sort((a, b) => (b.name || '').localeCompare(a.name || ''));
+                else if (sortBy === 'qty_asc') result.sort((a, b) => safeNumber(a.qty) - safeNumber(b.qty));
+                else if (sortBy === 'qty_desc') result.sort((a, b) => safeNumber(b.qty) - safeNumber(a.qty));
+                else if (sortBy === 'exp_asc') result.sort((a, b) => {
+                    if (!a.exp && !b.exp) return 0;
+                    if (!a.exp) return 1;
+                    if (!b.exp) return -1;
+                    return new Date(a.exp) - new Date(b.exp);
+                });
+                return result;
+            }, [storeItems, search, sortBy, filterPriority]);
+
+            const allChecked = displayItems.length > 0 && selectedIds.length === displayItems.length;
+            const toggleAll = () => {
+                if (allChecked) setSelectedIds([]);
+                else setSelectedIds(displayItems.map(i => i.id));
+            };
+            const toggleOne = (id) => {
+                setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+            };
+
+            const priorityBadge = (item) => {
+                const p = getPriority(item);
+                if (p.type === 'dead') return (
+                    <span style={{display:'flex',alignItems:'center',gap:'3px',color:'#6b7280',fontSize:'11px',fontWeight:600}}>
+                        <span style={{width:'18px',height:'18px',borderRadius:'50%',background:'#e5e7eb',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                            <i className="fa-solid fa-skull" style={{fontSize:'8px',color:'#6b7280'}}></i>
+                        </span>
+                        Stok mati
+                    </span>
+                );
+                const colors = { low: '#7c3aed', med: '#7c3aed', high: '#059669' };
+                const bgColors = { low: '#ede9fe', med: '#ede9fe', high: '#d1fae5' };
+                return (
+                    <span style={{display:'flex',alignItems:'center',gap:'3px',color:colors[p.type],fontSize:'11px',fontWeight:600}}>
+                        <span style={{width:'18px',height:'18px',borderRadius:'50%',background:bgColors[p.type],border:`1.5px solid ${colors[p.type]}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'9px',fontWeight:800,color:colors[p.type]}}>
+                            {p.code}
+                        </span>
+                        {p.label}
+                    </span>
+                );
+            };
+
+            return (
+                <div style={{background:'#f8fafc',minHeight:'100vh'}}>
+                    {/* Header */}
+                    <div style={{background:'#fff',padding:'16px 16px 12px',borderBottom:'1px solid #e2e8f0'}}>
+                        <h1 style={{fontSize:'28px',fontWeight:800,color:'#0f172a',margin:0,lineHeight:1.1}}>Stok</h1>
+                    </div>
+
+                    {/* Summary Cards */}
+                    <div style={{padding:'12px 16px 0'}}>
+                        {/* Stok Mati */}
+                        <div style={{background:'#fff',borderRadius:'14px',padding:'14px 16px',marginBottom:'10px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
+                            <div style={{display:'flex',alignItems:'center',gap:'6px',marginBottom:'2px'}}>
+                                <span style={{fontSize:'13px',fontWeight:700,color:'#334155'}}>Stok mati</span>
+                                <span style={{width:'16px',height:'16px',borderRadius:'50%',background:'#e2e8f0',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:'10px',fontWeight:800,color:'#64748b'}} title="Barang yang stoknya habis (0)">?</span>
+                            </div>
+                            <div style={{fontSize:'26px',fontWeight:800,color:'#0f172a',lineHeight:1.2,marginBottom:'4px'}}>
+                                {stokMatiItems.length.toLocaleString('id-ID')} barang
+                            </div>
+                            <button
+                                onClick={() => setShowStokMatiDetail(!showStokMatiDetail)}
+                                style={{background:'none',border:'none',padding:0,cursor:'pointer',color:'#0d9488',fontWeight:700,fontSize:'13px',display:'flex',alignItems:'center',gap:'4px'}}
+                            >
+                                Lihat detail <i className="fa-solid fa-arrow-right" style={{fontSize:'10px'}}></i>
+                            </button>
+                            {showStokMatiDetail && stokMatiItems.length > 0 && (
+                                <div style={{marginTop:'10px',borderTop:'1px solid #f1f5f9',paddingTop:'8px'}}>
+                                    {stokMatiItems.slice(0, 8).map((item, idx) => (
+                                        <div key={item.id} style={{display:'flex',justifyContent:'space-between',padding:'4px 0',borderBottom:'1px solid #f8fafc',fontSize:'12px'}}>
+                                            <span style={{color:'#475569',fontWeight:600,flex:1,marginRight:'8px'}} className="truncate">{item.name}</span>
+                                            <span style={{color:'#94a3b8',fontWeight:500,flexShrink:0}}>Stok: {safeNumber(item.qty)}</span>
+                                        </div>
+                                    ))}
+                                    {stokMatiItems.length > 8 && <p style={{fontSize:'11px',color:'#94a3b8',marginTop:'4px',fontWeight:500}}>...dan {stokMatiItems.length - 8} barang lainnya</p>}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Nilai Stok Konsinyasi */}
+                        <div style={{background:'#fff',borderRadius:'14px',padding:'14px 16px',marginBottom:'10px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
+                            <div style={{fontSize:'13px',fontWeight:700,color:'#334155',marginBottom:'2px'}}>Total nilai stok konsinyasi</div>
+                            <div style={{fontSize:'26px',fontWeight:800,color:'#0f172a',lineHeight:1.2,marginBottom:'4px'}}>
+                                {formatRupiah(totalNilaiKonsinyasi)}
+                            </div>
+                            <button
+                                onClick={() => setShowKonsinyasiDetail(!showKonsinyasiDetail)}
+                                style={{background:'none',border:'none',padding:0,cursor:'pointer',color:'#0d9488',fontWeight:700,fontSize:'13px',display:'flex',alignItems:'center',gap:'4px'}}
+                            >
+                                Lihat detail <i className="fa-solid fa-arrow-right" style={{fontSize:'10px'}}></i>
+                            </button>
+                            {showKonsinyasiDetail && konsinyasiItems.length > 0 && (
+                                <div style={{marginTop:'10px',borderTop:'1px solid #f1f5f9',paddingTop:'8px'}}>
+                                    {konsinyasiItems.slice(0, 8).map((item) => (
+                                        <div key={item.id} style={{display:'flex',justifyContent:'space-between',padding:'4px 0',borderBottom:'1px solid #f8fafc',fontSize:'12px'}}>
+                                            <span style={{color:'#475569',fontWeight:600,flex:1,marginRight:'8px'}} className="truncate">{item.name}</span>
+                                            <span style={{color:'#0d9488',fontWeight:700,flexShrink:0}}>{formatRupiah(safeNumber(item.costPrice) * safeNumber(item.qty))}</span>
+                                        </div>
+                                    ))}
+                                    {konsinyasiItems.length > 8 && <p style={{fontSize:'11px',color:'#94a3b8',marginTop:'4px',fontWeight:500}}>...dan {konsinyasiItems.length - 8} barang lainnya</p>}
+                                    {konsinyasiItems.length === 0 && <p style={{fontSize:'12px',color:'#94a3b8',marginTop:'4px'}}>Tidak ada barang konsinyasi.</p>}
+                                </div>
+                            )}
+                            {showKonsinyasiDetail && konsinyasiItems.length === 0 && (
+                                <div style={{marginTop:'10px',borderTop:'1px solid #f1f5f9',paddingTop:'8px'}}>
+                                    <p style={{fontSize:'12px',color:'#94a3b8'}}>Tidak ada barang konsinyasi.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Search + Filter + Sort */}
+                    <div style={{padding:'4px 16px 10px'}}>
+                        {/* Search */}
+                        <div style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:'10px',display:'flex',alignItems:'center',gap:'8px',padding:'0 12px',height:'44px',marginBottom:'10px'}}>
+                            <i className="fa-solid fa-magnifying-glass" style={{color:'#94a3b8',fontSize:'14px',flexShrink:0}}></i>
+                            <input
+                                type="text"
+                                placeholder="Cari barang"
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                style={{flex:1,border:'none',outline:'none',fontSize:'14px',color:'#334155',background:'transparent',fontFamily:'inherit'}}
+                            />
+                            <button
+                                onClick={() => {}}
+                                style={{background:'none',border:'none',color:'#0d9488',fontWeight:700,fontSize:'14px',cursor:'pointer',padding:'0 4px',flexShrink:0}}
+                            >Cari</button>
+                        </div>
+
+                        {/* Filter & Sort Row */}
+                        <div style={{display:'flex',gap:'8px',position:'relative'}}>
+                            {/* Filter */}
+                            <button
+                                onClick={() => setShowFilterModal(!showFilterModal)}
+                                style={{flex:1,height:'40px',border:'1.5px solid #e2e8f0',borderRadius:'10px',background:'#fff',display:'flex',alignItems:'center',justifyContent:'center',gap:'6px',cursor:'pointer',color: filterPriority !== 'all' ? '#0d9488' : '#334155',fontWeight:600,fontSize:'13px', borderColor: filterPriority !== 'all' ? '#0d9488' : '#e2e8f0'}}
+                            >
+                                <i className="fa-solid fa-sliders" style={{fontSize:'12px'}}></i>
+                                Filter {filterPriority !== 'all' ? `(1)` : ''}
+                            </button>
+
+                            {/* Sort */}
+                            <div style={{flex:1,position:'relative'}}>
+                                <button
+                                    onClick={() => setShowSortDropdown(!showSortDropdown)}
+                                    style={{width:'100%',height:'40px',border:'1.5px solid #e2e8f0',borderRadius:'10px',background:'#fff',display:'flex',alignItems:'center',justifyContent:'center',gap:'6px',cursor:'pointer',color:'#334155',fontWeight:600,fontSize:'13px'}}
+                                >
+                                    <i className="fa-solid fa-arrow-up-wide-short" style={{fontSize:'12px'}}></i>
+                                    {sortOptions.find(s => s.value === sortBy)?.label}
+                                    <i className="fa-solid fa-chevron-down" style={{fontSize:'10px',marginLeft:'2px'}}></i>
+                                </button>
+                                {showSortDropdown && (
+                                    <div style={{position:'absolute',top:'44px',right:0,background:'#fff',borderRadius:'12px',boxShadow:'0 8px 24px rgba(0,0,0,0.12)',zIndex:50,minWidth:'160px',overflow:'hidden',border:'1px solid #e2e8f0'}}>
+                                        {sortOptions.map(opt => (
+                                            <button
+                                                key={opt.value}
+                                                onClick={() => { setSortBy(opt.value); setShowSortDropdown(false); }}
+                                                style={{width:'100%',padding:'10px 14px',background: sortBy === opt.value ? '#f0fdfa' : '#fff',border:'none',cursor:'pointer',textAlign:'left',fontSize:'13px',fontWeight: sortBy === opt.value ? 700 : 500,color: sortBy === opt.value ? '#0d9488' : '#475569',borderBottom:'1px solid #f8fafc'}}
+                                            >
+                                                {opt.label}
+                                                {sortBy === opt.value && <i className="fa-solid fa-check" style={{float:'right',color:'#0d9488'}}></i>}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Filter Modal */}
+                        {showFilterModal && (
+                            <div style={{position:'fixed',inset:0,zIndex:100,background:'rgba(0,0,0,0.4)'}} onClick={() => setShowFilterModal(false)}>
+                                <div style={{position:'absolute',bottom:0,left:0,right:0,background:'#fff',borderRadius:'20px 20px 0 0',padding:'20px 16px 32px'}} onClick={e => e.stopPropagation()}>
+                                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'16px'}}>
+                                        <h3 style={{margin:0,fontSize:'16px',fontWeight:800,color:'#0f172a'}}>Filter Prioritas</h3>
+                                        <button onClick={() => setShowFilterModal(false)} style={{background:'#f1f5f9',border:'none',borderRadius:'50%',width:'28px',height:'28px',cursor:'pointer',color:'#64748b',fontSize:'12px'}}>✕</button>
+                                    </div>
+                                    {[
+                                        {value:'all',label:'Semua'},
+                                        {value:'dead',label:'Stok Mati'},
+                                        {value:'low',label:'Rendah (C)'},
+                                        {value:'med',label:'Sedang (B)'},
+                                        {value:'high',label:'Tinggi (A)'},
+                                    ].map(opt => (
+                                        <button
+                                            key={opt.value}
+                                            onClick={() => { setFilterPriority(opt.value); setShowFilterModal(false); }}
+                                            style={{width:'100%',padding:'12px 14px',background: filterPriority === opt.value ? '#f0fdfa' : '#f8fafc',border: filterPriority === opt.value ? '1.5px solid #0d9488' : '1.5px solid #e2e8f0',borderRadius:'10px',cursor:'pointer',textAlign:'left',fontSize:'13px',fontWeight: filterPriority === opt.value ? 700 : 500,color: filterPriority === opt.value ? '#0d9488' : '#475569',marginBottom:'6px'}}
+                                        >
+                                            {opt.label}
+                                            {filterPriority === opt.value && <i className="fa-solid fa-check" style={{float:'right'}}></i>}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* List Header */}
+                    <div style={{padding:'0 16px',marginBottom:'2px'}}>
+                        <div style={{display:'flex',alignItems:'center',gap:'10px',padding:'8px 0',borderBottom:'2px solid #e2e8f0'}}>
+                            <div style={{width:'20px',flexShrink:0}}>
+                                <input
+                                    type="checkbox"
+                                    checked={allChecked}
+                                    onChange={toggleAll}
+                                    style={{width:'16px',height:'16px',accentColor:'#0d9488',cursor:'pointer'}}
+                                />
+                            </div>
+                            <div style={{flex:1,fontSize:'12px',fontWeight:800,color:'#475569',textTransform:'uppercase',letterSpacing:'.5px'}}>Barang ({displayItems.length})</div>
+                            <div style={{fontSize:'12px',fontWeight:800,color:'#475569',textTransform:'uppercase',letterSpacing:'.5px'}}>Stok</div>
+                        </div>
+                    </div>
+
+                    {/* Item List */}
+                    <div style={{padding:'0 16px 80px'}}>
+                        {displayItems.length === 0 && (
+                            <div style={{textAlign:'center',padding:'40px 0',color:'#94a3b8'}}>
+                                <i className="fa-solid fa-box-open" style={{fontSize:'32px',marginBottom:'8px',display:'block'}}></i>
+                                <p style={{fontSize:'13px',fontWeight:600}}>Barang tidak ditemukan</p>
+                            </div>
+                        )}
+                        {displayItems.map((item, idx) => {
+                            const qty = safeNumber(item.qty);
+                            const isChecked = selectedIds.includes(item.id);
+                            const nearExp = item.exp && isNearExpiry(item.exp);
+                            const priority = getPriority(item);
+
+                            return (
+                                <div
+                                    key={item.id}
+                                    style={{
+                                        borderBottom:'1px solid #f1f5f9',
+                                        padding:'12px 0',
+                                        display:'flex',
+                                        alignItems:'flex-start',
+                                        gap:'10px',
+                                        background: isChecked ? '#f0fdfa' : 'transparent',
+                                        transition:'background .15s',
+                                    }}
+                                    onClick={() => setSelectedItem(selectedItem?.id === item.id ? null : item)}
+                                >
+                                    {/* Checkbox */}
+                                    <div style={{paddingTop:'2px',flexShrink:0}} onClick={e => { e.stopPropagation(); toggleOne(item.id); }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={isChecked}
+                                            onChange={() => toggleOne(item.id)}
+                                            style={{width:'16px',height:'16px',accentColor:'#0d9488',cursor:'pointer'}}
+                                        />
+                                    </div>
+
+                                    {/* Nomor */}
+                                    <div style={{paddingTop:'2px',flexShrink:0,minWidth:'20px',fontSize:'13px',color:'#94a3b8',fontWeight:600}}>{idx + 1}</div>
+
+                                    {/* Info */}
+                                    <div style={{flex:1,minWidth:0}}>
+                                        <div style={{fontSize:'14px',fontWeight:700,color:'#0d9488',marginBottom:'6px',lineHeight:1.3}}>{item.name}</div>
+                                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4px'}}>
+                                            <div>
+                                                <div style={{fontSize:'10px',color:'#94a3b8',fontWeight:600,marginBottom:'1px'}}>ED terdekat</div>
+                                                <div style={{fontSize:'12px',fontWeight:700,color: nearExp ? '#ef4444' : '#334155'}}>{formatExpDate(item.exp)}</div>
+                                            </div>
+                                            <div>
+                                                <div style={{fontSize:'10px',color:'#94a3b8',fontWeight:600,marginBottom:'1px'}}>Prioritas</div>
+                                                {priorityBadge(item)}
+                                            </div>
+                                        </div>
+                                        {/* Expanded detail */}
+                                        {selectedItem?.id === item.id && (
+                                            <div style={{marginTop:'10px',padding:'10px',background:'#f8fafc',borderRadius:'10px',fontSize:'12px',color:'#475569'}}>
+                                                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px'}}>
+                                                    <div><span style={{color:'#94a3b8',fontWeight:600}}>Satuan: </span><span style={{fontWeight:700}}>{item.unit || '-'}</span></div>
+                                                    <div><span style={{color:'#94a3b8',fontWeight:600}}>Rak: </span><span style={{fontWeight:700}}>{item.rack || '-'}</span></div>
+                                                    <div><span style={{color:'#94a3b8',fontWeight:600}}>Min. Stok: </span><span style={{fontWeight:700}}>{item.minStock || '-'}</span></div>
+                                                    <div><span style={{color:'#94a3b8',fontWeight:600}}>Harga jual: </span><span style={{fontWeight:700}}>{formatRupiah(item.price)}</span></div>
+                                                    <div><span style={{color:'#94a3b8',fontWeight:600}}>Harga beli: </span><span style={{fontWeight:700}}>{item.costPrice ? formatRupiah(item.costPrice) : '-'}</span></div>
+                                                    {item.isKonsinyasi && <div><span style={{background:'#fdf4ff',color:'#a21caf',fontSize:'10px',fontWeight:800,padding:'2px 6px',borderRadius:'99px',border:'1px solid #f0abfc'}}>Konsinyasi</span></div>}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Stok + alert */}
+                                    <div style={{flexShrink:0,display:'flex',alignItems:'center',gap:'4px',paddingTop:'2px'}}>
+                                        <span style={{fontSize:'16px',fontWeight:800,color: qty <= 0 ? '#ef4444' : qty <= (safeNumber(item.minStock) || 5) ? '#f59e0b' : '#0f172a'}}>{qty}</span>
+                                        {nearExp && <i className="fa-solid fa-circle-exclamation" style={{color:'#ef4444',fontSize:'13px'}} title="Mendekati kadaluarsa"></i>}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Bottom action bar when items selected */}
+                    {selectedIds.length > 0 && (
+                        <div style={{position:'fixed',bottom:0,left:0,right:0,background:'#fff',borderTop:'1.5px solid #e2e8f0',padding:'12px 16px',display:'flex',alignItems:'center',gap:'8px',zIndex:40,boxShadow:'0 -4px 16px rgba(0,0,0,0.08)'}}>
+                            <span style={{flex:1,fontSize:'13px',fontWeight:700,color:'#334155'}}>{selectedIds.length} dipilih</span>
+                            <button onClick={() => setSelectedIds([])} style={{padding:'8px 16px',borderRadius:'10px',border:'1.5px solid #e2e8f0',background:'#fff',color:'#64748b',fontWeight:700,fontSize:'13px',cursor:'pointer'}}>Batal</button>
+                        </div>
+                    )}
+
+                    {/* Overlay to close sort dropdown */}
+                    {showSortDropdown && <div style={{position:'fixed',inset:0,zIndex:49}} onClick={() => setShowSortDropdown(false)}></div>}
+                </div>
+            );
+        };
+
         const ListView = ({ items, searchQuery, setSearchQuery, onEdit, onDelete, onDeleteRack, showOnlyLowStock, setShowOnlyLowStock, selectedRacks, setSelectedRacks, uniqueRacksData, onCopySuccess, loading, settings, currentProfile, readOnly, isOwner, onNavigateToPurchases, onNavigateToHistory, returnDetailItem, onClearReturnDetailItem, returnInitialTab }) => {
             const [isRackDropdownOpen, setIsRackDropdownOpen] = useState(false);
             const [rackSearch, setRackSearch] = useState('');
@@ -16414,7 +16789,7 @@
             const handleSaveSettings = async (newSettings) => { if(!user) return; setSubmitting(true); try { const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'settings', 'global'); await window.setDoc(docRef, newSettings); showToast("Pengaturan disimpan"); } catch(error) { console.error(error); showToast("Gagal simpan pengaturan", "error"); } finally { setSubmitting(false); } };
             const handleDelete = async () => { if (!deleteModal.item || !user) return; try { const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', deleteModal.item.id); await window.deleteDoc(docRef); showToast("Barang dihapus (dari semua toko)"); } catch (error) { showToast("Gagal menghapus", "error"); } finally { setDeleteModal({ show: false, item: null }); } };
             const handleConfirmDeleteRack = async () => { if (!deleteRackModal.rackName || !user) return; const rackName = deleteRackModal.rackName; try { const batch = window.writeBatch(window.db); const itemsToUpdate = inventoryData.filter(item => item.rack && item.rack.includes(rackName)); if (itemsToUpdate.length === 0) { showToast("Tidak ada item di rak ini"); setDeleteRackModal({ show: false, rackName: null }); return; } itemsToUpdate.forEach(item => { const newRacks = item.rack.split(',').map(r => r.trim()).filter(r => r !== rackName); const newRackString = newRacks.length > 0 ? newRacks.join(', ') : '-'; const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', item.id); batch.update(docRef, { rack: newRackString }); }); await batch.commit(); showToast(`Rak "${rackName}" berhasil dihapus`); setSelectedRacks([]); } catch (err) { console.error("Failed delete rack", err); showToast("Gagal menghapus rak", "error"); } finally { setDeleteRackModal({ show: false, rackName: null }); } };
-            const handleNavClick = (tabId, event) => { setActiveTab(tabId); if (tabId !== 'list') setShowOnlyLowStock(false); setIsSidebarOpen(false); if (['cashier','history','rekap_barang'].includes(tabId)) setKasirDropdownOpen(true); else setKasirDropdownOpen(false); if (['list','stock_opname','add','import','transfer_barang'].includes(tabId)) setBarangDropdownOpen(true); else setBarangDropdownOpen(false); if (['purchases'].includes(tabId)) setPembelianDropdownOpen(true); else setPembelianDropdownOpen(false); };
+            const handleNavClick = (tabId, event) => { setActiveTab(tabId); if (tabId !== 'list') setShowOnlyLowStock(false); setIsSidebarOpen(false); if (['cashier','history','rekap_barang'].includes(tabId)) setKasirDropdownOpen(true); else setKasirDropdownOpen(false); if (['list','stock_opname','add','import','transfer_barang','stok_view'].includes(tabId)) setBarangDropdownOpen(true); else setBarangDropdownOpen(false); if (['purchases'].includes(tabId)) setPembelianDropdownOpen(true); else setPembelianDropdownOpen(false); };
             
             const handleLogout = () => {
                 clearSession();
@@ -16588,6 +16963,7 @@
                                     if (menu.id === 'list') {
                                         const barangSubItems = [
                                             { id: 'list',            label: 'Stok Barang',    icon: 'boxes-stacked',  showKey: 'showMenuStock',         enableKey: 'enableStock' },
+                                            { id: 'stok_view',       label: 'Stok',           icon: 'chart-bar',      showKey: 'showMenuStock',         enableKey: 'enableStock' },
                                             { id: 'stock_opname',    label: 'Stock Opname',   icon: 'clipboard-check',showKey: 'showMenuStockOpname',    enableKey: 'enableStockOpname' },
                                             { id: 'add',             label: 'Input Manual',   icon: 'pen-to-square',  showKey: 'showMenuAdd',            enableKey: 'enableInputManual' },
                                             { id: 'import',          label: 'Import Masal',   icon: 'file-import',    showKey: 'showMenuImport',         enableKey: 'enableImport' },
@@ -16956,6 +17332,7 @@
                         {activeTab === 'rekap_barang' && (<RekapBarangView user={user} currentProfile={currentProfile} settings={settingsData} />)}
                         {activeTab === 'purchases' && (<PurchaseView user={user} showToast={showToast} items={inventoryData} currentProfile={currentProfile} settings={settingsData} readOnly={menuItems.find(m=>m.id==='purchases')?.readOnly} authSession={authSession} defaultOpenPurchaseId={pendingPurchaseId} onClearPendingPurchase={() => setPendingPurchaseId(null)} onBackFromDetail={() => setActiveTab('list')} />)}
                         {activeTab === 'cashbook' && (<CashBookView user={user} currentProfile={currentProfile} showToast={showToast} readOnly={menuItems.find(m=>m.id==='cashbook')?.readOnly} />)}
+                        {activeTab === 'stok_view' && (<StokView items={inventoryData} settings={settingsData} currentProfile={currentProfile} />)}
                         {activeTab === 'list' && (<ListView items={inventoryData} loading={loading} settings={settingsData} searchQuery={searchQuery} setSearchQuery={setSearchQuery} showOnlyLowStock={showOnlyLowStock} setShowOnlyLowStock={setShowOnlyLowStock} selectedRacks={selectedRacks} setSelectedRacks={setSelectedRacks} uniqueRacksData={uniqueRacksData} onCopySuccess={showToast} onEdit={(item) => { setFormData({...item}); setEditingItem(item); setActiveTab('add'); }} onDelete={(item) => setDeleteModal({ show: true, item: item })} onDeleteRack={(rackName) => setDeleteRackModal({ show: true, rackName })} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='list')?.readOnly} isOwner={isOwner} onNavigateToPurchases={(purchaseId, returnItem) => { setPendingPurchaseId(purchaseId); if (returnItem) { setReturnDetailItem(returnItem); setReturnInitialTab('riwayat'); } setActiveTab('purchases'); }} onNavigateToHistory={(transactionId) => { setPendingTransactionId(transactionId); setActiveTab('history'); }} returnDetailItem={returnDetailItem} onClearReturnDetailItem={() => { setReturnDetailItem(null); setReturnInitialTab(null); }} returnInitialTab={returnInitialTab} />)}
                         {activeTab === 'add' && (<FormView formData={formData} setFormData={setFormData} onSubmit={handleSubmit} isEditing={!!editingItem} submitting={submitting} onCancel={() => { setEditingItem(null); setFormData({name:'', qty:'', unit:'Pcs', exp:'', rack:'', price:'', costPrice:'', minStock: '', defaultDiscount: '', defaultDiscountType: '%', packagePrices: []}); setActiveTab('list'); }} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='add')?.readOnly} />)}
                         {activeTab === 'import' && (<BulkImportView user={user} onImportComplete={(count) => { showToast(`${count} Barang berhasil diimport`); setActiveTab('list'); }} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='import')?.readOnly} />)}
