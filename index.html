@@ -11503,6 +11503,31 @@
                             )}
                         </div>
                     </div>
+                    {/* Active Filter Tags */}
+                    {(() => {
+                        const allTags = [
+                            ...filterMarginPresets.map(v => ({ key: 'margin-'+v, label: 'Margin', value: MARGIN_PRESETS.find(p=>p.value===v)?.label || v, onRemove: () => setFilterMarginPresets(filterMarginPresets.filter(x=>x!==v)) })),
+                            ...filterMarkupPresets.map(v => ({ key: 'markup-'+v, label: 'Markup', value: MARKUP_PRESETS.find(p=>p.value===v)?.label || v, onRemove: () => setFilterMarkupPresets(filterMarkupPresets.filter(x=>x!==v)) })),
+                            ...filterDiskonSelected.map(v => ({ key: 'diskon-'+v, label: 'Diskon', value: DISKON_PRESETS.find(p=>p.value===v)?.label || v, onRemove: () => setFilterDiskonSelected(filterDiskonSelected.filter(x=>x!==v)) })),
+                            ...filterKategoriSelected.map(v => ({ key: 'kat-'+v, label: 'Kategori', value: v, onRemove: () => setFilterKategoriSelected(filterKategoriSelected.filter(x=>x!==v)) })),
+                            ...filterGolonganSelected.map(v => ({ key: 'gol-'+v, label: 'Golongan', value: v, onRemove: () => setFilterGolonganSelected(filterGolonganSelected.filter(x=>x!==v)) })),
+                            ...filterBarcodeSelected.map(v => ({ key: 'brc-'+v, label: 'Barcode', value: BARCODE_PRESETS.find(p=>p.value===v)?.label || v, onRemove: () => setFilterBarcodeSelected(filterBarcodeSelected.filter(x=>x!==v)) })),
+                        ];
+                        if (allTags.length === 0) return null;
+                        return (
+                            <div className="flex flex-wrap gap-1.5">
+                                {allTags.map(tag => (
+                                    <span key={tag.key} className="inline-flex items-center gap-1.5 bg-white border border-slate-200 rounded-full pl-3 pr-2 py-1 text-xs font-semibold text-slate-700 shadow-sm">
+                                        <span className="text-teal-600 font-bold">{tag.label}</span>
+                                        <span className="text-slate-500">{tag.value}</span>
+                                        <button onClick={tag.onRemove} className="w-4 h-4 flex items-center justify-center rounded-full bg-slate-100 hover:bg-red-100 hover:text-red-500 text-slate-400 transition-colors flex-shrink-0">
+                                            <Icon name="xmark" className="text-[9px]" />
+                                        </button>
+                                    </span>
+                                ))}
+                            </div>
+                        );
+                    })()}
                     {/* Filter Modal - Full Screen */}
                     {showFilterPanel && (
                         <div className="fixed inset-0 bg-white z-[200] flex flex-col">
@@ -11674,6 +11699,13 @@
                         </div>
                     )}
                     <div className="flex-1 overflow-y-auto pb-32 pr-1 custom-scrollbar">
+                        {/* Header Barang */}
+                        {!loading && filteredItems.length > 0 && (
+                            <div className="flex items-center justify-between pb-2 border-b border-slate-200 mb-1">
+                                <p className="text-sm font-bold text-slate-800">Barang</p>
+                                <p className="text-xs text-slate-400 font-medium">{filteredItems.length} item</p>
+                            </div>
+                        )}
                         {loading ? (<div className="flex flex-col items-center justify-center py-20"><div className="typing-dot bg-sky-500"></div><p className="text-xs text-slate-400 mt-2">Menghubungkan Database...</p></div>) : filteredItems.length === 0 ? (<div className="flex flex-col items-center justify-center py-20 opacity-40"><div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3"><Icon name="box-open" className="text-2xl text-slate-400" /></div><p className="font-semibold text-slate-500 text-center text-sm">Tidak ada data</p></div>) : (<><div className="">{displayedItems.map((item, index) => { const threshold = item.minStock ? safeNumber(item.minStock) : lowStockThreshold; const isLow = safeNumber(item.qty) < threshold; const isNew = isNewItem(item.createdAt); const animDelay = `${index * 50}ms`; const nameClass = searchQuery ? "type-effect-wrapper" : ""; const daysLeft = getDaysRemaining(item.exp); const isExpired = daysLeft !== null && daysLeft < 0; const isNearExp = daysLeft !== null && daysLeft < 90 && !isExpired; const expColor = isExpired ? 'text-red-600' : (isNearExp ? 'text-amber-600' : 'text-slate-400'); const expIcon = isExpired ? 'triangle-exclamation' : 'calendar-days'; return (<div key={item.id + searchQuery} style={{ animationDelay: animDelay }} onClick={() => setSelectedDetailItem(item)} className={`slide-up border-b py-3.5 cursor-pointer hover:bg-slate-50 transition-colors active:bg-slate-100 ${isLow ? 'border-amber-100' : 'border-slate-100'}`}>
                             <div className="flex items-start gap-2">
                                 <span className="text-xs font-semibold text-slate-800 mt-0.5 w-5 flex-shrink-0">{index + 1}</span>
