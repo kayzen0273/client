@@ -15288,7 +15288,8 @@
                     {/* Filter Sub-Page Overlay */}
                     {showFilterPage && (
                         <div style={{position:'fixed',inset:0,background:'#fff',zIndex:200,display:'flex',flexDirection:'column',maxWidth:'480px',margin:'0 auto',left:0,right:0}}>
-                            {/* Header */}
+                            {/* Header - hidden when sub-page is open */}
+                            {!filterSubPage && (
                             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 16px',borderBottom:'1px solid #e2e8f0'}}>
                                 <button onClick={() => { setShowFilterPage(false); setFilterSubPage(null); }} style={{display:'flex',alignItems:'center',gap:'6px',background:'none',border:'none',cursor:'pointer',color:'#1e293b',fontSize:'14px',fontWeight:700,padding:0}}>
                                     <Icon name="xmark" className="text-sm" style={{color:'#0d9488'}} />
@@ -15299,6 +15300,7 @@
                                     Pasang
                                 </button>
                             </div>
+                            )}
 
                             {/* Sub-page: Stok options */}
                             {filterSubPage === 'stok' && (
