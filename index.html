@@ -15083,9 +15083,9 @@
             const [filterPrioritas, setFilterPrioritas] = useState('semua');
             const [showFilter, setShowFilter] = useState(false);
             const [showFilterPage, setShowFilterPage] = useState(false);
-            const [filterStok, setFilterStok] = useState('semua');
-            const [tempFilterPrioritas, setTempFilterPrioritas] = useState('semua');
-            const [tempFilterStok, setTempFilterStok] = useState('semua');
+            const [filterStok, setFilterStok] = useState('');
+            const [tempFilterPrioritas, setTempFilterPrioritas] = useState('');
+            const [tempFilterStok, setTempFilterStok] = useState('');
             const [filterSubPage, setFilterSubPage] = useState(null); // null | 'stok' | 'prioritas'
             const [selectedItems, setSelectedItems] = useState([]);
             const [selectAll, setSelectAll] = useState(false);
@@ -15146,12 +15146,14 @@
             }
 
             // Filter prioritas
-            if (filterPrioritas !== 'semua') {
+            if (filterPrioritas && filterPrioritas !== 'semua') {
                 filteredItems = filteredItems.filter(i => getPrioritas(i) === filterPrioritas);
             }
 
             // Filter stok
-            if (filterStok === 'stok_mati') {
+            if (filterStok === 'stok_kosong') {
+                filteredItems = filteredItems.filter(i => (Number(i.qty)||0) === 0);
+            } else if (filterStok === 'stok_mati') {
                 filteredItems = filteredItems.filter(i => (Number(i.qty)||0) <= 0);
             } else if (filterStok === 'stok_menipis') {
                 filteredItems = filteredItems.filter(i => { const q = Number(i.qty)||0; return q > 0 && q <= 5; });
@@ -15262,7 +15264,7 @@
                                 style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',padding:'9px 14px',borderRadius:'10px',border:'1.5px solid #e2e8f0',background:'#fff',color:'#0d9488',fontSize:'13px',fontWeight:700,cursor:'pointer'}}
                             >
                                 <Icon name="sliders" className="text-sm" /> Filter
-                                {(filterPrioritas !== 'semua' || filterStok !== 'semua') && <span style={{width:'8px',height:'8px',borderRadius:'50%',background:'#0d9488',display:'inline-block'}}></span>}
+                                {(filterPrioritas || filterStok) && <span style={{width:'8px',height:'8px',borderRadius:'50%',background:'#0d9488',display:'inline-block'}}></span>}
                             </button>
                         </div>
                         <div style={{position:'relative',flex:1}}>
@@ -15290,8 +15292,8 @@
                         const stokLabels = {stok_tersedia:'Stok tersedia',stok_kosong:'Stok kosong',stok_mati:'Stok di bawah 0',stok_menipis:'Stok batch dibawah 0'};
                         const prioritasLabels = {tinggi:'Tinggi',sedang:'Sedang',rendah:'Rendah',stok_mati:'Stok mati'};
                         const allTags = [
-                            ...(filterStok !== 'semua' ? [{ key:'stok', label:'Stok', value: stokLabels[filterStok]||filterStok, onRemove: () => setFilterStok('semua') }] : []),
-                            ...(filterPrioritas !== 'semua' ? [{ key:'prioritas', label:'Prioritas', value: prioritasLabels[filterPrioritas]||filterPrioritas, onRemove: () => setFilterPrioritas('semua') }] : []),
+                            ...(filterStok && filterStok !== 'semua' ? [{ key:'stok', label:'Stok', value: stokLabels[filterStok]||filterStok, onRemove: () => setFilterStok('') }] : []),
+                            ...(filterPrioritas && filterPrioritas !== 'semua' ? [{ key:'prioritas', label:'Prioritas', value: prioritasLabels[filterPrioritas]||filterPrioritas, onRemove: () => setFilterPrioritas('') }] : []),
                         ];
                         if (allTags.length === 0) return null;
                         return (
@@ -15335,9 +15337,19 @@
                                             style={{background:'#0d9488',color:'#fff',border:'none',borderRadius:'8px',padding:'7px 18px',fontSize:'13px',fontWeight:800,cursor:'pointer'}}>Filter</button>
                                     </div>
                                     <div style={{padding:'16px 16px 8px',fontSize:'26px',fontWeight:900,color:'#1e293b'}}>Stok</div>
+                                    {/* Tags below title */}
+                                    {tempFilterStok && tempFilterStok !== 'semua' && (
+                                        <div style={{padding:'0 16px 8px',display:'flex',flexWrap:'wrap',gap:'6px'}}>
+                                            <span style={{display:'inline-flex',alignItems:'center',gap:'6px',background:'#fff',border:'1px solid #e2e8f0',borderRadius:'999px',paddingLeft:'10px',paddingRight:'6px',paddingTop:'4px',paddingBottom:'4px',fontSize:'12px',fontWeight:600,boxShadow:'0 1px 3px rgba(0,0,0,0.06)'}}>
+                                                <span style={{color:'#0d9488',fontWeight:700}}>Stok</span>
+                                                <span style={{color:'#64748b'}}>{({stok_tersedia:'Stok tersedia',stok_kosong:'Stok kosong',stok_mati:'Stok di bawah 0',stok_menipis:'Stok batch dibawah 0'})[tempFilterStok]}</span>
+                                                <button onClick={() => setTempFilterStok('')} style={{width:'16px',height:'16px',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:'50%',background:'#f1f5f9',border:'none',cursor:'pointer',color:'#94a3b8',flexShrink:0,padding:0}}><Icon name="xmark" style={{fontSize:'9px'}} /></button>
+                                            </span>
+                                        </div>
+                                    )}
                                     <div style={{flex:1,overflowY:'auto',padding:'0 16px'}}>
                                         {/* Select all row */}
-                                        <div onClick={() => setTempFilterStok('semua')} style={{display:'flex',alignItems:'center',gap:'14px',padding:'13px 0',borderBottom:'2px solid #1e293b',cursor:'pointer'}}>
+                                        <div onClick={() => setTempFilterStok(tempFilterStok==='semua' ? '' : 'semua')} style={{display:'flex',alignItems:'center',gap:'14px',padding:'13px 0',borderBottom:'2px solid #1e293b',cursor:'pointer'}}>
                                             <div style={{width:'20px',height:'20px',borderRadius:'4px',border:`2px solid ${tempFilterStok==='semua' ? '#0d9488' : '#94a3b8'}`,background: tempFilterStok==='semua' ? '#0d9488' : '#fff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                                                 {tempFilterStok==='semua' && <Icon name="check" style={{color:'#fff',fontSize:'11px'}} />}
                                             </div>
@@ -15365,9 +15377,19 @@
                                             style={{background:'#0d9488',color:'#fff',border:'none',borderRadius:'8px',padding:'7px 18px',fontSize:'13px',fontWeight:800,cursor:'pointer'}}>Filter</button>
                                     </div>
                                     <div style={{padding:'16px 16px 8px',fontSize:'26px',fontWeight:900,color:'#1e293b'}}>Prioritas</div>
+                                    {/* Tags below title */}
+                                    {tempFilterPrioritas && tempFilterPrioritas !== 'semua' && (
+                                        <div style={{padding:'0 16px 8px',display:'flex',flexWrap:'wrap',gap:'6px'}}>
+                                            <span style={{display:'inline-flex',alignItems:'center',gap:'6px',background:'#fff',border:'1px solid #e2e8f0',borderRadius:'999px',paddingLeft:'10px',paddingRight:'6px',paddingTop:'4px',paddingBottom:'4px',fontSize:'12px',fontWeight:600,boxShadow:'0 1px 3px rgba(0,0,0,0.06)'}}>
+                                                <span style={{color:'#0d9488',fontWeight:700}}>Prioritas</span>
+                                                <span style={{color:'#64748b'}}>{({tinggi:'Tinggi',sedang:'Sedang',rendah:'Rendah',stok_mati:'Stok mati'})[tempFilterPrioritas]}</span>
+                                                <button onClick={() => setTempFilterPrioritas('')} style={{width:'16px',height:'16px',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:'50%',background:'#f1f5f9',border:'none',cursor:'pointer',color:'#94a3b8',flexShrink:0,padding:0}}><Icon name="xmark" style={{fontSize:'9px'}} /></button>
+                                            </span>
+                                        </div>
+                                    )}
                                     <div style={{flex:1,overflowY:'auto',padding:'0 16px'}}>
                                         {/* Select all row */}
-                                        <div onClick={() => setTempFilterPrioritas('semua')} style={{display:'flex',alignItems:'center',gap:'14px',padding:'13px 0',borderBottom:'2px solid #1e293b',cursor:'pointer'}}>
+                                        <div onClick={() => setTempFilterPrioritas(tempFilterPrioritas==='semua' ? '' : 'semua')} style={{display:'flex',alignItems:'center',gap:'14px',padding:'13px 0',borderBottom:'2px solid #1e293b',cursor:'pointer'}}>
                                             <div style={{width:'20px',height:'20px',borderRadius:'4px',border:`2px solid ${tempFilterPrioritas==='semua' ? '#0d9488' : '#94a3b8'}`,background: tempFilterPrioritas==='semua' ? '#0d9488' : '#fff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                                                 {tempFilterPrioritas==='semua' && <Icon name="check" style={{color:'#fff',fontSize:'11px'}} />}
                                             </div>
@@ -15395,7 +15417,7 @@
                                     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 0',borderBottom:'1px solid #e2e8f0'}}>
                                         <div>
                                             <div style={{fontSize:'13px',fontWeight:700,color:'#1e293b'}}>Stok</div>
-                                            {tempFilterStok !== 'semua' && <div style={{fontSize:'11px',color:'#0d9488',fontWeight:600,marginTop:'1px'}}>{[{value:'stok_mati',label:'Stok Mati'},{value:'stok_menipis',label:'Stok Menipis'},{value:'stok_tersedia',label:'Stok Tersedia'}].find(o=>o.value===tempFilterStok)?.label}</div>}
+                                            {tempFilterStok && tempFilterStok !== 'semua' && <div style={{fontSize:'11px',color:'#0d9488',fontWeight:600,marginTop:'1px'}}>{[{value:'stok_tersedia',label:'Stok tersedia'},{value:'stok_kosong',label:'Stok kosong'},{value:'stok_mati',label:'Stok di bawah 0'},{value:'stok_menipis',label:'Stok batch dibawah 0'}].find(o=>o.value===tempFilterStok)?.label}</div>}
                                         </div>
                                         <button onClick={() => setFilterSubPage('stok')}
                                             style={{display:'flex',alignItems:'center',gap:'5px',padding:'5px 12px',borderRadius:'7px',border:'1.5px solid #0d9488',background:'#fff',color:'#0d9488',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>
@@ -15407,7 +15429,7 @@
                                     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 0',borderBottom:'1px solid #e2e8f0'}}>
                                         <div>
                                             <div style={{fontSize:'13px',fontWeight:700,color:'#1e293b'}}>Prioritas</div>
-                                            {tempFilterPrioritas !== 'semua' && <div style={{fontSize:'11px',color:'#0d9488',fontWeight:600,marginTop:'1px'}}>{[{value:'tinggi',label:'Tinggi'},{value:'sedang',label:'Sedang'},{value:'rendah',label:'Rendah'},{value:'stok_mati',label:'Stok Mati'}].find(o=>o.value===tempFilterPrioritas)?.label}</div>}
+                                            {tempFilterPrioritas && tempFilterPrioritas !== 'semua' && <div style={{fontSize:'11px',color:'#0d9488',fontWeight:600,marginTop:'1px'}}>{[{value:'tinggi',label:'Tinggi'},{value:'sedang',label:'Sedang'},{value:'rendah',label:'Rendah'},{value:'stok_mati',label:'Stok Mati'}].find(o=>o.value===tempFilterPrioritas)?.label}</div>}
                                         </div>
                                         <button onClick={() => setFilterSubPage('prioritas')}
                                             style={{display:'flex',alignItems:'center',gap:'5px',padding:'5px 12px',borderRadius:'7px',border:'1.5px solid #0d9488',background:'#fff',color:'#0d9488',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>
