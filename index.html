@@ -15289,13 +15289,13 @@
                     {showFilterPage && (
                         <div style={{position:'fixed',inset:0,background:'#fff',zIndex:200,display:'flex',flexDirection:'column',maxWidth:'480px',margin:'0 auto',left:0,right:0}}>
                             {/* Header */}
-                            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 16px',borderBottom:'1px solid #e2e8f0'}}>
-                                <button onClick={() => { setShowFilterPage(false); setFilterSubPage(null); }} style={{display:'flex',alignItems:'center',gap:'8px',background:'none',border:'none',cursor:'pointer',color:'#1e293b',fontSize:'15px',fontWeight:700,padding:0}}>
-                                    <Icon name="xmark" className="text-base" style={{color:'#0d9488'}} />
+                            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 16px',borderBottom:'1px solid #e2e8f0'}}>
+                                <button onClick={() => { setShowFilterPage(false); setFilterSubPage(null); }} style={{display:'flex',alignItems:'center',gap:'6px',background:'none',border:'none',cursor:'pointer',color:'#1e293b',fontSize:'14px',fontWeight:700,padding:0}}>
+                                    <Icon name="xmark" className="text-sm" style={{color:'#0d9488'}} />
                                     <span>Stok</span>
                                 </button>
                                 <button onClick={() => { setFilterPrioritas(tempFilterPrioritas); setFilterStok(tempFilterStok); setShowFilterPage(false); setFilterSubPage(null); }}
-                                    style={{background:'#0d9488',color:'#fff',border:'none',borderRadius:'10px',padding:'9px 22px',fontSize:'14px',fontWeight:800,cursor:'pointer'}}>
+                                    style={{background:'#0d9488',color:'#fff',border:'none',borderRadius:'8px',padding:'7px 18px',fontSize:'13px',fontWeight:800,cursor:'pointer'}}>
                                     Pasang
                                 </button>
                             </div>
@@ -15303,16 +15303,16 @@
                             {/* Sub-page: Stok options */}
                             {filterSubPage === 'stok' && (
                                 <div style={{flex:1,overflowY:'auto',padding:'0 16px'}}>
-                                    <div style={{display:'flex',alignItems:'center',gap:'10px',padding:'16px 0 12px'}}>
+                                    <div style={{display:'flex',alignItems:'center',gap:'8px',padding:'12px 0 8px'}}>
                                         <button onClick={() => setFilterSubPage(null)} style={{background:'none',border:'none',cursor:'pointer',padding:0,color:'#0d9488'}}><Icon name="arrow-left" /></button>
-                                        <span style={{fontSize:'20px',fontWeight:900,color:'#1e293b'}}>Stok</span>
+                                        <span style={{fontSize:'16px',fontWeight:900,color:'#1e293b'}}>Stok</span>
                                     </div>
                                     {[{value:'semua',label:'Semua Stok'},{value:'stok_mati',label:'Stok Mati (0)'},{value:'stok_menipis',label:'Stok Menipis (≤5)'},{value:'stok_tersedia',label:'Stok Tersedia (>5)'}].map(opt => (
                                         <div key={opt.value} onClick={() => setTempFilterStok(opt.value)}
-                                            style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 0',borderBottom:'1px solid #f1f5f9',cursor:'pointer'}}>
-                                            <span style={{fontSize:'14px',fontWeight:600,color: tempFilterStok===opt.value ? '#0d9488' : '#1e293b'}}>{opt.label}</span>
-                                            <div style={{width:'20px',height:'20px',borderRadius:'50%',border:`2px solid ${tempFilterStok===opt.value ? '#0d9488' : '#cbd5e1'}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                                                {tempFilterStok===opt.value && <div style={{width:'10px',height:'10px',borderRadius:'50%',background:'#0d9488'}}></div>}
+                                            style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid #f1f5f9',cursor:'pointer'}}>
+                                            <span style={{fontSize:'13px',fontWeight:600,color: tempFilterStok===opt.value ? '#0d9488' : '#1e293b'}}>{opt.label}</span>
+                                            <div style={{width:'18px',height:'18px',borderRadius:'50%',border:`2px solid ${tempFilterStok===opt.value ? '#0d9488' : '#cbd5e1'}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                                                {tempFilterStok===opt.value && <div style={{width:'9px',height:'9px',borderRadius:'50%',background:'#0d9488'}}></div>}
                                             </div>
                                         </div>
                                     ))}
@@ -15322,16 +15322,16 @@
                             {/* Sub-page: Prioritas options */}
                             {filterSubPage === 'prioritas' && (
                                 <div style={{flex:1,overflowY:'auto',padding:'0 16px'}}>
-                                    <div style={{display:'flex',alignItems:'center',gap:'10px',padding:'16px 0 12px'}}>
+                                    <div style={{display:'flex',alignItems:'center',gap:'8px',padding:'12px 0 8px'}}>
                                         <button onClick={() => setFilterSubPage(null)} style={{background:'none',border:'none',cursor:'pointer',padding:0,color:'#0d9488'}}><Icon name="arrow-left" /></button>
-                                        <span style={{fontSize:'20px',fontWeight:900,color:'#1e293b'}}>Prioritas</span>
+                                        <span style={{fontSize:'16px',fontWeight:900,color:'#1e293b'}}>Prioritas</span>
                                     </div>
                                     {[{value:'semua',label:'Semua Prioritas'},{value:'tinggi',label:'Prioritas Tinggi'},{value:'sedang',label:'Prioritas Sedang'},{value:'rendah',label:'Prioritas Rendah'},{value:'stok_mati',label:'Stok Mati'}].map(opt => (
                                         <div key={opt.value} onClick={() => setTempFilterPrioritas(opt.value)}
-                                            style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 0',borderBottom:'1px solid #f1f5f9',cursor:'pointer'}}>
-                                            <span style={{fontSize:'14px',fontWeight:600,color: tempFilterPrioritas===opt.value ? '#0d9488' : '#1e293b'}}>{opt.label}</span>
-                                            <div style={{width:'20px',height:'20px',borderRadius:'50%',border:`2px solid ${tempFilterPrioritas===opt.value ? '#0d9488' : '#cbd5e1'}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                                                {tempFilterPrioritas===opt.value && <div style={{width:'10px',height:'10px',borderRadius:'50%',background:'#0d9488'}}></div>}
+                                            style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid #f1f5f9',cursor:'pointer'}}>
+                                            <span style={{fontSize:'13px',fontWeight:600,color: tempFilterPrioritas===opt.value ? '#0d9488' : '#1e293b'}}>{opt.label}</span>
+                                            <div style={{width:'18px',height:'18px',borderRadius:'50%',border:`2px solid ${tempFilterPrioritas===opt.value ? '#0d9488' : '#cbd5e1'}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                                                {tempFilterPrioritas===opt.value && <div style={{width:'9px',height:'9px',borderRadius:'50%',background:'#0d9488'}}></div>}
                                             </div>
                                         </div>
                                     ))}
@@ -15341,29 +15341,29 @@
                             {/* Main filter list */}
                             {!filterSubPage && (
                                 <div style={{flex:1,overflowY:'auto',padding:'0 16px'}}>
-                                    <div style={{fontSize:'28px',fontWeight:900,color:'#1e293b',padding:'20px 0 16px'}}>Filter</div>
+                                    <div style={{fontSize:'22px',fontWeight:900,color:'#1e293b',padding:'12px 0 10px'}}>Filter</div>
 
                                     {/* Stok Row */}
-                                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 0',borderBottom:'1px solid #e2e8f0'}}>
+                                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 0',borderBottom:'1px solid #e2e8f0'}}>
                                         <div>
-                                            <div style={{fontSize:'14px',fontWeight:700,color:'#1e293b'}}>Stok</div>
-                                            {tempFilterStok !== 'semua' && <div style={{fontSize:'12px',color:'#0d9488',fontWeight:600,marginTop:'2px'}}>{[{value:'stok_mati',label:'Stok Mati'},{value:'stok_menipis',label:'Stok Menipis'},{value:'stok_tersedia',label:'Stok Tersedia'}].find(o=>o.value===tempFilterStok)?.label}</div>}
+                                            <div style={{fontSize:'13px',fontWeight:700,color:'#1e293b'}}>Stok</div>
+                                            {tempFilterStok !== 'semua' && <div style={{fontSize:'11px',color:'#0d9488',fontWeight:600,marginTop:'1px'}}>{[{value:'stok_mati',label:'Stok Mati'},{value:'stok_menipis',label:'Stok Menipis'},{value:'stok_tersedia',label:'Stok Tersedia'}].find(o=>o.value===tempFilterStok)?.label}</div>}
                                         </div>
                                         <button onClick={() => setFilterSubPage('stok')}
-                                            style={{display:'flex',alignItems:'center',gap:'6px',padding:'7px 14px',borderRadius:'8px',border:'1.5px solid #0d9488',background:'#fff',color:'#0d9488',fontSize:'13px',fontWeight:700,cursor:'pointer'}}>
-                                            Ubah <Icon name="pen" style={{fontSize:'11px'}} />
+                                            style={{display:'flex',alignItems:'center',gap:'5px',padding:'5px 12px',borderRadius:'7px',border:'1.5px solid #0d9488',background:'#fff',color:'#0d9488',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>
+                                            Ubah <Icon name="pen" style={{fontSize:'10px'}} />
                                         </button>
                                     </div>
 
                                     {/* Prioritas Row */}
-                                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 0',borderBottom:'1px solid #e2e8f0'}}>
+                                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 0',borderBottom:'1px solid #e2e8f0'}}>
                                         <div>
-                                            <div style={{fontSize:'14px',fontWeight:700,color:'#1e293b'}}>Prioritas</div>
-                                            {tempFilterPrioritas !== 'semua' && <div style={{fontSize:'12px',color:'#0d9488',fontWeight:600,marginTop:'2px'}}>{[{value:'tinggi',label:'Tinggi'},{value:'sedang',label:'Sedang'},{value:'rendah',label:'Rendah'},{value:'stok_mati',label:'Stok Mati'}].find(o=>o.value===tempFilterPrioritas)?.label}</div>}
+                                            <div style={{fontSize:'13px',fontWeight:700,color:'#1e293b'}}>Prioritas</div>
+                                            {tempFilterPrioritas !== 'semua' && <div style={{fontSize:'11px',color:'#0d9488',fontWeight:600,marginTop:'1px'}}>{[{value:'tinggi',label:'Tinggi'},{value:'sedang',label:'Sedang'},{value:'rendah',label:'Rendah'},{value:'stok_mati',label:'Stok Mati'}].find(o=>o.value===tempFilterPrioritas)?.label}</div>}
                                         </div>
                                         <button onClick={() => setFilterSubPage('prioritas')}
-                                            style={{display:'flex',alignItems:'center',gap:'6px',padding:'7px 14px',borderRadius:'8px',border:'1.5px solid #0d9488',background:'#fff',color:'#0d9488',fontSize:'13px',fontWeight:700,cursor:'pointer'}}>
-                                            Ubah <Icon name="pen" style={{fontSize:'11px'}} />
+                                            style={{display:'flex',alignItems:'center',gap:'5px',padding:'5px 12px',borderRadius:'7px',border:'1.5px solid #0d9488',background:'#fff',color:'#0d9488',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>
+                                            Ubah <Icon name="pen" style={{fontSize:'10px'}} />
                                         </button>
                                     </div>
                                 </div>
