@@ -15285,6 +15285,30 @@
                         </div>
                     </div>
 
+                    {/* Active Filter Tags */}
+                    {(() => {
+                        const stokLabels = {stok_tersedia:'Stok tersedia',stok_kosong:'Stok kosong',stok_mati:'Stok di bawah 0',stok_menipis:'Stok batch dibawah 0'};
+                        const prioritasLabels = {tinggi:'Tinggi',sedang:'Sedang',rendah:'Rendah',stok_mati:'Stok mati'};
+                        const allTags = [
+                            ...(filterStok !== 'semua' ? [{ key:'stok', label:'Stok', value: stokLabels[filterStok]||filterStok, onRemove: () => setFilterStok('semua') }] : []),
+                            ...(filterPrioritas !== 'semua' ? [{ key:'prioritas', label:'Prioritas', value: prioritasLabels[filterPrioritas]||filterPrioritas, onRemove: () => setFilterPrioritas('semua') }] : []),
+                        ];
+                        if (allTags.length === 0) return null;
+                        return (
+                            <div style={{display:'flex',flexWrap:'wrap',gap:'6px',marginBottom:'12px',marginTop:'-6px'}}>
+                                {allTags.map(tag => (
+                                    <span key={tag.key} style={{display:'inline-flex',alignItems:'center',gap:'6px',background:'#fff',border:'1px solid #e2e8f0',borderRadius:'999px',paddingLeft:'10px',paddingRight:'6px',paddingTop:'4px',paddingBottom:'4px',fontSize:'12px',fontWeight:600,color:'#475569',boxShadow:'0 1px 3px rgba(0,0,0,0.06)'}}>
+                                        <span style={{color:'#0d9488',fontWeight:700}}>{tag.label}</span>
+                                        <span style={{color:'#64748b'}}>{tag.value}</span>
+                                        <button onClick={tag.onRemove} style={{width:'16px',height:'16px',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:'50%',background:'#f1f5f9',border:'none',cursor:'pointer',color:'#94a3b8',flexShrink:0,padding:0}}>
+                                            <Icon name="xmark" style={{fontSize:'9px'}} />
+                                        </button>
+                                    </span>
+                                ))}
+                            </div>
+                        );
+                    })()}
+
                     {/* Filter Sub-Page Overlay */}
                     {showFilterPage && (
                         <div style={{position:'fixed',inset:0,background:'#fff',zIndex:200,display:'flex',flexDirection:'column',maxWidth:'480px',margin:'0 auto',left:0,right:0}}>
