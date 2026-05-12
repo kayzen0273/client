@@ -883,7 +883,7 @@
                         <Icon name={iconName} style={{ fontSize: '14px', flexShrink: 0 }} />
                         <span>{label}</span>
                         <span style={{ opacity: 0.65, fontWeight: 500, fontSize: '11px', marginLeft: 2 }}>
-                            — lihat Stok Barang
+                            — lihat Katalog
                         </span>
                     </div>
                 </div>
@@ -1674,7 +1674,7 @@
                 { key: 'enableHistory', label: 'Menu Riwayat', icon: 'clock-rotate-left', desc: 'Riwayat penjualan' },
                 { key: 'enablePurchases', label: 'Faktur Pembelian', icon: 'file-invoice-dollar', desc: 'Pembelian & faktur' },
                 { key: 'enableDashboard', label: 'Dashboard', icon: 'chart-pie', desc: 'Laporan & statistik' },
-                { key: 'enableStock', label: 'Stok Barang', icon: 'boxes-stacked', desc: 'Manajemen stok' },
+                { key: 'enableStock', label: 'Katalog', icon: 'boxes-stacked', desc: 'Manajemen stok' },
                 { key: 'enableStockOpname', label: 'Stock Opname', icon: 'clipboard-check', desc: 'Penghitungan fisik stok' },
                 { key: 'enableCashbook', label: 'Buku Kas', icon: 'book', desc: 'Catatan keuangan' },
                 { key: 'enableCatatan', label: 'Catatan', icon: 'thumbtack', desc: 'Papan catatan' },
@@ -1699,7 +1699,7 @@
                 { key: 'showMenuHistory', label: 'Riwayat', icon: 'clock-rotate-left', desc: 'Tampilkan menu riwayat' },
                 { key: 'showMenuPurchases', label: 'Faktur Pembelian', icon: 'file-invoice-dollar', desc: 'Tampilkan faktur pembelian' },
                 { key: 'showMenuDashboard', label: 'Dashboard', icon: 'chart-pie', desc: 'Tampilkan dashboard' },
-                { key: 'showMenuStock', label: 'Stok Barang', icon: 'boxes-stacked', desc: 'Tampilkan stok barang' },
+                { key: 'showMenuStock', label: 'Katalog', icon: 'boxes-stacked', desc: 'Tampilkan stok barang' },
                 { key: 'showMenuStockOpname', label: 'Stock Opname', icon: 'clipboard-check', desc: 'Tampilkan stock opname' },
                 { key: 'showMenuCashbook', label: 'Buku Kas', icon: 'book', desc: 'Tampilkan buku kas' },
                 { key: 'showMenuCatatan', label: 'Catatan', icon: 'thumbtack', desc: 'Tampilkan catatan' },
@@ -11770,7 +11770,7 @@
                             <div className="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl"><Icon name="lock" className="text-amber-500" /></div>
                             <h3 className="text-xl font-bold text-slate-800 mb-2">Akses Terbatas</h3>
                             <p className="text-slate-500 text-sm mb-4">Kamu tidak punya akses untuk menambah atau mengedit barang. Hubungi owner untuk mengaktifkan akses Input Manual.</p>
-                            <button onClick={onCancel} className="px-6 py-2.5 bg-sky-500 text-white rounded-xl font-bold text-sm hover:bg-sky-600 transition-all active:scale-95">Kembali ke Stok Barang</button>
+                            <button onClick={onCancel} className="px-6 py-2.5 bg-sky-500 text-white rounded-xl font-bold text-sm hover:bg-sky-600 transition-all active:scale-95">Kembali ke Katalog</button>
                         </div>
                     </div>
                 );
@@ -16979,7 +16979,7 @@
                 { id: 'history',     label: 'Riwayat',           icon: 'clock-rotate-left',  enabled: isOwner || showMenu('showMenuHistory', settingsData.showMenuHistory),    readOnly: !isOwner && !menuOn('enableHistory', settingsData.enableHistory) }, 
                 { id: 'purchases',   label: 'Faktur Pembelian',  icon: 'file-invoice-dollar', enabled: isOwner || showMenu('showMenuPurchases', settingsData.showMenuPurchases), readOnly: !isOwner && !menuOn('enablePurchases', settingsData.enablePurchases) }, 
                 { id: 'home',        label: 'Dashboard',         icon: 'chart-pie',           enabled: isOwner || showMenu('showMenuDashboard', settingsData.showMenuDashboard), readOnly: false }, 
-                { id: 'list',        label: 'Stok Barang',       icon: 'boxes-stacked',       enabled: isOwner || showMenu('showMenuStock', settingsData.showMenuStock),        readOnly: !isOwner && !menuOn('enableStock', settingsData.enableStock) }, 
+                { id: 'list',        label: 'Katalog',       icon: 'boxes-stacked',       enabled: isOwner || showMenu('showMenuStock', settingsData.showMenuStock),        readOnly: !isOwner && !menuOn('enableStock', settingsData.enableStock) }, 
                 { id: 'stock_opname',label: 'Stock Opname',      icon: 'clipboard-check',     enabled: isOwner || showMenu('showMenuStockOpname', settingsData.showMenuStockOpname), readOnly: !isOwner && !menuOn('enableStockOpname', settingsData.enableStockOpname) },
                 { id: 'cashbook',    label: 'Buku Kas',          icon: 'book',                enabled: isOwner || showMenu('showMenuCashbook', settingsData.showMenuCashbook),  readOnly: !isOwner && !menuOn('enableCashbook', settingsData.enableCashbook) },
                 { id: 'catatan',     label: 'Catatan',           icon: 'thumbtack',           enabled: isOwner || showMenu('showMenuCatatan', settingsData.showMenuCatatan),    readOnly: !isOwner && !menuOn('enableCatatan', settingsData.enableCatatan) },
@@ -17107,8 +17107,8 @@
                                     // --- BARANG: render sebagai dropdown group ---
                                     if (menu.id === 'list') {
                                         const barangSubItems = [
-                                            { id: 'list',            label: 'Stok Barang',    icon: 'boxes-stacked',  showKey: 'showMenuStock',         enableKey: 'enableStock' },
-                                            { id: 'stok_view',       label: 'Katalog',        icon: 'layer-group',    showKey: 'showMenuStock',         enableKey: 'enableStock' },
+                                            { id: 'list',            label: 'Katalog',    icon: 'boxes-stacked',  showKey: 'showMenuStock',         enableKey: 'enableStock' },
+                                            { id: 'stok_view',       label: 'Stok',           icon: 'layer-group',    showKey: 'showMenuStock',         enableKey: 'enableStock' },
                                             { id: 'stock_opname',    label: 'Stock Opname',   icon: 'clipboard-check',showKey: 'showMenuStockOpname',    enableKey: 'enableStockOpname' },
                                             { id: 'add',             label: 'Input Manual',   icon: 'pen-to-square',  showKey: 'showMenuAdd',            enableKey: 'enableInputManual' },
                                             { id: 'import',          label: 'Import Masal',   icon: 'file-import',    showKey: 'showMenuImport',         enableKey: 'enableImport' },
