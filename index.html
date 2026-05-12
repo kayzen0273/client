@@ -15077,7 +15077,11 @@
         // =================== END JADWAL SHIFT VIEW ===================
 
         // =================== STOK VIEW ===================
-        const StokView = ({ items, currentProfile }) => {
+        const StokView = ({ items, currentProfile, settings, readOnly, isOwner }) => {
+            const isAllStores = currentProfile?.id === 'all_stores';
+            const storeProfiles = settings?.storeProfiles || [];
+            const getStoreName = (storeId) => storeProfiles.find(p => p.id === storeId)?.name || storeId || 'Toko';
+            const [selectedDetailItem, setSelectedDetailItem] = React.useState(null);
             const [searchQuery, setSearchQuery] = useState('');
             const [sortBy, setSortBy] = useState('name_asc');
             const [filterPrioritas, setFilterPrioritas] = useState('semua');
@@ -15205,6 +15209,24 @@
 
             const [showSort, setShowSort] = useState(false);
             const currentSortLabel = sortOptions.find(s => s.value === sortBy)?.label || 'Nama A-Z';
+
+            if (selectedDetailItem) {
+                return (
+                    <ProductDetailPage
+                        item={selectedDetailItem}
+                        onBack={() => setSelectedDetailItem(null)}
+                        onEdit={(item) => { setSelectedDetailItem(null); }}
+                        onDelete={() => { setSelectedDetailItem(null); }}
+                        settings={settings}
+                        readOnly={readOnly}
+                        isOwner={isOwner}
+                        lowStockThreshold={settings?.lowStockThreshold || 5}
+                        currentProfile={currentProfile}
+                        onNavigateToPurchases={() => {}}
+                        onNavigateToHistory={() => {}}
+                    />
+                );
+            }
 
             return (
                 <div style={{maxWidth:'480px',margin:'0 auto'}}>
@@ -15484,60 +15506,83 @@
                             <Icon name="box-open" className="text-4xl mb-2" /><br/>
                             <span style={{fontSize:'13px',fontWeight:600}}>Tidak ada data</span>
                         </div>
-                    ) : filteredItems.map((item, index) => {
-                        const prioritas = getPrioritas(item);
-                        const pInfo = getPrioritasIcon(prioritas);
-                        const pLabel = getPrioritasLabel(prioritas);
-                        const isSelected = selectedItems.includes(item.id);
-                        const qty = Number(item.qty) || 0;
-                        const expFormatted = formatExpDate(item.exp);
-                        const daysLeft = getDaysRemainingLocal(item.exp);
-                        const isExpired = daysLeft !== null && daysLeft < 0;
-                        const isNearExp = daysLeft !== null && daysLeft < 90 && !isExpired;
+                    ) : (() => {
+                        // Group by store when all_stores mode
+                        const renderItem = (item, index) => {
+                            const prioritas = getPrioritas(item);
+                            const pInfo = getPrioritasIcon(prioritas);
+                            const pLabel = getPrioritasLabel(prioritas);
+                            const isSelected = selectedItems.includes(item.id);
+                            const qty = Number(item.qty) || 0;
+                            const expFormatted = formatExpDate(item.exp);
+                            const daysLeft = getDaysRemainingLocal(item.exp);
+                            const isExpired = daysLeft !== null && daysLeft < 0;
+                            const isNearExp = daysLeft !== null && daysLeft < 90 && !isExpired;
+                            return (
+                                <div key={item.id} style={{display:'flex',alignItems:'flex-start',padding:'14px 0',borderBottom:'1px solid #f1f5f9',gap:'0'}}>
+                                    <div style={{width:'36px',flexShrink:0,paddingTop:'2px'}}>
+                                        <div onClick={() => toggleSelectItem(item.id)} style={{width:'18px',height:'18px',border:'2px solid ' + (isSelected ? '#0d9488' : '#cbd5e1'),borderRadius:'4px',cursor:'pointer',background: isSelected ? '#0d9488' : '#fff',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                                            {isSelected && <Icon name="check" className="text-white" style={{fontSize:'10px'}} />}
+                                        </div>
+                                    </div>
+                                    <div style={{flex:1,minWidth:0}}>
+                                        <div style={{display:'flex',alignItems:'baseline',gap:'8px',marginBottom:'5px'}}>
+                                            <span style={{fontSize:'12px',color:'#1e293b',fontWeight:700,flexShrink:0,minWidth:'18px'}}>{index + 1}</span>
+                                            <span style={{fontSize:'14px',fontWeight:800,color:'#0d9488',lineHeight:1.25,cursor:'pointer'}} className="hover:underline" onClick={() => setSelectedDetailItem(item)}>{item.name}</span>
+                                        </div>
+                                        <div style={{display:'flex',flexWrap:'wrap',gap:'40px',paddingLeft:'26px'}}>
+                                            <div>
+                                                <div style={{fontSize:'11px',fontWeight:700,color:'#64748b',marginBottom:'2px'}}>ED terdekat</div>
+                                                <div style={{fontSize:'12px',fontWeight:600,color: isExpired ? '#dc2626' : (isNearExp ? '#d97706' : '#334155')}}>
+                                                    {expFormatted || '-'}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div style={{fontSize:'11px',fontWeight:700,color:'#64748b',marginBottom:'2px'}}>Prioritas</div>
+                                                <div style={{display:'flex',alignItems:'center',gap:'5px'}}>
+                                                    <span style={{width:'18px',height:'18px',borderRadius:'50%',border:'1.5px solid ' + pInfo.border,background: pInfo.bg,display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:'9px',fontWeight:900,color: pInfo.color,flexShrink:0}}>
+                                                        {pInfo.icon}
+                                                    </span>
+                                                    <span style={{fontSize:'12px',fontWeight:600,color:'#334155'}}>{pLabel}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style={{minWidth:'40px',textAlign:'right',paddingTop:'2px',display:'flex',flexDirection:'column',alignItems:'flex-end',gap:'4px'}}>
+                                        <span style={{fontSize:'16px',fontWeight:900,color: qty <= 0 ? '#dc2626' : '#1e293b'}}>{qty}</span>
+                                        {qty > 0 && daysLeft !== null && daysLeft < 30 && (
+                                            <span style={{width:'18px',height:'18px',borderRadius:'50%',background:'#fef3c7',border:'1.5px solid #fbbf24',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:'10px'}}>⚠️</span>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        };
 
-                        return (
-                            <div key={item.id} style={{display:'flex',alignItems:'flex-start',padding:'14px 0',borderBottom:'1px solid #f1f5f9',gap:'0'}}>
-                                {/* Checkbox */}
-                                <div style={{width:'36px',flexShrink:0,paddingTop:'2px'}}>
-                                    <div onClick={() => toggleSelectItem(item.id)} style={{width:'18px',height:'18px',border:'2px solid ' + (isSelected ? '#0d9488' : '#cbd5e1'),borderRadius:'4px',cursor:'pointer',background: isSelected ? '#0d9488' : '#fff',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                                        {isSelected && <Icon name="check" className="text-white" style={{fontSize:'10px'}} />}
-                                    </div>
+                        if (!isAllStores) {
+                            return filteredItems.map((item, idx) => renderItem(item, idx));
+                        }
+
+                        // Group by storeId
+                        const grouped = {};
+                        const groupOrder = [];
+                        filteredItems.forEach(item => {
+                            const sid = item.storeId || 'default';
+                            if (!grouped[sid]) { grouped[sid] = []; groupOrder.push(sid); }
+                            grouped[sid].push(item);
+                        });
+
+                        return groupOrder.map(sid => (
+                            <div key={sid}>
+                                {/* Store header */}
+                                <div style={{display:'flex',alignItems:'center',gap:'8px',padding:'10px 0 6px',marginTop:'8px',borderBottom:'2px solid #0d9488',marginBottom:'2px'}}>
+                                    <Icon name="store" style={{color:'#0d9488',fontSize:'13px'}} />
+                                    <span style={{fontSize:'13px',fontWeight:900,color:'#0d9488'}}>{getStoreName(sid)}</span>
+                                    <span style={{fontSize:'11px',fontWeight:600,color:'#94a3b8',marginLeft:'auto'}}>{grouped[sid].length} barang</span>
                                 </div>
-                                {/* No + Name */}
-                                <div style={{flex:1,minWidth:0}}>
-                                    <div style={{display:'flex',alignItems:'baseline',gap:'8px',marginBottom:'5px'}}>
-                                        <span style={{fontSize:'12px',color:'#1e293b',fontWeight:700,flexShrink:0,minWidth:'18px'}}>{index + 1}</span>
-                                        <span style={{fontSize:'14px',fontWeight:800,color:'#0d9488',lineHeight:1.25,cursor:'pointer'}} className="hover:underline">{item.name}</span>
-                                    </div>
-                                    {/* ED & Prioritas — diindent sejajar dengan nama barang (minWidth nomor + gap) */}
-                                    <div style={{display:'flex',flexWrap:'wrap',gap:'40px',paddingLeft:'26px'}}>
-                                        <div>
-                                            <div style={{fontSize:'11px',fontWeight:700,color:'#64748b',marginBottom:'2px'}}>ED terdekat</div>
-                                            <div style={{fontSize:'12px',fontWeight:600,color: isExpired ? '#dc2626' : (isNearExp ? '#d97706' : '#334155')}}>
-                                                {expFormatted || '-'}
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <div style={{fontSize:'11px',fontWeight:700,color:'#64748b',marginBottom:'2px'}}>Prioritas</div>
-                                            <div style={{display:'flex',alignItems:'center',gap:'5px'}}>
-                                                <span style={{width:'18px',height:'18px',borderRadius:'50%',border:'1.5px solid ' + pInfo.border,background: pInfo.bg,display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:'9px',fontWeight:900,color: pInfo.color,flexShrink:0}}>
-                                                    {pInfo.icon}
-                                                </span>
-                                                <span style={{fontSize:'12px',fontWeight:600,color:'#334155'}}>{pLabel}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                {/* Stok */}
-                                <div style={{minWidth:'40px',textAlign:'right',paddingTop:'2px',display:'flex',flexDirection:'column',alignItems:'flex-end',gap:'4px'}}>
-                                    <span style={{fontSize:'16px',fontWeight:900,color: qty <= 0 ? '#dc2626' : '#1e293b'}}>{qty}</span>
-                                    {qty > 0 && daysLeft !== null && daysLeft < 30 && (
-                                        <span style={{width:'18px',height:'18px',borderRadius:'50%',background:'#fef3c7',border:'1.5px solid #fbbf24',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:'10px'}}>⚠️</span>
-                                    )}
-                                </div>
+                                {grouped[sid].map((item, idx) => renderItem(item, idx))}
                             </div>
-                        );
-                    })}
+                        ));
+                    })()}
 
                     {filteredItems.length > 0 && (
                         <div style={{textAlign:'center',padding:'16px 0',color:'#94a3b8',fontSize:'12px',fontWeight:600}}>
@@ -17434,7 +17479,7 @@
                         {activeTab === 'add' && (<FormView formData={formData} setFormData={setFormData} onSubmit={handleSubmit} isEditing={!!editingItem} submitting={submitting} onCancel={() => { setEditingItem(null); setFormData({name:'', qty:'', unit:'Pcs', exp:'', rack:'', price:'', costPrice:'', minStock: '', defaultDiscount: '', defaultDiscountType: '%', packagePrices: []}); setActiveTab('list'); }} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='add')?.readOnly} />)}
                         {activeTab === 'import' && (<BulkImportView user={user} onImportComplete={(count) => { showToast(`${count} Barang berhasil diimport`); setActiveTab('list'); }} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='import')?.readOnly} />)}
                         {activeTab === 'stock_opname' && (<StockOpnameView items={inventoryData} user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='stock_opname')?.readOnly} isOwner={isOwner} />)}
-                        {activeTab === 'stok_view' && (<StokView items={inventoryData} currentProfile={currentProfile} />)}
+                        {activeTab === 'stok_view' && (<StokView items={inventoryData} currentProfile={currentProfile} settings={settingsData} readOnly={menuItems.find(m=>m.id==='stok_view')?.readOnly} isOwner={isOwner} />)}
                         {activeTab === 'rekam_medis' && (<RekamMedisView user={user} showToast={showToast} readOnly={menuItems.find(m=>m.id==='rekam_medis')?.readOnly} />)}
                         {activeTab === 'settings' && (<SettingsView settings={settingsData} onSave={handleSaveSettings} loading={submitting} authSession={authSession} onUpdateSession={(newSession) => { setAuthSession(newSession); saveSession(newSession); }} inventoryItems={inventoryData} />)}
                         {activeTab === 'pengguna_akun' && (<PenggunaAkunView authSession={authSession} onUpdateSession={(newSession) => { setAuthSession(newSession); saveSession(newSession); }} showToast={showToast} />)}
