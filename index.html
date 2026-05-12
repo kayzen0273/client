@@ -15083,10 +15083,14 @@
             const [filterPrioritas, setFilterPrioritas] = useState('semua');
             const [showFilter, setShowFilter] = useState(false);
             const [showFilterPage, setShowFilterPage] = useState(false);
-            const [filterStok, setFilterStok] = useState('');
-            const [tempFilterPrioritas, setTempFilterPrioritas] = useState('');
-            const [tempFilterStok, setTempFilterStok] = useState('');
+            const [filterStok, setFilterStok] = useState([]);
+            const [filterPrioritasArr, setFilterPrioritasArr] = useState([]);
+            const [tempFilterPrioritas, setTempFilterPrioritas] = useState([]);
+            const [tempFilterStok, setTempFilterStok] = useState([]);
             const [filterSubPage, setFilterSubPage] = useState(null); // null | 'stok' | 'prioritas'
+            const STOK_OPTS = [{value:'stok_tersedia',label:'Stok tersedia'},{value:'stok_kosong',label:'Stok kosong'},{value:'stok_mati',label:'Stok di bawah 0'},{value:'stok_menipis',label:'Stok batch dibawah 0'}];
+            const PRIORITAS_OPTS = [{value:'tinggi',label:'Tinggi'},{value:'sedang',label:'Sedang'},{value:'rendah',label:'Rendah'},{value:'stok_mati',label:'Stok mati'}];
+            const toggleArr = (arr, val) => arr.includes(val) ? arr.filter(x=>x!==val) : [...arr, val];
             const [selectedItems, setSelectedItems] = useState([]);
             const [selectAll, setSelectAll] = useState(false);
 
@@ -15146,19 +15150,21 @@
             }
 
             // Filter prioritas
-            if (filterPrioritas && filterPrioritas !== 'semua') {
-                filteredItems = filteredItems.filter(i => getPrioritas(i) === filterPrioritas);
+            if (filterPrioritasArr.length > 0) {
+                filteredItems = filteredItems.filter(i => filterPrioritasArr.includes(getPrioritas(i)));
             }
 
             // Filter stok
-            if (filterStok === 'stok_kosong') {
-                filteredItems = filteredItems.filter(i => (Number(i.qty)||0) === 0);
-            } else if (filterStok === 'stok_mati') {
-                filteredItems = filteredItems.filter(i => (Number(i.qty)||0) <= 0);
-            } else if (filterStok === 'stok_menipis') {
-                filteredItems = filteredItems.filter(i => { const q = Number(i.qty)||0; return q > 0 && q <= 5; });
-            } else if (filterStok === 'stok_tersedia') {
-                filteredItems = filteredItems.filter(i => (Number(i.qty)||0) > 5);
+            if (filterStok.length > 0) {
+                filteredItems = filteredItems.filter(i => {
+                    const q = Number(i.qty)||0;
+                    return filterStok.some(f =>
+                        f==='stok_tersedia' ? q>5 :
+                        f==='stok_kosong' ? q===0 :
+                        f==='stok_mati' ? q<=0 :
+                        f==='stok_menipis' ? (q>0&&q<=5) : false
+                    );
+                });
             }
 
             // Sort
@@ -15260,11 +15266,11 @@
                     <div style={{display:'flex',gap:'8px',marginBottom:'18px',position:'relative'}}>
                         <div style={{position:'relative',flex:1}}>
                             <button
-                                onClick={() => { setTempFilterPrioritas(filterPrioritas); setTempFilterStok(filterStok); setFilterSubPage(null); setShowFilterPage(true); }}
+                                onClick={() => { setTempFilterPrioritas([...filterPrioritasArr]); setTempFilterStok([...filterStok]); setFilterSubPage(null); setShowFilterPage(true); }}
                                 style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',padding:'9px 14px',borderRadius:'10px',border:'1.5px solid #e2e8f0',background:'#fff',color:'#0d9488',fontSize:'13px',fontWeight:700,cursor:'pointer'}}
                             >
                                 <Icon name="sliders" className="text-sm" /> Filter
-                                {(filterPrioritas || filterStok) && <span style={{width:'8px',height:'8px',borderRadius:'50%',background:'#0d9488',display:'inline-block'}}></span>}
+                                {(filterPrioritasArr.length > 0 || filterStok.length > 0) && <span style={{width:'8px',height:'8px',borderRadius:'50%',background:'#0d9488',display:'inline-block'}}></span>}
                             </button>
                         </div>
                         <div style={{position:'relative',flex:1}}>
@@ -15292,8 +15298,8 @@
                         const stokLabels = {stok_tersedia:'Stok tersedia',stok_kosong:'Stok kosong',stok_mati:'Stok di bawah 0',stok_menipis:'Stok batch dibawah 0'};
                         const prioritasLabels = {tinggi:'Tinggi',sedang:'Sedang',rendah:'Rendah',stok_mati:'Stok mati'};
                         const allTags = [
-                            ...(filterStok && filterStok !== 'semua' ? [{ key:'stok', label:'Stok', value: stokLabels[filterStok]||filterStok, onRemove: () => setFilterStok('') }] : []),
-                            ...(filterPrioritas && filterPrioritas !== 'semua' ? [{ key:'prioritas', label:'Prioritas', value: prioritasLabels[filterPrioritas]||filterPrioritas, onRemove: () => setFilterPrioritas('') }] : []),
+                            ...filterStok.map(v => ({ key:'stok-'+v, label:'Stok', value: stokLabels[v]||v, onRemove: () => setFilterStok(filterStok.filter(x=>x!==v)) })),
+                            ...filterPrioritasArr.map(v => ({ key:'prioritas-'+v, label:'Prioritas', value: prioritasLabels[v]||v, onRemove: () => setFilterPrioritasArr(filterPrioritasArr.filter(x=>x!==v)) })),
                         ];
                         if (allTags.length === 0) return null;
                         return (
@@ -15321,7 +15327,7 @@
                                     <Icon name="xmark" className="text-sm" style={{color:'#0d9488'}} />
                                     <span>Stok</span>
                                 </button>
-                                <button onClick={() => { setFilterPrioritas(tempFilterPrioritas); setFilterStok(tempFilterStok); setShowFilterPage(false); setFilterSubPage(null); }}
+                                <button onClick={() => { setFilterPrioritasArr([...tempFilterPrioritas]); setFilterStok([...tempFilterStok]); setShowFilterPage(false); setFilterSubPage(null); }}
                                     style={{background:'#0d9488',color:'#fff',border:'none',borderRadius:'8px',padding:'7px 18px',fontSize:'13px',fontWeight:800,cursor:'pointer'}}>
                                     Pasang
                                 </button>
@@ -15333,33 +15339,35 @@
                                 <div style={{flex:1,display:'flex',flexDirection:'column'}}>
                                     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 16px',borderBottom:'1px solid #e2e8f0'}}>
                                         <button onClick={() => setFilterSubPage(null)} style={{background:'none',border:'none',cursor:'pointer',padding:0,color:'#0d9488',fontSize:'20px',lineHeight:1}}><Icon name="arrow-left" /></button>
-                                        <button onClick={() => { setFilterPrioritas(tempFilterPrioritas); setFilterStok(tempFilterStok); setShowFilterPage(false); setFilterSubPage(null); }}
+                                        <button onClick={() => { setFilterPrioritasArr([...tempFilterPrioritas]); setFilterStok([...tempFilterStok]); setShowFilterPage(false); setFilterSubPage(null); }}
                                             style={{background:'#0d9488',color:'#fff',border:'none',borderRadius:'8px',padding:'7px 18px',fontSize:'13px',fontWeight:800,cursor:'pointer'}}>Filter</button>
                                     </div>
                                     <div style={{padding:'16px 16px 8px',fontSize:'26px',fontWeight:900,color:'#1e293b'}}>Stok</div>
                                     {/* Tags below title */}
-                                    {tempFilterStok && tempFilterStok !== 'semua' && (
+                                    {tempFilterStok.length > 0 && tempFilterStok.length < 4 && (
                                         <div style={{padding:'0 16px 8px',display:'flex',flexWrap:'wrap',gap:'6px'}}>
-                                            <span style={{display:'inline-flex',alignItems:'center',gap:'6px',background:'#fff',border:'1px solid #e2e8f0',borderRadius:'999px',paddingLeft:'10px',paddingRight:'6px',paddingTop:'4px',paddingBottom:'4px',fontSize:'12px',fontWeight:600,boxShadow:'0 1px 3px rgba(0,0,0,0.06)'}}>
-                                                <span style={{color:'#0d9488',fontWeight:700}}>Stok</span>
-                                                <span style={{color:'#64748b'}}>{({stok_tersedia:'Stok tersedia',stok_kosong:'Stok kosong',stok_mati:'Stok di bawah 0',stok_menipis:'Stok batch dibawah 0'})[tempFilterStok]}</span>
-                                                <button onClick={() => setTempFilterStok('')} style={{width:'16px',height:'16px',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:'50%',background:'#f1f5f9',border:'none',cursor:'pointer',color:'#94a3b8',flexShrink:0,padding:0}}><Icon name="xmark" style={{fontSize:'9px'}} /></button>
-                                            </span>
+                                            {tempFilterStok.map(v => (
+                                                <span key={v} style={{display:'inline-flex',alignItems:'center',gap:'6px',background:'#fff',border:'1px solid #e2e8f0',borderRadius:'999px',paddingLeft:'10px',paddingRight:'6px',paddingTop:'4px',paddingBottom:'4px',fontSize:'12px',fontWeight:600,boxShadow:'0 1px 3px rgba(0,0,0,0.06)'}}>
+                                                    <span style={{color:'#0d9488',fontWeight:700}}>Stok</span>
+                                                    <span style={{color:'#64748b'}}>{STOK_OPTS.find(o=>o.value===v)?.label}</span>
+                                                    <button onClick={() => setTempFilterStok(tempFilterStok.filter(x=>x!==v))} style={{width:'16px',height:'16px',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:'50%',background:'#f1f5f9',border:'none',cursor:'pointer',color:'#94a3b8',flexShrink:0,padding:0}}><Icon name="xmark" style={{fontSize:'9px'}} /></button>
+                                                </span>
+                                            ))}
                                         </div>
                                     )}
                                     <div style={{flex:1,overflowY:'auto',padding:'0 16px'}}>
                                         {/* Select all row */}
-                                        <div onClick={() => setTempFilterStok(tempFilterStok==='semua' ? '' : 'semua')} style={{display:'flex',alignItems:'center',gap:'14px',padding:'13px 0',borderBottom:'2px solid #1e293b',cursor:'pointer'}}>
-                                            <div style={{width:'20px',height:'20px',borderRadius:'4px',border:`2px solid ${tempFilterStok==='semua' ? '#0d9488' : '#94a3b8'}`,background: tempFilterStok==='semua' ? '#0d9488' : '#fff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                                                {tempFilterStok==='semua' && <Icon name="check" style={{color:'#fff',fontSize:'11px'}} />}
+                                        <div onClick={() => setTempFilterStok(tempFilterStok.length===STOK_OPTS.length ? [] : STOK_OPTS.map(o=>o.value))} style={{display:'flex',alignItems:'center',gap:'14px',padding:'13px 0',borderBottom:'2px solid #1e293b',cursor:'pointer'}}>
+                                            <div style={{width:'20px',height:'20px',borderRadius:'4px',border:`2px solid ${tempFilterStok.length===STOK_OPTS.length ? '#0d9488' : '#94a3b8'}`,background: tempFilterStok.length===STOK_OPTS.length ? '#0d9488' : '#fff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                                                {tempFilterStok.length===STOK_OPTS.length && <Icon name="check" style={{color:'#fff',fontSize:'11px'}} />}
                                             </div>
                                             <span style={{fontSize:'14px',fontWeight:700,color:'#1e293b'}}>Stok</span>
                                         </div>
-                                        {[{value:'stok_tersedia',label:'Stok tersedia'},{value:'stok_kosong',label:'Stok kosong'},{value:'stok_mati',label:'Stok di bawah 0'},{value:'stok_menipis',label:'Stok batch dibawah 0'}].map(opt => (
-                                            <div key={opt.value} onClick={() => setTempFilterStok(opt.value)}
+                                        {STOK_OPTS.map(opt => (
+                                            <div key={opt.value} onClick={() => setTempFilterStok(toggleArr(tempFilterStok, opt.value))}
                                                 style={{display:'flex',alignItems:'center',gap:'14px',padding:'13px 0',borderBottom:'1px solid #e2e8f0',cursor:'pointer'}}>
-                                                <div style={{width:'20px',height:'20px',borderRadius:'4px',border:`2px solid ${tempFilterStok===opt.value ? '#0d9488' : '#94a3b8'}`,background: tempFilterStok===opt.value ? '#0d9488' : '#fff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                                                    {tempFilterStok===opt.value && <Icon name="check" style={{color:'#fff',fontSize:'11px'}} />}
+                                                <div style={{width:'20px',height:'20px',borderRadius:'4px',border:`2px solid ${tempFilterStok.includes(opt.value) ? '#0d9488' : '#94a3b8'}`,background: tempFilterStok.includes(opt.value) ? '#0d9488' : '#fff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                                                    {tempFilterStok.includes(opt.value) && <Icon name="check" style={{color:'#fff',fontSize:'11px'}} />}
                                                 </div>
                                                 <span style={{fontSize:'14px',fontWeight:600,color:'#1e293b'}}>{opt.label}</span>
                                             </div>
@@ -15373,33 +15381,35 @@
                                 <div style={{flex:1,display:'flex',flexDirection:'column'}}>
                                     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 16px',borderBottom:'1px solid #e2e8f0'}}>
                                         <button onClick={() => setFilterSubPage(null)} style={{background:'none',border:'none',cursor:'pointer',padding:0,color:'#0d9488',fontSize:'20px',lineHeight:1}}><Icon name="arrow-left" /></button>
-                                        <button onClick={() => { setFilterPrioritas(tempFilterPrioritas); setFilterStok(tempFilterStok); setShowFilterPage(false); setFilterSubPage(null); }}
+                                        <button onClick={() => { setFilterPrioritasArr([...tempFilterPrioritas]); setFilterStok([...tempFilterStok]); setShowFilterPage(false); setFilterSubPage(null); }}
                                             style={{background:'#0d9488',color:'#fff',border:'none',borderRadius:'8px',padding:'7px 18px',fontSize:'13px',fontWeight:800,cursor:'pointer'}}>Filter</button>
                                     </div>
                                     <div style={{padding:'16px 16px 8px',fontSize:'26px',fontWeight:900,color:'#1e293b'}}>Prioritas</div>
                                     {/* Tags below title */}
-                                    {tempFilterPrioritas && tempFilterPrioritas !== 'semua' && (
+                                    {tempFilterPrioritas.length > 0 && tempFilterPrioritas.length < 4 && (
                                         <div style={{padding:'0 16px 8px',display:'flex',flexWrap:'wrap',gap:'6px'}}>
-                                            <span style={{display:'inline-flex',alignItems:'center',gap:'6px',background:'#fff',border:'1px solid #e2e8f0',borderRadius:'999px',paddingLeft:'10px',paddingRight:'6px',paddingTop:'4px',paddingBottom:'4px',fontSize:'12px',fontWeight:600,boxShadow:'0 1px 3px rgba(0,0,0,0.06)'}}>
-                                                <span style={{color:'#0d9488',fontWeight:700}}>Prioritas</span>
-                                                <span style={{color:'#64748b'}}>{({tinggi:'Tinggi',sedang:'Sedang',rendah:'Rendah',stok_mati:'Stok mati'})[tempFilterPrioritas]}</span>
-                                                <button onClick={() => setTempFilterPrioritas('')} style={{width:'16px',height:'16px',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:'50%',background:'#f1f5f9',border:'none',cursor:'pointer',color:'#94a3b8',flexShrink:0,padding:0}}><Icon name="xmark" style={{fontSize:'9px'}} /></button>
-                                            </span>
+                                            {tempFilterPrioritas.map(v => (
+                                                <span key={v} style={{display:'inline-flex',alignItems:'center',gap:'6px',background:'#fff',border:'1px solid #e2e8f0',borderRadius:'999px',paddingLeft:'10px',paddingRight:'6px',paddingTop:'4px',paddingBottom:'4px',fontSize:'12px',fontWeight:600,boxShadow:'0 1px 3px rgba(0,0,0,0.06)'}}>
+                                                    <span style={{color:'#0d9488',fontWeight:700}}>Prioritas</span>
+                                                    <span style={{color:'#64748b'}}>{PRIORITAS_OPTS.find(o=>o.value===v)?.label}</span>
+                                                    <button onClick={() => setTempFilterPrioritas(tempFilterPrioritas.filter(x=>x!==v))} style={{width:'16px',height:'16px',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:'50%',background:'#f1f5f9',border:'none',cursor:'pointer',color:'#94a3b8',flexShrink:0,padding:0}}><Icon name="xmark" style={{fontSize:'9px'}} /></button>
+                                                </span>
+                                            ))}
                                         </div>
                                     )}
                                     <div style={{flex:1,overflowY:'auto',padding:'0 16px'}}>
                                         {/* Select all row */}
-                                        <div onClick={() => setTempFilterPrioritas(tempFilterPrioritas==='semua' ? '' : 'semua')} style={{display:'flex',alignItems:'center',gap:'14px',padding:'13px 0',borderBottom:'2px solid #1e293b',cursor:'pointer'}}>
-                                            <div style={{width:'20px',height:'20px',borderRadius:'4px',border:`2px solid ${tempFilterPrioritas==='semua' ? '#0d9488' : '#94a3b8'}`,background: tempFilterPrioritas==='semua' ? '#0d9488' : '#fff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                                                {tempFilterPrioritas==='semua' && <Icon name="check" style={{color:'#fff',fontSize:'11px'}} />}
+                                        <div onClick={() => setTempFilterPrioritas(tempFilterPrioritas.length===PRIORITAS_OPTS.length ? [] : PRIORITAS_OPTS.map(o=>o.value))} style={{display:'flex',alignItems:'center',gap:'14px',padding:'13px 0',borderBottom:'2px solid #1e293b',cursor:'pointer'}}>
+                                            <div style={{width:'20px',height:'20px',borderRadius:'4px',border:`2px solid ${tempFilterPrioritas.length===PRIORITAS_OPTS.length ? '#0d9488' : '#94a3b8'}`,background: tempFilterPrioritas.length===PRIORITAS_OPTS.length ? '#0d9488' : '#fff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                                                {tempFilterPrioritas.length===PRIORITAS_OPTS.length && <Icon name="check" style={{color:'#fff',fontSize:'11px'}} />}
                                             </div>
                                             <span style={{fontSize:'14px',fontWeight:700,color:'#1e293b'}}>Prioritas</span>
                                         </div>
-                                        {[{value:'tinggi',label:'Tinggi'},{value:'sedang',label:'Sedang'},{value:'rendah',label:'Rendah'},{value:'stok_mati',label:'Stok mati'}].map(opt => (
-                                            <div key={opt.value} onClick={() => setTempFilterPrioritas(opt.value)}
+                                        {PRIORITAS_OPTS.map(opt => (
+                                            <div key={opt.value} onClick={() => setTempFilterPrioritas(toggleArr(tempFilterPrioritas, opt.value))}
                                                 style={{display:'flex',alignItems:'center',gap:'14px',padding:'13px 0',borderBottom:'1px solid #e2e8f0',cursor:'pointer'}}>
-                                                <div style={{width:'20px',height:'20px',borderRadius:'4px',border:`2px solid ${tempFilterPrioritas===opt.value ? '#0d9488' : '#94a3b8'}`,background: tempFilterPrioritas===opt.value ? '#0d9488' : '#fff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                                                    {tempFilterPrioritas===opt.value && <Icon name="check" style={{color:'#fff',fontSize:'11px'}} />}
+                                                <div style={{width:'20px',height:'20px',borderRadius:'4px',border:`2px solid ${tempFilterPrioritas.includes(opt.value) ? '#0d9488' : '#94a3b8'}`,background: tempFilterPrioritas.includes(opt.value) ? '#0d9488' : '#fff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                                                    {tempFilterPrioritas.includes(opt.value) && <Icon name="check" style={{color:'#fff',fontSize:'11px'}} />}
                                                 </div>
                                                 <span style={{fontSize:'14px',fontWeight:600,color:'#1e293b'}}>{opt.label}</span>
                                             </div>
@@ -15417,7 +15427,8 @@
                                     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 0',borderBottom:'1px solid #e2e8f0'}}>
                                         <div>
                                             <div style={{fontSize:'13px',fontWeight:700,color:'#1e293b'}}>Stok</div>
-                                            {tempFilterStok && tempFilterStok !== 'semua' && <div style={{fontSize:'11px',color:'#0d9488',fontWeight:600,marginTop:'1px'}}>{[{value:'stok_tersedia',label:'Stok tersedia'},{value:'stok_kosong',label:'Stok kosong'},{value:'stok_mati',label:'Stok di bawah 0'},{value:'stok_menipis',label:'Stok batch dibawah 0'}].find(o=>o.value===tempFilterStok)?.label}</div>}
+                                            {tempFilterStok.length > 0 && tempFilterStok.length < 4 && <div style={{fontSize:'11px',color:'#0d9488',fontWeight:600,marginTop:'1px'}}>{tempFilterStok.map(v=>STOK_OPTS.find(o=>o.value===v)?.label).filter(Boolean).join(', ')}</div>}
+                                            {tempFilterStok.length === 4 && <div style={{fontSize:'11px',color:'#0d9488',fontWeight:600,marginTop:'1px'}}>Semua</div>}
                                         </div>
                                         <button onClick={() => setFilterSubPage('stok')}
                                             style={{display:'flex',alignItems:'center',gap:'5px',padding:'5px 12px',borderRadius:'7px',border:'1.5px solid #0d9488',background:'#fff',color:'#0d9488',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>
@@ -15429,7 +15440,8 @@
                                     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 0',borderBottom:'1px solid #e2e8f0'}}>
                                         <div>
                                             <div style={{fontSize:'13px',fontWeight:700,color:'#1e293b'}}>Prioritas</div>
-                                            {tempFilterPrioritas && tempFilterPrioritas !== 'semua' && <div style={{fontSize:'11px',color:'#0d9488',fontWeight:600,marginTop:'1px'}}>{[{value:'tinggi',label:'Tinggi'},{value:'sedang',label:'Sedang'},{value:'rendah',label:'Rendah'},{value:'stok_mati',label:'Stok Mati'}].find(o=>o.value===tempFilterPrioritas)?.label}</div>}
+                                            {tempFilterPrioritas.length > 0 && tempFilterPrioritas.length < 4 && <div style={{fontSize:'11px',color:'#0d9488',fontWeight:600,marginTop:'1px'}}>{tempFilterPrioritas.map(v=>PRIORITAS_OPTS.find(o=>o.value===v)?.label).filter(Boolean).join(', ')}</div>}
+                                            {tempFilterPrioritas.length === 4 && <div style={{fontSize:'11px',color:'#0d9488',fontWeight:600,marginTop:'1px'}}>Semua</div>}
                                         </div>
                                         <button onClick={() => setFilterSubPage('prioritas')}
                                             style={{display:'flex',alignItems:'center',gap:'5px',padding:'5px 12px',borderRadius:'7px',border:'1.5px solid #0d9488',background:'#fff',color:'#0d9488',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>
