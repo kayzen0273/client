@@ -15080,7 +15080,7 @@
         // ============================================================
         // BATCH & ED VIEW - Kelola No. Batch dan Expiry Date
         // ============================================================
-        const BatchEDView = ({ items, currentProfile, settings, readOnly, isOwner }) => {
+        const BatchEDView = ({ items, currentProfile, settings, readOnly, isOwner, user }) => {
             const [searchQuery, setSearchQuery] = useState('');
             const [sortBy, setSortBy] = useState('ed_asc'); // 'ed_asc' | 'ed_desc' | 'name_asc'
             const [filterStatus, setFilterStatus] = useState('semua'); // 'semua' | '0-3' | '3-6' | '6-12' | 'expired'
@@ -15156,10 +15156,15 @@
                 return { label: '>12 bln', bg: '#f0fdf4', color: '#15803d', border: '#86efac', icon: 'check' };
             };
 
-            const allSuppliers = React.useMemo(() => {
-                const s = new Set(allBatches.map(b => b.supplier).filter(s => s && s !== '-'));
-                return Array.from(s).sort();
-            }, [allBatches]);
+            const [allSuppliers, setAllSuppliers] = useState([]);
+            useEffect(() => {
+                if (!user) return;
+                const q = window.query(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'suppliers'), window.orderBy('name', 'asc'));
+                const unsub = window.onSnapshot(q, (snapshot) => {
+                    setAllSuppliers(snapshot.docs.map(doc => doc.data().name).filter(Boolean));
+                });
+                return () => unsub();
+            }, [user]);
 
             const ED_OPTS = [
                 { value: '0-3', label: 'ED dalam 0-3 bulan' },
@@ -17943,7 +17948,7 @@
                         {activeTab === 'import' && (<BulkImportView user={user} onImportComplete={(count) => { showToast(`${count} Barang berhasil diimport`); setActiveTab('list'); }} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='import')?.readOnly} />)}
                         {activeTab === 'stock_opname' && (<StockOpnameView items={inventoryData} user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='stock_opname')?.readOnly} isOwner={isOwner} />)}
                         {activeTab === 'stok_view' && (<StokView items={inventoryData} currentProfile={currentProfile} settings={settingsData} readOnly={menuItems.find(m=>m.id==='stok_view')?.readOnly} isOwner={isOwner} />)}
-                        {activeTab === 'batch_ed' && (<BatchEDView items={inventoryData} currentProfile={currentProfile} settings={settingsData} readOnly={menuItems.find(m=>m.id==='batch_ed')?.readOnly} isOwner={isOwner} />)}
+                        {activeTab === 'batch_ed' && (<BatchEDView items={inventoryData} currentProfile={currentProfile} settings={settingsData} readOnly={menuItems.find(m=>m.id==='batch_ed')?.readOnly} isOwner={isOwner} user={user} />)}
                         {activeTab === 'rekam_medis' && (<RekamMedisView user={user} showToast={showToast} readOnly={menuItems.find(m=>m.id==='rekam_medis')?.readOnly} />)}
                         {activeTab === 'settings' && (<SettingsView settings={settingsData} onSave={handleSaveSettings} loading={submitting} authSession={authSession} onUpdateSession={(newSession) => { setAuthSession(newSession); saveSession(newSession); }} inventoryItems={inventoryData} />)}
                         {activeTab === 'pengguna_akun' && (<PenggunaAkunView authSession={authSession} onUpdateSession={(newSession) => { setAuthSession(newSession); saveSession(newSession); }} showToast={showToast} />)}
