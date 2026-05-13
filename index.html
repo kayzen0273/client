@@ -15094,6 +15094,7 @@
             const [tempFilterSupplier, setTempFilterSupplier] = useState([]);
             const [activeFilterED, setActiveFilterED] = useState([]);
             const [activeFilterSupplier, setActiveFilterSupplier] = useState([]);
+            const [selectedBatch, setSelectedBatch] = useState(null); // item detail page
 
             const today = new Date();
             today.setHours(0,0,0,0);
@@ -15129,6 +15130,13 @@
                         unit: item.unit || 'pcs',
                         supplier: item.supplier || '-',
                         invoiceNo: item.invoiceNo || item.invoice_no || '-',
+                        price: item.price || 0,
+                        costPrice: item.costPrice || item.cost_price || 0,
+                        defaultDiscount: item.defaultDiscount || 0,
+                        defaultDiscountType: item.defaultDiscountType || '%',
+                        packagePrices: item.packagePrices || [],
+                        rack: item.rack || '-',
+                        minStock: item.minStock || 0,
                     });
                 });
                 return result;
@@ -15199,6 +15207,134 @@
                 setTimeout(() => setDownloadLoading(false), 800);
             };
 
+            const formatRupiah = (n) => {
+                if (!n && n !== 0) return '-';
+                return 'Rp ' + Number(n).toLocaleString('id-ID');
+            };
+
+            // Item detail page
+            if (selectedBatch) {
+                const b = selectedBatch;
+                const badge = getStatusBadge(b.status, b.daysLeft);
+                const sellPrice = b.price || 0;
+                const costPrice = b.costPrice || 0;
+                const margin = sellPrice && costPrice ? (((sellPrice - costPrice) / sellPrice) * 100).toFixed(1) : null;
+                return (
+                    <div className="min-h-screen bg-white flex flex-col">
+                        {/* Header */}
+                        <div className="flex items-center gap-3 px-4 pt-5 pb-3 bg-white border-b border-slate-100 sticky top-0 z-10">
+                            <button onClick={() => setSelectedBatch(null)} className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 shadow-sm active:scale-95 transition-all flex-shrink-0">
+                                <Icon name="arrow-left" />
+                            </button>
+                            <div className="flex-1">
+                                <h1 className="text-base font-bold text-slate-800">{b.name}</h1>
+                                <p className="text-xs text-slate-500">Detail Barang</p>
+                            </div>
+                        </div>
+
+                        {/* Body */}
+                        <div className="flex-1 px-4 py-5 space-y-5">
+
+                            {/* Status badge */}
+                            <div className="flex items-center gap-2">
+                                <span style={{background: badge.bg, color: badge.color, border: `1px solid ${badge.border}`}} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold">
+                                    <Icon name={badge.icon} className="text-[10px]" /> {badge.label}
+                                </span>
+                            </div>
+
+                            {/* Harga Section */}
+                            <div style={{background:'#f0fdf4',borderRadius:'16px',padding:'16px'}}>
+                                <p className="text-xs font-bold text-teal-700 uppercase tracking-wide mb-3">Harga</p>
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-sm text-slate-600">Harga Jual</p>
+                                        <p className="text-sm font-bold text-slate-800">{formatRupiah(b.price)}</p>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-sm text-slate-600">Harga Modal</p>
+                                        <p className="text-sm font-bold text-slate-800">{formatRupiah(b.costPrice)}</p>
+                                    </div>
+                                    {margin !== null && (
+                                        <div className="flex items-center justify-between border-t border-teal-100 pt-3">
+                                            <p className="text-sm text-slate-600">Margin</p>
+                                            <p className="text-sm font-bold text-teal-600">{margin}%</p>
+                                        </div>
+                                    )}
+                                    {b.defaultDiscount > 0 && (
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-sm text-slate-600">Diskon Default</p>
+                                            <p className="text-sm font-bold text-amber-600">{b.defaultDiscount}{b.defaultDiscountType}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Harga Paket */}
+                            {b.packagePrices && b.packagePrices.length > 0 && (
+                                <div style={{background:'#fff7ed',borderRadius:'16px',padding:'16px'}}>
+                                    <p className="text-xs font-bold text-orange-600 uppercase tracking-wide mb-3">Harga Paket</p>
+                                    <div className="space-y-2">
+                                        {b.packagePrices.map((pkg, i) => (
+                                            <div key={i} className="flex items-center justify-between">
+                                                <p className="text-sm text-slate-600">{pkg.qty} {b.unit}</p>
+                                                <p className="text-sm font-bold text-slate-800">{formatRupiah(pkg.price)}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Info Batch */}
+                            <div style={{background:'#f8fafc',borderRadius:'16px',padding:'16px'}}>
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Info Batch</p>
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-sm text-slate-500">No. Batch</p>
+                                        <p className="text-sm font-bold text-teal-700">{b.batchNo}</p>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-sm text-slate-500">Expiry Date</p>
+                                        <p className="text-sm font-bold text-slate-800">{formatExp(b.exp)}</p>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-sm text-slate-500">Stok</p>
+                                        <p className="text-sm font-bold text-slate-800">{b.stok} {b.unit}</p>
+                                    </div>
+                                    {b.rack && b.rack !== '-' && (
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-sm text-slate-500">Rak</p>
+                                            <p className="text-sm font-bold text-slate-800">{b.rack}</p>
+                                        </div>
+                                    )}
+                                    {b.minStock > 0 && (
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-sm text-slate-500">Stok Minimum</p>
+                                            <p className="text-sm font-bold text-slate-800">{b.minStock} {b.unit}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Info Faktur */}
+                            <div style={{background:'#f8fafc',borderRadius:'16px',padding:'16px'}}>
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Info Faktur</p>
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-sm text-slate-500">No. Faktur</p>
+                                        <p className="text-sm font-bold text-teal-700">{b.invoiceNo !== '-' ? b.invoiceNo : <span className="text-slate-400">-</span>}</p>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-sm text-slate-500">Supplier</p>
+                                        <p className="text-sm font-bold text-slate-800">{b.supplier !== '-' ? b.supplier : <span className="text-slate-400">-</span>}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                );
+            }
+
             // Detail page for a specific filter
             if (showDetailPage && detailFilter) {
                 const titles = { '0-3': 'ED dalam >0-3 bulan', '3-6': 'ED dalam >3-6 bulan', '6-12': 'ED dalam >6-12 bulan', 'expired': 'Sudah Kedaluwarsa' };
@@ -15248,18 +15384,19 @@
                                 <div>
                                     <div className="flex items-center pb-2 border-b border-slate-100" style={{position:'sticky',top:'54px',background:'#fff',zIndex:10,marginLeft:'-16px',marginRight:'-16px',paddingLeft:'16px',paddingRight:'16px',paddingTop:'8px'}}>
                                         <span className="text-xs text-slate-400 font-semibold w-5 flex-shrink-0"></span>
-                                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wide flex-1">No. batch</span>
+                                        <span className="text-xs font-bold text-black uppercase tracking-wide flex-1">No. batch</span>
                                     </div>
                                     {filtered.map((b, idx) => {
                                         const badge = getStatusBadge(b.status, b.daysLeft);
                                         return (
-                                            <div key={b.id + idx} className="py-4 border-b border-slate-50">
+                                            <div key={b.id + idx} className="py-4 border-b border-slate-50 cursor-pointer active:bg-slate-50 transition-colors" onClick={() => setSelectedBatch(b)}>
                                                 <div className="flex items-start gap-2 mb-2">
-                                                    <span className="text-xs text-slate-400 font-semibold w-5 flex-shrink-0 mt-0.5">{idx+1}</span>
+                                                    <span className="text-xs text-black font-semibold w-5 flex-shrink-0 mt-0.5">{idx+1}</span>
                                                     <div className="flex-1">
                                                         <p className="text-sm font-bold text-teal-700">{b.batchNo}</p>
                                                         <p className="text-xs text-slate-500">{b.status === 'expired' ? 'ED ' + formatExp(b.exp) : 'ED ' + formatExp(b.exp)}</p>
                                                     </div>
+                                                    <Icon name="chevron-right" className="text-xs text-slate-300 mt-1 flex-shrink-0" />
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 ml-7">
                                                     <div>
@@ -15380,18 +15517,19 @@
                             <div>
                                 <div className="flex items-center pb-2 border-b border-slate-100 mb-1" style={{position:'sticky',top:'54px',background:'#fff',zIndex:10,marginLeft:'-16px',marginRight:'-16px',paddingLeft:'16px',paddingRight:'16px',paddingTop:'8px'}}>
                                     <span className="text-xs text-slate-400 font-semibold w-5 flex-shrink-0"></span>
-                                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wide flex-1">No. batch</span>
+                                    <span className="text-xs font-bold text-black uppercase tracking-wide flex-1">No. batch</span>
                                 </div>
                                 {filtered.map((b, idx) => {
                                     const badge = getStatusBadge(b.status, b.daysLeft);
                                     return (
-                                        <div key={b.id + idx} className="py-4 border-b border-slate-50">
+                                        <div key={b.id + idx} className="py-4 border-b border-slate-50 cursor-pointer active:bg-slate-50 transition-colors" onClick={() => setSelectedBatch(b)}>
                                             <div className="flex items-start gap-2 mb-2">
-                                                <span className="text-xs text-slate-400 font-semibold w-5 flex-shrink-0 mt-0.5">{idx+1}</span>
+                                                <span className="text-xs text-black font-semibold w-5 flex-shrink-0 mt-0.5">{idx+1}</span>
                                                 <div className="flex-1">
                                                     <p className="text-sm font-bold text-teal-700">{b.batchNo}</p>
                                                     <p className="text-xs text-slate-500">ED {formatExp(b.exp)}</p>
                                                 </div>
+                                                <Icon name="chevron-right" className="text-xs text-slate-300 mt-1 flex-shrink-0" />
                                             </div>
                                             <div className="grid grid-cols-2 gap-x-4 gap-y-2 ml-7">
                                                 <div>
