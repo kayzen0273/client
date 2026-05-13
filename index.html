@@ -15087,6 +15087,13 @@
             const [detailFilter, setDetailFilter] = useState(null); // null or one of the filter keys
             const [showDetailPage, setShowDetailPage] = useState(false);
             const [downloadLoading, setDownloadLoading] = useState(false);
+            // Filter page state
+            const [showFilterPage, setShowFilterPage] = useState(false);
+            const [filterSubPage, setFilterSubPage] = useState(null); // null | 'ed' | 'supplier'
+            const [tempFilterED, setTempFilterED] = useState([]);
+            const [tempFilterSupplier, setTempFilterSupplier] = useState([]);
+            const [activeFilterED, setActiveFilterED] = useState([]);
+            const [activeFilterSupplier, setActiveFilterSupplier] = useState([]);
 
             const today = new Date();
             today.setHours(0,0,0,0);
@@ -15149,17 +15156,31 @@
                 return { label: '>12 bln', bg: '#f0fdf4', color: '#15803d', border: '#86efac', icon: 'check' };
             };
 
+            const allSuppliers = React.useMemo(() => {
+                const s = new Set(allBatches.map(b => b.supplier).filter(s => s && s !== '-'));
+                return Array.from(s).sort();
+            }, [allBatches]);
+
+            const ED_OPTS = [
+                { value: '0-3', label: 'ED dalam 0-3 bulan' },
+                { value: '3-6', label: 'ED dalam 3-6 bulan' },
+                { value: '6-12', label: 'ED dalam 6-12 bulan' },
+                { value: 'expired', label: 'Sudah kedaluwarsa' },
+            ];
+
             const filtered = React.useMemo(() => {
                 let data = [...allBatches];
                 const q = searchQuery.toLowerCase().trim();
                 if (q) data = data.filter(b => b.name.toLowerCase().includes(q) || b.batchNo.toLowerCase().includes(q) || (b.invoiceNo || '').toLowerCase().includes(q));
                 const sf = detailFilter || filterStatus;
                 if (sf !== 'semua') data = data.filter(b => b.status === sf);
+                if (activeFilterED.length > 0) data = data.filter(b => activeFilterED.includes(b.status));
+                if (activeFilterSupplier.length > 0) data = data.filter(b => activeFilterSupplier.includes(b.supplier));
                 if (sortBy === 'ed_asc') data.sort((a,b) => (a.daysLeft??99999) - (b.daysLeft??99999));
                 else if (sortBy === 'ed_desc') data.sort((a,b) => (b.daysLeft??99999) - (a.daysLeft??99999));
                 else data.sort((a,b) => a.name.localeCompare(b.name));
                 return data;
-            }, [allBatches, searchQuery, filterStatus, detailFilter, sortBy]);
+            }, [allBatches, searchQuery, filterStatus, detailFilter, sortBy, activeFilterED, activeFilterSupplier]);
 
             const handleUnduh = () => {
                 setDownloadLoading(true);
@@ -15328,8 +15349,8 @@
                             <button className="px-3 py-2 rounded-xl border border-teal-500 text-teal-600 text-xs font-bold bg-white">Cari</button>
                         </div>
                         <div className="flex gap-2">
-                            <button className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold bg-white shadow-sm">
-                                <Icon name="sliders" /> Filter
+                            <button onClick={() => { setTempFilterED([...activeFilterED]); setTempFilterSupplier([...activeFilterSupplier]); setFilterSubPage(null); setShowFilterPage(true); }} className={"flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border text-xs font-bold bg-white shadow-sm " + ((activeFilterED.length > 0 || activeFilterSupplier.length > 0) ? 'border-teal-500 text-teal-600' : 'border-slate-200 text-slate-600')}>
+                                <Icon name="sliders" /> Filter {(activeFilterED.length > 0 || activeFilterSupplier.length > 0) && <span style={{width:'7px',height:'7px',borderRadius:'50%',background:'#0d9488',display:'inline-block',marginLeft:'2px'}}></span>}
                             </button>
                             <div className="flex-1">
                                 <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2 text-slate-700 font-semibold bg-white outline-none shadow-sm">
@@ -15395,6 +15416,122 @@
                             </div>
                         )}
                     </div>
+
+                    {/* Filter Page Overlay */}
+                    {showFilterPage && (
+                        <div style={{position:'fixed',inset:0,background:'#fff',zIndex:120,display:'flex',flexDirection:'column',overflowY:'auto'}}>
+                            {/* Header */}
+                            {filterSubPage === null && (
+                                <>
+                                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 16px',borderBottom:'1px solid #f1f5f9',position:'sticky',top:0,background:'#fff',zIndex:10}}>
+                                        <button onClick={() => { setShowFilterPage(false); setFilterSubPage(null); }} style={{display:'flex',alignItems:'center',gap:'6px',background:'none',border:'none',cursor:'pointer',color:'#1e293b',fontSize:'14px',fontWeight:700,padding:0}}>
+                                            <Icon name="xmark" style={{fontSize:'18px'}} /> Batch &amp; ED
+                                        </button>
+                                        <button onClick={() => { setActiveFilterED([...tempFilterED]); setActiveFilterSupplier([...tempFilterSupplier]); setShowFilterPage(false); setFilterSubPage(null); }}
+                                            style={{background:'#0d9488',color:'#fff',border:'none',borderRadius:'8px',padding:'8px 20px',fontSize:'13px',fontWeight:800,cursor:'pointer'}}>Pasang</button>
+                                    </div>
+                                    <div style={{padding:'20px 16px 8px'}}>
+                                        <h2 style={{fontSize:'28px',fontWeight:900,color:'#1e293b',margin:0}}>Filter</h2>
+                                    </div>
+                                    <div style={{padding:'0 16px'}}>
+                                        {/* ED Row */}
+                                        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 0',borderBottom:'1px solid #f1f5f9'}}>
+                                            <div>
+                                                <p style={{fontSize:'14px',fontWeight:600,color:'#1e293b',margin:0}}>ED</p>
+                                                {tempFilterED.length > 0 && <p style={{fontSize:'11px',color:'#0d9488',margin:'2px 0 0',fontWeight:600}}>{tempFilterED.length} dipilih</p>}
+                                            </div>
+                                            <button onClick={() => setFilterSubPage('ed')} style={{display:'flex',alignItems:'center',gap:'6px',background:'none',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'8px 16px',fontSize:'13px',fontWeight:700,cursor:'pointer',color:'#1e293b'}}>
+                                                Ubah <Icon name="pen-to-square" style={{color:'#0d9488'}} />
+                                            </button>
+                                        </div>
+                                        {/* Supplier Row */}
+                                        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 0',borderBottom:'1px solid #f1f5f9'}}>
+                                            <div>
+                                                <p style={{fontSize:'14px',fontWeight:600,color:'#1e293b',margin:0}}>Supplier</p>
+                                                {tempFilterSupplier.length > 0 && <p style={{fontSize:'11px',color:'#0d9488',margin:'2px 0 0',fontWeight:600}}>{tempFilterSupplier.length} dipilih</p>}
+                                            </div>
+                                            <button onClick={() => setFilterSubPage('supplier')} style={{display:'flex',alignItems:'center',gap:'6px',background:'none',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'8px 16px',fontSize:'13px',fontWeight:700,cursor:'pointer',color:'#1e293b'}}>
+                                                Ubah <Icon name="pen-to-square" style={{color:'#0d9488'}} />
+                                            </button>
+                                        </div>
+                                        {/* Reset */}
+                                        {(tempFilterED.length > 0 || tempFilterSupplier.length > 0) && (
+                                            <button onClick={() => { setTempFilterED([]); setTempFilterSupplier([]); }} style={{marginTop:'16px',background:'none',border:'none',cursor:'pointer',color:'#ef4444',fontSize:'13px',fontWeight:700,padding:0}}>
+                                                <Icon name="rotate-left" /> Reset semua filter
+                                            </button>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Sub-page: ED */}
+                            {filterSubPage === 'ed' && (
+                                <>
+                                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 16px',borderBottom:'1px solid #f1f5f9',position:'sticky',top:0,background:'#fff',zIndex:10}}>
+                                        <button onClick={() => setFilterSubPage(null)} style={{background:'none',border:'none',cursor:'pointer',padding:0,color:'#0d9488',fontSize:'20px',lineHeight:1}}><Icon name="arrow-left" /></button>
+                                        <button onClick={() => { setActiveFilterED([...tempFilterED]); setActiveFilterSupplier([...tempFilterSupplier]); setShowFilterPage(false); setFilterSubPage(null); }}
+                                            style={{background:'#0d9488',color:'#fff',border:'none',borderRadius:'8px',padding:'7px 18px',fontSize:'13px',fontWeight:800,cursor:'pointer'}}>Pasang</button>
+                                    </div>
+                                    <div style={{padding:'16px'}}>
+                                        <h3 style={{fontSize:'16px',fontWeight:800,color:'#1e293b',marginBottom:'16px'}}>Pilih Status ED</h3>
+                                        {/* Pilih semua */}
+                                        <div onClick={() => setTempFilterED(tempFilterED.length === ED_OPTS.length ? [] : ED_OPTS.map(o=>o.value))}
+                                            style={{display:'flex',alignItems:'center',gap:'14px',padding:'13px 0',borderBottom:'2px solid #e2e8f0',cursor:'pointer',marginBottom:'4px'}}>
+                                            <div style={{width:'20px',height:'20px',borderRadius:'4px',border:`2px solid ${tempFilterED.length===ED_OPTS.length ? '#0d9488' : '#94a3b8'}`,background: tempFilterED.length===ED_OPTS.length ? '#0d9488' : '#fff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                                                {tempFilterED.length===ED_OPTS.length && <Icon name="check" style={{color:'#fff',fontSize:'11px'}} />}
+                                            </div>
+                                            <span style={{fontSize:'14px',fontWeight:700,color:'#1e293b'}}>Semua</span>
+                                        </div>
+                                        {ED_OPTS.map(opt => (
+                                            <div key={opt.value} onClick={() => setTempFilterED(tempFilterED.includes(opt.value) ? tempFilterED.filter(x=>x!==opt.value) : [...tempFilterED, opt.value])}
+                                                style={{display:'flex',alignItems:'center',gap:'14px',padding:'13px 0',borderBottom:'1px solid #f1f5f9',cursor:'pointer'}}>
+                                                <div style={{width:'20px',height:'20px',borderRadius:'4px',border:`2px solid ${tempFilterED.includes(opt.value) ? '#0d9488' : '#94a3b8'}`,background: tempFilterED.includes(opt.value) ? '#0d9488' : '#fff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                                                    {tempFilterED.includes(opt.value) && <Icon name="check" style={{color:'#fff',fontSize:'11px'}} />}
+                                                </div>
+                                                <span style={{fontSize:'14px',fontWeight:600,color:'#334155'}}>{opt.label}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Sub-page: Supplier */}
+                            {filterSubPage === 'supplier' && (
+                                <>
+                                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 16px',borderBottom:'1px solid #f1f5f9',position:'sticky',top:0,background:'#fff',zIndex:10}}>
+                                        <button onClick={() => setFilterSubPage(null)} style={{background:'none',border:'none',cursor:'pointer',padding:0,color:'#0d9488',fontSize:'20px',lineHeight:1}}><Icon name="arrow-left" /></button>
+                                        <button onClick={() => { setActiveFilterED([...tempFilterED]); setActiveFilterSupplier([...tempFilterSupplier]); setShowFilterPage(false); setFilterSubPage(null); }}
+                                            style={{background:'#0d9488',color:'#fff',border:'none',borderRadius:'8px',padding:'7px 18px',fontSize:'13px',fontWeight:800,cursor:'pointer'}}>Pasang</button>
+                                    </div>
+                                    <div style={{padding:'16px'}}>
+                                        <h3 style={{fontSize:'16px',fontWeight:800,color:'#1e293b',marginBottom:'16px'}}>Pilih Supplier</h3>
+                                        {allSuppliers.length === 0 ? (
+                                            <p style={{color:'#94a3b8',fontSize:'13px',textAlign:'center',paddingTop:'24px'}}>Tidak ada data supplier</p>
+                                        ) : (
+                                            <>
+                                                <div onClick={() => setTempFilterSupplier(tempFilterSupplier.length === allSuppliers.length ? [] : [...allSuppliers])}
+                                                    style={{display:'flex',alignItems:'center',gap:'14px',padding:'13px 0',borderBottom:'2px solid #e2e8f0',cursor:'pointer',marginBottom:'4px'}}>
+                                                    <div style={{width:'20px',height:'20px',borderRadius:'4px',border:`2px solid ${tempFilterSupplier.length===allSuppliers.length ? '#0d9488' : '#94a3b8'}`,background: tempFilterSupplier.length===allSuppliers.length ? '#0d9488' : '#fff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                                                        {tempFilterSupplier.length===allSuppliers.length && <Icon name="check" style={{color:'#fff',fontSize:'11px'}} />}
+                                                    </div>
+                                                    <span style={{fontSize:'14px',fontWeight:700,color:'#1e293b'}}>Semua</span>
+                                                </div>
+                                                {allSuppliers.map(sup => (
+                                                    <div key={sup} onClick={() => setTempFilterSupplier(tempFilterSupplier.includes(sup) ? tempFilterSupplier.filter(x=>x!==sup) : [...tempFilterSupplier, sup])}
+                                                        style={{display:'flex',alignItems:'center',gap:'14px',padding:'13px 0',borderBottom:'1px solid #f1f5f9',cursor:'pointer'}}>
+                                                        <div style={{width:'20px',height:'20px',borderRadius:'4px',border:`2px solid ${tempFilterSupplier.includes(sup) ? '#0d9488' : '#94a3b8'}`,background: tempFilterSupplier.includes(sup) ? '#0d9488' : '#fff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                                                            {tempFilterSupplier.includes(sup) && <Icon name="check" style={{color:'#fff',fontSize:'11px'}} />}
+                                                        </div>
+                                                        <span style={{fontSize:'14px',fontWeight:600,color:'#334155'}}>{sup}</span>
+                                                    </div>
+                                                ))}
+                                            </>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
                 </div>
             );
         };
