@@ -12625,13 +12625,15 @@
             const [activeSession, setActiveSession] = useState(null);
             const [sessionId, setSessionId] = useState(null);
             const [searchQuery, setSearchQuery] = useState('');
-            const [filterStatus, setFilterStatus] = useState('rekomendasi');
+            const [filterStatus, setFilterStatus] = useState('all');
             const [saving, setSaving] = useState(false);
             const [showHistory, setShowHistory] = useState(false);
             const [showFinishModal, setShowFinishModal] = useState(false);
             const [showCancelModal, setShowCancelModal] = useState(false);
             const [showEmployeeCancelInfo, setShowEmployeeCancelInfo] = useState(false);
             const [historyDetail, setHistoryDetail] = useState(null);
+            const [showHasilPage, setShowHasilPage] = useState(false);
+            const [hasilPageData, setHasilPageData] = useState(null); // { entries, sessionDoc, stats, selisihNilai, negativeItems, appliedAt }
             // ── BARU: live-save & sinkronisasi kasir ──────────────────────────
             const [soSaveStatus, setSoSaveStatus] = useState('idle'); // 'idle' | 'saving' | 'saved'
             const focusedItemRef = React.useRef(null);   // item sedang diketik user
@@ -12649,10 +12651,26 @@
             }, []);
 
             useEffect(() => {
-                const active = sessions.find(s => s.status === 'open' && s.profileId === profileId);
+                const active = sessions.find(s => (s.status === 'open' || s.status === 'review') && s.profileId === profileId);
                 if (active) {
                     setActiveSession(active);
                     setSessionId(active.id);
+                    // Jika status review, tampilkan halaman hasil otomatis
+                    if (active.status === 'review' && !showHasilPage) {
+                        const entries = active.entries || [];
+                        const selisihNilai = entries.reduce((sum, e) => sum + (e.selisih * (e.price || 0)), 0);
+                        const negativeItems = entries.filter(e => e.physicalQty < 0);
+                        const s = active.summary || {};
+                        setHasilPageData({
+                            entries, selisihNilai, negativeItems,
+                            stats: { total: s.total||0, counted: s.counted||0, selisih: s.selisih||0, ok: (s.counted||0)-(s.selisih||0) },
+                            createdAt: active.createdAt,
+                            finishedAt: active.finishedAt || new Date(),
+                            applied: false,
+                        });
+                        setShowHasilPage(true);
+                        return;
+                    }
                     // physicalMap = sumber kebenaran di Firestore (diupdate kasir & opname user)
                     // Sync ke state, tapi JANGAN overwrite item yang sedang diketik user
                     const physMap = active.physicalMap || {};
@@ -12681,19 +12699,17 @@
                     const q = searchQuery.toLowerCase();
                     list = list.filter(i => i.name?.toLowerCase().includes(q) || i.rack?.toLowerCase().includes(q));
                 }
-                if (filterStatus === 'rekomendasi') list = list.filter(i => physicalCounts[i.id] === undefined && (Number(i.qty) <= Number(i.minStock || 0) || Number(i.qty) === 0));
+                if (filterStatus === 'ok') list = list.filter(i => physicalCounts[i.id] !== undefined && Number(physicalCounts[i.id]) === Number(i.qty));
+                else if (filterStatus === 'selisih') list = list.filter(i => physicalCounts[i.id] !== undefined && Number(physicalCounts[i.id]) !== Number(i.qty));
                 else if (filterStatus === 'belum') list = list.filter(i => physicalCounts[i.id] === undefined);
-                else if (filterStatus === 'sudah') list = list.filter(i => physicalCounts[i.id] !== undefined && physicalCounts[i.id] !== '');
                 return list;
             }, [items, searchQuery, filterStatus, physicalCounts, currentProfile]);
 
             const stats = useMemo(() => {
                 const all = items.filter(item => !currentProfile?.id || item.storeId === currentProfile.id || !item.storeId);
-                const counted = all.filter(i => physicalCounts[i.id] !== undefined && physicalCounts[i.id] !== '');
-                const belum = all.filter(i => physicalCounts[i.id] === undefined || physicalCounts[i.id] === '');
+                const counted = all.filter(i => physicalCounts[i.id] !== undefined);
                 const selisih = counted.filter(i => Number(physicalCounts[i.id]) !== Number(i.qty));
-                const rekomendasi = belum.filter(i => Number(i.qty) <= Number(i.minStock || 0) || Number(i.qty) === 0);
-                return { total: all.length, counted: counted.length, selisih: selisih.length, ok: counted.length - selisih.length, belum: belum.length, rekomendasi: rekomendasi.length };
+                return { total: all.length, counted: counted.length, selisih: selisih.length, ok: counted.length - selisih.length };
             }, [items, physicalCounts, currentProfile]);
 
             const startSession = async () => {
@@ -12762,23 +12778,50 @@
                         return { itemId, name: item?.name || '?', systemQty: Number(item?.qty || 0), physicalQty: Number(physicalQty), selisih: Number(physicalQty) - Number(item?.qty || 0), price: Number(item?.price || 0) };
                     });
                 try {
-                    // Update stock opname session to closed
+                    // Simpan sebagai 'review' dulu — stok BELUM diubah
                     await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'stock_opname', sessionId), {
-                        entries, status: 'closed', finishedAt: window.serverTimestamp(),
+                        entries, status: 'review', finishedAt: window.serverTimestamp(),
                         summary: { total: stats.total, counted: stats.counted, selisih: stats.selisih }
                     });
+                    // Hitung selisih nilai inventory
+                    const selisihNilai = entries.reduce((sum, e) => sum + (e.selisih * (e.price || 0)), 0);
+                    // Cek barang yang stoknya < 0 setelah koreksi
+                    const negativeItems = entries.filter(e => e.physicalQty < 0);
+                    setHasilPageData({
+                        entries,
+                        selisihNilai,
+                        negativeItems,
+                        stats: { ...stats },
+                        createdAt: activeSession?.createdAt,
+                        finishedAt: new Date(),
+                        applied: false,
+                    });
+                    setShowFinishModal(false);
+                    setShowHasilPage(true);
+                } catch (e) { showToast('Gagal menyelesaikan sesi', 'error'); }
+                setSaving(false);
+            };
+
+            const applyToStock = async () => {
+                if (!sessionId || !hasilPageData) return;
+                setSaving(true);
+                try {
                     // Update inventory qty sesuai hasil stock opname (batch)
                     const batch = window.writeBatch(window.db);
-                    entries.forEach(e => {
+                    hasilPageData.entries.forEach(e => {
                         const itemRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', e.itemId);
                         const updateData = { [`stocks.${profileId}`]: e.physicalQty };
                         if (profileId === 'default') updateData.qty = e.physicalQty;
                         batch.update(itemRef, updateData);
                     });
                     await batch.commit();
-                    showToast('Stock Opname selesai! Stok barang telah diperbarui.');
-                    setShowFinishModal(false);
-                } catch (e) { showToast('Gagal menyelesaikan sesi', 'error'); }
+                    // Update session status to closed
+                    await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'stock_opname', sessionId), {
+                        status: 'closed', appliedAt: window.serverTimestamp()
+                    });
+                    setHasilPageData(prev => ({ ...prev, applied: true }));
+                    showToast('Stok berhasil diterapkan! Stock Opname selesai.');
+                } catch (e) { showToast('Gagal menerapkan stok', 'error'); }
                 setSaving(false);
             };
 
@@ -12950,6 +12993,202 @@
                 );
             }
 
+            if (showHasilPage && hasilPageData) {
+                const hd = hasilPageData;
+                const formatRp = (n) => {
+                    const abs = Math.abs(n);
+                    const str = 'Rp' + abs.toLocaleString('id-ID');
+                    return n < 0 ? '−' + str : (n > 0 ? '+' + str : str);
+                };
+                const formatDateLocal = (d) => {
+                    if (!d) return '-';
+                    const dd = d.toDate ? d.toDate() : (d instanceof Date ? d : new Date(d));
+                    return dd.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+                };
+                const formatTimeLocal = (d) => {
+                    if (!d) return '-';
+                    const dd = d.toDate ? d.toDate() : (d instanceof Date ? d : new Date(d));
+                    return dd.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+                };
+                const hasNegative = hd.negativeItems && hd.negativeItems.length > 0;
+                const selisihAbs = Math.abs(hd.selisihNilai);
+
+                return (
+                    <div className="fade-in" style={{minHeight:'100vh',background:'#f8fafc'}}>
+                        {/* Header */}
+                        <div style={{background:'white',borderBottom:'1px solid #e2e8f0',padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,zIndex:10}}>
+                            <button onClick={() => { if (hd.applied) { setShowHasilPage(false); setHasilPageData(null); } else { setShowHasilPage(false); } }} style={{display:'flex',alignItems:'center',gap:'6px',background:'none',border:'none',cursor:'pointer',color:'#475569',fontWeight:700,fontSize:'14px'}}>
+                                <i className="fa-solid fa-arrow-left"></i>
+                            </button>
+                            <span style={{fontWeight:800,fontSize:'15px',color:'#0f172a'}}>Hasil Stock Opname</span>
+                            <button
+                                onClick={() => {
+                                    const now = new Date();
+                                    const storeName = currentProfile?.name || 'Toko';
+                                    const dateStr = formatDateLocal(hd.createdAt || now).replace(/ /g,'_');
+                                    const rows = [
+                                        ['No','Nama Barang','Stok Sistem','Stok Fisik','Selisih','Harga','Nilai Selisih'],
+                                        ...hd.entries.map((e,i) => [i+1, e.name, e.systemQty, e.physicalQty, e.selisih, e.price||0, e.selisih*(e.price||0)])
+                                    ];
+                                    const csvContent = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+                                    const blob = new Blob([csvContent], {type:'text/csv'});
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url; a.download = `StockOpname_${storeName}_${dateStr}.csv`; a.click();
+                                    URL.revokeObjectURL(url);
+                                }}
+                                style={{display:'flex',alignItems:'center',gap:'6px',background:'white',border:'1.5px solid #e2e8f0',borderRadius:'12px',padding:'7px 14px',cursor:'pointer',fontWeight:700,fontSize:'13px',color:'#475569'}}>
+                                <i className="fa-solid fa-cloud-arrow-down"></i> Unduh
+                            </button>
+                        </div>
+
+                        <div style={{padding:'20px 16px',maxWidth:'520px',margin:'0 auto',display:'flex',flexDirection:'column',gap:'16px'}}>
+                            {/* Judul */}
+                            <div>
+                                <h1 style={{fontWeight:900,fontSize:'28px',color:'#0f172a',lineHeight:'1.2',marginBottom:'6px'}}>
+                                    Hasil stok opname {new Date(hd.finishedAt).getFullYear()} {new Date(hd.finishedAt).toLocaleDateString('id-ID',{month:'long',day:'numeric'})}
+                                </h1>
+                                <p style={{fontSize:'13px',color:'#64748b'}}>
+                                    Dicek sejak {formatDateLocal(hd.createdAt)}, {formatTimeLocal(hd.createdAt)} sampai {formatDateLocal(hd.finishedAt)}, {formatTimeLocal(hd.finishedAt)}
+                                </p>
+                            </div>
+
+                            {/* Warning: Stok negatif */}
+                            {hasNegative && (
+                                <div style={{background:'#fff5f5',border:'1.5px solid #fecaca',borderRadius:'16px',padding:'16px'}}>
+                                    <div style={{display:'flex',alignItems:'flex-start',gap:'12px'}}>
+                                        <div style={{width:'36px',height:'36px',borderRadius:'50%',background:'white',border:'2px solid #fca5a5',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                                            <i className="fa-solid fa-circle-exclamation" style={{color:'#ef4444',fontSize:'16px'}}></i>
+                                        </div>
+                                        <div style={{flex:1}}>
+                                            <p style={{fontWeight:800,fontSize:'14px',color:'#991b1b',marginBottom:'4px'}}>Ada barang yang stoknya di bawah 0</p>
+                                            <p style={{fontSize:'12px',color:'#b91c1c',lineHeight:'1.5'}}>
+                                                {hd.negativeItems.length} barang akan memiliki stok negatif setelah diterapkan. Periksa kembali input sebelum menerapkan.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            setShowHasilPage(false);
+                                        }}
+                                        style={{width:'100%',marginTop:'12px',padding:'10px',background:'#ef4444',color:'white',border:'none',borderRadius:'12px',fontWeight:800,fontSize:'13px',cursor:'pointer'}}>
+                                        Lihat &amp; Koreksi
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Warning: Belum diterapkan */}
+                            {!hd.applied && (
+                                <div style={{background:'#fffbeb',border:'1.5px solid #fde68a',borderRadius:'16px',padding:'16px'}}>
+                                    <div style={{display:'flex',alignItems:'flex-start',gap:'12px'}}>
+                                        <div style={{width:'36px',height:'36px',borderRadius:'50%',background:'white',border:'2px solid #fcd34d',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                                            <i className="fa-solid fa-circle-exclamation" style={{color:'#d97706',fontSize:'16px'}}></i>
+                                        </div>
+                                        <div style={{flex:1}}>
+                                            <p style={{fontWeight:800,fontSize:'14px',color:'#92400e',marginBottom:'4px'}}>{isOwner ? 'Hasil belum diterapkan ke dalam stok' : 'Pemilik belum menerapkan hasil ke dalam stok'}</p>
+                                            <p style={{fontSize:'12px',color:'#b45309',lineHeight:'1.5'}}>
+                                                {isOwner ? 'Klik "Terapkan ke Stok" di bawah untuk memperbarui data stok sesuai hasil opname.' : 'Ingatkan pemilik untuk segera menerapkan hasil stok opname ke dalam stok.'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {isOwner && (
+                                        <button
+                                            onClick={applyToStock}
+                                            disabled={saving}
+                                            style={{width:'100%',marginTop:'12px',padding:'12px',background:saving?'#6ee7b7':'#059669',color:'white',border:'none',borderRadius:'12px',fontWeight:800,fontSize:'14px',cursor:saving?'not-allowed':'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',transition:'all .2s'}}>
+                                            {saving ? <><i className="fa-solid fa-circle-notch fa-spin"></i> Menerapkan...</> : <><i className="fa-solid fa-check-double"></i> Terapkan ke Stok</>}
+                                        </button>
+                                    )}
+                                    {!isOwner && (
+                                        <button
+                                            onClick={() => { setShowHasilPage(false); }}
+                                            style={{width:'100%',marginTop:'12px',padding:'10px',background:'white',color:'#92400e',border:'1.5px solid #fcd34d',borderRadius:'12px',fontWeight:700,fontSize:'13px',cursor:'pointer'}}>
+                                            Cek lagi
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Sukses diterapkan */}
+                            {hd.applied && (
+                                <div style={{background:'#f0fdf4',border:'1.5px solid #86efac',borderRadius:'16px',padding:'16px',display:'flex',alignItems:'center',gap:'12px'}}>
+                                    <div style={{width:'36px',height:'36px',borderRadius:'50%',background:'#dcfce7',border:'2px solid #6ee7b7',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                                        <i className="fa-solid fa-circle-check" style={{color:'#16a34a',fontSize:'16px'}}></i>
+                                    </div>
+                                    <div>
+                                        <p style={{fontWeight:800,fontSize:'14px',color:'#14532d'}}>Stok sudah diterapkan!</p>
+                                        <p style={{fontSize:'12px',color:'#166534'}}>Data stok telah diperbarui sesuai hasil opname.</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Perkiraan selisih nilai */}
+                            <div style={{borderTop:'1px solid #e2e8f0',paddingTop:'16px'}}>
+                                <p style={{fontSize:'13px',fontWeight:700,color:'#0284c7',textDecoration:'underline',textDecorationStyle:'dotted',marginBottom:'6px',cursor:'default'}}>
+                                    Perkiraan selisih nilai inventory
+                                </p>
+                                <p style={{fontWeight:900,fontSize:'34px',color: hd.selisihNilai < 0 ? '#ef4444' : hd.selisihNilai > 0 ? '#059669' : '#0f172a',lineHeight:'1.1',marginBottom:'4px'}}>
+                                    {hd.selisihNilai === 0 ? 'Rp0' : formatRp(hd.selisihNilai)}
+                                </p>
+                                <p style={{fontSize:'13px',color:'#94a3b8',marginBottom:'16px'}}>
+                                    {hd.stats.counted} dari {hd.stats.total} barang dicek
+                                </p>
+
+                                {/* Mini stats */}
+                                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
+                                    <div style={{background:'white',borderRadius:'14px',padding:'14px',border:'1px solid #e2e8f0'}}>
+                                        <p style={{fontSize:'11px',color:'#94a3b8',fontWeight:600,marginBottom:'4px'}}>Barang selisih</p>
+                                        <p style={{fontSize:'22px',fontWeight:900,color:'#ef4444'}}>{hd.stats.selisih}</p>
+                                    </div>
+                                    <div style={{background:'white',borderRadius:'14px',padding:'14px',border:'1px solid #e2e8f0'}}>
+                                        <p style={{fontSize:'11px',color:'#94a3b8',fontWeight:600,marginBottom:'4px'}}>Barang sesuai</p>
+                                        <p style={{fontSize:'22px',fontWeight:900,color:'#059669'}}>{hd.stats.ok}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Top selisih list */}
+                            {hd.entries.filter(e => e.selisih !== 0).length > 0 && (
+                                <div style={{background:'white',borderRadius:'16px',border:'1px solid #e2e8f0',overflow:'hidden'}}>
+                                    <div style={{padding:'14px 16px',borderBottom:'1px solid #f1f5f9',display:'flex',alignItems:'center',justify:'space-between'}}>
+                                        <p style={{fontWeight:800,fontSize:'13px',color:'#0f172a'}}>Barang dengan selisih terbesar</p>
+                                    </div>
+                                    {hd.entries
+                                        .filter(e => e.selisih !== 0)
+                                        .sort((a, b) => Math.abs(b.selisih * (b.price||0)) - Math.abs(a.selisih * (a.price||0)))
+                                        .slice(0, 10)
+                                        .map((e, idx) => {
+                                            const nilaiSelisih = e.selisih * (e.price || 0);
+                                            return (
+                                                <div key={idx} style={{padding:'12px 16px',borderBottom:idx<9?'1px solid #f8fafc':'none',display:'flex',alignItems:'center',gap:'10px'}}>
+                                                    <div style={{width:'32px',height:'32px',borderRadius:'10px',background: e.selisih < 0 ? '#fef2f2' : '#f0fdf4',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                                                        <span style={{fontWeight:900,fontSize:'13px',color: e.selisih < 0 ? '#ef4444' : '#059669'}}>{e.selisih > 0 ? '+' : ''}{e.selisih}</span>
+                                                    </div>
+                                                    <div style={{flex:1,minWidth:0}}>
+                                                        <p style={{fontWeight:700,fontSize:'12px',color:'#1e293b',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{e.name}</p>
+                                                        <p style={{fontSize:'11px',color:'#94a3b8'}}>{e.systemQty} → {e.physicalQty}</p>
+                                                    </div>
+                                                    <p style={{fontWeight:800,fontSize:'12px',color: nilaiSelisih < 0 ? '#ef4444' : '#059669',flexShrink:0}}>
+                                                        {nilaiSelisih !== 0 ? (nilaiSelisih < 0 ? '−' : '+') + 'Rp' + Math.abs(nilaiSelisih).toLocaleString('id-ID') : 'Rp0'}
+                                                    </p>
+                                                </div>
+                                            );
+                                        })
+                                    }
+                                </div>
+                            )}
+
+                            {/* Tombol kembali */}
+                            <button
+                                onClick={() => { setShowHasilPage(false); setHasilPageData(null); }}
+                                style={{padding:'14px',background:'white',border:'1.5px solid #e2e8f0',borderRadius:'14px',fontWeight:700,fontSize:'14px',color:'#64748b',cursor:'pointer',width:'100%',marginBottom:'32px'}}>
+                                Kembali ke Stock Opname
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
             if (showHistory) {
                 const closed = sessions.filter(s => s.status === 'closed' && s.profileId === profileId);
                 return (
@@ -13020,8 +13259,8 @@
                     
                     <div className="flex items-center justify-between flex-wrap gap-3">
                         <div>
-                            <h2 className="text-3xl font-black text-slate-900">Stok opname</h2>
-                            <p className="text-sm text-slate-400 mt-0.5">{currentProfile?.name}</p>
+                            <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2"><Icon name="clipboard-check" className="text-sky-500" /> Stock Opname</h2>
+                            <p className="text-sm text-slate-400 mt-0.5">{currentProfile?.name} - Pengecekan stok fisik vs sistem</p>
                         </div>
                         <button onClick={() => setShowHistory(true)} className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 shadow-sm"><Icon name="clock-rotate-left" className="text-slate-400" /> Riwayat</button>
                     </div>
@@ -13039,21 +13278,31 @@
 
                     {activeSession && (
                         <>
-                            {/* ── Farmacare-style Progress Header ── */}
-                            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-                                <div className="flex items-center gap-3 mb-3">
-                                    <div className="flex-1">
-                                        <div className="flex items-center justify-between mb-1.5">
-                                            <span className="text-sm font-bold text-slate-700">{stats.counted} dari {stats.total} sudah dicek</span>
-                                        </div>
-                                        <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                                            <div className="bg-teal-600 h-2.5 rounded-full transition-all duration-500" style={{ width: `${stats.total > 0 ? (stats.counted / stats.total) * 100 : 0}%` }}></div>
-                                        </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                {[
+                                    { label: 'Total Barang', val: stats.total, color: 'text-slate-700', bg: 'bg-slate-50', icon: 'boxes-stacked' },
+                                    { label: 'Sudah Dihitung', val: stats.counted, color: 'text-sky-600', bg: 'bg-sky-50', icon: 'check-square' },
+                                    { label: 'Ada Selisih', val: stats.selisih, color: 'text-red-500', bg: 'bg-red-50', icon: 'triangle-exclamation' },
+                                    { label: 'Sesuai', val: stats.ok, color: 'text-emerald-600', bg: 'bg-emerald-50', icon: 'circle-check' },
+                                ].map(s => (
+                                    <div key={s.label} className={`${s.bg} rounded-2xl p-4`}>
+                                        <p className="text-xs font-bold text-slate-400 uppercase mb-1">{s.label}</p>
+                                        <p className={`text-3xl font-black ${s.color}`}>{s.val}</p>
                                     </div>
+                                ))}
+                            </div>
+
+                            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+                                <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
+                                    <span>Progress</span><span>{stats.counted}/{stats.total} barang</span>
                                 </div>
-                                <div className="flex items-center justify-between gap-2">
+                                <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                                    <div className="bg-sky-500 h-3 rounded-full transition-all duration-500" style={{ width: `${stats.total > 0 ? (stats.counted / stats.total) * 100 : 0}%` }}></div>
+                                </div>
+                                <div className="flex items-center justify-between mt-3 gap-2 flex-wrap">
                                     <div className="flex items-center gap-2">
-                                        <p className="text-[10px] text-slate-400">Sesi: {formatDate(activeSession.createdAt)}</p>
+                                        <p className="text-[10px] text-slate-400">Sesi dimulai: {formatDate(activeSession.createdAt)}</p>
+                                        {/* ── Indikator Live-Save ── */}
                                         {soSaveStatus === 'saving' && (
                                             <span style={{display:'inline-flex',alignItems:'center',gap:'4px',fontSize:'9px',fontWeight:700,color:'#0284c7',background:'#e0f2fe',borderRadius:'99px',padding:'2px 8px'}}>
                                                 <i className="fa-solid fa-circle-notch fa-spin" style={{fontSize:'8px'}}></i> Menyimpan...
@@ -13067,75 +13316,85 @@
                                     </div>
                                     <div className="flex gap-2">
                                         <button
-                                            onClick={() => { if (isOwner) { setShowCancelModal(true); } else { setShowEmployeeCancelInfo(true); } }}
-                                            className={`text-sm font-bold px-4 py-1.5 rounded-lg border transition-all ${isOwner ? 'border-slate-300 text-slate-600 hover:bg-slate-50' : 'border-slate-200 text-slate-400 cursor-not-allowed opacity-60'}`}>
-                                            Batalkan
+                                            onClick={() => {
+                                                if (isOwner) {
+                                                    setShowCancelModal(true);
+                                                } else {
+                                                    setShowEmployeeCancelInfo(true);
+                                                }
+                                            }}
+                                            title={isOwner ? 'Batalkan sesi ini' : 'Hanya Owner yang bisa membatalkan sesi'}
+                                            className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${isOwner ? 'bg-red-50 hover:bg-red-100 text-red-600 border border-red-200' : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-70'}`}>
+                                            <i className="fa-solid fa-ban text-[10px]"></i> Batalkan
+                                            {!isOwner && <i className="fa-solid fa-lock text-[9px] opacity-60"></i>}
                                         </button>
-                                        <button onClick={() => setShowFinishModal(true)} className="text-sm font-bold px-4 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white shadow-sm transition-all active:scale-95">Selesai</button>
+
+                                        <button onClick={() => setShowFinishModal(true)} className="text-xs bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm transition-all"> Selesaikan</button>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* ── Farmacare-style Tab Filter + Search ── */}
-                            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                                {/* Tabs */}
-                                <div className="flex border-b border-slate-100">
-                                    {[
-                                        ['rekomendasi', 'Rekomendasi', stats.rekomendasi],
-                                        ['belum', 'Belum dicek', stats.belum],
-                                        ['sudah', 'Sudah dicek', stats.counted],
-                                    ].map(([v, l, count]) => (
-                                        <button key={v} onClick={() => setFilterStatus(v)}
-                                            className={`flex-1 py-3 px-2 text-xs font-bold transition-all border-b-2 ${filterStatus === v ? 'border-teal-600 text-teal-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
-                                            <div>{l}</div>
-                                            <div className={`text-base font-black mt-0.5 ${filterStatus === v ? 'text-teal-700' : 'text-slate-600'}`}>{count} barang</div>
-                                        </button>
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <div className="relative flex-1">
+                                    <Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                                    <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Cari barang..." className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white border border-slate-200 text-sm font-medium text-slate-700 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100" />
+                                </div>
+                                <div className="flex gap-1.5">
+                                    {[['all','Semua'],['belum','Belum'],['selisih','Selisih'],['ok','Sesuai']].map(([v,l]) => (
+                                        <button key={v} onClick={() => setFilterStatus(v)} className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${filterStatus === v ? 'bg-slate-800 text-white' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'}`}>{l}</button>
                                     ))}
                                 </div>
-                                {/* Search */}
-                                <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-50">
-                                    <div className="flex-1 flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-2 border border-slate-200 focus-within:border-teal-400">
-                                        <Icon name="magnifying-glass" className="text-slate-400 text-sm flex-shrink-0" />
-                                        <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Cari barang..."
-                                            className="flex-1 bg-transparent text-sm font-medium text-slate-700 outline-none placeholder:text-slate-400" />
-                                    </div>
-                                    <button className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50">Cari</button>
+                            </div>
+                            {/* ── Banner: Opname Sambil Buka Toko ── */}
+                            <div style={{background:'linear-gradient(90deg,#f0fdf4,#e0f2fe)',border:'1px solid #bbf7d0',borderRadius:'14px',padding:'10px 14px',display:'flex',alignItems:'center',gap:'10px'}}>
+                                <div style={{width:'32px',height:'32px',background:'#dcfce7',borderRadius:'10px',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                                    <i className="fa-solid fa-store" style={{color:'#16a34a',fontSize:'14px'}}></i>
                                 </div>
-                                {/* List Header */}
-                                <div className="flex items-center px-4 py-2 border-b border-slate-100">
-                                    <div className="w-8 flex-shrink-0"></div>
-                                    <div className="w-8 flex-shrink-0 text-xs font-bold text-slate-400"></div>
-                                    <div className="flex-1 text-xs font-bold text-slate-500 uppercase tracking-wide">Barang</div>
-                                </div>
-                                {/* Item List */}
                                 <div>
-                                    {filteredItems.map((item, idx) => {
-                                        const physical = physicalCounts[item.id];
-                                        const hasCount = physical !== undefined && physical !== '';
-                                        const selisih = hasCount ? Number(physical) - Number(item.qty) : null;
-                                        const isOk = hasCount && selisih === 0;
-                                        const isSelisih = hasCount && selisih !== 0;
-                                        return (
-                                            <div key={item.id}
-                                                style={{borderBottom: idx < filteredItems.length - 1 ? '1px solid #f1f5f9' : 'none'}}
-                                                className={`flex items-center px-4 py-3 transition-colors ${isSelisih ? 'bg-red-50/40' : isOk ? 'bg-emerald-50/40' : ''}`}>
-                                                {/* Checkbox */}
-                                                <div className="w-8 flex-shrink-0 flex items-center">
-                                                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${hasCount ? (isOk ? 'bg-teal-600 border-teal-600' : 'bg-orange-400 border-orange-400') : 'border-slate-300 bg-white'}`}>
-                                                        {hasCount && <i className="fa-solid fa-check text-white" style={{fontSize:'9px'}}></i>}
-                                                    </div>
-                                                </div>
-                                                {/* Number */}
-                                                <div className="w-7 flex-shrink-0 text-xs font-medium text-slate-400">{idx + 1}</div>
-                                                {/* Name + detail */}
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="font-bold text-teal-700 text-sm leading-tight truncate">{item.name}</div>
-                                                    {item.rack && <div className="text-[10px] text-slate-400 mt-0.5">Rak: {item.rack}</div>}
-                                                    {/* Input stok fisik - inline compact */}
-                                                    <div className="flex items-center gap-2 mt-1.5">
-                                                        <span className="text-[10px] text-slate-400">Sistem: <b className="text-slate-600">{item.qty}</b> {item.unit}</span>
-                                                        <div className="flex items-center gap-1">
-                                                            <span className="text-[10px] text-slate-400">Fisik:</span>
+                                    <p style={{fontSize:'11px',fontWeight:800,color:'#166534',margin:0}}>Opname Sambil Buka Toko ✓</p>
+                                    <p style={{fontSize:'10px',color:'#4ade80',fontWeight:600,margin:'2px 0 0 0',color:'#15803d'}}>Stok fisik tersimpan otomatis saat diisi · Transaksi kasir akan otomatis mengurangi stok fisik</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                                <div style={{overflowX:'auto'}}>
+                                    <table style={{width:'100%', borderCollapse:'collapse', tableLayout:'fixed'}}>
+                                        <colgroup>
+                                            <col style={{width:'30%'}} />
+                                            <col style={{width:'12%'}} />
+                                            <col style={{width:'13%'}} />
+                                            <col style={{width:'14%'}} />
+                                            <col style={{width:'11%'}} />
+                                            <col style={{width:'20%'}} />
+                                        </colgroup>
+                                        <thead style={{background:'#f8fafc', position:'sticky', top:0, zIndex:1}}>
+                                            <tr style={{textAlign:'left'}}>
+                                                <th style={{padding:'7px 8px 7px 12px', fontSize:'9px', fontWeight:800, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.06em', whiteSpace:'nowrap'}}>Nama Barang</th>
+                                                <th style={{padding:'7px 4px', fontSize:'9px', fontWeight:800, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.06em'}}>Rak</th>
+                                                <th style={{padding:'7px 4px', fontSize:'9px', fontWeight:800, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center'}}>Stok Sistem</th>
+                                                <th style={{padding:'7px 4px', fontSize:'9px', fontWeight:800, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center'}}>Stok Fisik</th>
+                                                <th style={{padding:'7px 4px', fontSize:'9px', fontWeight:800, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center'}}>Selisih</th>
+                                                <th style={{padding:'7px 8px 7px 4px', fontSize:'9px', fontWeight:800, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center'}}>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredItems.map((item, idx) => {
+                                                const physical = physicalCounts[item.id];
+                                                const hasCount = physical !== undefined && physical !== '';
+                                                const selisih = hasCount ? Number(physical) - Number(item.qty) : null;
+                                                const isOk = hasCount && selisih === 0;
+                                                const isSelisih = hasCount && selisih !== 0;
+                                                return (
+                                                    <tr key={item.id} style={{
+                                                        borderTop: idx === 0 ? 'none' : '1px solid #f1f5f9',
+                                                        background: isSelisih ? 'rgba(254,242,242,0.5)' : isOk ? 'rgba(240,253,244,0.5)' : 'transparent',
+                                                    }}>
+                                                        <td style={{padding:'6px 6px 6px 12px', fontWeight:600, fontSize:'11px', color:'#334155', wordBreak:'break-word', lineHeight:'1.4'}}>{item.name}</td>
+                                                        <td style={{padding:'6px 4px', fontSize:'10px', color:'#94a3b8', wordBreak:'break-word', lineHeight:'1.4'}}>{item.rack || '—'}</td>
+                                                        <td style={{padding:'6px 4px', textAlign:'center', fontWeight:700, fontSize:'11px', color:'#475569'}}>
+                                                            {item.qty}<span style={{fontSize:'8px', color:'#94a3b8', marginLeft:'1px'}}>{item.unit}</span>
+                                                        </td>
+                                                        <td style={{padding:'4px 4px', textAlign:'center'}}>
                                                             <input type="number" min="0"
                                                                 value={physical !== undefined ? physical : ''}
                                                                 onChange={e => handleCountChange(item.id, e.target.value)}
@@ -13143,34 +13402,28 @@
                                                                 onBlur={() => { focusedItemRef.current = null; }}
                                                                 placeholder="—"
                                                                 style={{
-                                                                    width:'48px', textAlign:'center', fontSize:'11px', fontWeight:700,
-                                                                    padding:'2px 4px', borderRadius:'8px', outline:'none',
-                                                                    border: isOk ? '1.5px solid #5eead4' : isSelisih ? '1.5px solid #fca5a5' : '1.5px solid #e2e8f0',
-                                                                    background: isOk ? '#f0fdf4' : isSelisih ? '#fef2f2' : '#f8fafc',
-                                                                    color: isOk ? '#0d9488' : isSelisih ? '#dc2626' : '#475569',
+                                                                    width:'46px', textAlign:'center', fontSize:'11px', fontWeight:700,
+                                                                    padding:'3px 2px', borderRadius:'7px', outline:'none',
+                                                                    border: isOk ? '1.5px solid #6ee7b7' : isSelisih ? '1.5px solid #fca5a5' : '1.5px solid #e2e8f0',
+                                                                    background: isOk ? '#ecfdf5' : isSelisih ? '#fef2f2' : '#f8fafc',
+                                                                    color: isOk ? '#059669' : isSelisih ? '#dc2626' : '#475569',
                                                                 }}
                                                             />
-                                                        </div>
-                                                        {selisih !== null && (
-                                                            <span style={{fontSize:'10px', fontWeight:800, color: selisih > 0 ? '#059669' : selisih < 0 ? '#ef4444' : '#94a3b8'}}>
-                                                                {selisih > 0 ? `+${selisih}` : selisih === 0 ? '✓' : selisih}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                {/* Arrow */}
-                                                <div className="w-6 flex-shrink-0 text-slate-300 text-sm ml-2">
-                                                    <i className="fa-solid fa-chevron-right"></i>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                    {filteredItems.length === 0 && (
-                                        <div className="text-center py-12 text-slate-400">
-                                            <Icon name="box-open" className="text-3xl mb-2" />
-                                            <p className="text-sm font-medium">Tidak ada barang ditemukan</p>
-                                        </div>
-                                    )}
+                                                        </td>
+                                                        <td style={{padding:'6px 4px', textAlign:'center', fontWeight:800, fontSize:'12px', color: selisih === null ? '#cbd5e1' : selisih > 0 ? '#059669' : selisih < 0 ? '#ef4444' : '#94a3b8'}}>
+                                                            {selisih === null ? '—' : selisih > 0 ? `+${selisih}` : selisih}
+                                                        </td>
+                                                        <td style={{padding:'6px 8px 6px 4px', textAlign:'center'}}>
+                                                            {!hasCount && <span style={{fontSize:'9px', fontWeight:700, padding:'2px 7px', borderRadius:'99px', background:'#f1f5f9', color:'#94a3b8'}}>Belum</span>}
+                                                            {isOk && <span style={{fontSize:'9px', fontWeight:700, padding:'2px 7px', borderRadius:'99px', background:'#d1fae5', color:'#065f46'}}>Sesuai</span>}
+                                                            {isSelisih && <span style={{fontSize:'9px', fontWeight:700, padding:'2px 7px', borderRadius:'99px', background:'#fee2e2', color:'#991b1b'}}>Selisih</span>}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                    {filteredItems.length === 0 && <div className="text-center py-12 text-slate-400"><Icon name="box-open" className="text-3xl mb-2" /><p className="text-sm font-medium">Tidak ada barang ditemukan</p></div>}
                                 </div>
                             </div>
                         </>
