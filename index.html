@@ -13069,7 +13069,18 @@
             if (showResultPage && reviewSession) {
                 const rEntries = reviewSession.entries || [];
                 const rStats = reviewSession.summary || {};
-                const negativeItems = rEntries.filter(e => e.physicalQty < 0);
+                // Barang dengan stok fisik (hasil opname) di bawah 0
+                const negativePhysical = rEntries.filter(e => Number(e.physicalQty) < 0);
+                // Barang dengan stok sistem di bawah 0 yang belum dicount di opname
+                const negativeSistem = items.filter(item => {
+                    const alreadyInEntries = rEntries.find(e => e.itemId === item.id);
+                    return Number(item.qty) < 0 && !alreadyInEntries;
+                });
+                // Gabung semua barang dengan stok atau hasil opname di bawah 0
+                const negativeItems = [
+                    ...negativePhysical.map(e => ({ name: e.name, stokFisik: e.physicalQty, stokSistem: e.systemQty, type: 'opname' })),
+                    ...negativeSistem.map(item => ({ name: item.name, stokFisik: null, stokSistem: item.qty, type: 'sistem' })),
+                ];
                 const selisihItems = rEntries.filter(e => e.selisih !== 0);
                 const totalSelisihNilai = rEntries.reduce((sum, e) => sum + (e.selisih * (e.price || 0)), 0);
 
@@ -13107,36 +13118,94 @@
                                 </p>
                             </div>
 
-                            {/* Warning: Ada barang stok negatif */}
+                            {/* Warning: Ada barang stok atau batch di bawah 0 — sesuai foto */}
                             {negativeItems.length > 0 && (
                                 <div style={{background:'#fff5f5',border:'1.5px solid #fecaca',borderRadius:'16px',padding:'14px 16px'}}>
-                                    <div style={{display:'flex',gap:'12px'}}>
+                                    <div style={{display:'flex',gap:'10px'}}>
                                         <div style={{flexShrink:0,marginTop:'1px'}}>
-                                            <i className="fa-solid fa-circle-exclamation" style={{color:'#ef4444',fontSize:'16px'}}></i>
+                                            <i className="fa-solid fa-circle-exclamation" style={{color:'#ef4444',fontSize:'15px'}}></i>
                                         </div>
                                         <div style={{flex:1}}>
-                                            <p style={{fontWeight:800,color:'#991b1b',fontSize:'13px',marginBottom:'4px'}}>Ada barang yang stok fisiknya di bawah 0</p>
-                                            <p style={{fontSize:'11px',color:'#b91c1c'}}>
-                                                {negativeItems.length} barang memiliki stok fisik negatif. Periksa kembali sebelum menerapkan ke stok.{' '}
-                                                <button onClick={() => setShowResultNegativeList(v => !v)} style={{color:'#0284c7',fontWeight:700,background:'none',border:'none',cursor:'pointer',padding:0,fontSize:'11px'}}>
-                                                    {showResultNegativeList ? 'Sembunyikan' : '...Selengkapnya'}
+                                            <p style={{fontWeight:800,color:'#991b1b',fontSize:'13px',marginBottom:'4px'}}>Ada barang yang stok atau batchnya di bawah 0</p>
+                                            <p style={{fontSize:'11px',color:'#b91c1c',lineHeight:1.5}}>
+                                                Klik lihat dan edit/simpan ulang barang yang ditampilkan pada daftar{' '}
+                                                <button onClick={() => setShowResultNegativeList(true)} style={{color:'#0284c7',fontWeight:700,background:'none',border:'none',cursor:'pointer',padding:0,fontSize:'11px'}}>
+                                                    ...Selengkapnya
                                                 </button>
                                             </p>
-                                            {showResultNegativeList && (
-                                                <div style={{marginTop:'8px',background:'#fff',borderRadius:'10px',padding:'8px',maxHeight:'140px',overflowY:'auto'}}>
-                                                    {negativeItems.map((e, i) => (
-                                                        <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 0',borderBottom:'1px solid #fee2e2'}}>
-                                                            <span style={{fontSize:'11px',fontWeight:600,color:'#334155'}}>{e.name}</span>
-                                                            <span style={{fontSize:'11px',fontWeight:800,color:'#ef4444'}}>{e.physicalQty}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
                                             <div style={{display:'flex',justifyContent:'flex-end',marginTop:'12px'}}>
-                                                <button onClick={reopenSession} style={{background:'#ef4444',color:'#fff',fontWeight:700,fontSize:'12px',padding:'6px 18px',borderRadius:'10px',border:'none',cursor:'pointer',boxShadow:'0 2px 8px rgba(239,68,68,0.3)'}}>
-                                                    Lihat &amp; Perbaiki
+                                                <button
+                                                    onClick={() => setShowResultNegativeList(true)}
+                                                    style={{background:'#0d9488',color:'#fff',fontWeight:700,fontSize:'13px',padding:'8px 24px',borderRadius:'10px',border:'none',cursor:'pointer',boxShadow:'0 2px 8px rgba(13,148,136,0.3)'}}
+                                                >
+                                                    Lihat
                                                 </button>
                                             </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Modal: daftar barang stok di bawah 0 */}
+                            {showResultNegativeList && (
+                                <div style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.55)',zIndex:60,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={() => setShowResultNegativeList(false)}>
+                                    <div style={{background:'#fff',borderRadius:'24px 24px 0 0',width:'100%',maxWidth:'480px',maxHeight:'80vh',display:'flex',flexDirection:'column',boxShadow:'0 -8px 40px rgba(0,0,0,0.18)'}} onClick={e => e.stopPropagation()}>
+                                        {/* Handle */}
+                                        <div style={{display:'flex',justifyContent:'center',padding:'10px 0 4px'}}>
+                                            <div style={{width:'40px',height:'4px',borderRadius:'99px',background:'#e2e8f0'}}></div>
+                                        </div>
+                                        {/* Header modal */}
+                                        <div style={{padding:'8px 18px 12px',borderBottom:'1px solid #f1f5f9',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                                            <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+                                                <div style={{width:'32px',height:'32px',borderRadius:'10px',background:'#fff5f5',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                                                    <i className="fa-solid fa-circle-exclamation" style={{color:'#ef4444',fontSize:'14px'}}></i>
+                                                </div>
+                                                <div>
+                                                    <p style={{fontWeight:800,color:'#0f172a',fontSize:'13px',lineHeight:1.2}}>Stok di bawah 0</p>
+                                                    <p style={{fontSize:'11px',color:'#94a3b8',fontWeight:500}}>{negativeItems.length} barang ditemukan</p>
+                                                </div>
+                                            </div>
+                                            <button onClick={() => setShowResultNegativeList(false)} style={{width:'30px',height:'30px',borderRadius:'50%',background:'#f1f5f9',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'#64748b',fontSize:'13px'}}>
+                                                <i className="fa-solid fa-xmark"></i>
+                                            </button>
+                                        </div>
+                                        {/* Info tip */}
+                                        <div style={{margin:'10px 14px 2px',background:'#eff6ff',borderRadius:'10px',padding:'8px 12px',display:'flex',gap:'8px',alignItems:'flex-start'}}>
+                                            <i className="fa-solid fa-lightbulb" style={{color:'#3b82f6',fontSize:'11px',marginTop:'1px',flexShrink:0}}></i>
+                                            <p style={{fontSize:'11px',color:'#1d4ed8',fontWeight:500,lineHeight:1.5}}>Edit/simpan ulang barang di bawah, atau kembali ke daftar opname untuk memperbaiki angka fisiknya.</p>
+                                        </div>
+                                        {/* List barang */}
+                                        <div style={{overflowY:'auto',flex:1,padding:'8px 14px 4px'}}>
+                                            {negativeItems.map((item, i) => (
+                                                <div key={i} style={{display:'flex',alignItems:'center',gap:'10px',padding:'10px 0',borderBottom:'1px solid #f8fafc'}}>
+                                                    <div style={{width:'36px',height:'36px',borderRadius:'10px',background:'#fff5f5',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                                                        <i className="fa-solid fa-box" style={{color:'#f87171',fontSize:'13px'}}></i>
+                                                    </div>
+                                                    <div style={{flex:1,minWidth:0}}>
+                                                        <p style={{fontWeight:700,color:'#1e293b',fontSize:'12px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.name}</p>
+                                                        <div style={{display:'flex',gap:'10px',marginTop:'2px'}}>
+                                                            <span style={{fontSize:'10px',color:'#94a3b8'}}>Sistem: <span style={{fontWeight:700,color: Number(item.stokSistem) < 0 ? '#ef4444' : '#475569'}}>{item.stokSistem}</span></span>
+                                                            {item.stokFisik !== null && (
+                                                                <span style={{fontSize:'10px',color:'#94a3b8'}}>Fisik: <span style={{fontWeight:700,color:'#ef4444'}}>{item.stokFisik}</span></span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div style={{flexShrink:0,textAlign:'right'}}>
+                                                        <span style={{display:'inline-block',fontSize:'11px',fontWeight:800,color:'#ef4444',background:'#fff5f5',border:'1px solid #fecaca',borderRadius:'8px',padding:'2px 8px'}}>
+                                                            {item.stokFisik !== null ? item.stokFisik : item.stokSistem}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        {/* Footer aksi */}
+                                        <div style={{padding:'12px 14px 20px',borderTop:'1px solid #f1f5f9',display:'flex',gap:'10px'}}>
+                                            <button onClick={() => setShowResultNegativeList(false)} style={{flex:1,padding:'11px',borderRadius:'12px',background:'#f8fafc',color:'#475569',fontWeight:700,fontSize:'13px',border:'1.5px solid #e2e8f0',cursor:'pointer'}}>
+                                                Tutup
+                                            </button>
+                                            <button onClick={() => { setShowResultNegativeList(false); reopenSession(); }} style={{flex:1,padding:'11px',borderRadius:'12px',background:'linear-gradient(135deg,#0ea5e9,#0284c7)',color:'#fff',fontWeight:700,fontSize:'13px',border:'none',cursor:'pointer',boxShadow:'0 2px 10px rgba(2,132,199,0.3)'}}>
+                                                <i className="fa-solid fa-pen-to-square" style={{marginRight:'6px'}}></i>Perbaiki
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
