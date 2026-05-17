@@ -12630,10 +12630,12 @@
             const [showHistory, setShowHistory] = useState(false);
             const [showFinishModal, setShowFinishModal] = useState(false);
             const [showCancelModal, setShowCancelModal] = useState(false);
+            const [showResultPage, setShowResultPage] = useState(false);
+            const [reviewSession, setReviewSession] = useState(null);
+            const [applyingStock, setApplyingStock] = useState(false);
+            const [showResultNegativeList, setShowResultNegativeList] = useState(false);
             const [showEmployeeCancelInfo, setShowEmployeeCancelInfo] = useState(false);
             const [historyDetail, setHistoryDetail] = useState(null);
-            const [showHasilPage, setShowHasilPage] = useState(false);
-            const [hasilPageData, setHasilPageData] = useState(null); // { entries, sessionDoc, stats, selisihNilai, negativeItems, appliedAt }
             // ── BARU: live-save & sinkronisasi kasir ──────────────────────────
             const [soSaveStatus, setSoSaveStatus] = useState('idle'); // 'idle' | 'saving' | 'saved'
             const focusedItemRef = React.useRef(null);   // item sedang diketik user
@@ -12651,26 +12653,12 @@
             }, []);
 
             useEffect(() => {
-                const active = sessions.find(s => (s.status === 'open' || s.status === 'review') && s.profileId === profileId);
+                const active = sessions.find(s => s.status === 'open' && s.profileId === profileId);
+                // Jika ada sesi review (sudah "selesaikan" tapi belum terapkan), tampilkan result page
+                const review = sessions.find(s => s.status === 'review' && s.profileId === profileId);
                 if (active) {
                     setActiveSession(active);
                     setSessionId(active.id);
-                    // Jika status review, tampilkan halaman hasil otomatis
-                    if (active.status === 'review' && !showHasilPage) {
-                        const entries = active.entries || [];
-                        const selisihNilai = entries.reduce((sum, e) => sum + (e.selisih * (e.price || 0)), 0);
-                        const negativeItems = entries.filter(e => e.physicalQty < 0);
-                        const s = active.summary || {};
-                        setHasilPageData({
-                            entries, selisihNilai, negativeItems,
-                            stats: { total: s.total||0, counted: s.counted||0, selisih: s.selisih||0, ok: (s.counted||0)-(s.selisih||0) },
-                            createdAt: active.createdAt,
-                            finishedAt: active.finishedAt || new Date(),
-                            applied: false,
-                        });
-                        setShowHasilPage(true);
-                        return;
-                    }
                     // physicalMap = sumber kebenaran di Firestore (diupdate kasir & opname user)
                     // Sync ke state, tapi JANGAN overwrite item yang sedang diketik user
                     const physMap = active.physicalMap || {};
@@ -12686,7 +12674,17 @@
                         // Jika ada item di prev yang tidak ada di physMap, pertahankan (baru diketik)
                         return merged;
                     });
-                } else {
+                } else if (review && !showResultPage) {
+                    // Ada sesi review — tampilkan result page otomatis
+                    setActiveSession(review);
+                    setSessionId(review.id);
+                    const physMap = review.physicalMap || {};
+                    const counts = {};
+                    Object.entries(physMap).forEach(([id, qty]) => { if (qty !== undefined && qty !== null) counts[id] = qty; });
+                    setPhysicalCounts(counts);
+                    setReviewSession(review);
+                    setShowResultPage(true);
+                } else if (!review) {
                     setActiveSession(null);
                     setSessionId(null);
                     setPhysicalCounts({});
@@ -12775,54 +12773,63 @@
                     .filter(([, v]) => v !== undefined)
                     .map(([itemId, physicalQty]) => {
                         const item = items.find(i => i.id === itemId);
-                        return { itemId, name: item?.name || '?', systemQty: Number(item?.qty || 0), physicalQty: Number(physicalQty), selisih: Number(physicalQty) - Number(item?.qty || 0), price: Number(item?.price || 0) };
+                        return { itemId, name: item?.name || '?', systemQty: Number(item?.qty || 0), physicalQty: Number(physicalQty), selisih: Number(physicalQty) - Number(item?.qty || 0), price: Number(item?.price || 0), unit: item?.unit || '' };
                     });
                 try {
-                    // Simpan sebagai 'review' dulu — stok BELUM diubah
+                    // Simpan hasil tapi status 'review' — stok BELUM diubah
                     await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'stock_opname', sessionId), {
-                        entries, status: 'review', finishedAt: window.serverTimestamp(),
+                        entries, status: 'review', reviewedAt: window.serverTimestamp(),
                         summary: { total: stats.total, counted: stats.counted, selisih: stats.selisih }
                     });
-                    // Hitung selisih nilai inventory
-                    const selisihNilai = entries.reduce((sum, e) => sum + (e.selisih * (e.price || 0)), 0);
-                    // Cek barang yang stoknya < 0 setelah koreksi
-                    const negativeItems = entries.filter(e => e.physicalQty < 0);
-                    setHasilPageData({
+                    // Tampilkan halaman hasil (review), BUKAN langsung ubah stok
+                    const reviewData = {
+                        id: sessionId,
                         entries,
-                        selisihNilai,
-                        negativeItems,
-                        stats: { ...stats },
+                        status: 'review',
                         createdAt: activeSession?.createdAt,
-                        finishedAt: new Date(),
-                        applied: false,
-                    });
+                        reviewedAt: new Date(),
+                        summary: { total: stats.total, counted: stats.counted, selisih: stats.selisih },
+                        profileId, storeName: currentProfile?.name || 'Default',
+                    };
+                    setReviewSession(reviewData);
                     setShowFinishModal(false);
-                    setShowHasilPage(true);
-                } catch (e) { showToast('Gagal menyelesaikan sesi', 'error'); }
+                    setShowResultPage(true);
+                } catch (e) { showToast('Gagal menyimpan hasil opname', 'error'); }
                 setSaving(false);
             };
 
             const applyToStock = async () => {
-                if (!sessionId || !hasilPageData) return;
-                setSaving(true);
+                if (!reviewSession) return;
+                setApplyingStock(true);
                 try {
-                    // Update inventory qty sesuai hasil stock opname (batch)
                     const batch = window.writeBatch(window.db);
-                    hasilPageData.entries.forEach(e => {
+                    (reviewSession.entries || []).forEach(e => {
                         const itemRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', e.itemId);
                         const updateData = { [`stocks.${profileId}`]: e.physicalQty };
                         if (profileId === 'default') updateData.qty = e.physicalQty;
                         batch.update(itemRef, updateData);
                     });
                     await batch.commit();
-                    // Update session status to closed
-                    await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'stock_opname', sessionId), {
-                        status: 'closed', appliedAt: window.serverTimestamp()
+                    // Tandai sebagai closed (sudah diterapkan)
+                    await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'stock_opname', reviewSession.id), {
+                        status: 'closed', finishedAt: window.serverTimestamp(),
                     });
-                    setHasilPageData(prev => ({ ...prev, applied: true }));
-                    showToast('Stok berhasil diterapkan! Stock Opname selesai.');
+                    showToast('Stok berhasil diperbarui sesuai hasil opname!');
+                    setShowResultPage(false);
+                    setReviewSession(null);
                 } catch (e) { showToast('Gagal menerapkan stok', 'error'); }
-                setSaving(false);
+                setApplyingStock(false);
+            };
+
+            const reopenSession = async () => {
+                if (!reviewSession) return;
+                try {
+                    await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'stock_opname', reviewSession.id), {
+                        status: 'open',
+                    });
+                    setShowResultPage(false);
+                    setReviewSession(null);
+                } catch (e) { showToast('Gagal membuka ulang sesi', 'error'); }
             };
 
             const cancelSession = async () => {
@@ -12993,202 +13000,6 @@
                 );
             }
 
-            if (showHasilPage && hasilPageData) {
-                const hd = hasilPageData;
-                const formatRp = (n) => {
-                    const abs = Math.abs(n);
-                    const str = 'Rp' + abs.toLocaleString('id-ID');
-                    return n < 0 ? '−' + str : (n > 0 ? '+' + str : str);
-                };
-                const formatDateLocal = (d) => {
-                    if (!d) return '-';
-                    const dd = d.toDate ? d.toDate() : (d instanceof Date ? d : new Date(d));
-                    return dd.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-                };
-                const formatTimeLocal = (d) => {
-                    if (!d) return '-';
-                    const dd = d.toDate ? d.toDate() : (d instanceof Date ? d : new Date(d));
-                    return dd.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
-                };
-                const hasNegative = hd.negativeItems && hd.negativeItems.length > 0;
-                const selisihAbs = Math.abs(hd.selisihNilai);
-
-                return (
-                    <div className="fade-in" style={{minHeight:'100vh',background:'#f8fafc'}}>
-                        {/* Header */}
-                        <div style={{background:'white',borderBottom:'1px solid #e2e8f0',padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,zIndex:10}}>
-                            <button onClick={() => { if (hd.applied) { setShowHasilPage(false); setHasilPageData(null); } else { setShowHasilPage(false); } }} style={{display:'flex',alignItems:'center',gap:'6px',background:'none',border:'none',cursor:'pointer',color:'#475569',fontWeight:700,fontSize:'14px'}}>
-                                <i className="fa-solid fa-arrow-left"></i>
-                            </button>
-                            <span style={{fontWeight:800,fontSize:'15px',color:'#0f172a'}}>Hasil Stock Opname</span>
-                            <button
-                                onClick={() => {
-                                    const now = new Date();
-                                    const storeName = currentProfile?.name || 'Toko';
-                                    const dateStr = formatDateLocal(hd.createdAt || now).replace(/ /g,'_');
-                                    const rows = [
-                                        ['No','Nama Barang','Stok Sistem','Stok Fisik','Selisih','Harga','Nilai Selisih'],
-                                        ...hd.entries.map((e,i) => [i+1, e.name, e.systemQty, e.physicalQty, e.selisih, e.price||0, e.selisih*(e.price||0)])
-                                    ];
-                                    const csvContent = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
-                                    const blob = new Blob([csvContent], {type:'text/csv'});
-                                    const url = URL.createObjectURL(blob);
-                                    const a = document.createElement('a');
-                                    a.href = url; a.download = `StockOpname_${storeName}_${dateStr}.csv`; a.click();
-                                    URL.revokeObjectURL(url);
-                                }}
-                                style={{display:'flex',alignItems:'center',gap:'6px',background:'white',border:'1.5px solid #e2e8f0',borderRadius:'12px',padding:'7px 14px',cursor:'pointer',fontWeight:700,fontSize:'13px',color:'#475569'}}>
-                                <i className="fa-solid fa-cloud-arrow-down"></i> Unduh
-                            </button>
-                        </div>
-
-                        <div style={{padding:'20px 16px',maxWidth:'520px',margin:'0 auto',display:'flex',flexDirection:'column',gap:'16px'}}>
-                            {/* Judul */}
-                            <div>
-                                <h1 style={{fontWeight:900,fontSize:'28px',color:'#0f172a',lineHeight:'1.2',marginBottom:'6px'}}>
-                                    Hasil stok opname {new Date(hd.finishedAt).getFullYear()} {new Date(hd.finishedAt).toLocaleDateString('id-ID',{month:'long',day:'numeric'})}
-                                </h1>
-                                <p style={{fontSize:'13px',color:'#64748b'}}>
-                                    Dicek sejak {formatDateLocal(hd.createdAt)}, {formatTimeLocal(hd.createdAt)} sampai {formatDateLocal(hd.finishedAt)}, {formatTimeLocal(hd.finishedAt)}
-                                </p>
-                            </div>
-
-                            {/* Warning: Stok negatif */}
-                            {hasNegative && (
-                                <div style={{background:'#fff5f5',border:'1.5px solid #fecaca',borderRadius:'16px',padding:'16px'}}>
-                                    <div style={{display:'flex',alignItems:'flex-start',gap:'12px'}}>
-                                        <div style={{width:'36px',height:'36px',borderRadius:'50%',background:'white',border:'2px solid #fca5a5',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                                            <i className="fa-solid fa-circle-exclamation" style={{color:'#ef4444',fontSize:'16px'}}></i>
-                                        </div>
-                                        <div style={{flex:1}}>
-                                            <p style={{fontWeight:800,fontSize:'14px',color:'#991b1b',marginBottom:'4px'}}>Ada barang yang stoknya di bawah 0</p>
-                                            <p style={{fontSize:'12px',color:'#b91c1c',lineHeight:'1.5'}}>
-                                                {hd.negativeItems.length} barang akan memiliki stok negatif setelah diterapkan. Periksa kembali input sebelum menerapkan.
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => {
-                                            setShowHasilPage(false);
-                                        }}
-                                        style={{width:'100%',marginTop:'12px',padding:'10px',background:'#ef4444',color:'white',border:'none',borderRadius:'12px',fontWeight:800,fontSize:'13px',cursor:'pointer'}}>
-                                        Lihat &amp; Koreksi
-                                    </button>
-                                </div>
-                            )}
-
-                            {/* Warning: Belum diterapkan */}
-                            {!hd.applied && (
-                                <div style={{background:'#fffbeb',border:'1.5px solid #fde68a',borderRadius:'16px',padding:'16px'}}>
-                                    <div style={{display:'flex',alignItems:'flex-start',gap:'12px'}}>
-                                        <div style={{width:'36px',height:'36px',borderRadius:'50%',background:'white',border:'2px solid #fcd34d',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                                            <i className="fa-solid fa-circle-exclamation" style={{color:'#d97706',fontSize:'16px'}}></i>
-                                        </div>
-                                        <div style={{flex:1}}>
-                                            <p style={{fontWeight:800,fontSize:'14px',color:'#92400e',marginBottom:'4px'}}>{isOwner ? 'Hasil belum diterapkan ke dalam stok' : 'Pemilik belum menerapkan hasil ke dalam stok'}</p>
-                                            <p style={{fontSize:'12px',color:'#b45309',lineHeight:'1.5'}}>
-                                                {isOwner ? 'Klik "Terapkan ke Stok" di bawah untuk memperbarui data stok sesuai hasil opname.' : 'Ingatkan pemilik untuk segera menerapkan hasil stok opname ke dalam stok.'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    {isOwner && (
-                                        <button
-                                            onClick={applyToStock}
-                                            disabled={saving}
-                                            style={{width:'100%',marginTop:'12px',padding:'12px',background:saving?'#6ee7b7':'#059669',color:'white',border:'none',borderRadius:'12px',fontWeight:800,fontSize:'14px',cursor:saving?'not-allowed':'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',transition:'all .2s'}}>
-                                            {saving ? <><i className="fa-solid fa-circle-notch fa-spin"></i> Menerapkan...</> : <><i className="fa-solid fa-check-double"></i> Terapkan ke Stok</>}
-                                        </button>
-                                    )}
-                                    {!isOwner && (
-                                        <button
-                                            onClick={() => { setShowHasilPage(false); }}
-                                            style={{width:'100%',marginTop:'12px',padding:'10px',background:'white',color:'#92400e',border:'1.5px solid #fcd34d',borderRadius:'12px',fontWeight:700,fontSize:'13px',cursor:'pointer'}}>
-                                            Cek lagi
-                                        </button>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Sukses diterapkan */}
-                            {hd.applied && (
-                                <div style={{background:'#f0fdf4',border:'1.5px solid #86efac',borderRadius:'16px',padding:'16px',display:'flex',alignItems:'center',gap:'12px'}}>
-                                    <div style={{width:'36px',height:'36px',borderRadius:'50%',background:'#dcfce7',border:'2px solid #6ee7b7',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                                        <i className="fa-solid fa-circle-check" style={{color:'#16a34a',fontSize:'16px'}}></i>
-                                    </div>
-                                    <div>
-                                        <p style={{fontWeight:800,fontSize:'14px',color:'#14532d'}}>Stok sudah diterapkan!</p>
-                                        <p style={{fontSize:'12px',color:'#166534'}}>Data stok telah diperbarui sesuai hasil opname.</p>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Perkiraan selisih nilai */}
-                            <div style={{borderTop:'1px solid #e2e8f0',paddingTop:'16px'}}>
-                                <p style={{fontSize:'13px',fontWeight:700,color:'#0284c7',textDecoration:'underline',textDecorationStyle:'dotted',marginBottom:'6px',cursor:'default'}}>
-                                    Perkiraan selisih nilai inventory
-                                </p>
-                                <p style={{fontWeight:900,fontSize:'34px',color: hd.selisihNilai < 0 ? '#ef4444' : hd.selisihNilai > 0 ? '#059669' : '#0f172a',lineHeight:'1.1',marginBottom:'4px'}}>
-                                    {hd.selisihNilai === 0 ? 'Rp0' : formatRp(hd.selisihNilai)}
-                                </p>
-                                <p style={{fontSize:'13px',color:'#94a3b8',marginBottom:'16px'}}>
-                                    {hd.stats.counted} dari {hd.stats.total} barang dicek
-                                </p>
-
-                                {/* Mini stats */}
-                                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
-                                    <div style={{background:'white',borderRadius:'14px',padding:'14px',border:'1px solid #e2e8f0'}}>
-                                        <p style={{fontSize:'11px',color:'#94a3b8',fontWeight:600,marginBottom:'4px'}}>Barang selisih</p>
-                                        <p style={{fontSize:'22px',fontWeight:900,color:'#ef4444'}}>{hd.stats.selisih}</p>
-                                    </div>
-                                    <div style={{background:'white',borderRadius:'14px',padding:'14px',border:'1px solid #e2e8f0'}}>
-                                        <p style={{fontSize:'11px',color:'#94a3b8',fontWeight:600,marginBottom:'4px'}}>Barang sesuai</p>
-                                        <p style={{fontSize:'22px',fontWeight:900,color:'#059669'}}>{hd.stats.ok}</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Top selisih list */}
-                            {hd.entries.filter(e => e.selisih !== 0).length > 0 && (
-                                <div style={{background:'white',borderRadius:'16px',border:'1px solid #e2e8f0',overflow:'hidden'}}>
-                                    <div style={{padding:'14px 16px',borderBottom:'1px solid #f1f5f9',display:'flex',alignItems:'center',justify:'space-between'}}>
-                                        <p style={{fontWeight:800,fontSize:'13px',color:'#0f172a'}}>Barang dengan selisih terbesar</p>
-                                    </div>
-                                    {hd.entries
-                                        .filter(e => e.selisih !== 0)
-                                        .sort((a, b) => Math.abs(b.selisih * (b.price||0)) - Math.abs(a.selisih * (a.price||0)))
-                                        .slice(0, 10)
-                                        .map((e, idx) => {
-                                            const nilaiSelisih = e.selisih * (e.price || 0);
-                                            return (
-                                                <div key={idx} style={{padding:'12px 16px',borderBottom:idx<9?'1px solid #f8fafc':'none',display:'flex',alignItems:'center',gap:'10px'}}>
-                                                    <div style={{width:'32px',height:'32px',borderRadius:'10px',background: e.selisih < 0 ? '#fef2f2' : '#f0fdf4',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                                                        <span style={{fontWeight:900,fontSize:'13px',color: e.selisih < 0 ? '#ef4444' : '#059669'}}>{e.selisih > 0 ? '+' : ''}{e.selisih}</span>
-                                                    </div>
-                                                    <div style={{flex:1,minWidth:0}}>
-                                                        <p style={{fontWeight:700,fontSize:'12px',color:'#1e293b',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{e.name}</p>
-                                                        <p style={{fontSize:'11px',color:'#94a3b8'}}>{e.systemQty} → {e.physicalQty}</p>
-                                                    </div>
-                                                    <p style={{fontWeight:800,fontSize:'12px',color: nilaiSelisih < 0 ? '#ef4444' : '#059669',flexShrink:0}}>
-                                                        {nilaiSelisih !== 0 ? (nilaiSelisih < 0 ? '−' : '+') + 'Rp' + Math.abs(nilaiSelisih).toLocaleString('id-ID') : 'Rp0'}
-                                                    </p>
-                                                </div>
-                                            );
-                                        })
-                                    }
-                                </div>
-                            )}
-
-                            {/* Tombol kembali */}
-                            <button
-                                onClick={() => { setShowHasilPage(false); setHasilPageData(null); }}
-                                style={{padding:'14px',background:'white',border:'1.5px solid #e2e8f0',borderRadius:'14px',fontWeight:700,fontSize:'14px',color:'#64748b',cursor:'pointer',width:'100%',marginBottom:'32px'}}>
-                                Kembali ke Stock Opname
-                            </button>
-                        </div>
-                    </div>
-                );
-            }
-
             if (showHistory) {
                 const closed = sessions.filter(s => s.status === 'closed' && s.profileId === profileId);
                 return (
@@ -13250,6 +13061,180 @@
                                 ))}
                             </div>
                         )}
+                    </div>
+                );
+            }
+
+            // ── Halaman Hasil Stok Opname (Review sebelum terapkan ke stok) ──
+            if (showResultPage && reviewSession) {
+                const rEntries = reviewSession.entries || [];
+                const rStats = reviewSession.summary || {};
+                const negativeItems = rEntries.filter(e => e.physicalQty < 0);
+                const selisihItems = rEntries.filter(e => e.selisih !== 0);
+                const totalSelisihNilai = rEntries.reduce((sum, e) => sum + (e.selisih * (e.price || 0)), 0);
+
+                const formatTanggal = (ts) => {
+                    if (!ts) return '-';
+                    const d = ts.toDate ? ts.toDate() : new Date(ts);
+                    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+                };
+                const formatJam = (ts) => {
+                    if (!ts) return '-';
+                    const d = ts.toDate ? ts.toDate() : new Date(ts);
+                    return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+                };
+
+                return (
+                    <div className="fade-in">
+                        {/* Header */}
+                        <div style={{background:'linear-gradient(135deg,#0ea5e9 0%,#0284c7 100%)', padding:'16px 16px 20px', marginBottom:'0', borderRadius:'0 0 24px 24px', marginTop:'-8px'}}>
+                            <div className="flex items-center gap-3 mb-1">
+                                <button onClick={reopenSession} style={{width:'36px',height:'36px',borderRadius:'50%',background:'rgba(255,255,255,0.2)',border:'none',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
+                                    <i className="fa-solid fa-arrow-left text-sm"></i>
+                                </button>
+                                <span style={{color:'#fff',fontWeight:700,fontSize:'15px'}}>Hasil Stok Opname</span>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4 px-1 pt-5 pb-10">
+                            {/* Judul */}
+                            <div>
+                                <h1 style={{fontSize:'26px',fontWeight:900,color:'#0f172a',lineHeight:1.2,marginBottom:'6px'}}>
+                                    Hasil stok opname {formatTanggal(reviewSession.createdAt)}
+                                </h1>
+                                <p style={{fontSize:'12px',color:'#94a3b8',fontWeight:500}}>
+                                    Dicek sejak {formatJam(reviewSession.createdAt)} sampai {formatJam(reviewSession.reviewedAt)}
+                                </p>
+                            </div>
+
+                            {/* Warning: Ada barang stok negatif */}
+                            {negativeItems.length > 0 && (
+                                <div style={{background:'#fff5f5',border:'1.5px solid #fecaca',borderRadius:'16px',padding:'14px 16px'}}>
+                                    <div style={{display:'flex',gap:'12px'}}>
+                                        <div style={{flexShrink:0,marginTop:'1px'}}>
+                                            <i className="fa-solid fa-circle-exclamation" style={{color:'#ef4444',fontSize:'16px'}}></i>
+                                        </div>
+                                        <div style={{flex:1}}>
+                                            <p style={{fontWeight:800,color:'#991b1b',fontSize:'13px',marginBottom:'4px'}}>Ada barang yang stok fisiknya di bawah 0</p>
+                                            <p style={{fontSize:'11px',color:'#b91c1c'}}>
+                                                {negativeItems.length} barang memiliki stok fisik negatif. Periksa kembali sebelum menerapkan ke stok.{' '}
+                                                <button onClick={() => setShowResultNegativeList(v => !v)} style={{color:'#0284c7',fontWeight:700,background:'none',border:'none',cursor:'pointer',padding:0,fontSize:'11px'}}>
+                                                    {showResultNegativeList ? 'Sembunyikan' : '...Selengkapnya'}
+                                                </button>
+                                            </p>
+                                            {showResultNegativeList && (
+                                                <div style={{marginTop:'8px',background:'#fff',borderRadius:'10px',padding:'8px',maxHeight:'140px',overflowY:'auto'}}>
+                                                    {negativeItems.map((e, i) => (
+                                                        <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 0',borderBottom:'1px solid #fee2e2'}}>
+                                                            <span style={{fontSize:'11px',fontWeight:600,color:'#334155'}}>{e.name}</span>
+                                                            <span style={{fontSize:'11px',fontWeight:800,color:'#ef4444'}}>{e.physicalQty}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <div style={{display:'flex',justifyContent:'flex-end',marginTop:'12px'}}>
+                                                <button onClick={reopenSession} style={{background:'#ef4444',color:'#fff',fontWeight:700,fontSize:'12px',padding:'6px 18px',borderRadius:'10px',border:'none',cursor:'pointer',boxShadow:'0 2px 8px rgba(239,68,68,0.3)'}}>
+                                                    Lihat &amp; Perbaiki
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Warning: belum diterapkan ke stok */}
+                            <div style={{background:'#fffbeb',border:'1.5px solid #fde68a',borderRadius:'16px',padding:'14px 16px'}}>
+                                <div style={{display:'flex',gap:'12px'}}>
+                                    <div style={{flexShrink:0,marginTop:'1px'}}>
+                                        <i className="fa-solid fa-circle-exclamation" style={{color:'#d97706',fontSize:'16px'}}></i>
+                                    </div>
+                                    <div style={{flex:1}}>
+                                        <p style={{fontWeight:800,color:'#92400e',fontSize:'13px',marginBottom:'4px'}}>
+                                            {isOwner ? 'Hasil opname belum diterapkan ke dalam stok' : 'Pemilik belum menerapkan hasil stok opname ke dalam stok'}
+                                        </p>
+                                        <p style={{fontSize:'11px',color:'#b45309'}}>
+                                            {isOwner ? 'Kroscek ulang data di bawah, lalu klik "Terapkan ke Stok" jika sudah yakin.' : 'Ingatkan pemilik untuk segera menerapkan hasil stok opname ke dalam stok.'}
+                                        </p>
+                                        <div style={{display:'flex',justifyContent:'flex-end',marginTop:'12px'}}>
+                                            <button onClick={reopenSession} style={{background:'#fff',color:'#0284c7',fontWeight:700,fontSize:'12px',padding:'6px 18px',borderRadius:'10px',border:'1.5px solid #bae6fd',cursor:'pointer'}}>
+                                                Cek lagi
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Perkiraan selisih nilai inventory */}
+                            <div style={{background:'#fff',borderRadius:'16px',border:'1px solid #e2e8f0',padding:'16px 18px',boxShadow:'0 2px 12px rgba(0,0,0,0.04)'}}>
+                                <p style={{fontSize:'12px',fontWeight:700,color:'#0284c7',textDecoration:'underline dotted',marginBottom:'6px'}}>
+                                    Perkiraan selisih nilai inventory
+                                </p>
+                                <p style={{fontSize:'30px',fontWeight:900,color: totalSelisihNilai < 0 ? '#ef4444' : totalSelisihNilai > 0 ? '#059669' : '#334155',marginBottom:'4px',lineHeight:1}}>
+                                    {totalSelisihNilai < 0 ? '−' : totalSelisihNilai > 0 ? '+' : ''}{formatRupiah(Math.abs(totalSelisihNilai))}
+                                </p>
+                                <p style={{fontSize:'12px',color:'#94a3b8',fontWeight:500}}>
+                                    {rStats.counted || 0} dari {rStats.total || 0} barang dicek
+                                </p>
+                            </div>
+
+                            {/* Ringkasan selisih */}
+                            <div style={{background:'#fff',borderRadius:'16px',border:'1px solid #e2e8f0',padding:'16px 18px',boxShadow:'0 2px 12px rgba(0,0,0,0.04)'}}>
+                                <p style={{fontWeight:800,color:'#334155',fontSize:'13px',marginBottom:'12px'}}>Ringkasan</p>
+                                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom: selisihItems.length > 0 ? '12px' : 0}}>
+                                    {[
+                                        {label:'Total Barang', val: rStats.total || 0, color:'#334155', bg:'#f8fafc'},
+                                        {label:'Sudah Dihitung', val: rStats.counted || 0, color:'#0284c7', bg:'#f0f9ff'},
+                                        {label:'Ada Selisih', val: rStats.selisih || 0, color:'#ef4444', bg:'#fff5f5'},
+                                        {label:'Sesuai', val: (rStats.counted||0) - (rStats.selisih||0), color:'#059669', bg:'#f0fdf4'},
+                                    ].map(s => (
+                                        <div key={s.label} style={{background:s.bg,borderRadius:'12px',padding:'10px 12px'}}>
+                                            <p style={{fontSize:'10px',fontWeight:700,color:'#94a3b8',textTransform:'uppercase',marginBottom:'2px'}}>{s.label}</p>
+                                            <p style={{fontSize:'22px',fontWeight:900,color:s.color}}>{s.val}</p>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Daftar barang selisih */}
+                                {selisihItems.length > 0 && (
+                                    <div style={{maxHeight:'220px',overflowY:'auto',borderTop:'1px solid #f1f5f9',paddingTop:'10px'}}>
+                                        <p style={{fontSize:'10px',fontWeight:700,color:'#94a3b8',textTransform:'uppercase',marginBottom:'8px'}}>Barang dengan selisih</p>
+                                        {selisihItems.map((e, i) => (
+                                            <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'5px 0',borderBottom:'1px solid #f1f5f9'}}>
+                                                <div style={{flex:1,minWidth:0}}>
+                                                    <p style={{fontSize:'11px',fontWeight:600,color:'#334155',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{e.name}</p>
+                                                    <p style={{fontSize:'10px',color:'#94a3b8'}}>Sistem: {e.systemQty} → Fisik: {e.physicalQty}</p>
+                                                </div>
+                                                <span style={{fontSize:'11px',fontWeight:800,color: e.selisih < 0 ? '#ef4444' : '#059669',marginLeft:'8px',flexShrink:0}}>
+                                                    {e.selisih > 0 ? '+' : ''}{e.selisih}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Tombol aksi */}
+                            <div style={{display:'flex',flexDirection:'column',gap:'10px',paddingTop:'4px'}}>
+                                {isOwner && (
+                                    <button
+                                        onClick={applyToStock}
+                                        disabled={applyingStock}
+                                        style={{width:'100%',padding:'14px',borderRadius:'14px',background:'linear-gradient(135deg,#10b981,#059669)',color:'#fff',fontWeight:800,fontSize:'14px',border:'none',cursor:applyingStock?'not-allowed':'pointer',boxShadow:'0 4px 16px rgba(16,185,129,0.35)',opacity:applyingStock?0.7:1,display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',transition:'all 0.2s'}}
+                                    >
+                                        {applyingStock
+                                            ? <><i className="fa-solid fa-circle-notch fa-spin"></i> Menerapkan ke Stok...</>
+                                            : <><i className="fa-solid fa-check-double"></i> Terapkan ke Stok</>
+                                        }
+                                    </button>
+                                )}
+                                <button
+                                    onClick={reopenSession}
+                                    style={{width:'100%',padding:'13px',borderRadius:'14px',background:'#fff',color:'#475569',fontWeight:700,fontSize:'13px',border:'1.5px solid #e2e8f0',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}}
+                                >
+                                    <i className="fa-solid fa-arrow-left text-sm"></i> Kembali Kroscek
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 );
             }
