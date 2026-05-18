@@ -12890,26 +12890,29 @@
 
                     // ── Ringkasan ──
                     sheet.addRow([]);
-                    const totalMinus = entries.filter(e => e.selisih < 0).reduce((s, e) => s + (e.selisih * (e.price || 0)), 0);
-                    const totalPlus = entries.filter(e => e.selisih > 0).reduce((s, e) => s + (e.selisih * (e.price || 0)), 0);
+                    const totalMinusJual = entries.filter(e => e.selisih < 0).reduce((s, e) => s + (e.selisih * (e.price || 0)), 0);
+                    const totalPlusJual  = entries.filter(e => e.selisih > 0).reduce((s, e) => s + (e.selisih * (e.price || 0)), 0);
+                    const totalMinusBeli = entries.filter(e => e.selisih < 0).reduce((s, e) => s + (e.selisih * (e.costPrice || 0)), 0);
+                    const totalPlusBeli  = entries.filter(e => e.selisih > 0).reduce((s, e) => s + (e.selisih * (e.costPrice || 0)), 0);
                     const totalSelisih = entries.filter(e => e.selisih !== 0).length;
                     const totalSesuai = entries.filter(e => e.selisih === 0).length;
 
                     const summaryData = [
-                        ['Total Barang Dicatat', entries.length],
-                        ['Barang Ada Selisih', totalSelisih],
-                        ['Barang Sesuai', totalSesuai],
-                        ['Total Nilai Lebih (+)', totalPlus],
-                        ['Total Nilai Minus (−)', totalMinus],
+                        ['Total Barang Dicatat',           entries.length,  null,        'FF0F172A', false],
+                        ['Barang Ada Selisih',             totalSelisih,    null,        'FF0F172A', false],
+                        ['Barang Sesuai',                  totalSesuai,     null,        'FF0F172A', false],
+                        ['Total Nilai Lebih — Harga Jual (+)', totalPlusJual,  'FF10B981', 'FF10B981', true],
+                        ['Total Nilai Minus — Harga Jual (−)', totalMinusJual, 'FFFEE2E2', 'FFEF4444', true],
+                        ['Total Nilai Lebih — Harga Beli (+)', totalPlusBeli,  'FF10B981', 'FF10B981', true],
+                        ['Total Nilai Minus — Harga Beli (−)', totalMinusBeli, 'FFFEE2E2', 'FFEF4444', true],
                     ];
-                    summaryData.forEach(([label, val], i) => {
-                        const r = sheet.addRow(['', label, '', '', '', '', '', typeof val === 'number' && i >= 3 ? val : val]);
+                    summaryData.forEach(([label, val, valBg, valColor, isCurrency]) => {
+                        const r = sheet.addRow(['', label, '', '', '', '', '', isCurrency ? val : val]);
                         r.getCell(2).font = { bold: true, size: 10, color: { argb: 'FF334155' } };
-                        r.getCell(8).font = { bold: true, color: { argb: i === 3 ? 'FF10B981' : i === 4 ? 'FFEF4444' : 'FF0F172A' } };
-                        if (i >= 3) r.getCell(8).numFmt = '"Rp"#,##0';
-                        else r.getCell(8).value = val;
+                        r.getCell(8).font = { bold: true, color: { argb: valColor } };
+                        if (isCurrency) r.getCell(8).numFmt = '"Rp"#,##0';
                         r.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
-                        r.getCell(8).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+                        r.getCell(8).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: valBg || 'FFF1F5F9' } };
                     });
 
                     // ── Lebar Kolom ──
@@ -12997,12 +13000,30 @@
                                     {(!historyDetail.entries || historyDetail.entries.length === 0) && <p className="text-center text-slate-400 py-8 text-sm">Tidak ada data</p>}
                                 </div>
                                 {historyDetail.entries && historyDetail.entries.length > 0 && (() => {
-                                    const totalMinus = historyDetail.entries.filter(e => e.selisih < 0).reduce((sum, e) => sum + (e.selisih * (e.price || 0)), 0);
-                                    const totalPlus = historyDetail.entries.filter(e => e.selisih > 0).reduce((sum, e) => sum + (e.selisih * (e.price || 0)), 0);
+                                    const resolvedEntries = historyDetail.entries.map(e => ({
+                                        ...e,
+                                        costPrice: e.costPrice || items.find(inv => inv.id === e.itemId || inv.name === e.name)?.costPrice || 0
+                                    }));
+                                    const totalMinusJual = resolvedEntries.filter(e => e.selisih < 0).reduce((sum, e) => sum + (e.selisih * (e.price || 0)), 0);
+                                    const totalPlusJual  = resolvedEntries.filter(e => e.selisih > 0).reduce((sum, e) => sum + (e.selisih * (e.price || 0)), 0);
+                                    const totalMinusBeli = resolvedEntries.filter(e => e.selisih < 0).reduce((sum, e) => sum + (e.selisih * (e.costPrice || 0)), 0);
+                                    const totalPlusBeli  = resolvedEntries.filter(e => e.selisih > 0).reduce((sum, e) => sum + (e.selisih * (e.costPrice || 0)), 0);
                                     return (
-                                        <div className="p-4 border-t border-slate-100 bg-slate-50 flex flex-wrap gap-4 justify-end">
-                                            {totalPlus > 0 && <div className="text-right"><p className="text-xs text-slate-400 font-medium">Total Nilai Lebih (+)</p><p className="text-base font-black text-emerald-600">+{formatRupiah(totalPlus)}</p></div>}
-                                            {totalMinus < 0 && <div className="text-right"><p className="text-xs text-slate-400 font-medium">Total Nilai Minus (−)</p><p className="text-base font-black text-red-500">{formatRupiah(totalMinus)}</p></div>}
+                                        <div className="p-4 border-t border-slate-100 bg-slate-50 space-y-3">
+                                            {/* Harga Jual */}
+                                            <div className="flex flex-wrap gap-4 justify-end items-center">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-auto">Harga Jual</p>
+                                                {totalPlusJual > 0 && <div className="text-right"><p className="text-xs text-slate-400 font-medium">Total Nilai Lebih (+)</p><p className="text-base font-black text-emerald-600">+{formatRupiah(totalPlusJual)}</p></div>}
+                                                {totalMinusJual < 0 && <div className="text-right"><p className="text-xs text-slate-400 font-medium">Total Nilai Minus (−)</p><p className="text-base font-black text-red-500">{formatRupiah(totalMinusJual)}</p></div>}
+                                                {totalPlusJual === 0 && totalMinusJual === 0 && <p className="text-xs text-slate-400">Tidak ada selisih</p>}
+                                            </div>
+                                            {/* Harga Beli */}
+                                            <div className="flex flex-wrap gap-4 justify-end items-center border-t border-slate-200 pt-3">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-auto">Harga Beli</p>
+                                                {totalPlusBeli > 0 && <div className="text-right"><p className="text-xs text-slate-400 font-medium">Total Nilai Lebih (+)</p><p className="text-base font-black text-emerald-600">+{formatRupiah(totalPlusBeli)}</p></div>}
+                                                {totalMinusBeli < 0 && <div className="text-right"><p className="text-xs text-slate-400 font-medium">Total Nilai Minus (−)</p><p className="text-base font-black text-red-500">{formatRupiah(totalMinusBeli)}</p></div>}
+                                                {totalPlusBeli === 0 && totalMinusBeli === 0 && <p className="text-xs text-slate-400">Tidak ada selisih</p>}
+                                            </div>
                                         </div>
                                     );
                                 })()}
