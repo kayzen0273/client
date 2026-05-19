@@ -5123,11 +5123,32 @@
                                                     </div>
                                                 </div>
                                                 {itemBuyPrice && (parseFloat(itemDiscountBeli||0) > 0 || parseFloat(itemDiscountBeli2||0) > 0 || parseFloat(itemDiscountBeli3||0) > 0) && (() => {
+                                                    const steps = [];
                                                     let p = parseFloat(itemBuyPrice||0);
-                                                    if (parseFloat(itemDiscountBeli||0) > 0) p = itemDiscountBeliType === 'Rp' ? Math.max(0, p - parseFloat(itemDiscountBeli)) : p * (1 - parseFloat(itemDiscountBeli)/100);
-                                                    if (parseFloat(itemDiscountBeli2||0) > 0) p = itemDiscountBeliType2 === 'Rp' ? Math.max(0, p - parseFloat(itemDiscountBeli2)) : p * (1 - parseFloat(itemDiscountBeli2)/100);
-                                                    if (parseFloat(itemDiscountBeli3||0) > 0) p = itemDiscountBeliType3 === 'Rp' ? Math.max(0, p - parseFloat(itemDiscountBeli3)) : p * (1 - parseFloat(itemDiscountBeli3)/100);
-                                                    return <p className="text-[10px] text-teal-700 font-bold mt-1 text-right">Efektif: {formatRupiah(p)}</p>;
+                                                    if (parseFloat(itemDiscountBeli||0) > 0) {
+                                                        p = itemDiscountBeliType === 'Rp' ? Math.max(0, p - parseFloat(itemDiscountBeli)) : p * (1 - parseFloat(itemDiscountBeli)/100);
+                                                        steps.push({ d: itemDiscountBeliType === 'Rp' ? `-Rp${parseFloat(itemDiscountBeli).toLocaleString('id')}` : `-${itemDiscountBeli}%`, r: p });
+                                                    }
+                                                    if (parseFloat(itemDiscountBeli2||0) > 0) {
+                                                        p = itemDiscountBeliType2 === 'Rp' ? Math.max(0, p - parseFloat(itemDiscountBeli2)) : p * (1 - parseFloat(itemDiscountBeli2)/100);
+                                                        steps.push({ d: itemDiscountBeliType2 === 'Rp' ? `-Rp${parseFloat(itemDiscountBeli2).toLocaleString('id')}` : `-${itemDiscountBeli2}%`, r: p });
+                                                    }
+                                                    if (parseFloat(itemDiscountBeli3||0) > 0) {
+                                                        p = itemDiscountBeliType3 === 'Rp' ? Math.max(0, p - parseFloat(itemDiscountBeli3)) : p * (1 - parseFloat(itemDiscountBeli3)/100);
+                                                        steps.push({ d: itemDiscountBeliType3 === 'Rp' ? `-Rp${parseFloat(itemDiscountBeli3).toLocaleString('id')}` : `-${itemDiscountBeli3}%`, r: p });
+                                                    }
+                                                    return (
+                                                        <div className="mt-1 flex flex-col gap-0.5 items-end">
+                                                            {steps.map((s, i) => (
+                                                                <p key={i} className="text-[10px] flex items-center gap-1">
+                                                                    <span className="text-slate-400">D{i+1}</span>
+                                                                    <span className="text-red-500 font-bold bg-red-50 px-1 rounded">{s.d}</span>
+                                                                    <span className="text-slate-400">→</span>
+                                                                    <span className={`font-bold ${i === steps.length - 1 ? 'text-teal-700' : 'text-slate-500'}`}>{formatRupiah(s.r)}</span>
+                                                                </p>
+                                                            ))}
+                                                        </div>
+                                                    );
                                                 })()}
                                             </div>
                                             <div className="mb-3">
@@ -5198,11 +5219,32 @@
                                                     </div>
                                                 </div>
                                                 {itemBuyPrice && (parseFloat(itemDiscountBeli||0) > 0 || parseFloat(itemDiscountBeli2||0) > 0 || parseFloat(itemDiscountBeli3||0) > 0) && (() => {
+                                                    const steps = [];
                                                     let p = parseFloat(itemBuyPrice||0);
-                                                    if (parseFloat(itemDiscountBeli||0) > 0) p = itemDiscountBeliType === 'Rp' ? Math.max(0, p - parseFloat(itemDiscountBeli)) : p * (1 - parseFloat(itemDiscountBeli)/100);
-                                                    if (parseFloat(itemDiscountBeli2||0) > 0) p = itemDiscountBeliType2 === 'Rp' ? Math.max(0, p - parseFloat(itemDiscountBeli2)) : p * (1 - parseFloat(itemDiscountBeli2)/100);
-                                                    if (parseFloat(itemDiscountBeli3||0) > 0) p = itemDiscountBeliType3 === 'Rp' ? Math.max(0, p - parseFloat(itemDiscountBeli3)) : p * (1 - parseFloat(itemDiscountBeli3)/100);
-                                                    return <p className="text-[10px] text-teal-700 font-bold mt-1 text-right">Efektif: {formatRupiah(p)}</p>;
+                                                    if (parseFloat(itemDiscountBeli||0) > 0) {
+                                                        p = itemDiscountBeliType === 'Rp' ? Math.max(0, p - parseFloat(itemDiscountBeli)) : p * (1 - parseFloat(itemDiscountBeli)/100);
+                                                        steps.push({ d: itemDiscountBeliType === 'Rp' ? `-Rp${parseFloat(itemDiscountBeli).toLocaleString('id')}` : `-${itemDiscountBeli}%`, r: p });
+                                                    }
+                                                    if (parseFloat(itemDiscountBeli2||0) > 0) {
+                                                        p = itemDiscountBeliType2 === 'Rp' ? Math.max(0, p - parseFloat(itemDiscountBeli2)) : p * (1 - parseFloat(itemDiscountBeli2)/100);
+                                                        steps.push({ d: itemDiscountBeliType2 === 'Rp' ? `-Rp${parseFloat(itemDiscountBeli2).toLocaleString('id')}` : `-${itemDiscountBeli2}%`, r: p });
+                                                    }
+                                                    if (parseFloat(itemDiscountBeli3||0) > 0) {
+                                                        p = itemDiscountBeliType3 === 'Rp' ? Math.max(0, p - parseFloat(itemDiscountBeli3)) : p * (1 - parseFloat(itemDiscountBeli3)/100);
+                                                        steps.push({ d: itemDiscountBeliType3 === 'Rp' ? `-Rp${parseFloat(itemDiscountBeli3).toLocaleString('id')}` : `-${itemDiscountBeli3}%`, r: p });
+                                                    }
+                                                    return (
+                                                        <div className="mt-1 flex flex-col gap-0.5 items-end">
+                                                            {steps.map((s, i) => (
+                                                                <p key={i} className="text-[10px] flex items-center gap-1">
+                                                                    <span className="text-slate-400">D{i+1}</span>
+                                                                    <span className="text-red-500 font-bold bg-red-50 px-1 rounded">{s.d}</span>
+                                                                    <span className="text-slate-400">→</span>
+                                                                    <span className={`font-bold ${i === steps.length - 1 ? 'text-teal-700' : 'text-slate-500'}`}>{formatRupiah(s.r)}</span>
+                                                                </p>
+                                                            ))}
+                                                        </div>
+                                                    );
                                                 })()}
                                             </div>
                                             {/* No. Batch per barang */}
@@ -5248,20 +5290,33 @@
                                                             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                                                 <span className="text-[11px] text-slate-500">Qty: <b>{item.qty}</b></span>
                                                                 {item.buyPrice > 0 && <span className="text-[11px] text-orange-500 font-bold">Beli: {formatRupiah(item.buyPrice)}</span>}
-                                                                {(item.discountBeli > 0 || item.discountBeli2 > 0 || item.discountBeli3 > 0) && (
-                                                                    <span className="text-[10px] text-red-500 font-bold bg-red-50 px-1.5 py-0.5 rounded">
-                                                                        {[
-                                                                            item.discountBeli > 0 ? (item.discountBeliType === 'Rp' ? `-${formatRupiah(item.discountBeli)}` : `-${item.discountBeli}%`) : null,
-                                                                            item.discountBeli2 > 0 ? (item.discountBeliType2 === 'Rp' ? `-${formatRupiah(item.discountBeli2)}` : `-${item.discountBeli2}%`) : null,
-                                                                            item.discountBeli3 > 0 ? (item.discountBeliType3 === 'Rp' ? `-${formatRupiah(item.discountBeli3)}` : `-${item.discountBeli3}%`) : null,
-                                                                        ].filter(Boolean).join(' + ')}
-                                                                    </span>
-                                                                )}
-                                                                {item.buyPrice > 0 && (item.discountBeli > 0 || item.discountBeli2 > 0 || item.discountBeli3 > 0) && (
-                                                                    <span className="text-[11px] text-teal-600 font-bold">
-                                                                        Efektif: {formatRupiah(calcEffBuyPrice(item.buyPrice, item))}
-                                                                    </span>
-                                                                )}
+                                                                {item.buyPrice > 0 && (item.discountBeli > 0 || item.discountBeli2 > 0 || item.discountBeli3 > 0) && (() => {
+                                                                    const steps = [];
+                                                                    let p = item.buyPrice;
+                                                                    if (item.discountBeli > 0) {
+                                                                        p = item.discountBeliType === 'Rp' ? Math.max(0, p - item.discountBeli) : p * (1 - item.discountBeli/100);
+                                                                        steps.push({ label: item.discountBeliType === 'Rp' ? `-${formatRupiah(item.discountBeli)}` : `-${item.discountBeli}%`, result: p });
+                                                                    }
+                                                                    if (item.discountBeli2 > 0) {
+                                                                        p = item.discountBeliType2 === 'Rp' ? Math.max(0, p - item.discountBeli2) : p * (1 - item.discountBeli2/100);
+                                                                        steps.push({ label: item.discountBeliType2 === 'Rp' ? `-${formatRupiah(item.discountBeli2)}` : `-${item.discountBeli2}%`, result: p });
+                                                                    }
+                                                                    if (item.discountBeli3 > 0) {
+                                                                        p = item.discountBeliType3 === 'Rp' ? Math.max(0, p - item.discountBeli3) : p * (1 - item.discountBeli3/100);
+                                                                        steps.push({ label: item.discountBeliType3 === 'Rp' ? `-${formatRupiah(item.discountBeli3)}` : `-${item.discountBeli3}%`, result: p });
+                                                                    }
+                                                                    return (
+                                                                        <span className="flex items-center gap-1 flex-wrap">
+                                                                            {steps.map((s, i) => (
+                                                                                <span key={i} className="flex items-center gap-1">
+                                                                                    <span className="text-[10px] text-red-500 font-bold bg-red-50 px-1 py-0.5 rounded">{s.label}</span>
+                                                                                    <span className="text-[10px] text-slate-400">→</span>
+                                                                                    <span className={`text-[10px] font-bold ${i === steps.length - 1 ? 'text-teal-600' : 'text-slate-500'}`}>{formatRupiah(s.result)}</span>
+                                                                                </span>
+                                                                            ))}
+                                                                        </span>
+                                                                    );
+                                                                })()}
                                                                 <span className="text-[11px] text-slate-500">Jual: {formatRupiah(item.price)}</span>
                                                                 <span className="text-[11px] text-teal-600 font-bold">= {formatRupiah(item.qty * calcEffBuyPrice(item.buyPrice || 0, item))}</span>
                                                                 {item.batchNo && <span className="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded">Batch: {item.batchNo}</span>}
@@ -5426,19 +5481,32 @@
                                                             <p className="text-xs font-bold text-slate-800">{item.name}</p>
                                                             <p className="text-[10px] text-orange-500 font-bold mt-0.5">{item.qty} × Beli {formatRupiah(item.buyPrice || 0)}</p>
                                                             {(item.discountBeli > 0 || item.discountBeli2 > 0 || item.discountBeli3 > 0) && (() => {
-                                                                const discs = [
-                                                                    item.discountBeli > 0 ? (item.discountBeliType === 'Rp' ? `-${formatRupiah(item.discountBeli)}` : `-${item.discountBeli}%`) : null,
-                                                                    item.discountBeli2 > 0 ? (item.discountBeliType2 === 'Rp' ? `-${formatRupiah(item.discountBeli2)}` : `-${item.discountBeli2}%`) : null,
-                                                                    item.discountBeli3 > 0 ? (item.discountBeliType3 === 'Rp' ? `-${formatRupiah(item.discountBeli3)}` : `-${item.discountBeli3}%`) : null,
-                                                                ].filter(Boolean);
-                                                                let eff = item.buyPrice || 0;
-                                                                if (item.discountBeli > 0) eff = item.discountBeliType === 'Rp' ? Math.max(0, eff - item.discountBeli) : eff * (1 - item.discountBeli/100);
-                                                                if (item.discountBeli2 > 0) eff = item.discountBeliType2 === 'Rp' ? Math.max(0, eff - item.discountBeli2) : eff * (1 - item.discountBeli2/100);
-                                                                if (item.discountBeli3 > 0) eff = item.discountBeliType3 === 'Rp' ? Math.max(0, eff - item.discountBeli3) : eff * (1 - item.discountBeli3/100);
+                                                                const steps = [];
+                                                                let p = item.buyPrice || 0;
+                                                                if (item.discountBeli > 0) {
+                                                                    p = item.discountBeliType === 'Rp' ? Math.max(0, p - item.discountBeli) : p * (1 - item.discountBeli/100);
+                                                                    steps.push({ label: item.discountBeliType === 'Rp' ? `-${formatRupiah(item.discountBeli)}` : `-${item.discountBeli}%`, result: p });
+                                                                }
+                                                                if (item.discountBeli2 > 0) {
+                                                                    p = item.discountBeliType2 === 'Rp' ? Math.max(0, p - item.discountBeli2) : p * (1 - item.discountBeli2/100);
+                                                                    steps.push({ label: item.discountBeliType2 === 'Rp' ? `-${formatRupiah(item.discountBeli2)}` : `-${item.discountBeli2}%`, result: p });
+                                                                }
+                                                                if (item.discountBeli3 > 0) {
+                                                                    p = item.discountBeliType3 === 'Rp' ? Math.max(0, p - item.discountBeli3) : p * (1 - item.discountBeli3/100);
+                                                                    steps.push({ label: item.discountBeliType3 === 'Rp' ? `-${formatRupiah(item.discountBeli3)}` : `-${item.discountBeli3}%`, result: p });
+                                                                }
                                                                 return (
-                                                                    <p className="text-[10px] text-red-500 font-bold mt-0.5">
-                                                                        Disc: {discs.join(' + ')} → Efektif: {formatRupiah(eff)}
-                                                                    </p>
+                                                                    <div className="mt-0.5 flex flex-col gap-0.5">
+                                                                        {steps.map((s, i) => (
+                                                                            <p key={i} className="text-[10px] flex items-center gap-1">
+                                                                                <span className="text-slate-400">D{i+1}</span>
+                                                                                <span className="text-red-500 font-bold bg-red-50 px-1 rounded">{s.label}</span>
+                                                                                <span className="text-slate-400">→</span>
+                                                                                <span className={`font-bold ${i === steps.length - 1 ? 'text-teal-600' : 'text-slate-500'}`}>{formatRupiah(s.result)}</span>
+                                                                                {i === steps.length - 1 && <span className="text-slate-300 text-[9px]">(efektif)</span>}
+                                                                            </p>
+                                                                        ))}
+                                                                    </div>
                                                                 );
                                                             })()}
                                                             <p className="text-[10px] text-slate-400 mt-0.5">Harga Jual Toko: {formatRupiah(item.price)}</p>
