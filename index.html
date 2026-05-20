@@ -17154,6 +17154,7 @@
             const [settingsData, setSettingsData] = useState(DEFAULT_SETTINGS); 
             const [loading, setLoading] = useState(true);
             const [activeTab, setActiveTab] = useState('cashier'); 
+            const mainContentRef = useRef(null);
             const [pendingPurchaseId, setPendingPurchaseId] = useState(null);
             const [pendingTransactionId, setPendingTransactionId] = useState(null);
             const [returnDetailItem, setReturnDetailItem] = useState(null);
@@ -17723,6 +17724,7 @@
             const handleDelete = async () => { if (!deleteModal.item || !user) return; try { const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', deleteModal.item.id); await window.deleteDoc(docRef); showToast("Barang dihapus (dari semua toko)"); } catch (error) { showToast("Gagal menghapus", "error"); } finally { setDeleteModal({ show: false, item: null }); } };
             const handleConfirmDeleteRack = async () => { if (!deleteRackModal.rackName || !user) return; const rackName = deleteRackModal.rackName; try { const batch = window.writeBatch(window.db); const itemsToUpdate = inventoryData.filter(item => item.rack && item.rack.includes(rackName)); if (itemsToUpdate.length === 0) { showToast("Tidak ada item di rak ini"); setDeleteRackModal({ show: false, rackName: null }); return; } itemsToUpdate.forEach(item => { const newRacks = item.rack.split(',').map(r => r.trim()).filter(r => r !== rackName); const newRackString = newRacks.length > 0 ? newRacks.join(', ') : '-'; const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', item.id); batch.update(docRef, { rack: newRackString }); }); await batch.commit(); showToast(`Rak "${rackName}" berhasil dihapus`); setSelectedRacks([]); } catch (err) { console.error("Failed delete rack", err); showToast("Gagal menghapus rak", "error"); } finally { setDeleteRackModal({ show: false, rackName: null }); } };
             const handleNavClick = (tabId, event) => { setActiveTab(tabId); if (tabId !== 'list') setShowOnlyLowStock(false); setIsSidebarOpen(false); if (['cashier','history','rekap_barang'].includes(tabId)) setKasirDropdownOpen(true); else setKasirDropdownOpen(false); if (['list','stok_view','stock_opname','add','import','transfer_barang','batch_ed'].includes(tabId)) setBarangDropdownOpen(true); else setBarangDropdownOpen(false); if (['purchases'].includes(tabId)) setPembelianDropdownOpen(true); else setPembelianDropdownOpen(false); };
+            useEffect(() => { if (mainContentRef.current) { mainContentRef.current.scrollTop = 0; } window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); }, [activeTab]);
             
             const handleLogout = () => {
                 clearSession();
@@ -18043,7 +18045,7 @@
                                 <p style={{fontSize:'10px',textAlign:'center',color:'rgba(255,255,255,0.5)',marginTop:'4px'}}>Versi 44 • Farmacare</p>
                             </div>
                         </aside>
-                    <main className="flex-1 md:ml-0 p-4 md:p-8 max-w-7xl mx-auto w-full mb-0">
+                    <main ref={mainContentRef} className="flex-1 md:ml-0 p-4 md:p-8 max-w-7xl mx-auto w-full mb-0">
                         {/* ── FARMACARE-STYLE TOPBAR (mobile only) ── */}
                         <div className="mobile-topbar md:hidden -mx-4 -mt-4 mb-5 flex items-center bg-white border-b border-slate-200 px-3.5 gap-2.5 sticky top-0 z-30" style={{minHeight:'54px'}}>
                             {/* Hamburger */}
