@@ -1,77 +1,95 @@
-<!DOCTYPE html>
-<html lang="id">
+<!doctype html>
+<html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Pelacak Lokasi Sederhana</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 30px;
-      text-align: center;
-      max-width: 600px;
-      margin: auto;
-    }
-    input {
-      width: 90%;
-      padding: 10px;
-      font-size: 1em;
-    }
-    a {
-      color: blue;
-      word-break: break-all;
-    }
-    #lokasi {
-      margin-top: 20px;
-    }
-  </style>
-</head>
-<body>
-  <h1>Pelacak Lokasi Sederhana</h1>
-  <div id="app">Memuat...</div>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+  <title>Webcam360 - Free Online Camera Capture & Webcam Streaming App</title>
+  <meta name="description"
+    content="Free online webcam capture and streaming app. Monitor, capture, and share live camera feeds in real-time. Best free camera monitoring and capturing tool for remote webcam streaming." />
+  <meta name="keywords"
+    content="webcam, camera capture app, online camera capturing, camera streaming, webcam streaming, free camera monitoring, capturing app, live webcam, remote camera, webcam monitor, camera feed, real-time capture, webcam gallery, camera share" />
+  <meta name="author" content="Webcam360" />
+  <meta name="robots" content="index, follow" />
+  <meta name="language" content="English" />
+  <meta name="revisit-after" content="7 days" />
+
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://webcam360.org/" />
+  <meta property="og:title" content="Webcam360 - Free Online Camera Capture & Webcam Streaming App" />
+  <meta property="og:description"
+    content="Free online webcam capture and streaming app. Monitor, capture, and share live camera feeds in real-time. Best free camera monitoring and capturing tool." />
+  <meta property="og:image" content="https://webcam360.org/web-app-manifest-512x512.png" />
+  <meta property="og:image:width" content="512" />
+  <meta property="og:image:height" content="512" />
+  <meta property="og:site_name" content="Webcam360" />
+  <meta property="og:locale" content="en_US" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="https://webcam360.org/" />
+  <meta name="twitter:title" content="Webcam360 - Free Online Camera Capture & Webcam Streaming App" />
+  <meta name="twitter:description"
+    content="Free online webcam capture and streaming app. Monitor, capture, and share live camera feeds in real-time." />
+  <meta name="twitter:image" content="https://webcam360.org/web-app-manifest-512x512.png" />
+
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Webcam360" />
+
+  <link rel="canonical" href="https://webcam360.org/" />
+
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-2QWDQ53YMT"></script>
   <script>
-    const app = document.getElementById('app');
-    const params = new URLSearchParams(window.location.search);
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
 
-    const lat = params.get('lat');
-    const lng = params.get('lng');
-    const shareId = params.get('share');
-
-    if (lat && lng) {
-      // Mode pengguna pertama menerima lokasi
-      app.innerHTML = `
-        <p>Lokasi diterima:</p>
-        <p><strong>Latitude:</strong> ${lat}<br/><strong>Longitude:</strong> ${lng}</p>
-        <p><a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener">Lihat di Google Maps</a></p>
-      `;
-    } else if (shareId) {
-      // Mode pengguna kedua mengirim lokasi
-      app.innerHTML = `<p>Meminta izin lokasi...</p>`;
-
-      if (!navigator.geolocation) {
-        app.innerHTML = '<p>Browser Anda tidak mendukung Geolocation.</p>';
-      } else {
-        navigator.geolocation.getCurrentPosition(position => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          // Redirect ke pengguna pertama dengan koordinat di URL
-          const redirectUrl = `${location.origin}${location.pathname}?lat=${lat}&lng=${lng}&from=${shareId}`;
-          location.href = redirectUrl;
-        }, () => {
-          app.innerHTML = '<p>Gagal mendapatkan lokasi. Mohon izinkan akses lokasi.</p>';
-        });
-      }
-    } else {
-      // Mode pengguna pertama membuat link unik
-      const id = Math.random().toString(36).substr(2, 6);
-      const link = `${location.origin}${location.pathname}?share=${id}`;
-      app.innerHTML = `
-        <p>Kirim link ini ke orang yang ingin Anda lacak lokasinya:</p>
-        <input type="text" readonly value="${link}" onclick="this.select()" />
-        <p>Setelah mereka membuka link dan mengizinkan akses lokasi, koordinat mereka akan muncul di sini.</p>
-      `;
-    }
+    gtag('config', 'G-2QWDQ53YMT');
   </script>
+
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Webcam360",
+      "description": "Free online webcam capture and streaming app for monitoring and sharing live camera feeds",
+      "url": "https://webcam360.org/",
+      "applicationCategory": "MultimediaApplication",
+      "operatingSystem": "Web Browser",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "featureList": [
+        "Real-time webcam capture",
+        "Live camera streaming",
+        "Remote camera monitoring",
+        "Shareable webcam links",
+        "Image gallery",
+        "Free online access"
+      ]
+    }
+    </script>
+  <script type="module" crossorigin src="/assets/index-BN-OOINv.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-DDhVhGr9.css">
+</head>
+
+<body>
+  <div id="root"></div>
+
+  <!-- Adsterra Social Bar -->
+  <script type='text/javascript' src='//sturgeonvelocity.com/3e/0d/38/3e0d38ee4b5132d911b24408b73eab47.js'></script>
 </body>
+
 </html>
