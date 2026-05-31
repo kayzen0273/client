@@ -8966,6 +8966,7 @@
             const [transactions, setTransactions] = useState([]);
             const [loading, setLoading] = useState(true);
             const [selectedTx, setSelectedTx] = useState(null);
+            const [showPrintMenu, setShowPrintMenu] = useState(false);
             const [purchasesData, setPurchasesData] = useState([]);
             
             const [returModal, setReturModal] = useState({ show: false, tx: null, item: null, index: -1 });
@@ -9931,9 +9932,39 @@
                                             className="px-4 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-medium active:scale-95 transition-all hover:bg-slate-50"
                                         >Retur</button>
                                     )}
-                                    <button onClick={() => handlePrint(selectedTx)} className="px-4 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-medium active:scale-95 transition-all hover:bg-slate-50">
-                                        Cetak
-                                    </button>
+                                    {/* Tombol Cetak dengan dropdown */}
+                                    <div className="relative">
+                                        <button
+                                            onClick={() => setShowPrintMenu(v => !v)}
+                                            className="px-4 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-medium active:scale-95 transition-all hover:bg-slate-50 flex items-center gap-1"
+                                        >
+                                            Cetak
+                                            <Icon name="chevron-down" className={`text-[10px] text-slate-400 transition-transform ${showPrintMenu ? 'rotate-180' : ''}`} />
+                                        </button>
+                                        {showPrintMenu && (
+                                            <>
+                                                {/* Backdrop untuk menutup menu */}
+                                                <div className="fixed inset-0 z-[119]" onClick={() => setShowPrintMenu(false)} />
+                                                <div className="absolute right-0 top-full mt-1.5 w-48 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-[120] fade-in">
+                                                    <button
+                                                        onClick={() => { handlePrint(selectedTx); setShowPrintMenu(false); }}
+                                                        className="w-full text-left px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-3 transition-colors"
+                                                    >
+                                                        <Icon name="print" className="text-slate-500 w-4 text-center" />
+                                                        Cetak Struk
+                                                    </button>
+                                                    <div className="h-px bg-slate-100 mx-3" />
+                                                    <button
+                                                        onClick={() => { handleWAHistory(selectedTx); setShowPrintMenu(false); }}
+                                                        className="w-full text-left px-4 py-3 text-sm font-medium text-slate-700 hover:bg-green-50 flex items-center gap-3 transition-colors"
+                                                    >
+                                                        <Icon name="image" className="text-green-500 w-4 text-center" />
+                                                        Gambar Struk (WA)
+                                                    </button>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
