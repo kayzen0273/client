@@ -135,10 +135,10 @@
         @keyframes slideInRight { from { transform: translateX(100%); opacity: 0.6; } to { transform: translateX(0); opacity: 1; } }
         .tx-detail-row { display: flex; flex-direction: column; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
         .tx-detail-row:last-child { border-bottom: none; }
-        .tx-detail-label { font-size: 11px; color: #94a3b8; margin-bottom: 3px; }
-        .tx-detail-value { font-size: 13.5px; color: #1e293b; font-weight: 500; }
+        .tx-detail-label { font-size: 11px; color: #0f172a; margin-bottom: 3px; }
+        .tx-detail-value { font-size: 13.5px; color: #0f172a; font-weight: 500; }
         .tx-section-title { font-size: 15px; font-weight: 800; color: #0f172a; margin-bottom: 8px; }
-        .tx-items-table-header { display: flex; font-size: 11px; font-weight: 700; color: #94a3b8; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0; }
+        .tx-items-table-header { display: flex; font-size: 11px; font-weight: 700; color: #0f172a; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0; }
         .tx-items-row { display: flex; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
         .typing-dot { height: 6px; width: 6px; background-color: #0ea5e9; border-radius: 50%; display: inline-block; animation: typing 1.4s infinite ease-in-out both; margin: 0 2px; }
         .typing-dot:nth-child(1) { animation-delay: -0.32s; }
@@ -10085,7 +10085,7 @@
                                 </div>
                                 <div className="tx-detail-row">
                                     <span className="tx-detail-label">No. faktur pajak</span>
-                                    <span className="tx-detail-value text-slate-400 text-xs italic">Belum ditambahkan</span>
+                                    <span className="tx-detail-value text-slate-700 text-xs italic">Belum ditambahkan</span>
                                 </div>
                                 <div className="tx-detail-row">
                                     <span className="tx-detail-label">Waktu</span>
@@ -10223,13 +10223,13 @@
                                         const ri = item.racikanInfo;
                                         return (
                                             <div key={idx} className="tx-items-row">
-                                                <div className="w-5 flex-shrink-0 pt-0.5"><span className="text-xs text-slate-400">{visibleIdx}</span></div>
+                                                <div className="w-5 flex-shrink-0 pt-0.5"><span className="text-xs text-slate-700">{visibleIdx}</span></div>
                                                 <div className="flex-1 min-w-0 pr-2">
                                                     <div className="flex items-center gap-1.5 flex-wrap">
                                                         <p className="text-sm font-bold text-slate-800">{item.name}</p>
                                                         {item.isRacikanGroup && <span className="text-[8px] font-black bg-teal-600 text-white px-1 py-0.5 rounded flex-shrink-0">R/</span>}
                                                     </div>
-                                                    <p className="text-[11px] text-slate-400 mt-0.5">{remainingQty} x {formatRupiah(item.price)}</p>
+                                                    <p className="text-[11px] text-slate-700 mt-0.5">{remainingQty} x {formatRupiah(item.price)}</p>
                                                     {item.isRacikanGroup && ri && (ri.dokter || ri.pasien) && (<button onClick={() => setRacikanInfoModal(item)} className="mt-1.5 flex items-center gap-1 text-teal-600 text-[10px] font-bold bg-teal-50 hover:bg-teal-100 px-2 py-1 rounded-lg transition-colors"><Icon name="circle-info" className="text-[10px]" /> Info Pasien / Dokter</button>)}
                                                     {selectedTx.status !== 'returned' && (
                                                         <button onClick={() => { if (!canReturOldTransaction(selectedTx)) { showToast('Hanya Owner atau akun yang diizinkan yang bisa retur transaksi kemarin & sebelumnya', 'error'); return; } openReturModal(selectedTx, item, idx); }} className={`mt-1.5 border text-[10px] font-bold px-2 py-1 rounded-lg transition-colors ${canReturOldTransaction(selectedTx) ? 'bg-white border-red-200 text-red-500 hover:bg-red-50' : 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'}`}>
@@ -10262,17 +10262,17 @@
                                     return (
                                         <div className="mt-3 pt-1 border-t border-slate-200">
                                             <div className="flex justify-between text-sm py-1.5 border-b border-slate-100">
-                                                <span className="text-slate-500">Subtotal (DPP+PPN)</span>
-                                                <span className="font-medium text-slate-700">{subtotalTx.toLocaleString('id-ID')}</span>
+                                                <span className="text-slate-800">Subtotal (DPP+PPN)</span>
+                                                <span className="font-medium text-slate-800">{subtotalTx.toLocaleString('id-ID')}</span>
                                             </div>
                                             <div className="flex justify-between text-sm py-1.5 border-b border-slate-100">
-                                                <span className={diskonTxRp > 0 ? 'text-red-500 font-medium' : 'text-slate-500'}>{diskonLabel}</span>
-                                                <span className={diskonTxRp > 0 ? 'font-medium text-red-500' : 'font-medium text-slate-700'}>{diskonTxRp > 0 ? diskonTxRp.toLocaleString('id-ID') : '0'}</span>
+                                                <span className={diskonTxRp > 0 ? 'text-red-500 font-medium' : 'text-slate-800'}>{diskonLabel}</span>
+                                                <span className={diskonTxRp > 0 ? 'font-medium text-red-500' : 'font-medium text-slate-800'}>{diskonTxRp > 0 ? diskonTxRp.toLocaleString('id-ID') : '0'}</span>
                                             </div>
                                             {hasRetur && (
                                                 <div className="flex justify-between text-sm py-1.5 border-b border-slate-100">
                                                     <span className="text-slate-800">Total (sebelum retur)</span>
-                                                    <span className="font-medium text-slate-500 line-through">{selectedTx.total.toLocaleString('id-ID')}</span>
+                                                    <span className="font-medium text-slate-400 line-through">{selectedTx.total.toLocaleString('id-ID')}</span>
                                                 </div>
                                             )}
                                             {hasRetur && (
@@ -10311,8 +10311,8 @@
                                         <div className="px-4 pt-4 pb-4 bg-white">
                                             <p className="tx-section-title">Retur</p>
                                             {selectedTx.returnedAt && (
-                                                <p className="text-xs text-slate-500 mb-3 leading-relaxed">
-                                                    {formatReturDate()} <span className="text-slate-700 font-semibold">oleh {selectedTx.returByName || selectedTx.cashierName || 'Kasir'}</span>
+                                                <p className="text-xs text-slate-700 mb-3 leading-relaxed">
+                                                    {formatReturDate()} <span className="text-slate-800 font-semibold">oleh {selectedTx.returByName || selectedTx.cashierName || 'Kasir'}</span>
                                                 </p>
                                             )}
 
@@ -10331,11 +10331,11 @@
                                             {/* Grid Metode + Alasan */}
                                             <div className="grid grid-cols-2 gap-x-4 py-3 border-b border-slate-100">
                                                 <div>
-                                                    <p className="text-[11px] text-slate-400 font-medium mb-1">Metode pembayaran</p>
+                                                    <p className="text-[11px] text-slate-700 font-medium mb-1">Metode pembayaran</p>
                                                     <p className="text-sm font-bold text-slate-800">{returPayLabel}</p>
                                                 </div>
                                                 <div>
-                                                    <p className="text-[11px] text-slate-400 font-medium mb-1">Alasan retur</p>
+                                                    <p className="text-[11px] text-slate-700 font-medium mb-1">Alasan retur</p>
                                                     <p className="text-sm font-bold text-slate-800">{selectedTx.returAlasan || '-'}</p>
                                                 </div>
                                             </div>
@@ -10350,10 +10350,10 @@
                                                     </div>
                                                     {returItems.map((item, idx) => (
                                                         <div key={idx} className="tx-items-row">
-                                                            <div className="w-5 flex-shrink-0 pt-0.5"><span className="text-xs text-slate-400">{idx+1}</span></div>
+                                                            <div className="w-5 flex-shrink-0 pt-0.5"><span className="text-xs text-slate-700">{idx+1}</span></div>
                                                             <div className="flex-1 min-w-0 pr-2">
                                                                 <p className="text-sm font-bold text-slate-800">{item.name}</p>
-                                                                <p className="text-[11px] text-slate-400 mt-0.5">{item.returnedQty} x {formatRupiah(item.price)}/{item.unit || 'pcs'}</p>
+                                                                <p className="text-[11px] text-slate-700 mt-0.5">{item.returnedQty} x {formatRupiah(item.price)}/{item.unit || 'pcs'}</p>
                                                             </div>
                                                             <div className="w-20 text-right flex-shrink-0">
                                                                 <p className="text-sm font-bold text-slate-800">{(item.returnedQty * item.price).toLocaleString('id-ID')}</p>
@@ -10366,12 +10366,12 @@
                                             {/* Summary */}
                                             <div className="mt-3 pt-1 border-t border-slate-200">
                                                 <div className="flex justify-between text-sm py-1.5 border-b border-slate-100">
-                                                    <span className="text-slate-500">Total retur</span>
-                                                    <span className="font-medium text-slate-700">{totalRetur.toLocaleString('id-ID')}</span>
+                                                    <span className="text-slate-800">Total retur</span>
+                                                    <span className="font-medium text-slate-800">{totalRetur.toLocaleString('id-ID')}</span>
                                                 </div>
                                                 <div className="flex justify-between text-sm py-1.5 border-b border-slate-100">
-                                                    <span className="text-slate-500">Total yang dikembalikan</span>
-                                                    <span className="font-medium text-slate-700">{totalDikembalikan.toLocaleString('id-ID')}</span>
+                                                    <span className="text-slate-800">Total yang dikembalikan</span>
+                                                    <span className="font-medium text-slate-800">{totalDikembalikan.toLocaleString('id-ID')}</span>
                                                 </div>
                                                 <div className="flex justify-between text-sm py-2 font-bold">
                                                     <span className="text-slate-800">Selisih pengembalian</span>
@@ -10443,15 +10443,15 @@
                                             )}
                                             {ri.catatan && (
                                                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Catatan</p>
-                                                    <p className="text-sm text-slate-700">{ri.catatan}</p>
+                                                    <p className="text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">Catatan</p>
+                                                    <p className="text-sm text-slate-800">{ri.catatan}</p>
                                                 </div>
                                             )}
                                         </div>
                                         {/* Bahan Racikan */}
                                         {bahan.length > 0 && (
                                             <div className="px-5 pb-5">
-                                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Komposisi Bahan ({bahan.length} item)</p>
+                                                <p className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Komposisi Bahan ({bahan.length} item)</p>
                                                 <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100">
                                                     {bahan.map((b, i) => (
                                                         <div key={i} className="flex items-center justify-between px-3 py-2.5 bg-white">
