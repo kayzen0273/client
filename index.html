@@ -10128,8 +10128,32 @@
                             <div className="px-4 pt-4 pb-2 bg-white">
                                 <p className="tx-section-title">Pembayaran</p>
                                 <div className="tx-detail-row"><span className="tx-detail-label">Metode</span><span className="tx-detail-value">{selectedTx.paymentMethod === 'qris' ? 'QRIS' : selectedTx.paymentMethod === 'transfer' ? 'Transfer' : 'Tunai'}</span></div>
-                                <div className="tx-detail-row"><span className="tx-detail-label">Total dibayar</span><span className="tx-detail-value font-bold">{formatRupiah(selectedTx.pay)}</span></div>
-                                <div className="tx-detail-row"><span className="tx-detail-label">Kembalian</span><span className="tx-detail-value">{formatRupiah(selectedTx.change)}</span></div>
+                                {(() => {
+                                    // Hitung total setelah retur
+                                    const totalReturnedValue = (selectedTx.items || []).reduce((acc, item) => acc + (item.price * (item.returnedQty || 0)), 0);
+                                    const totalSetelahRetur = (selectedTx.total || 0) - totalReturnedValue;
+                                    const hasRetur = totalReturnedValue > 0;
+                                    // Kembalian baru: uang dibayar dikurangi total setelah retur
+                                    const kembalianBaru = hasRetur ? (selectedTx.pay || 0) - totalSetelahRetur : (selectedTx.change || 0);
+                                    return (
+                                        <>
+                                            <div className="tx-detail-row">
+                                                <span className="tx-detail-label">Total dibayar</span>
+                                                <span className="tx-detail-value font-bold">{formatRupiah(selectedTx.pay)}</span>
+                                            </div>
+                                            {hasRetur && (
+                                                <div className="tx-detail-row">
+                                                    <span className="tx-detail-label">Total setelah retur</span>
+                                                    <span className="tx-detail-value font-bold text-orange-600">{formatRupiah(totalSetelahRetur)}</span>
+                                                </div>
+                                            )}
+                                            <div className="tx-detail-row">
+                                                <span className="tx-detail-label">Kembalian{hasRetur ? ' (setelah retur)' : ''}</span>
+                                                <span className="tx-detail-value font-bold text-green-600">{formatRupiah(kembalianBaru)}</span>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
                                 {(selectedTx.paymentMethod === 'qris' || selectedTx.paymentMethod === 'transfer') && (
                                     <div className="mt-3 mb-2">
                                         <div className="flex items-center justify-between mb-2">
@@ -10228,6 +10252,10 @@
                                         if (uniqTypes[0] === '%') { diskonLabel = uniqValues.length === 1 ? ('Diskon ' + uniqValues[0] + '%') : 'Diskon (%)'; }
                                         else { diskonLabel = uniqValues.length === 1 ? ('Diskon ' + formatRupiah(uniqValues[0])) : 'Diskon (Rp)'; }
                                     }
+                                    // Hitung nilai retur dan total setelah retur
+                                    const totalReturnedValue = selectedTx.items.reduce((acc, item) => acc + (item.price * (item.returnedQty || 0)), 0);
+                                    const totalSetelahRetur = selectedTx.total - totalReturnedValue;
+                                    const hasRetur = totalReturnedValue > 0;
                                     return (
                                         <div className="mt-3 pt-1 border-t border-slate-200">
                                             <div className="flex justify-between text-sm py-1.5 border-b border-slate-100">
@@ -10238,9 +10266,21 @@
                                                 <span className={diskonTxRp > 0 ? 'text-red-500 font-medium' : 'text-slate-500'}>{diskonLabel}</span>
                                                 <span className={diskonTxRp > 0 ? 'font-medium text-red-500' : 'font-medium text-slate-700'}>{diskonTxRp > 0 ? diskonTxRp.toLocaleString('id-ID') : '0'}</span>
                                             </div>
+                                            {hasRetur && (
+                                                <div className="flex justify-between text-sm py-1.5 border-b border-slate-100">
+                                                    <span className="text-slate-800">Total (sebelum retur)</span>
+                                                    <span className="font-medium text-slate-500 line-through">{selectedTx.total.toLocaleString('id-ID')}</span>
+                                                </div>
+                                            )}
+                                            {hasRetur && (
+                                                <div className="flex justify-between text-sm py-1.5 border-b border-slate-100">
+                                                    <span className="text-orange-600 font-medium">Dikurangi retur</span>
+                                                    <span className="font-medium text-orange-600">- {totalReturnedValue.toLocaleString('id-ID')}</span>
+                                                </div>
+                                            )}
                                             <div className="flex justify-between text-sm py-2 font-bold">
-                                                <span className="text-slate-800">Total</span>
-                                                <span className="text-slate-900">{selectedTx.total.toLocaleString('id-ID')}</span>
+                                                <span className="text-slate-800">{hasRetur ? 'Total Setelah Retur' : 'Total'}</span>
+                                                <span className={hasRetur ? 'text-orange-700' : 'text-slate-900'}>{hasRetur ? totalSetelahRetur.toLocaleString('id-ID') : selectedTx.total.toLocaleString('id-ID')}</span>
                                             </div>
                                         </div>
                                     );
