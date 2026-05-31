@@ -8972,6 +8972,15 @@
             const [returModal, setReturModal] = useState({ show: false, tx: null, item: null, index: -1 });
             const [qtyToRetur, setQtyToRetur] = useState(1);
             const [processingRetur, setProcessingRetur] = useState(false);
+            // === RETUR MULTI-STEP (sub-page flow) ===
+            const [returStep, setReturStep] = useState(null); // null | 'step1' | 'step2'
+            const [returItemsState, setReturItemsState] = useState([]);
+            const [returWithBatch, setReturWithBatch] = useState(false);
+            const [returAlasan, setReturAlasan] = useState('');
+            const [returPayMethod, setReturPayMethod] = useState('tunai');
+            const [returTotalKembali, setReturTotalKembali] = useState('');
+            const [returNote, setReturNote] = useState('');
+            const [processingReturNew, setProcessingReturNew] = useState(false);
             
             const [btDevice, setBtDevice] = useState(null);
             const [selectedDate, setSelectedDate] = useState(new Date());
@@ -9277,6 +9286,85 @@
             }, [processedTransactions]);
 
             const openReturModal = (tx, item, index) => { const maxRetur = item.cartQty - (item.returnedQty || 0); if (maxRetur <= 0) { showToast("Barang ini sudah diretur semua", "error"); return; } setReturModal({ show: true, tx, item, index, max: maxRetur }); setQtyToRetur(maxRetur); };
+
+            // Buka sub-page retur (flow baru: step1 → step2)
+            const openReturPage = (tx) => {
+                if (!canReturOldTransaction(tx)) { showToast('Hanya Owner atau akun yang diizinkan yang bisa retur transaksi kemarin & sebelumnya', 'error'); return; }
+                const rItems = tx.items
+                    .map((item, origIdx) => ({ ...item, origIdx, maxRetur: item.cartQty - (item.returnedQty || 0) }))
+                    .filter(item => item.maxRetur > 0)
+                    .map(item => ({ ...item, checked: false, returQty: item.maxRetur }));
+                if (rItems.length === 0) { showToast('Semua item sudah diretur', 'error'); return; }
+                setReturItemsState(rItems);
+                setReturAlasan('');
+                setReturWithBatch(false);
+                setReturStep('step1');
+            };
+
+            // Step1 → Step2: validasi lalu pindah ke pilih metode pembayaran
+            const handleReturLanjut = () => {
+                const selItems = returItemsState.filter(i => i.checked);
+                if (selItems.length === 0) { showToast('Pilih minimal satu barang untuk diretur', 'error'); return; }
+                const total = selItems.reduce((acc, i) => acc + (i.price * i.returQty), 0);
+                setReturPayMethod('tunai');
+                setReturTotalKembali(String(total));
+                setReturNote('');
+                setReturStep('step2');
+            };
+
+            // Step2: proses retur ke Firestore
+            const handleProcessReturNew = async () => {
+                const selItems = returItemsState.filter(i => i.checked);
+                if (!selectedTx || !user || selItems.length === 0) return;
+                setProcessingReturNew(true);
+                try {
+                    const batch = window.writeBatch(window.db);
+                    const storeIdToReturn = selectedTx.storeId || 'default';
+                    const stockField = `stocks.${storeIdToReturn}`;
+                    const updatedItems = [...selectedTx.items];
+                    for (const ri of selItems) {
+                        const origIdx = ri.origIdx !== undefined ? ri.origIdx : selectedTx.items.findIndex(i => i.id === ri.id);
+                        if (origIdx === -1) continue;
+                        if (ri.isRacikanGroup) {
+                            (ri.racikanItems || []).forEach(b => {
+                                const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', b.id);
+                                batch.update(ref, { [stockField]: window.increment(b.qty * ri.returQty), updatedAt: window.serverTimestamp() });
+                            });
+                        } else {
+                            const ref = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', ri.id);
+                            batch.update(ref, { [stockField]: window.increment(ri.returQty * (ri.packageQtyPerUnit || 1)) });
+                        }
+                        updatedItems[origIdx].returnedQty = (updatedItems[origIdx].returnedQty || 0) + ri.returQty;
+                    }
+                    let totalQty = 0, returnedQty = 0;
+                    updatedItems.forEach(i => { totalQty += i.cartQty; returnedQty += (i.returnedQty || 0); });
+                    const newStatus = returnedQty === totalQty ? 'returned' : returnedQty > 0 ? 'partial' : selectedTx.status;
+                    const txRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'transactions', selectedTx.id);
+                    batch.update(txRef, { items: updatedItems, status: newStatus, returnedAt: window.serverTimestamp(), returPaymentMethod: returPayMethod, returAlasan, returNote });
+                    await batch.commit();
+                    // Update SO physicalMap jika ada sesi aktif
+                    try {
+                        const soCol = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'stock_opname');
+                        const soQ = window.query(soCol, window.where('status', '==', 'open'), window.where('profileId', '==', storeIdToReturn));
+                        const soSnap = await window.getDocs(soQ);
+                        if (!soSnap.empty) {
+                            const soDocRef = soSnap.docs[0].ref;
+                            const physMap = soSnap.docs[0].data().physicalMap || {};
+                            const soUpdate = {};
+                            for (const ri of selItems) {
+                                if (ri.isRacikanGroup) {
+                                    (ri.racikanItems || []).forEach(b => { if (physMap[b.id] !== undefined) soUpdate[`physicalMap.${b.id}`] = window.increment(b.qty * ri.returQty); });
+                                } else {
+                                    if (physMap[ri.id] !== undefined) soUpdate[`physicalMap.${ri.id}`] = window.increment(ri.returQty * (ri.packageQtyPerUnit || 1));
+                                }
+                            }
+                            if (Object.keys(soUpdate).length > 0) { soUpdate.updatedAt = window.serverTimestamp(); await window.updateDoc(soDocRef, soUpdate); }
+                        }
+                    } catch(soErr) { console.warn('SO physicalMap retur update skipped:', soErr); }
+                    showToast(`Retur ${selItems.length} barang berhasil disimpan`, 'success');
+                    setReturStep(null); setSelectedTx(null);
+                } catch (e) { console.error(e); showToast('Gagal melakukan retur', 'error'); } finally { setProcessingReturNew(false); }
+            };
 
             // Cek apakah transaksi berasal dari hari sebelum hari ini
             const isTxOlderThanToday = (tx) => {
@@ -9922,13 +10010,7 @@
                                 <div className="flex gap-2 flex-shrink-0 pr-1">
                                     {selectedTx.status !== 'returned' && (
                                         <button
-                                            onClick={() => {
-                                                const firstReturableItem = selectedTx.items.find(item => (item.cartQty - (item.returnedQty || 0)) > 0);
-                                                if (!firstReturableItem) { showToast('Semua item sudah diretur', 'error'); return; }
-                                                if (!canReturOldTransaction(selectedTx)) { showToast('Hanya Owner atau akun yang diizinkan yang bisa retur transaksi kemarin & sebelumnya', 'error'); return; }
-                                                const idx = selectedTx.items.indexOf(firstReturableItem);
-                                                openReturModal(selectedTx, firstReturableItem, idx);
-                                            }}
+                                            onClick={() => openReturPage(selectedTx)}
                                             className="px-4 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-medium active:scale-95 transition-all hover:bg-slate-50"
                                         >Retur</button>
                                     )}
@@ -10241,6 +10323,189 @@
                             </div>
                         );
                     })()}
+
+                    {/* ===== RETUR STEP 1: Retur Penjualan ===== */}
+                    {returStep === 'step1' && selectedTx && (
+                        <div className="fixed inset-0 z-[200] bg-white flex flex-col">
+                            {/* Header */}
+                            <div className="sticky top-0 z-[210] bg-white border-b border-slate-200 flex items-center px-2" style={{minHeight:'54px'}}>
+                                <button onClick={() => setReturStep(null)} style={{width:'40px',height:'54px'}} className="flex items-center justify-center text-slate-500 flex-shrink-0 active:scale-90 transition-transform">
+                                    <Icon name="xmark" className="text-lg" />
+                                </button>
+                                <h2 className="flex-1 text-sm font-semibold text-slate-700 text-center">Riwayat #{selectedTx.id?.slice(-10).toUpperCase()}</h2>
+                                <div style={{width:'40px'}} />
+                            </div>
+                            {/* Body */}
+                            <div className="flex-1 overflow-y-auto px-4 pt-6 pb-32">
+                                <h1 className="text-3xl font-black text-slate-900 mb-7">Retur penjualan</h1>
+                                {/* Toggle: Retur dengan detail batch */}
+                                <div className="flex items-center justify-between py-4 border-b border-slate-200 mb-2">
+                                    <span className="text-sm text-slate-700">Retur dengan detail batch</span>
+                                    <div onClick={() => setReturWithBatch(v => !v)} className="relative cursor-pointer flex-shrink-0" style={{width:'51px',height:'31px'}}>
+                                        <div className={`absolute inset-0 rounded-full transition-colors ${returWithBatch ? 'bg-teal-500' : 'bg-slate-200'}`} />
+                                        {!returWithBatch && (
+                                            <div className="absolute inset-0 flex items-center justify-center pr-1">
+                                                <Icon name="xmark" className="text-slate-400 text-sm" />
+                                            </div>
+                                        )}
+                                        <div className={`absolute top-0.5 w-7 h-7 bg-white rounded-full shadow-md transition-all duration-200 ${returWithBatch ? 'left-5' : 'left-0.5'}`} />
+                                    </div>
+                                </div>
+                                {/* Header tabel */}
+                                <div className="flex items-center pb-3 border-b-2 border-slate-200">
+                                    <div className="w-8 flex-shrink-0">
+                                        <div onClick={() => {
+                                            const allChecked = returItemsState.every(i => i.checked);
+                                            setReturItemsState(prev => prev.map(i => ({...i, checked: !allChecked})));
+                                        }} className={`w-5 h-5 border-2 rounded cursor-pointer flex items-center justify-center ${returItemsState.length > 0 && returItemsState.every(i=>i.checked) ? 'bg-teal-500 border-teal-500' : 'border-slate-300 bg-white'}`}>
+                                            {returItemsState.length > 0 && returItemsState.every(i=>i.checked) && <Icon name="check" className="text-white" style={{fontSize:'9px'}} />}
+                                        </div>
+                                    </div>
+                                    <span className="flex-1 text-sm font-bold text-slate-700">Barang</span>
+                                    <span className="text-sm font-bold text-slate-700">Jumlah diretur</span>
+                                </div>
+                                {/* Daftar item yang bisa diretur */}
+                                {returItemsState.map((item, idx) => (
+                                    <div key={idx} className="flex items-center py-4 border-b border-slate-100">
+                                        <div className="w-8 flex-shrink-0">
+                                            <div onClick={() => {
+                                                const next = [...returItemsState];
+                                                next[idx] = {...next[idx], checked: !next[idx].checked};
+                                                setReturItemsState(next);
+                                            }} className={`w-5 h-5 border-2 rounded cursor-pointer flex items-center justify-center ${item.checked ? 'bg-teal-500 border-teal-500' : 'border-slate-300 bg-white'}`}>
+                                                {item.checked && <Icon name="check" className="text-white" style={{fontSize:'9px'}} />}
+                                            </div>
+                                        </div>
+                                        <div className="flex-1 min-w-0 pr-3">
+                                            <p className="text-sm font-bold text-slate-800 leading-tight">{item.name}</p>
+                                            {item.isRacikanGroup && <span className="text-[9px] font-black bg-teal-600 text-white px-1 py-0.5 rounded">R/</span>}
+                                        </div>
+                                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                                            <input type="number" value={item.returQty} min={1} max={item.maxRetur}
+                                                onChange={e => {
+                                                    const v = Math.min(item.maxRetur, Math.max(1, parseInt(e.target.value) || 1));
+                                                    const next = [...returItemsState];
+                                                    next[idx] = {...next[idx], returQty: v};
+                                                    setReturItemsState(next);
+                                                }}
+                                                className="w-14 border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold text-slate-800 outline-none focus:border-teal-400"
+                                            />
+                                            <span className="text-sm text-slate-500">/ {item.maxRetur} {item.selectedUnit || item.unit || 'pcs'}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                                {/* Alasan Retur */}
+                                <div className="mt-7">
+                                    <p className="text-sm font-bold text-slate-700 mb-2">Alasan retur</p>
+                                    <textarea value={returAlasan} onChange={e => setReturAlasan(e.target.value)} rows={4}
+                                        className="w-full border border-slate-200 rounded-xl px-3 py-3 text-sm outline-none focus:border-teal-400 resize-none text-slate-700 placeholder:text-slate-300"
+                                        placeholder="Tulis alasan retur (opsional)..." />
+                                </div>
+                            </div>
+                            {/* Tombol Lanjut (fixed bottom) */}
+                            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 z-[220]">
+                                <button onClick={handleReturLanjut}
+                                    className="w-full py-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-base active:scale-95 transition-all shadow-lg">
+                                    Lanjut
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ===== RETUR STEP 2: Pilih Metode Pembayaran ===== */}
+                    {returStep === 'step2' && selectedTx && (
+                        <div className="fixed inset-0 z-[200] bg-white flex flex-col">
+                            {/* Header */}
+                            <div className="sticky top-0 z-[210] bg-white border-b border-slate-200 flex items-center px-2" style={{minHeight:'54px'}}>
+                                <button onClick={() => setReturStep('step1')} style={{width:'40px',height:'54px'}} className="flex items-center justify-center text-sky-500 flex-shrink-0 active:scale-90 transition-transform">
+                                    <Icon name="arrow-left" className="text-xl" />
+                                </button>
+                                <div className="flex-1" />
+                                <button onClick={handleProcessReturNew} disabled={processingReturNew}
+                                    className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-bold text-sm active:scale-95 transition-all mr-1">
+                                    {processingReturNew ? 'Memproses...' : 'Lanjut'}
+                                </button>
+                            </div>
+                            {/* Body */}
+                            <div className="flex-1 overflow-y-auto px-4 pt-6 pb-12">
+                                <h1 className="text-3xl font-black text-slate-900 mb-8 leading-tight">Pilih metode<br/>pembayaran</h1>
+                                {(() => {
+                                    const selItems = returItemsState.filter(i => i.checked);
+                                    const totalRetur = selItems.reduce((acc, i) => acc + (i.price * i.returQty), 0);
+                                    const totalKembali = parseInt(returTotalKembali) || 0;
+                                    const selisih = totalKembali - totalRetur;
+                                    return (
+                                        <>
+                                            <div className="mb-6">
+                                                <p className="text-sm font-bold text-slate-600 mb-1">Total retur</p>
+                                                <p className="text-4xl font-black text-slate-900">Rp{totalRetur.toLocaleString('id-ID')}</p>
+                                            </div>
+                                            <div className="mb-6">
+                                                <p className="text-sm font-bold text-slate-600 mb-0.5">Selisih retur</p>
+                                                <p className="text-base font-bold text-slate-700">
+                                                    {selisih === 0 ? 'Rp-' : `Rp${selisih > 0 ? '+' : ''}${selisih.toLocaleString('id-ID')}`}
+                                                </p>
+                                            </div>
+                                            <div className="mb-2">
+                                                <p className="text-sm font-bold text-slate-600 mb-2">Total dikembalikan</p>
+                                                <div className="flex items-center border border-slate-300 rounded-xl px-3 py-2.5 focus-within:border-teal-400 transition-colors bg-white">
+                                                    <span className="text-sm font-bold text-slate-500 mr-2 flex-shrink-0">Rp</span>
+                                                    <input type="number" value={returTotalKembali}
+                                                        onChange={e => setReturTotalKembali(e.target.value)}
+                                                        className="flex-1 outline-none text-sm font-bold text-slate-800 bg-transparent" placeholder="0" />
+                                                </div>
+                                                <p className="text-xs text-slate-400 mt-1.5">Selisih pengembalian akan dicatat sebagai selisih pada transaksimu.</p>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
+                                {/* Metode Pembayaran */}
+                                <div className="mt-7 mb-6">
+                                    <p className="text-sm font-bold text-slate-700 mb-2">Metode pembayaran</p>
+                                    <div className="border-t border-slate-200">
+                                        {/* Tunai */}
+                                        <div onClick={() => setReturPayMethod('tunai')} className="flex items-center gap-3 py-4 border-b border-slate-200 cursor-pointer active:bg-slate-50">
+                                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${returPayMethod === 'tunai' ? 'border-teal-500' : 'border-slate-300'}`}>
+                                                {returPayMethod === 'tunai' && <div className="w-2.5 h-2.5 rounded-full bg-teal-500" />}
+                                            </div>
+                                            <span className="text-sm font-bold text-slate-800">Tunai</span>
+                                        </div>
+                                        {/* Transfer/Bank */}
+                                        {settings.transferInfo && (
+                                            <div onClick={() => setReturPayMethod('transfer')} className="flex items-center gap-3 py-4 border-b border-slate-200 cursor-pointer active:bg-slate-50">
+                                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${returPayMethod === 'transfer' ? 'border-teal-500' : 'border-slate-300'}`}>
+                                                    {returPayMethod === 'transfer' && <div className="w-2.5 h-2.5 rounded-full bg-teal-500" />}
+                                                </div>
+                                                <div>
+                                                    {settings.transferInfo.trim().split('\n').map((line, li) => (
+                                                        <p key={li} className={li === 0 ? 'text-sm font-bold text-slate-800' : 'text-xs text-slate-500'}>{line.trim()}</p>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {/* QRIS */}
+                                        {settings.qrisImageUrl && (
+                                            <div onClick={() => setReturPayMethod('qris')} className="flex items-center gap-3 py-4 border-b border-slate-200 cursor-pointer active:bg-slate-50">
+                                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${returPayMethod === 'qris' ? 'border-teal-500' : 'border-slate-300'}`}>
+                                                    {returPayMethod === 'qris' && <div className="w-2.5 h-2.5 rounded-full bg-teal-500" />}
+                                                </div>
+                                                <span className="text-sm font-bold text-slate-800">QRIS</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                {/* Catatan Pembayaran */}
+                                <div>
+                                    <p className="text-sm font-bold text-slate-700 mb-2">
+                                        Catatan pembayaran <span className="font-normal text-slate-400">(Opsional)</span>
+                                    </p>
+                                    <textarea value={returNote} onChange={e => setReturNote(e.target.value)} rows={4}
+                                        className="w-full border border-slate-200 rounded-xl px-3 py-3 text-sm outline-none focus:border-teal-400 resize-none text-slate-700 placeholder:text-slate-300"
+                                        placeholder="Tulis catatan pembayaran..." />
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     <ConfirmModal isOpen={returModal.show} title="Retur Barang" message={`Berapa banyak "${returModal.item?.name}" yang ingin diretur? Stok akan kembali ke toko asal.`} onConfirm={handleProcessRetur} onCancel={() => setReturModal({ show: false, tx: null, item: null, index: -1 })} confirmText={processingRetur ? "Memproses..." : "Konfirmasi Retur"}> {returModal.item && (<div className="bg-slate-50 p-4 rounded-xl border border-slate-200"><div className="flex items-center justify-between"><button onClick={() => setQtyToRetur(Math.max(1, qtyToRetur - 1))} className="w-10 h-10 bg-white border border-slate-300 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100"><Icon name="minus" /></button><div className="flex flex-col items-center"><span className="text-2xl font-black text-slate-800">{qtyToRetur}</span><span className="text-[10px] text-slate-400 font-bold uppercase">Maks: {returModal.max}</span></div><button onClick={() => setQtyToRetur(Math.min(returModal.max, qtyToRetur + 1))} className="w-10 h-10 bg-white border border-slate-300 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100"><Icon name="plus" /></button></div><div className="mt-3 text-center"><p className="text-xs text-slate-500">Nilai Pengembalian:</p><p className="text-lg font-bold text-red-600">{formatRupiah(qtyToRetur * returModal.item.price)}</p></div></div>)}</ConfirmModal>
                 </div>
