@@ -282,6 +282,7 @@
         .exp-banner-enter { animation: expBannerIn  0.45s cubic-bezier(0.16,1,0.3,1) forwards; }
         .exp-banner-exit  { animation: expBannerOut 0.4s  ease-in            forwards; }
         body.filter-panel-open .mobile-topbar { display: none !important; }
+        body.tx-detail-open .mobile-topbar { display: none !important; }
     </style>
 </head>
 <body class="relative">
@@ -8993,6 +8994,16 @@
                 }
             }, [defaultOpenTransactionId, transactions]);
 
+            // Sembunyikan mobile-topbar saat sub-page detail terbuka
+            useEffect(() => {
+                if (selectedTx) {
+                    document.body.classList.add('tx-detail-open');
+                } else {
+                    document.body.classList.remove('tx-detail-open');
+                }
+                return () => document.body.classList.remove('tx-detail-open');
+            }, [selectedTx]);
+
             const [historySearch, setHistorySearch] = useState('');
             const [historySearchInput, setHistorySearchInput] = useState('');
             const [racikanInfoModal, setRacikanInfoModal] = useState(null);
@@ -9902,11 +9913,11 @@
                     {selectedTx && (
                         <div className="fixed inset-0 z-[100] bg-white overflow-y-auto slide-in-right flex flex-col">
                             {/* ===== HEADER SUB-PAGE (farmacare-style) ===== */}
-                            <div className="sticky top-0 z-10 bg-white border-b border-slate-200 flex items-center px-2 py-0" style={{minHeight:'54px'}}>
+                            <div className="sticky top-0 z-[110] bg-white border-b border-slate-200 flex items-center px-2 py-0" style={{minHeight:'54px'}}>
                                 <button onClick={() => setSelectedTx(null)} className="flex items-center justify-center text-sky-500 flex-shrink-0 active:scale-90 transition-transform" style={{width:'40px',height:'54px'}}>
                                     <Icon name="arrow-left" className="text-xl" />
                                 </button>
-                                <h2 className="flex-1 text-base font-semibold text-slate-800 text-center">Riwayat kasir</h2>
+                                <h2 className="flex-1 text-base font-semibold text-slate-800 text-center">Detail Transaksi</h2>
                                 <div className="flex gap-2 flex-shrink-0 pr-1">
                                     {selectedTx.status !== 'returned' && (
                                         <button
