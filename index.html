@@ -10186,34 +10186,37 @@
                                     <span className="w-10 text-center">Jmlh</span>
                                     <span className="w-20 text-right">Harga</span>
                                 </div>
-                                {selectedTx.items.map((item, idx) => {
-                                    const returnedQty = item.returnedQty || 0;
-                                    const remainingQty = item.cartQty - returnedQty;
-                                    const isFullyReturned = remainingQty === 0;
-                                    const ri = item.racikanInfo;
-                                    return (
-                                        <div key={idx} className="tx-items-row">
-                                            <div className="w-5 flex-shrink-0 pt-0.5"><span className="text-xs text-slate-400">{idx+1}</span></div>
-                                            <div className="flex-1 min-w-0 pr-2">
-                                                <div className="flex items-center gap-1.5 flex-wrap">
-                                                    <p className={`text-sm font-bold ${isFullyReturned ? 'text-red-500 line-through' : 'text-slate-800'}`}>{item.name}</p>
-                                                    {item.isRacikanGroup && <span className="text-[8px] font-black bg-teal-600 text-white px-1 py-0.5 rounded flex-shrink-0">R/</span>}
+                                {(() => {
+                                    let visibleIdx = 0;
+                                    return selectedTx.items.map((item, idx) => {
+                                        const returnedQty = item.returnedQty || 0;
+                                        const remainingQty = item.cartQty - returnedQty;
+                                        if (remainingQty <= 0) return null; // Pindah ke seksi Retur
+                                        visibleIdx++;
+                                        const ri = item.racikanInfo;
+                                        return (
+                                            <div key={idx} className="tx-items-row">
+                                                <div className="w-5 flex-shrink-0 pt-0.5"><span className="text-xs text-slate-400">{visibleIdx}</span></div>
+                                                <div className="flex-1 min-w-0 pr-2">
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <p className="text-sm font-bold text-slate-800">{item.name}</p>
+                                                        {item.isRacikanGroup && <span className="text-[8px] font-black bg-teal-600 text-white px-1 py-0.5 rounded flex-shrink-0">R/</span>}
+                                                    </div>
+                                                    <p className="text-[11px] text-slate-400 mt-0.5">{remainingQty} x {formatRupiah(item.price)}</p>
+                                                    {item.isRacikanGroup && ri && (ri.dokter || ri.pasien) && (<button onClick={() => setRacikanInfoModal(item)} className="mt-1.5 flex items-center gap-1 text-teal-600 text-[10px] font-bold bg-teal-50 hover:bg-teal-100 px-2 py-1 rounded-lg transition-colors"><Icon name="circle-info" className="text-[10px]" /> Info Pasien / Dokter</button>)}
+                                                    {selectedTx.status !== 'returned' && (
+                                                        <button onClick={() => { if (!canReturOldTransaction(selectedTx)) { showToast('Hanya Owner atau akun yang diizinkan yang bisa retur transaksi kemarin & sebelumnya', 'error'); return; } openReturModal(selectedTx, item, idx); }} className={`mt-1.5 border text-[10px] font-bold px-2 py-1 rounded-lg transition-colors ${canReturOldTransaction(selectedTx) ? 'bg-white border-red-200 text-red-500 hover:bg-red-50' : 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'}`}>
+                                                            {canReturOldTransaction(selectedTx) ? 'Retur Item' : <span className="flex items-center gap-1"><Icon name="lock" className="text-[9px]" /> Retur (Terkunci)</span>}
+                                                        </button>
+                                                    )}
                                                 </div>
-                                                <p className="text-[11px] text-slate-400 mt-0.5">{item.cartQty} x {formatRupiah(item.price)}</p>
-                                                {returnedQty > 0 && <span className="text-[9px] font-bold text-red-500 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded-sm mt-0.5 inline-block">Sudah Retur: {returnedQty}</span>}
-                                                {item.isRacikanGroup && ri && (ri.dokter || ri.pasien) && (<button onClick={() => setRacikanInfoModal(item)} className="mt-1.5 flex items-center gap-1 text-teal-600 text-[10px] font-bold bg-teal-50 hover:bg-teal-100 px-2 py-1 rounded-lg transition-colors"><Icon name="circle-info" className="text-[10px]" /> Info Pasien / Dokter</button>)}
-                                                {selectedTx.status !== 'returned' && remainingQty > 0 && (
-                                                    <button onClick={() => { if (!canReturOldTransaction(selectedTx)) { showToast('Hanya Owner atau akun yang diizinkan yang bisa retur transaksi kemarin & sebelumnya', 'error'); return; } openReturModal(selectedTx, item, idx); }} className={`mt-1.5 border text-[10px] font-bold px-2 py-1 rounded-lg transition-colors ${canReturOldTransaction(selectedTx) ? 'bg-white border-red-200 text-red-500 hover:bg-red-50' : 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'}`}>
-                                                        {canReturOldTransaction(selectedTx) ? 'Retur Item' : <span className="flex items-center gap-1"><Icon name="lock" className="text-[9px]" /> Retur (Terkunci)</span>}
-                                                    </button>
-                                                )}
+                                                <div className="w-20 text-right flex-shrink-0">
+                                                    <p className="text-sm font-bold text-slate-800">{(remainingQty * item.price).toLocaleString('id-ID')}</p>
+                                                </div>
                                             </div>
-                                            <div className="w-20 text-right flex-shrink-0">
-                                                <p className="text-sm font-bold text-slate-800">{(item.cartQty * item.price).toLocaleString('id-ID')}</p>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                                        );
+                                    });
+                                })()}
                                 {(() => {
                                     const subtotalTx = selectedTx.items.reduce((acc, item) => acc + ((item.originalPrice || item.price) * (item.cartQty - (item.returnedQty || 0))), 0);
                                     const diskonTxRp = subtotalTx - selectedTx.total;
