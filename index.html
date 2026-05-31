@@ -9901,13 +9901,13 @@
                     </div>
                     {selectedTx && (
                         <div className="fixed inset-0 z-[100] bg-white overflow-y-auto slide-in-right flex flex-col">
-                            {/* ===== HEADER SUB-PAGE ===== */}
-                            <div className="sticky top-0 z-10 bg-white border-b border-slate-100 flex items-center gap-2 px-3 py-2.5" style={{minHeight:'52px'}}>
-                                <button onClick={() => setSelectedTx(null)} className="w-9 h-9 flex items-center justify-center text-sky-500 flex-shrink-0 active:scale-90 transition-transform">
-                                    <Icon name="arrow-left" className="text-lg" />
+                            {/* ===== HEADER SUB-PAGE (farmacare-style) ===== */}
+                            <div className="sticky top-0 z-10 bg-white border-b border-slate-200 flex items-center px-2 py-0" style={{minHeight:'54px'}}>
+                                <button onClick={() => setSelectedTx(null)} className="flex items-center justify-center text-sky-500 flex-shrink-0 active:scale-90 transition-transform" style={{width:'40px',height:'54px'}}>
+                                    <Icon name="arrow-left" className="text-xl" />
                                 </button>
-                                <h2 className="flex-1 text-sm font-bold text-slate-800 text-center">Riwayat kasir</h2>
-                                <div className="flex gap-1.5 flex-shrink-0">
+                                <h2 className="flex-1 text-base font-semibold text-slate-800 text-center">Riwayat kasir</h2>
+                                <div className="flex gap-2 flex-shrink-0 pr-1">
                                     {selectedTx.status !== 'returned' && (
                                         <button
                                             onClick={() => {
@@ -9917,10 +9917,10 @@
                                                 const idx = selectedTx.items.indexOf(firstReturableItem);
                                                 openReturModal(selectedTx, firstReturableItem, idx);
                                             }}
-                                            className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-bold active:scale-95 transition-all hover:bg-slate-50"
+                                            className="px-4 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-medium active:scale-95 transition-all hover:bg-slate-50"
                                         >Retur</button>
                                     )}
-                                    <button onClick={() => handlePrint(selectedTx)} className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-bold active:scale-95 transition-all hover:bg-slate-50">
+                                    <button onClick={() => handlePrint(selectedTx)} className="px-4 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-medium active:scale-95 transition-all hover:bg-slate-50">
                                         Cetak
                                     </button>
                                 </div>
@@ -10116,9 +10116,9 @@
                             <div className="h-24 bg-white flex-shrink-0"></div>
 
                             {/* ===== STICKY BOTTOM BAR ===== */}
-                            <div className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-slate-100 flex gap-3 px-4 py-3">
-                                <button onClick={() => handleWAHistory(selectedTx)} className="flex-1 py-3 rounded-xl bg-green-500 text-white hover:bg-green-600 font-bold shadow-sm active:scale-95 text-sm flex items-center justify-center gap-2"><Icon name="image" /> Gambar Struk (WA)</button>
-                                <button onClick={() => handlePrint(selectedTx)} className="flex-1 py-3 rounded-xl bg-slate-800 text-white font-bold shadow-lg active:scale-95 text-sm flex items-center justify-center gap-2"><Icon name="print" /> Cetak Struk</button>
+                            <div className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-slate-200 flex gap-3 px-4 py-3">
+                                <button onClick={() => handleWAHistory(selectedTx)} className="flex-1 py-3 rounded-lg bg-green-500 text-white hover:bg-green-600 font-semibold shadow-sm active:scale-95 text-sm flex items-center justify-center gap-2"><Icon name="image" /> Gambar Struk (WA)</button>
+                                <button onClick={() => handlePrint(selectedTx)} className="flex-1 py-3 rounded-lg border border-slate-300 bg-white text-slate-700 font-semibold active:scale-95 text-sm flex items-center justify-center gap-2 hover:bg-slate-50"><Icon name="print" /> Cetak Struk</button>
                             </div>
                         </div>
                     )}
