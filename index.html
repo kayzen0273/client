@@ -1004,8 +1004,11 @@
                 encoder.bold(true); printRow("TOTAL", validTotal); encoder.bold(false);
                 const payMethod = receipt.paymentMethod || 'tunai';
                 const payLabel = payMethod === 'qris' ? 'QRIS' : payMethod === 'transfer' ? 'TRANSFER' : 'TUNAI';
+                const totalReturnedBt = receipt.items.reduce((acc, item) => acc + (item.price * (item.returnedQty || 0)), 0);
+                const hasReturBt = totalReturnedBt > 0;
+                const kembalianBt = hasReturBt ? (receipt.pay || 0) - (validTotal - totalReturnedBt) : (receipt.change || 0);
                 if (receipt.pay !== undefined) { printRow(payLabel, receipt.pay); }
-                if (payMethod === 'tunai' && receipt.change !== undefined) { printRow("KEMBALI", receipt.change); }
+                if (payMethod === 'tunai' && receipt.pay !== undefined) { printRow("KEMBALI", kembalianBt); }
                 encoder.feed(2).alignCenter().bold(false);
                 
                 // --- USE STORE SPECIFIC FOOTER ---
@@ -1013,7 +1016,7 @@
                 const footerLines = footerText.split('\n');
                 footerLines.forEach(line => { if(line && line.trim() !== "") { encoder.text(line.trim()).newline(); } });
                 
-                if (receipt.status === 'returned' || receipt.status === 'partial') { encoder.text(receipt.status === 'returned' ? "RETUR FULL" : "ADA RETUR SEBAGIAN").newline(); }
+                if (receipt.status === 'returned') { encoder.text("RETUR FULL").newline(); }
                 encoder.feed(3);
                 const encodedData = encoder.encode();
                 const MAX_CHUNK_SIZE = 50; 
@@ -18433,7 +18436,19 @@
     {diskonR > 0 && (<div className="flex justify-between text-sm mb-1"><span>{diskonLabelR}</span><span>- {formatRupiah(diskonR)}</span></div>)}
     <div className="border-t border-dashed border-gray-300 my-1"></div>
   </>);
-})()} <div className="flex justify-between font-bold text-lg mb-1"> <span>TOTAL</span> <span>{formatRupiah(receiptToPrint.total)}</span> </div> {receiptToPrint.pay !== undefined && ( <div className="flex justify-between text-sm"> <span>{receiptToPrint.paymentMethod === 'qris' ? 'QRIS' : receiptToPrint.paymentMethod === 'transfer' ? 'Transfer' : 'Tunai'}</span> <span>{formatRupiah(receiptToPrint.pay)}</span> </div> )} {(!receiptToPrint.paymentMethod || receiptToPrint.paymentMethod === 'tunai') && receiptToPrint.change !== undefined && ( <div className="flex justify-between text-sm"> <span>Kembali</span> <span>{formatRupiah(receiptToPrint.change)}</span> </div> )} <div className="border-b-2 border-dashed border-gray-300 my-4"></div> 
+})()} {(() => {
+  const totalReturnedValueR = (receiptToPrint.items || []).reduce((acc, item) => acc + (item.price * (item.returnedQty || 0)), 0);
+  const hasReturR = totalReturnedValueR > 0;
+  const totalSetelahReturR = (receiptToPrint.total || 0) - totalReturnedValueR;
+  const kembalianReturR = hasReturR ? (receiptToPrint.pay || 0) - totalSetelahReturR : (receiptToPrint.change || 0);
+  return (<>
+    {hasReturR && (<div className="flex justify-between text-sm mb-1 line-through text-gray-400"><span>Total (sebelum retur)</span><span>{formatRupiah(receiptToPrint.total)}</span></div>)}
+    {hasReturR && (<div className="flex justify-between text-sm mb-1"><span>Dikurangi retur</span><span>- {formatRupiah(totalReturnedValueR)}</span></div>)}
+    <div className="flex justify-between font-bold text-lg mb-1"> <span>TOTAL</span> <span>{formatRupiah(hasReturR ? totalSetelahReturR : receiptToPrint.total)}</span> </div>
+    {receiptToPrint.pay !== undefined && ( <div className="flex justify-between text-sm"> <span>{receiptToPrint.paymentMethod === 'qris' ? 'QRIS' : receiptToPrint.paymentMethod === 'transfer' ? 'Transfer' : 'Tunai'}</span> <span>{formatRupiah(receiptToPrint.pay)}</span> </div> )}
+    {(!receiptToPrint.paymentMethod || receiptToPrint.paymentMethod === 'tunai') && receiptToPrint.pay !== undefined && ( <div className="flex justify-between text-sm"> <span>Kembali</span> <span>{formatRupiah(kembalianReturR)}</span> </div> )}
+  </>);
+})()} <div className="border-b-2 border-dashed border-gray-300 my-4"></div> 
                             <div className="text-center text-xs text-gray-500 whitespace-pre-wrap"> 
                                 {/* DYNAMIC FOOTER LOGIC */}
                                 {(() => {
@@ -18441,7 +18456,7 @@
                                      return profile?.footer || settingsData.receiptFooter || "Terima Kasih\nBarang tidak dapat ditukar";
                                 })()}
                             </div> 
-                            {receiptToPrint.status === 'returned' && <div className="mt-4 text-center font-bold text-xl text-red-600 border-2 border-red-600 p-2 transform -rotate-12">TRANSAKSI DIBATALKAN</div>} {receiptToPrint.status === 'partial' && <div className="mt-4 text-center font-bold text-sm text-amber-600">*** ADA RETUR SEBAGIAN ***</div>} 
+                            {receiptToPrint.status === 'returned' && <div className="mt-4 text-center font-bold text-xl text-red-600 border-2 border-red-600 p-2 transform -rotate-12">TRANSAKSI DIBATALKAN</div>} 
                         </div> 
                     </div> )}
 
