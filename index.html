@@ -9305,6 +9305,7 @@
             const handleReturLanjut = () => {
                 const selItems = returItemsState.filter(i => i.checked);
                 if (selItems.length === 0) { showToast('Pilih minimal satu barang untuk diretur', 'error'); return; }
+                if (!returAlasan.trim()) { showToast('Alasan retur wajib diisi', 'error'); return; }
                 const total = selItems.reduce((acc, i) => acc + (i.price * i.returQty), 0);
                 setReturPayMethod('tunai');
                 setReturTotalKembali(String(total));
@@ -9340,7 +9341,7 @@
                     updatedItems.forEach(i => { totalQty += i.cartQty; returnedQty += (i.returnedQty || 0); });
                     const newStatus = returnedQty === totalQty ? 'returned' : returnedQty > 0 ? 'partial' : selectedTx.status;
                     const txRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'transactions', selectedTx.id);
-                    batch.update(txRef, { items: updatedItems, status: newStatus, returnedAt: window.serverTimestamp(), returPaymentMethod: returPayMethod, returAlasan, returNote });
+                    batch.update(txRef, { items: updatedItems, status: newStatus, returnedAt: window.serverTimestamp(), returPaymentMethod: returPayMethod, returAlasan, returNote, returByName: authSession?.namaLengkap || user?.name || 'Kasir', returTotalDikembalikan: parseInt(returTotalKembali) || 0 });
                     await batch.commit();
                     // Update SO physicalMap jika ada sesi aktif
                     try {
@@ -9413,7 +9414,7 @@
                     updatedItems.forEach(i => { totalItemsCount += i.cartQty; totalReturnedCount += (i.returnedQty || 0); });
                     let newStatus = tx.status;
                     if (totalReturnedCount === totalItemsCount) newStatus = 'returned'; else if (totalReturnedCount > 0) newStatus = 'partial';
-                    batch.update(txRef, { items: updatedItems, status: newStatus, returnedAt: window.serverTimestamp() });
+                    batch.update(txRef, { items: updatedItems, status: newStatus, returnedAt: window.serverTimestamp(), returByName: authSession?.namaLengkap || user?.name || 'Kasir', returTotalDikembalikan: qtyToRetur * (item?.price || 0) });
                     await batch.commit();
 
                     // ── BARU: Update physicalMap di sesi Stock Opname aktif (retur = stok fisik naik) ──
@@ -10236,6 +10237,99 @@
                                 })()}
                             </div>
 
+                            {/* ===== RETUR SECTION ===== */}
+                            {(selectedTx.status === 'returned' || selectedTx.status === 'partial' || selectedTx.returnedAt) && (() => {
+                                const returItems = selectedTx.items.filter(item => (item.returnedQty || 0) > 0);
+                                const totalRetur = returItems.reduce((acc, item) => acc + (item.price * (item.returnedQty || 0)), 0);
+                                const totalDikembalikan = selectedTx.returTotalDikembalikan !== undefined ? selectedTx.returTotalDikembalikan : totalRetur;
+                                const selisihPengembalian = totalDikembalikan - totalRetur;
+                                const formatReturDate = () => {
+                                    if (!selectedTx.returnedAt) return '-';
+                                    const d = selectedTx.returnedAt?.toDate ? selectedTx.returnedAt.toDate() : new Date(selectedTx.returnedAt);
+                                    const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+                                    return `${d.getFullYear()} ${months[d.getMonth()]} ${d.getDate()}, ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')} WIB`;
+                                };
+                                const shortId = selectedTx.id ? selectedTx.id.slice(-10).toUpperCase() : '-';
+                                const noNotaRetur = `${shortId}/R1`;
+                                const returPayLabel = selectedTx.returPaymentMethod === 'qris' ? 'QRIS' : selectedTx.returPaymentMethod === 'transfer' ? 'Transfer' : selectedTx.returPaymentMethod === 'tunai' ? 'Tunai' : '-';
+                                return (
+                                    <>
+                                        <div className="bg-slate-100" style={{height:'8px'}}></div>
+                                        <div className="px-4 pt-4 pb-4 bg-white">
+                                            <p className="tx-section-title">Retur</p>
+                                            {selectedTx.returnedAt && (
+                                                <p className="text-xs text-slate-500 mb-3 leading-relaxed">
+                                                    {formatReturDate()}{selectedTx.returByName ? <span className="text-slate-700 font-medium"> oleh {selectedTx.returByName}</span> : ''}
+                                                </p>
+                                            )}
+
+                                            {/* No. Nota Retur */}
+                                            <div className="tx-detail-row">
+                                                <span className="tx-detail-label">No. Nota retur</span>
+                                                <div className="flex items-center gap-2.5">
+                                                    <span className="tx-detail-value font-bold">{noNotaRetur}</span>
+                                                    <button
+                                                        onClick={() => handlePrint && handlePrint({...selectedTx, isReturnPrint: true})}
+                                                        className="text-xs font-bold text-sky-500 hover:text-sky-600 transition-colors active:scale-95"
+                                                    >Cetak</button>
+                                                </div>
+                                            </div>
+
+                                            {/* Grid Metode + Alasan */}
+                                            <div className="grid grid-cols-2 gap-x-4 py-3 border-b border-slate-100">
+                                                <div>
+                                                    <p className="text-[11px] text-slate-400 font-medium mb-1">Metode pembayaran</p>
+                                                    <p className="text-sm font-bold text-slate-800">{returPayLabel}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[11px] text-slate-400 font-medium mb-1">Alasan retur</p>
+                                                    <p className="text-sm font-bold text-slate-800">{selectedTx.returAlasan || '-'}</p>
+                                                </div>
+                                            </div>
+
+                                            {/* Items table */}
+                                            {returItems.length > 0 && (
+                                                <>
+                                                    <div className="tx-items-table-header mt-3">
+                                                        <span className="flex-1">Barang</span>
+                                                        <span className="w-10 text-center">Jmlh</span>
+                                                        <span className="w-20 text-right">Harga</span>
+                                                    </div>
+                                                    {returItems.map((item, idx) => (
+                                                        <div key={idx} className="tx-items-row">
+                                                            <div className="w-5 flex-shrink-0 pt-0.5"><span className="text-xs text-slate-400">{idx+1}</span></div>
+                                                            <div className="flex-1 min-w-0 pr-2">
+                                                                <p className="text-sm font-bold text-slate-800">{item.name}</p>
+                                                                <p className="text-[11px] text-slate-400 mt-0.5">{item.returnedQty} x {formatRupiah(item.price)}/{item.unit || 'pcs'}</p>
+                                                            </div>
+                                                            <div className="w-20 text-right flex-shrink-0">
+                                                                <p className="text-sm font-bold text-slate-800">{(item.returnedQty * item.price).toLocaleString('id-ID')}</p>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </>
+                                            )}
+
+                                            {/* Summary */}
+                                            <div className="mt-3 pt-1 border-t border-slate-200">
+                                                <div className="flex justify-between text-sm py-1.5 border-b border-slate-100">
+                                                    <span className="text-slate-500">Total retur</span>
+                                                    <span className="font-medium text-slate-700">{totalRetur.toLocaleString('id-ID')}</span>
+                                                </div>
+                                                <div className="flex justify-between text-sm py-1.5 border-b border-slate-100">
+                                                    <span className="text-slate-500">Total yang dikembalikan</span>
+                                                    <span className="font-medium text-slate-700">{totalDikembalikan.toLocaleString('id-ID')}</span>
+                                                </div>
+                                                <div className="flex justify-between text-sm py-2 font-bold">
+                                                    <span className="text-slate-800">Selisih pengembalian</span>
+                                                    <span className={selisihPengembalian < 0 ? 'text-red-600' : selisihPengembalian > 0 ? 'text-green-600' : 'text-slate-900'}>{selisihPengembalian.toLocaleString('id-ID')}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                );
+                            })()}
+
                         </div>
                     )}
                     {/* ===== RACIKAN INFO MODAL ===== */}
@@ -10396,10 +10490,10 @@
                                 ))}
                                 {/* Alasan Retur */}
                                 <div className="mt-7">
-                                    <p className="text-sm font-bold text-slate-700 mb-2">Alasan retur</p>
+                                    <p className="text-sm font-bold text-slate-700 mb-2">Alasan retur <span className="text-red-500">*</span></p>
                                     <textarea value={returAlasan} onChange={e => setReturAlasan(e.target.value)} rows={4}
-                                        className="w-full border border-slate-200 rounded-xl px-3 py-3 text-sm outline-none focus:border-teal-400 resize-none text-slate-700 placeholder:text-slate-300"
-                                        placeholder="Tulis alasan retur (opsional)..." />
+                                        className={`w-full border rounded-xl px-3 py-3 text-sm outline-none focus:border-teal-400 resize-none text-slate-700 placeholder:text-slate-300 transition-colors ${!returAlasan.trim() ? 'border-slate-200' : 'border-teal-400'}`}
+                                        placeholder="Tulis alasan retur..." />
                                 </div>
                             </div>
                             {/* Tombol Lanjut (fixed bottom) */}
