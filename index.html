@@ -139,7 +139,7 @@
         .tx-detail-value { font-size: 13.5px; color: #0f172a; font-weight: 500; }
         .tx-section-title { font-size: 18px; font-weight: 800; color: #0f172a; margin-bottom: 8px; }
         .tx-items-table-header { display: flex; font-size: 11px; font-weight: 700; color: #0f172a; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0; }
-        .tx-items-row { display: flex; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+        .tx-items-row { display: flex; align-items: flex-start; padding: 10px 0; border-bottom: 1.5px solid #0f172a; }
         .typing-dot { height: 6px; width: 6px; background-color: #0ea5e9; border-radius: 50%; display: inline-block; animation: typing 1.4s infinite ease-in-out both; margin: 0 2px; }
         .typing-dot:nth-child(1) { animation-delay: -0.32s; }
         .typing-dot:nth-child(2) { animation-delay: -0.16s; }
@@ -10260,12 +10260,12 @@
                                     const totalSetelahRetur = selectedTx.total - totalReturnedValue;
                                     const hasRetur = totalReturnedValue > 0;
                                     return (
-                                        <div className="mt-3 pt-1 border-t border-slate-200">
-                                            <div className="flex justify-between text-sm py-1.5 border-b border-slate-100">
+                                        <div className="mt-3 pt-1" style={{borderTop:'1.5px solid #0f172a'}}>
+                                            <div className="flex justify-between text-sm py-1.5">
                                                 <span className="text-slate-800">Subtotal (DPP+PPN)</span>
                                                 <span className="font-medium text-slate-800">{subtotalTx.toLocaleString('id-ID')}</span>
                                             </div>
-                                            <div className="flex justify-between text-sm py-1.5 border-b border-slate-100">
+                                            <div className="flex justify-between text-sm py-1.5" style={{borderBottom:'1.5px solid #0f172a'}}>
                                                 <span className={diskonTxRp > 0 ? 'text-red-500 font-medium' : 'text-slate-800'}>{diskonLabel}</span>
                                                 <span className={diskonTxRp > 0 ? 'font-medium text-red-500' : 'font-medium text-slate-800'}>{diskonTxRp > 0 ? diskonTxRp.toLocaleString('id-ID') : '0'}</span>
                                             </div>
