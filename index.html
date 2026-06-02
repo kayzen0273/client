@@ -10245,7 +10245,7 @@
                                     });
                                 })()}
                                 {(() => {
-                                    const subtotalTx = selectedTx.items.reduce((acc, item) => acc + ((item.originalPrice || item.price) * (item.cartQty - (item.returnedQty || 0))), 0);
+                                    const subtotalTx = selectedTx.items.reduce((acc, item) => acc + ((item.originalPrice || item.price) * item.cartQty), 0);
                                     const diskonTxRp = subtotalTx - selectedTx.total;
                                     const discountedItems = selectedTx.items.filter(i => i.discount && i.discount.value > 0);
                                     const uniqTypes = [...new Set(discountedItems.map(i => i.discount.type))];
