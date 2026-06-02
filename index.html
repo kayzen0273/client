@@ -18433,11 +18433,27 @@
   const totalSetelahReturR = (receiptToPrint.total || 0) - totalReturnedValueR;
   const kembalianReturR = hasReturR ? (receiptToPrint.pay || 0) - totalSetelahReturR : (receiptToPrint.change || 0);
   return (<>
-    {hasReturR && (<div className="flex justify-between text-sm mb-1 line-through text-gray-400"><span>Total (sebelum retur)</span><span>{formatRupiah(receiptToPrint.total)}</span></div>)}
-    {hasReturR && (<div className="flex justify-between text-sm mb-1"><span>Dikurangi retur</span><span>- {formatRupiah(totalReturnedValueR)}</span></div>)}
-    <div className="flex justify-between font-bold text-lg mb-1"> <span>TOTAL</span> <span>{formatRupiah(hasReturR ? totalSetelahReturR : receiptToPrint.total)}</span> </div>
+    <div className="flex justify-between font-bold text-lg mb-1"> <span>TOTAL</span> <span>{formatRupiah(receiptToPrint.total)}</span> </div>
     {receiptToPrint.pay !== undefined && ( <div className="flex justify-between text-sm"> <span>{receiptToPrint.paymentMethod === 'qris' ? 'QRIS' : receiptToPrint.paymentMethod === 'transfer' ? 'Transfer' : 'Tunai'}</span> <span>{formatRupiah(receiptToPrint.pay)}</span> </div> )}
     {(!receiptToPrint.paymentMethod || receiptToPrint.paymentMethod === 'tunai') && receiptToPrint.pay !== undefined && ( <div className="flex justify-between text-sm"> <span>Kembali</span> <span>{formatRupiah(kembalianReturR)}</span> </div> )}
+    {hasReturR && (<>
+      <div className="border-t border-dashed border-gray-300 my-2"></div>
+      <div className="font-bold text-sm mb-1">Retur</div>
+      {(receiptToPrint.items || []).filter(item => (item.returnedQty || 0) > 0).map((item, idx) => (
+        <div key={idx} className="text-sm mb-1">
+          <div>{item.name}</div>
+          <div className="flex justify-between">
+            <span>{item.returnedQty} x {formatRupiah(item.price)}</span>
+            <span>{formatRupiah(item.returnedQty * item.price)}</span>
+          </div>
+        </div>
+      ))}
+      <div className="border-t border-dashed border-gray-300 my-1"></div>
+      <div className="flex justify-between text-sm"><span>Total retur</span><span>{formatRupiah(totalReturnedValueR)}</span></div>
+      <div className="border-t border-dashed border-gray-300 my-1"></div>
+      <div className="flex justify-between text-sm font-bold"><span>Total dikembalikan</span><span>{formatRupiah(receiptToPrint.returTotalDikembalikan !== undefined ? receiptToPrint.returTotalDikembalikan : totalReturnedValueR)}</span></div>
+      <div className="border-t border-dashed border-gray-300 my-1"></div>
+    </>)}
   </>);
 })()} <div className="border-b-2 border-dashed border-gray-300 my-4"></div> 
                             <div className="text-center text-xs text-gray-500 whitespace-pre-wrap"> 
