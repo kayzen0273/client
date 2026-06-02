@@ -18431,11 +18431,11 @@
   const totalReturnedValueR = (receiptToPrint.items || []).reduce((acc, item) => acc + (item.price * (item.returnedQty || 0)), 0);
   const hasReturR = totalReturnedValueR > 0;
   const totalSetelahReturR = (receiptToPrint.total || 0) - totalReturnedValueR;
-  const kembalianReturR = hasReturR ? (receiptToPrint.pay || 0) - totalSetelahReturR : (receiptToPrint.change || 0);
+  const kembalianReturR = receiptToPrint.change || 0;
   return (<>
     <div className="flex justify-between font-bold text-lg mb-1"> <span>TOTAL</span> <span>{formatRupiah(receiptToPrint.total)}</span> </div>
     {receiptToPrint.pay !== undefined && ( <div className="flex justify-between text-sm"> <span>{receiptToPrint.paymentMethod === 'qris' ? 'QRIS' : receiptToPrint.paymentMethod === 'transfer' ? 'Transfer' : 'Tunai'}</span> <span>{formatRupiah(receiptToPrint.pay)}</span> </div> )}
-    {(!receiptToPrint.paymentMethod || receiptToPrint.paymentMethod === 'tunai') && receiptToPrint.pay !== undefined && ( <div className="flex justify-between text-sm"> <span>Kembali</span> <span>{formatRupiah(kembalianReturR)}</span> </div> )}
+    {(!receiptToPrint.paymentMethod || receiptToPrint.paymentMethod === 'tunai') && receiptToPrint.pay !== undefined && ( <div className="flex justify-between text-sm"> <span>Kembalian</span> <span>{formatRupiah(kembalianReturR)}</span> </div> )}
     {hasReturR && (<>
       <div className="border-t border-dashed border-gray-300 my-2"></div>
       <div className="font-bold text-sm mb-1">Retur</div>
