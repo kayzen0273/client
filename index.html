@@ -137,7 +137,7 @@
         .tx-detail-row:last-child { border-bottom: none; }
         .tx-detail-label { font-size: 11px; color: #0f172a; margin-bottom: 3px; }
         .tx-detail-value { font-size: 13.5px; color: #0f172a; font-weight: 500; }
-        .tx-section-title { font-size: 15px; font-weight: 800; color: #0f172a; margin-bottom: 8px; }
+        .tx-section-title { font-size: 18px; font-weight: 800; color: #0f172a; margin-bottom: 8px; }
         .tx-items-table-header { display: flex; font-size: 11px; font-weight: 700; color: #0f172a; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0; }
         .tx-items-row { display: flex; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
         .typing-dot { height: 6px; width: 6px; background-color: #0ea5e9; border-radius: 50%; display: inline-block; animation: typing 1.4s infinite ease-in-out both; margin: 0 2px; }
@@ -10017,7 +10017,7 @@
                                 <button onClick={() => setSelectedTx(null)} className="flex items-center justify-center text-sky-500 flex-shrink-0 active:scale-90 transition-transform" style={{width:'40px',height:'54px'}}>
                                     <Icon name="arrow-left" className="text-xl" />
                                 </button>
-                                <h2 className="flex-1 text-base font-semibold text-slate-800 text-center">Detail Transaksi</h2>
+                                <h2 className="flex-1 text-xl font-semibold text-slate-800 text-center">Detail Transaksi</h2>
                                 <div className="flex gap-2 flex-shrink-0 pr-1">
                                     {selectedTx.status !== 'returned' && (
                                         <button
