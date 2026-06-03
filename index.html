@@ -9140,6 +9140,10 @@
                 reader.readAsDataURL(file);
                 e.target.value = '';
             };
+
+            useEffect(() => {
+                if (!user) return;
+                const q = window.query(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'transactions'), window.orderBy('date', 'desc'), window.limit(500));
                 const unsub = window.onSnapshot(q, (snapshot) => { 
                     const allTx = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     // FILTER: Hanya tampilkan transaksi milik toko ini ATAU semua jika mode all_stores
