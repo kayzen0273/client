@@ -7674,12 +7674,18 @@
                 );
             }
 
-            return (
+        return (
                 <div className="fade-in h-full flex flex-col md:flex-row gap-4 pb-20 md:pb-0 relative z-10">
                     <div className="flex-1 flex flex-col h-full min-h-0">
-                        
-                        {/* Tombol Kembali - paling atas */}
-                        <button onClick={handleBack} className="w-10 h-10 rounded-xl bg-white text-slate-400 border border-slate-200 flex items-center justify-center shadow-sm transition-colors mb-3" style={{}} onMouseEnter={e=>{e.currentTarget.style.color='#19737c';e.currentTarget.style.borderColor='#b8d8d8';}} onMouseLeave={e=>{e.currentTarget.style.color='';e.currentTarget.style.borderColor='';}} title="Kembali &amp; Simpan Sementara"><Icon name="arrow-left" /></button>
+
+                        {/* Header subpage */}
+                        <div className="sticky top-0 z-10 bg-white border-b border-slate-200 flex items-center mb-3 -mx-4 px-2" style={{minHeight:'54px'}}>
+                            <button onClick={handleBack} className="flex items-center justify-center text-sky-500 flex-shrink-0 active:scale-90 transition-transform" style={{width:'40px',height:'54px'}} title="Kembali">
+                                <Icon name="arrow-left" className="text-xl" />
+                            </button>
+                            <h2 className="flex-1 text-base font-semibold text-slate-800 text-center">Kasir</h2>
+                            <div style={{width:'40px'}}></div>
+                        </div>
 
                         {/* OFFLINE MODE BANNER */}
                         {isOfflineMode && (
@@ -7708,8 +7714,8 @@
                         })()}
 
                         {/* Info Transaksi */}
-                        <div className="bg-white rounded-2xl border border-slate-200 mb-3 overflow-hidden">
-                            <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100">
+                        <div className="mb-3">
+                            <div className="flex items-center justify-between py-2.5 border-b border-slate-200">
                                 <div>
                                     <p className="text-[10px] font-bold text-teal-600 leading-none mb-0.5">Tipe transaksi</p>
                                     <p className="text-xs font-semibold text-slate-700">{tipeTransaksi}</p>
@@ -7718,14 +7724,14 @@
                                     <Icon name="pen" className="text-xs" />
                                 </button>
                             </div>
-                            <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100">
+                            <div className="flex items-center justify-between py-2.5 border-b border-slate-200">
                                 <div>
                                     <p className="text-[10px] font-bold text-teal-600 leading-none mb-0.5">Kasir/sales</p>
                                     <p className="text-xs font-semibold text-slate-700">{selectedSales || originalCashierName || cashierName}</p>
                                 </div>
                                 <button onClick={() => setShowSalesModal(true)} className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:border-teal-400 hover:text-teal-600 transition-all active:scale-95 flex items-center gap-1">Pilih <Icon name="chevron-right" className="text-[10px]" /></button>
                             </div>
-                            <div className="flex items-center justify-between px-4 py-2.5">
+                            <div className="flex items-center justify-between py-2.5 border-b border-slate-200">
                                 <div>
                                     <p className="text-[10px] font-bold text-teal-600 leading-none mb-0.5">Pembeli</p>
                                     <p className="text-xs font-semibold text-slate-700">{selectedPembeli || 'Pembeli belum dipilih'}</p>
