@@ -281,8 +281,7 @@
         @keyframes expBannerOut { from { transform: translateY(0);     opacity: 1; } to { transform: translateY(-110%); opacity: 0; } }
         .exp-banner-enter { animation: expBannerIn  0.45s cubic-bezier(0.16,1,0.3,1) forwards; }
         .exp-banner-exit  { animation: expBannerOut 0.4s  ease-in            forwards; }
-        body.filter-panel-open .mobile-topbar { display: none !important; }
-        body.tx-detail-open .mobile-topbar { display: none !important; }
+
     </style>
 </head>
 <body class="relative">
@@ -18793,66 +18792,7 @@
                             </div>
                         </aside>
                     <main className="flex-1 md:ml-0 p-4 md:p-8 max-w-7xl mx-auto w-full mb-0">
-                        {/* ── FARMACARE-STYLE TOPBAR (mobile only) ── */}
-                        <div className="mobile-topbar md:hidden -mx-4 -mt-4 mb-5 flex items-center bg-white border-b border-slate-200 px-3.5 gap-2.5 sticky top-0 z-30" style={{minHeight:'54px'}}>
-                            {/* Hamburger */}
-                            <button onClick={() => setIsSidebarOpen(true)} className="flex items-center justify-center p-1.5 rounded-lg active:bg-slate-100 transition-colors flex-shrink-0">
-                                <svg width="18" height="13" viewBox="0 0 18 13" fill="none">
-                                    <rect width="18" height="2" rx="1" fill="#19737c"/>
-                                    <rect y="5.5" width="18" height="2" rx="1" fill="#19737c"/>
-                                    <rect y="11" width="18" height="2" rx="1" fill="#19737c"/>
-                                </svg>
-                            </button>
-                            {/* Brand */}
-                            <div className="flex-1 flex flex-col gap-0.5 cursor-pointer select-none" onClick={() => setShowStoreMenu(!showStoreMenu)}>
-                                <div className="flex items-center gap-1 font-extrabold leading-tight" style={{fontSize:'17px', color:'#19737c'}}>
-                                    {currentProfile.name}
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-                                </div>
-                                <div className="text-slate-500 font-semibold leading-none" style={{fontSize:'12.5px'}}>
-                                    {authSession?.namaLengkap || authSession?.username || 'Kasir'} — {isOwner ? 'Pemilik Toko' : (authSession?.jabatan || 'Karyawan')}
-                                </div>
-                            </div>
-                            {/* Help btn */}
-                            <button className="flex items-center justify-center flex-shrink-0 bg-white active:bg-slate-50 transition-colors" style={{width:'34px',height:'34px',borderRadius:'8px',border:'1.5px solid #c0c0c0'}}>
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#19737c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <circle cx="12" cy="12" r="10"/>
-                                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-                                    <circle cx="12" cy="17" r=".5" fill="#19737c"/>
-                                </svg>
-                            </button>
-                            {/* Bell */}
-                            <button onClick={handleOpenNotif} className="relative flex items-center justify-center flex-shrink-0 bg-white active:bg-slate-50 transition-colors" style={{width:'34px',height:'34px',borderRadius:'8px',border:'1.5px solid #c0c0c0'}}>
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#19737c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                                </svg>
-                                {unreadCount > 0 && (
-                                    <span className="absolute bg-red-500 text-white font-black flex items-center justify-center" style={{top:'-5px',right:'-5px',fontSize:'10px',borderRadius:'99px',minWidth:'19px',height:'19px',padding:'0 4px',border:'2px solid #efefef'}}>
-                                        {unreadCount > 9 ? '9+' : unreadCount}
-                                    </span>
-                                )}
-                            </button>
-                            {/* Store switcher dropdown (triggered by brand tap) */}
-                            {showStoreMenu && (
-                                <div className="absolute top-full left-0 right-0 mt-0 bg-white shadow-xl border-t border-slate-100 z-[60] fade-in">
-                                    <div className="p-2 border-b border-slate-50 bg-slate-50/50"><span className="text-[10px] font-bold text-slate-500 uppercase px-2">Pilih Profil Toko</span></div>
-                                    <div className="max-h-48 overflow-y-auto">
-                                        {visibleStoreProfiles.map(profile => (
-                                            <button key={profile.id} onClick={() => { handleSwitchStore(profile.id); setShowStoreMenu(false); }} className={`w-full text-left px-4 py-3 text-sm font-bold flex items-center justify-between hover:bg-sky-50 transition-colors ${activeStoreId === profile.id ? 'text-sky-600 bg-sky-50' : 'text-slate-700'}`}>
-                                                <span className="truncate">{profile.name}</span>{activeStoreId === profile.id && <Icon name="check" className="text-xs" />}
-                                            </button>
-                                        ))}
-                                        {isOwner && (visibleStoreProfiles.length > 1) && (
-                                            <button onClick={() => { handleSwitchStore('all_stores'); setShowStoreMenu(false); }} className={`w-full text-left px-4 py-3 text-sm font-bold flex items-center justify-between hover:bg-indigo-50 transition-colors border-t border-slate-100 ${activeStoreId === 'all_stores' ? 'text-indigo-600 bg-indigo-50' : 'text-slate-700'}`}>
-                                                <span className="truncate">Semua Toko (Gabungan)</span>{activeStoreId === 'all_stores' && <Icon name="check" className="text-xs" />}
-                                            </button>
-                                        )}
-                                    </div>
-                                    <button onClick={() => { setActiveTab('settings'); setShowStoreMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold text-slate-400 hover:bg-slate-50 border-t border-slate-100">+ Kelola Toko di Pengaturan</button>
-                                </div>
-                            )}
-                        </div>
+
                         {/* Notification Panel - Tabbed Modal */}
                         {showNotifPanel && (
                             <>
