@@ -8074,13 +8074,13 @@
                         <div className="flex-1 pr-1 pb-2">
                         </div>
                     </div>
-                    <div className="w-full md:w-80 lg:w-96 flex flex-col bg-white rounded-3xl shadow-soft border border-slate-100 h-fit md:h-full max-h-[calc(100vh-100px)]">
+                    <div className="w-full md:w-80 lg:w-96 flex flex-col bg-white rounded-3xl h-fit md:h-full max-h-[calc(100vh-100px)]">
                         <div className="px-4 pt-3 pb-2 border-b border-slate-200 flex justify-between items-center">
                             <span className="text-sm font-bold text-slate-700">Barang</span>
                             <span className="text-sm font-bold text-slate-700">Subtotal</span>
                         </div>
                         <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar min-h-[200px]">{cart.length === 0 ? (<div className="h-full flex flex-col items-center justify-center py-8 gap-3"><div className="flex gap-2 mb-1 opacity-30"><Icon name="barcode" className="text-4xl text-slate-400" /><Icon name="leaf" className="text-4xl text-slate-400" /></div><p className="text-sm font-bold text-slate-400">Belum ada barang di transaksi ini</p><div className="flex gap-2 mt-1"><button onClick={() => searchInputRef.current && searchInputRef.current.focus()} className="px-4 py-2 rounded-xl border border-teal-300 text-teal-600 text-xs font-bold hover:bg-teal-50 flex items-center gap-1.5"><Icon name="plus" /> Barang</button><button onClick={() => { setShowRacikanPage(true); setRacikanSearch(''); }} className="px-4 py-2 rounded-xl border border-teal-300 text-teal-600 text-xs font-bold hover:bg-teal-50 flex items-center gap-1.5"><Icon name="prescription-bottle-medical" /> Buat R/</button></div></div>) : (cart.map(item => (<div key={item.id + (item.selectedUnit || '') + (item.price || '')} onClick={() => editCartItem(item)} className={`p-3 rounded-xl border flex gap-3 group relative cursor-pointer transition-all ${item.isRacikan ? 'bg-teal-50 border-teal-100 hover:bg-teal-100 hover:border-teal-300' : 'bg-slate-50 border-slate-100 hover:bg-sky-50 hover:border-sky-300'}`}><div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity"><Icon name="pen-to-square" className="text-[10px] text-sky-500" /></div><div className="flex-1 min-w-0"><div className="flex items-center gap-1.5 flex-wrap"><h4 className={"text-xs font-bold text-slate-700 " + (item.isRacikanGroup ? "line-clamp-2" : "truncate")}>{item.name}</h4>{item.isRacikan && <span className="text-[8px] font-black bg-teal-600 text-white px-1 py-0.5 rounded flex-shrink-0">R/</span>}{item.isKonsinyasi && <span className="text-[8px] font-black bg-fuchsia-100 text-fuchsia-700 px-1 py-0.5 rounded flex-shrink-0 border border-fuchsia-200">konsinyasi</span>}{item.packageQtyPerUnit > 1 && <span className="text-[8px] font-black bg-amber-100 text-amber-700 px-1 py-0.5 rounded flex-shrink-0 border border-amber-200">📦 {item.selectedUnit}</span>}</div>{item.isRacikanGroup ? (<p className="text-[9px] text-teal-600 font-bold mt-0.5"><Icon name="pen-to-square" className="text-[9px] mr-0.5" />Klik untuk edit racikan</p>) : (<p className="text-[10px] text-slate-500">{formatRupiah(item.originalPrice || item.price)} {item.selectedUnit ? `per ${item.selectedUnit}` : ''} x {item.cartQty}{item.packageQtyPerUnit > 1 ? ` (= ${item.cartQty * item.packageQtyPerUnit} ${item.unit})` : ''}</p>)}{item.discount && <p className="text-[9px] text-red-500 font-bold">Diskon: {item.discount.type === '%' ? `${item.discount.value}%` : formatRupiah(item.discount.value)}</p>}{settings?.showNoteButton !== false && item.itemNote && (<button onClick={e => { e.stopPropagation(); setNoteModalItem(item); }} title="Lihat catatan barang" className="mt-0.5 flex items-center gap-1 text-[9px] text-sky-600 font-bold bg-sky-50 hover:bg-sky-100 active:bg-sky-200 px-1.5 py-0.5 rounded-full border border-sky-200 transition-colors max-w-[120px] truncate"><Icon name="circle-info" className="text-[9px] flex-shrink-0" /><span className="truncate">{item.itemNote.length > 18 ? item.itemNote.slice(0, 18) + '…' : item.itemNote}</span></button>)}</div><div className="flex flex-col items-end gap-1"><p className="text-xs font-bold text-slate-800">{formatRupiah(item.price * item.cartQty)}</p><div className="flex items-center gap-1 bg-white rounded-lg shadow-sm border border-slate-200 p-0.5" onClick={e => e.stopPropagation()}><button onClick={() => updateQty(item.id, -1, item.selectedUnit, item.price)} className="w-5 h-5 flex items-center justify-center text-[8px] hover:bg-slate-100 rounded text-slate-500"><Icon name="minus" /></button><span className="text-xs font-bold w-4 text-center">{item.cartQty}</span><button onClick={() => updateQty(item.id, 1, item.selectedUnit, item.price)} className="w-5 h-5 flex items-center justify-center text-[8px] hover:bg-slate-100 rounded text-slate-500"><Icon name="plus" /></button></div></div></div>)))}</div>
-                        <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-3xl">
+                        <div className="p-4 border-t border-slate-200 bg-white">
                             {/* Subtotal, Diskon, Biaya Pengiriman, Total */}
                             <div className="space-y-2 mb-3">
                                 <div className="flex justify-between items-center py-1 border-b border-slate-100">
@@ -17873,28 +17873,7 @@
             const [rawInventory, setRawInventory] = useState([]); // Store original data from DB
             const [settingsData, setSettingsData] = useState(DEFAULT_SETTINGS); 
             const [loading, setLoading] = useState(true);
-            const [activeTab, setActiveTab] = useState(() => localStorage.getItem('activeTab') || 'cashier'); 
-            // ── Navigasi dengan History API (tombol back HP + simpan posisi) ──
-            const navigateTo = React.useCallback((tabId) => {
-                localStorage.setItem('activeTab', tabId);
-                window.history.pushState({ tab: tabId }, '', '#' + tabId);
-                setActiveTab(tabId);
-            }, []);
-
-            // Tombol back/forward HP
-            React.useEffect(() => {
-                const onPopState = (e) => {
-                    const tab = (e.state && e.state.tab) || localStorage.getItem('activeTab') || 'cashier';
-                    setActiveTab(tab);
-                    localStorage.setItem('activeTab', tab);
-                };
-                window.addEventListener('popstate', onPopState);
-                // Pastikan state awal terdaftar di history stack
-                const initTab = localStorage.getItem('activeTab') || 'cashier';
-                window.history.replaceState({ tab: initTab }, '', '#' + initTab);
-                return () => window.removeEventListener('popstate', onPopState);
-            }, []);
-
+            const [activeTab, setActiveTab] = useState('cashier'); 
             const [pendingPurchaseId, setPendingPurchaseId] = useState(null);
             const [pendingTransactionId, setPendingTransactionId] = useState(null);
             const [returnDetailItem, setReturnDetailItem] = useState(null);
@@ -18198,7 +18177,7 @@
                         if (!hasSetInitialTab.current) {
                             hasSetInitialTab.current = true;
                             const isCashierEnabled = fetched.enableCashier !== false;
-                            navigateTo(isCashierEnabled ? 'cashier' : 'home');
+                            setActiveTab(isCashierEnabled ? 'cashier' : 'home');
                         }
 
                         const profiles = fetched.storeProfiles || [{ id: 'default' }];
@@ -18456,14 +18435,14 @@
                         }
                     }
 
-                    setEditingItem(null); setFormData({ name: '', qty: '', unit: 'Pcs', exp: '', rack: '', price: '', costPrice: '', minStock: '', defaultDiscount: '', defaultDiscountType: '%', packagePrices: [] }); navigateTo('list');
+                    setEditingItem(null); setFormData({ name: '', qty: '', unit: 'Pcs', exp: '', rack: '', price: '', costPrice: '', minStock: '', defaultDiscount: '', defaultDiscountType: '%', packagePrices: [] }); setActiveTab('list');
                 } catch (error) { console.error("Error saving:", error); showToast("Gagal menyimpan ke database", "error"); } finally { setSubmitting(false); }
             };
 
             const handleSaveSettings = async (newSettings) => { if(!user) return; setSubmitting(true); try { const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'settings', 'global'); await window.setDoc(docRef, newSettings); showToast("Pengaturan disimpan"); } catch(error) { console.error(error); showToast("Gagal simpan pengaturan", "error"); } finally { setSubmitting(false); } };
             const handleDelete = async () => { if (!deleteModal.item || !user) return; try { const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', deleteModal.item.id); await window.deleteDoc(docRef); showToast("Barang dihapus (dari semua toko)"); } catch (error) { showToast("Gagal menghapus", "error"); } finally { setDeleteModal({ show: false, item: null }); } };
             const handleConfirmDeleteRack = async () => { if (!deleteRackModal.rackName || !user) return; const rackName = deleteRackModal.rackName; try { const batch = window.writeBatch(window.db); const itemsToUpdate = inventoryData.filter(item => item.rack && item.rack.includes(rackName)); if (itemsToUpdate.length === 0) { showToast("Tidak ada item di rak ini"); setDeleteRackModal({ show: false, rackName: null }); return; } itemsToUpdate.forEach(item => { const newRacks = item.rack.split(',').map(r => r.trim()).filter(r => r !== rackName); const newRackString = newRacks.length > 0 ? newRacks.join(', ') : '-'; const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', item.id); batch.update(docRef, { rack: newRackString }); }); await batch.commit(); showToast(`Rak "${rackName}" berhasil dihapus`); setSelectedRacks([]); } catch (err) { console.error("Failed delete rack", err); showToast("Gagal menghapus rak", "error"); } finally { setDeleteRackModal({ show: false, rackName: null }); } };
-            const handleNavClick = (tabId, event) => { navigateTo(tabId); if (tabId !== 'list') setShowOnlyLowStock(false); setIsSidebarOpen(false); if (['cashier','history','rekap_barang'].includes(tabId)) setKasirDropdownOpen(true); else setKasirDropdownOpen(false); if (['list','stok_view','stock_opname','add','import','transfer_barang','batch_ed'].includes(tabId)) setBarangDropdownOpen(true); else setBarangDropdownOpen(false); if (['purchases'].includes(tabId)) setPembelianDropdownOpen(true); else setPembelianDropdownOpen(false); };
+            const handleNavClick = (tabId, event) => { setActiveTab(tabId); if (tabId !== 'list') setShowOnlyLowStock(false); setIsSidebarOpen(false); if (['cashier','history','rekap_barang'].includes(tabId)) setKasirDropdownOpen(true); else setKasirDropdownOpen(false); if (['list','stok_view','stock_opname','add','import','transfer_barang','batch_ed'].includes(tabId)) setBarangDropdownOpen(true); else setBarangDropdownOpen(false); if (['purchases'].includes(tabId)) setPembelianDropdownOpen(true); else setPembelianDropdownOpen(false); };
             
             const handleLogout = () => {
                 clearSession();
@@ -18639,7 +18618,7 @@
                                             <div key="kasir-group">
                                                 {/* Tombol induk Kasir */}
                                                 <div
-                                                    onClick={() => { setKasirDropdownOpen(true); setBarangDropdownOpen(false); setPembelianDropdownOpen(false); navigateTo('cashier'); setShowOnlyLowStock(false); }}
+                                                    onClick={() => { setKasirDropdownOpen(true); setBarangDropdownOpen(false); setPembelianDropdownOpen(false); setActiveTab('cashier'); setShowOnlyLowStock(false); }}
                                                     style={{display:'flex',alignItems:'center',padding:'9px 10px',borderRadius:'8px',cursor:'pointer',gap:'10px',color: (isKasirGroupActive && !kasirDropdownOpen) ? '#19737c' : '#fff',fontSize:'13.5px',fontWeight:700,userSelect:'none',transition:'background .1s',letterSpacing:'.1px',background: (isKasirGroupActive && !kasirDropdownOpen) ? '#fff' : 'transparent'}}
                                                 >
                                                     <span style={{flexShrink:0,color: (isKasirGroupActive && !kasirDropdownOpen) ? '#19737c' : '#fff',display:'flex',alignItems:'center',width:'18px',height:'18px'}}>
@@ -18691,7 +18670,7 @@
                                             <div key="barang-group">
                                                 {/* Tombol induk Barang */}
                                                 <div
-                                                    onClick={() => { setBarangDropdownOpen(true); setKasirDropdownOpen(false); setPembelianDropdownOpen(false); navigateTo('list'); setShowOnlyLowStock(false); }}
+                                                    onClick={() => { setBarangDropdownOpen(true); setKasirDropdownOpen(false); setPembelianDropdownOpen(false); setActiveTab('list'); setShowOnlyLowStock(false); }}
                                                     style={{display:'flex',alignItems:'center',padding:'9px 10px',borderRadius:'8px',cursor:'pointer',gap:'10px',color: (isBarangGroupActive && !barangDropdownOpen) ? '#19737c' : '#fff',fontSize:'13.5px',fontWeight:700,userSelect:'none',transition:'background .1s',letterSpacing:'.1px',background: (isBarangGroupActive && !barangDropdownOpen) ? '#fff' : 'transparent'}}
                                                 >
                                                     <span style={{flexShrink:0,color: (isBarangGroupActive && !barangDropdownOpen) ? '#19737c' : '#fff',display:'flex',alignItems:'center',width:'18px',height:'18px'}}>
@@ -18740,7 +18719,7 @@
                                             <div key="pembelian-group">
                                                 {/* Tombol induk Pembelian */}
                                                 <div
-                                                    onClick={() => { setPembelianDropdownOpen(true); setKasirDropdownOpen(false); setBarangDropdownOpen(false); navigateTo('purchases'); setShowOnlyLowStock(false); }}
+                                                    onClick={() => { setPembelianDropdownOpen(true); setKasirDropdownOpen(false); setBarangDropdownOpen(false); setActiveTab('purchases'); setShowOnlyLowStock(false); }}
                                                     style={{display:'flex',alignItems:'center',padding:'9px 10px',borderRadius:'8px',cursor:'pointer',gap:'10px',color: (isPembelianGroupActive && !pembelianDropdownOpen) ? '#19737c' : '#fff',fontSize:'13.5px',fontWeight:700,userSelect:'none',transition:'background .1s',letterSpacing:'.1px',background: (isPembelianGroupActive && !pembelianDropdownOpen) ? '#fff' : 'transparent'}}
                                                 >
                                                     <span style={{flexShrink:0,color: (isPembelianGroupActive && !pembelianDropdownOpen) ? '#19737c' : '#fff',display:'flex',alignItems:'center',width:'18px',height:'18px'}}>
@@ -18881,7 +18860,7 @@
                                             </button>
                                         )}
                                     </div>
-                                    <button onClick={() => { navigateTo('settings'); setShowStoreMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold text-slate-400 hover:bg-slate-50 border-t border-slate-100">+ Kelola Toko di Pengaturan</button>
+                                    <button onClick={() => { setActiveTab('settings'); setShowStoreMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold text-slate-400 hover:bg-slate-50 border-t border-slate-100">+ Kelola Toko di Pengaturan</button>
                                 </div>
                             )}
                         </div>
@@ -19041,16 +19020,16 @@
                                 </div>
                             </div>
                         )}
-                        <NegativeStockBanner items={inventoryData} settings={settingsData} onNavigateToPurchases={() => navigateTo('purchases')} />
-                        {activeTab === 'home' && (<DashboardView items={inventoryData} settings={settingsData} currentProfile={currentProfile} isOwner={isOwner} onShowLowStock={() => { navigateTo('list'); setShowOnlyLowStock(true); }} />)}
-                        {activeTab === 'cashier' && (<CashierView items={inventoryData} user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='cashier')?.readOnly} authSession={authSession} onNavigateToAdd={() => navigateTo('add')} isOwner={isOwner} />)}
+                        <NegativeStockBanner items={inventoryData} settings={settingsData} onNavigateToPurchases={() => setActiveTab('purchases')} />
+                        {activeTab === 'home' && (<DashboardView items={inventoryData} settings={settingsData} currentProfile={currentProfile} isOwner={isOwner} onShowLowStock={() => { setActiveTab('list'); setShowOnlyLowStock(true); }} />)}
+                        {activeTab === 'cashier' && (<CashierView items={inventoryData} user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='cashier')?.readOnly} authSession={authSession} onNavigateToAdd={() => setActiveTab('add')} isOwner={isOwner} />)}
                         {activeTab === 'history' && (<HistoryView user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} items={inventoryData} readOnly={menuItems.find(m=>m.id==='history')?.readOnly} isOwner={isOwner} authSession={authSession} defaultOpenTransactionId={pendingTransactionId} onClearPendingTransaction={() => setPendingTransactionId(null)} />)}
                         {activeTab === 'rekap_barang' && (<RekapBarangView user={user} currentProfile={currentProfile} settings={settingsData} />)}
-                        {activeTab === 'purchases' && (<PurchaseView user={user} showToast={showToast} items={inventoryData} currentProfile={currentProfile} settings={settingsData} readOnly={menuItems.find(m=>m.id==='purchases')?.readOnly} authSession={authSession} defaultOpenPurchaseId={pendingPurchaseId} onClearPendingPurchase={() => setPendingPurchaseId(null)} onBackFromDetail={() => navigateTo('list')} />)}
+                        {activeTab === 'purchases' && (<PurchaseView user={user} showToast={showToast} items={inventoryData} currentProfile={currentProfile} settings={settingsData} readOnly={menuItems.find(m=>m.id==='purchases')?.readOnly} authSession={authSession} defaultOpenPurchaseId={pendingPurchaseId} onClearPendingPurchase={() => setPendingPurchaseId(null)} onBackFromDetail={() => setActiveTab('list')} />)}
                         {activeTab === 'cashbook' && (<CashBookView user={user} currentProfile={currentProfile} showToast={showToast} readOnly={menuItems.find(m=>m.id==='cashbook')?.readOnly} />)}
-                        {activeTab === 'list' && (<ListView items={inventoryData} loading={loading} settings={settingsData} searchQuery={searchQuery} setSearchQuery={setSearchQuery} showOnlyLowStock={showOnlyLowStock} setShowOnlyLowStock={setShowOnlyLowStock} selectedRacks={selectedRacks} setSelectedRacks={setSelectedRacks} uniqueRacksData={uniqueRacksData} onCopySuccess={showToast} onEdit={(item) => { setFormData({...item}); setEditingItem(item); navigateTo('add'); }} onDelete={(item) => setDeleteModal({ show: true, item: item })} onDeleteRack={(rackName) => setDeleteRackModal({ show: true, rackName })} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='list')?.readOnly} isOwner={isOwner} onNavigateToPurchases={(purchaseId, returnItem) => { setPendingPurchaseId(purchaseId); if (returnItem) { setReturnDetailItem(returnItem); setReturnInitialTab('riwayat'); } navigateTo('purchases'); }} onNavigateToHistory={(transactionId) => { setPendingTransactionId(transactionId); navigateTo('history'); }} returnDetailItem={returnDetailItem} onClearReturnDetailItem={() => { setReturnDetailItem(null); setReturnInitialTab(null); }} returnInitialTab={returnInitialTab} />)}
-                        {activeTab === 'add' && (<FormView formData={formData} setFormData={setFormData} onSubmit={handleSubmit} isEditing={!!editingItem} submitting={submitting} onCancel={() => { setEditingItem(null); setFormData({name:'', qty:'', unit:'Pcs', exp:'', rack:'', price:'', costPrice:'', minStock: '', defaultDiscount: '', defaultDiscountType: '%', packagePrices: []}); navigateTo('list'); }} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='add')?.readOnly} />)}
-                        {activeTab === 'import' && (<BulkImportView user={user} onImportComplete={(count) => { showToast(`${count} Barang berhasil diimport`); navigateTo('list'); }} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='import')?.readOnly} />)}
+                        {activeTab === 'list' && (<ListView items={inventoryData} loading={loading} settings={settingsData} searchQuery={searchQuery} setSearchQuery={setSearchQuery} showOnlyLowStock={showOnlyLowStock} setShowOnlyLowStock={setShowOnlyLowStock} selectedRacks={selectedRacks} setSelectedRacks={setSelectedRacks} uniqueRacksData={uniqueRacksData} onCopySuccess={showToast} onEdit={(item) => { setFormData({...item}); setEditingItem(item); setActiveTab('add'); }} onDelete={(item) => setDeleteModal({ show: true, item: item })} onDeleteRack={(rackName) => setDeleteRackModal({ show: true, rackName })} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='list')?.readOnly} isOwner={isOwner} onNavigateToPurchases={(purchaseId, returnItem) => { setPendingPurchaseId(purchaseId); if (returnItem) { setReturnDetailItem(returnItem); setReturnInitialTab('riwayat'); } setActiveTab('purchases'); }} onNavigateToHistory={(transactionId) => { setPendingTransactionId(transactionId); setActiveTab('history'); }} returnDetailItem={returnDetailItem} onClearReturnDetailItem={() => { setReturnDetailItem(null); setReturnInitialTab(null); }} returnInitialTab={returnInitialTab} />)}
+                        {activeTab === 'add' && (<FormView formData={formData} setFormData={setFormData} onSubmit={handleSubmit} isEditing={!!editingItem} submitting={submitting} onCancel={() => { setEditingItem(null); setFormData({name:'', qty:'', unit:'Pcs', exp:'', rack:'', price:'', costPrice:'', minStock: '', defaultDiscount: '', defaultDiscountType: '%', packagePrices: []}); setActiveTab('list'); }} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='add')?.readOnly} />)}
+                        {activeTab === 'import' && (<BulkImportView user={user} onImportComplete={(count) => { showToast(`${count} Barang berhasil diimport`); setActiveTab('list'); }} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='import')?.readOnly} />)}
                         {activeTab === 'stock_opname' && (<StockOpnameView items={inventoryData} user={user} showToast={showToast} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='stock_opname')?.readOnly} isOwner={isOwner} />)}
                         {activeTab === 'stok_view' && (<StokView items={inventoryData} currentProfile={currentProfile} settings={settingsData} readOnly={menuItems.find(m=>m.id==='stok_view')?.readOnly} isOwner={isOwner} />)}
                         {activeTab === 'batch_ed' && (<BatchEDView items={inventoryData} currentProfile={currentProfile} settings={settingsData} readOnly={menuItems.find(m=>m.id==='batch_ed')?.readOnly} isOwner={isOwner} user={user} />)}
