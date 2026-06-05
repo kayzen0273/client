@@ -8084,11 +8084,11 @@
                             {/* Subtotal, Diskon, Biaya Pengiriman, Total */}
                             <div className="space-y-2 mb-3">
                                 <div className="flex justify-between items-center py-1 border-b border-slate-100">
-                                    <span className="text-xs text-slate-500 font-medium">Subtotal</span>
+                                    <span className="text-xs text-black font-medium">Subtotal</span>
                                     <span className="text-xs font-bold text-slate-800">{formatRupiah(cartSubtotal)}</span>
                                 </div>
                                 <div className="flex justify-between items-center py-1.5 border-b-[1.5px] border-black">
-                                    <span className="text-xs text-slate-500 font-medium flex-shrink-0">Diskon</span>
+                                    <span className="text-xs text-black font-medium flex-shrink-0">Diskon</span>
                                     <div className="flex items-center gap-1.5 ml-2">
                                         {cartDiskonNominal > 0 && <span className="text-[10px] text-red-500 font-bold whitespace-nowrap">-{formatRupiah(cartDiskonNominal)}</span>}
                                         <select value={cartDiskonType} onChange={e => setCartDiskonType(e.target.value)} className="text-xs font-bold text-slate-600 border border-slate-200 rounded-lg bg-white outline-none text-center" style={{width:'46px', height:'30px', padding:'0 2px'}}>
@@ -8107,7 +8107,7 @@
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-center py-1.5 border-b-[1.5px] border-black">
-                                    <span className="text-xs text-slate-500 font-medium flex-shrink-0">Biaya pengiriman</span>
+                                    <span className="text-xs text-black font-medium flex-shrink-0">Biaya pengiriman</span>
                                     <input
                                         value={cartBiayaPengiriman}
                                         onChange={e => { const raw = parseInt(e.target.value.replace(/\D/g,'')) || 0; setCartBiayaPengiriman(raw === 0 ? '0' : raw.toLocaleString('id-ID')); }}
