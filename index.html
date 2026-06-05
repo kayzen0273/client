@@ -7712,44 +7712,7 @@
                             </div>
                         )}
 
-                        {/* No transaksi + Total */}
-                        {(() => {
-                            const now = new Date();
-                            const txRef = `#${String(now.getFullYear()).slice(-2)}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
-                            return (
-                                <div className="mb-3 px-1">
-                                    <p className="text-xs text-slate-400 font-medium">{txRef}</p>
-                                    <p className="text-3xl font-black text-slate-800">{formatRupiah(grandTotal)}</p>
-                                </div>
-                            );
-                        })()}
 
-                        {/* Info Transaksi */}
-                        <div className="mb-3">
-                            <div className="flex items-center justify-between py-2.5 border-b border-slate-200">
-                                <div>
-                                    <p className="text-[10px] font-bold text-teal-600 leading-none mb-0.5">Tipe transaksi</p>
-                                    <p className="text-xs font-semibold text-slate-700">{tipeTransaksi}</p>
-                                </div>
-                                <button onClick={() => { setTipeModalTemp(tipeTransaksi); setMarkupTemp(markupPersen); setShowTipeModal(true); }} className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:text-teal-600 hover:border-teal-300 transition-all active:scale-95">
-                                    <Icon name="pen" className="text-xs" />
-                                </button>
-                            </div>
-                            <div className="flex items-center justify-between py-2.5 border-b border-slate-200">
-                                <div>
-                                    <p className="text-[10px] font-bold text-teal-600 leading-none mb-0.5">Kasir/sales</p>
-                                    <p className="text-xs font-semibold text-slate-700">{selectedSales || originalCashierName || cashierName}</p>
-                                </div>
-                                <button onClick={() => setShowSalesModal(true)} className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:border-teal-400 hover:text-teal-600 transition-all active:scale-95 flex items-center gap-1">Pilih <Icon name="chevron-right" className="text-[10px]" /></button>
-                            </div>
-                            <div className="flex items-center justify-between py-2.5 border-b border-slate-200">
-                                <div>
-                                    <p className="text-[10px] font-bold text-teal-600 leading-none mb-0.5">Pembeli</p>
-                                    <p className="text-xs font-semibold text-slate-700">{selectedPembeli || 'Pembeli belum dipilih'}</p>
-                                </div>
-                                <button onClick={() => { setPembeliInput(selectedPembeli); setShowPembeliModal(true); }} className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:border-teal-400 hover:text-teal-600 transition-all active:scale-95 flex items-center gap-1">Pilih <Icon name="chevron-right" className="text-[10px]" /></button>
-                            </div>
-                        </div>
 
                         {/* Modal Tipe Transaksi */}
                         {showTipeModal && (
@@ -8074,24 +8037,24 @@
                         <div className="flex-1 pr-1 pb-2">
                         </div>
                     </div>
-                    <div className="w-full md:w-80 lg:w-96 flex flex-col bg-white rounded-3xl shadow-soft border border-slate-100 h-fit md:h-full max-h-[calc(100vh-100px)]">
-                        <div className="px-4 pt-3 pb-2 border-b border-slate-200 flex justify-between items-center">
+                    <div className="w-full md:w-80 lg:w-96 flex flex-col bg-white h-fit md:h-full">
+                        <div className="px-0 pt-1 pb-2 border-b border-slate-300 flex justify-between items-center">
                             <span className="text-sm font-bold text-slate-700">Barang</span>
                             <span className="text-sm font-bold text-slate-700">Subtotal</span>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar min-h-[200px]">{cart.length === 0 ? (<div className="h-full flex flex-col items-center justify-center py-8 gap-3"><div className="flex gap-2 mb-1 opacity-30"><Icon name="barcode" className="text-4xl text-slate-400" /><Icon name="leaf" className="text-4xl text-slate-400" /></div><p className="text-sm font-bold text-slate-400">Belum ada barang di transaksi ini</p><div className="flex gap-2 mt-1"><button onClick={() => searchInputRef.current && searchInputRef.current.focus()} className="px-4 py-2 rounded-xl border border-teal-300 text-teal-600 text-xs font-bold hover:bg-teal-50 flex items-center gap-1.5"><Icon name="plus" /> Barang</button><button onClick={() => { setShowRacikanPage(true); setRacikanSearch(''); }} className="px-4 py-2 rounded-xl border border-teal-300 text-teal-600 text-xs font-bold hover:bg-teal-50 flex items-center gap-1.5"><Icon name="prescription-bottle-medical" /> Buat R/</button></div></div>) : (cart.map(item => (<div key={item.id + (item.selectedUnit || '') + (item.price || '')} onClick={() => editCartItem(item)} className={`p-3 rounded-xl border flex gap-3 group relative cursor-pointer transition-all ${item.isRacikan ? 'bg-teal-50 border-teal-100 hover:bg-teal-100 hover:border-teal-300' : 'bg-slate-50 border-slate-100 hover:bg-sky-50 hover:border-sky-300'}`}><div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity"><Icon name="pen-to-square" className="text-[10px] text-sky-500" /></div><div className="flex-1 min-w-0"><div className="flex items-center gap-1.5 flex-wrap"><h4 className={"text-xs font-bold text-slate-700 " + (item.isRacikanGroup ? "line-clamp-2" : "truncate")}>{item.name}</h4>{item.isRacikan && <span className="text-[8px] font-black bg-teal-600 text-white px-1 py-0.5 rounded flex-shrink-0">R/</span>}{item.isKonsinyasi && <span className="text-[8px] font-black bg-fuchsia-100 text-fuchsia-700 px-1 py-0.5 rounded flex-shrink-0 border border-fuchsia-200">konsinyasi</span>}{item.packageQtyPerUnit > 1 && <span className="text-[8px] font-black bg-amber-100 text-amber-700 px-1 py-0.5 rounded flex-shrink-0 border border-amber-200">📦 {item.selectedUnit}</span>}</div>{item.isRacikanGroup ? (<p className="text-[9px] text-teal-600 font-bold mt-0.5"><Icon name="pen-to-square" className="text-[9px] mr-0.5" />Klik untuk edit racikan</p>) : (<p className="text-[10px] text-slate-500">{formatRupiah(item.originalPrice || item.price)} {item.selectedUnit ? `per ${item.selectedUnit}` : ''} x {item.cartQty}{item.packageQtyPerUnit > 1 ? ` (= ${item.cartQty * item.packageQtyPerUnit} ${item.unit})` : ''}</p>)}{item.discount && <p className="text-[9px] text-red-500 font-bold">Diskon: {item.discount.type === '%' ? `${item.discount.value}%` : formatRupiah(item.discount.value)}</p>}{settings?.showNoteButton !== false && item.itemNote && (<button onClick={e => { e.stopPropagation(); setNoteModalItem(item); }} title="Lihat catatan barang" className="mt-0.5 flex items-center gap-1 text-[9px] text-sky-600 font-bold bg-sky-50 hover:bg-sky-100 active:bg-sky-200 px-1.5 py-0.5 rounded-full border border-sky-200 transition-colors max-w-[120px] truncate"><Icon name="circle-info" className="text-[9px] flex-shrink-0" /><span className="truncate">{item.itemNote.length > 18 ? item.itemNote.slice(0, 18) + '…' : item.itemNote}</span></button>)}</div><div className="flex flex-col items-end gap-1"><p className="text-xs font-bold text-slate-800">{formatRupiah(item.price * item.cartQty)}</p><div className="flex items-center gap-1 bg-white rounded-lg shadow-sm border border-slate-200 p-0.5" onClick={e => e.stopPropagation()}><button onClick={() => updateQty(item.id, -1, item.selectedUnit, item.price)} className="w-5 h-5 flex items-center justify-center text-[8px] hover:bg-slate-100 rounded text-slate-500"><Icon name="minus" /></button><span className="text-xs font-bold w-4 text-center">{item.cartQty}</span><button onClick={() => updateQty(item.id, 1, item.selectedUnit, item.price)} className="w-5 h-5 flex items-center justify-center text-[8px] hover:bg-slate-100 rounded text-slate-500"><Icon name="plus" /></button></div></div></div>)))}</div>
-                        <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-3xl">
+                        <div className="flex-1 overflow-y-auto py-0 space-y-0 custom-scrollbar min-h-[200px]">{cart.length === 0 ? (<div className="h-full flex flex-col items-center justify-center py-8 gap-3"><div className="flex gap-2 mb-1 opacity-30"><Icon name="barcode" className="text-4xl text-slate-400" /><Icon name="leaf" className="text-4xl text-slate-400" /></div><p className="text-sm font-bold text-slate-400">Belum ada barang di transaksi ini</p><div className="flex gap-2 mt-1"><button onClick={() => searchInputRef.current && searchInputRef.current.focus()} className="px-4 py-2 rounded-xl border border-teal-300 text-teal-600 text-xs font-bold hover:bg-teal-50 flex items-center gap-1.5"><Icon name="plus" /> Barang</button><button onClick={() => { setShowRacikanPage(true); setRacikanSearch(''); }} className="px-4 py-2 rounded-xl border border-teal-300 text-teal-600 text-xs font-bold hover:bg-teal-50 flex items-center gap-1.5"><Icon name="prescription-bottle-medical" /> Buat R/</button></div></div>) : (cart.map(item => (<div key={item.id + (item.selectedUnit || '') + (item.price || '')} onClick={() => editCartItem(item)} className={`p-3 rounded-xl border flex gap-3 group relative cursor-pointer transition-all ${item.isRacikan ? 'bg-teal-50 border-teal-100 hover:bg-teal-100 hover:border-teal-300' : 'bg-slate-50 border-slate-100 hover:bg-sky-50 hover:border-sky-300'}`}><div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity"><Icon name="pen-to-square" className="text-[10px] text-sky-500" /></div><div className="flex-1 min-w-0"><div className="flex items-center gap-1.5 flex-wrap"><h4 className={"text-xs font-bold text-slate-700 " + (item.isRacikanGroup ? "line-clamp-2" : "truncate")}>{item.name}</h4>{item.isRacikan && <span className="text-[8px] font-black bg-teal-600 text-white px-1 py-0.5 rounded flex-shrink-0">R/</span>}{item.isKonsinyasi && <span className="text-[8px] font-black bg-fuchsia-100 text-fuchsia-700 px-1 py-0.5 rounded flex-shrink-0 border border-fuchsia-200">konsinyasi</span>}{item.packageQtyPerUnit > 1 && <span className="text-[8px] font-black bg-amber-100 text-amber-700 px-1 py-0.5 rounded flex-shrink-0 border border-amber-200">📦 {item.selectedUnit}</span>}</div>{item.isRacikanGroup ? (<p className="text-[9px] text-teal-600 font-bold mt-0.5"><Icon name="pen-to-square" className="text-[9px] mr-0.5" />Klik untuk edit racikan</p>) : (<p className="text-[10px] text-slate-500">{formatRupiah(item.originalPrice || item.price)} {item.selectedUnit ? `per ${item.selectedUnit}` : ''} x {item.cartQty}{item.packageQtyPerUnit > 1 ? ` (= ${item.cartQty * item.packageQtyPerUnit} ${item.unit})` : ''}</p>)}{item.discount && <p className="text-[9px] text-red-500 font-bold">Diskon: {item.discount.type === '%' ? `${item.discount.value}%` : formatRupiah(item.discount.value)}</p>}{settings?.showNoteButton !== false && item.itemNote && (<button onClick={e => { e.stopPropagation(); setNoteModalItem(item); }} title="Lihat catatan barang" className="mt-0.5 flex items-center gap-1 text-[9px] text-sky-600 font-bold bg-sky-50 hover:bg-sky-100 active:bg-sky-200 px-1.5 py-0.5 rounded-full border border-sky-200 transition-colors max-w-[120px] truncate"><Icon name="circle-info" className="text-[9px] flex-shrink-0" /><span className="truncate">{item.itemNote.length > 18 ? item.itemNote.slice(0, 18) + '…' : item.itemNote}</span></button>)}</div><div className="flex flex-col items-end gap-1"><p className="text-xs font-bold text-slate-800">{formatRupiah(item.price * item.cartQty)}</p><div className="flex items-center gap-1 bg-white rounded-lg shadow-sm border border-slate-200 p-0.5" onClick={e => e.stopPropagation()}><button onClick={() => updateQty(item.id, -1, item.selectedUnit, item.price)} className="w-5 h-5 flex items-center justify-center text-[8px] hover:bg-slate-100 rounded text-slate-500"><Icon name="minus" /></button><span className="text-xs font-bold w-4 text-center">{item.cartQty}</span><button onClick={() => updateQty(item.id, 1, item.selectedUnit, item.price)} className="w-5 h-5 flex items-center justify-center text-[8px] hover:bg-slate-100 rounded text-slate-500"><Icon name="plus" /></button></div></div></div>)))}</div>
+                        <div className="pt-2 pb-3 border-t border-slate-300">
                             {/* Subtotal, Diskon, Biaya Pengiriman, Total */}
-                            <div className="space-y-2 mb-3">
-                                <div className="flex justify-between items-center py-1 border-b border-slate-100">
-                                    <span className="text-xs text-slate-500 font-medium">Subtotal</span>
-                                    <span className="text-xs font-bold text-slate-800">{formatRupiah(cartSubtotal)}</span>
+                            <div className="space-y-0 mb-3">
+                                <div className="flex justify-between items-center py-2.5 border-b border-slate-200">
+                                    <span className="text-sm text-slate-500 font-medium">Subtotal</span>
+                                    <span className="text-sm font-bold text-slate-800">{formatRupiah(cartSubtotal)}</span>
                                 </div>
-                                <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
-                                    <span className="text-xs text-slate-500 font-medium flex-shrink-0">Diskon</span>
+                                <div className="flex justify-between items-center py-2.5 border-b border-slate-200">
+                                    <span className="text-sm text-slate-500 font-medium flex-shrink-0">Diskon</span>
                                     <div className="flex items-center gap-1.5 ml-2">
-                                        {cartDiskonNominal > 0 && <span className="text-[10px] text-red-500 font-bold whitespace-nowrap">-{formatRupiah(cartDiskonNominal)}</span>}
-                                        <select value={cartDiskonType} onChange={e => setCartDiskonType(e.target.value)} className="text-xs font-bold text-slate-600 border border-slate-200 rounded-lg bg-white outline-none text-center" style={{width:'46px', height:'30px', padding:'0 2px'}}>
+                                        {cartDiskonNominal > 0 && <span className="text-xs text-red-500 font-bold whitespace-nowrap">-{formatRupiah(cartDiskonNominal)}</span>}
+                                        <select value={cartDiskonType} onChange={e => setCartDiskonType(e.target.value)} className="text-xs font-bold text-slate-600 border border-slate-300 rounded bg-white outline-none text-center" style={{width:'46px', height:'28px', padding:'0 2px'}}>
                                             <option value="%">%</option>
                                             <option value="Rp">Rp</option>
                                         </select>
@@ -8101,30 +8064,35 @@
                                             onFocus={e => { if(e.target.value === '0') e.target.value = ''; }}
                                             onBlur={e => { if(!e.target.value.trim()) setCartDiskon('0'); }}
                                             inputMode="numeric"
-                                            className="text-right text-xs font-bold text-slate-700 border border-slate-200 rounded-lg bg-white outline-none focus:border-teal-400 px-2"
-                                            style={{width:'64px', height:'30px'}}
+                                            className="text-right text-sm font-bold text-slate-700 bg-transparent outline-none border-b-2 border-slate-300 focus:border-teal-500 px-1"
+                                            style={{width:'64px'}}
                                         />
                                     </div>
                                 </div>
-                                <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
-                                    <span className="text-xs text-slate-500 font-medium flex-shrink-0">Biaya pengiriman</span>
+                                <div className="flex justify-between items-center py-2.5 border-b border-slate-200">
+                                    <span className="text-sm text-slate-500 font-medium flex-shrink-0">Biaya pengiriman</span>
                                     <input
                                         value={cartBiayaPengiriman}
                                         onChange={e => { const raw = parseInt(e.target.value.replace(/\D/g,'')) || 0; setCartBiayaPengiriman(raw === 0 ? '0' : raw.toLocaleString('id-ID')); }}
                                         onFocus={e => { if(e.target.value === '0') e.target.value = ''; }}
                                         onBlur={e => { if(!e.target.value.trim()) setCartBiayaPengiriman('0'); }}
                                         inputMode="numeric"
-                                        className="text-right text-xs font-bold text-slate-700 border border-slate-200 rounded-lg bg-white outline-none focus:border-teal-400 px-2 ml-2"
-                                        style={{width:'96px', height:'30px'}}
+                                        className="text-right text-sm font-bold text-slate-700 bg-transparent outline-none border-b-2 border-slate-300 focus:border-teal-500 px-1 ml-2"
+                                        style={{width:'96px'}}
                                     />
                                 </div>
-                                <div className="flex justify-between items-center pt-1">
+                                <div className="flex justify-between items-center py-2.5 border-b border-slate-200">
                                     <span className="text-sm font-bold text-slate-800">Total</span>
-                                    <span className="text-xl font-black text-slate-800">{formatRupiah(grandTotal)}</span>
+                                    <span className="text-lg font-black text-slate-800">{formatRupiah(grandTotal)}</span>
                                 </div>
                             </div>
-                            <button onClick={() => { if(readOnly){showToast('Akses terbatas — hubungi owner','error');return;} setPaymentAmount(''); setPaymentMethod(''); setCartPembulatan(0); setCheckoutModal(true); }} disabled={cart.length === 0} className="w-full py-3.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-bold shadow-sm active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2">Bayar</button>
-                            <button onClick={() => { if(readOnly) return; setCancelModal(true); }} disabled={cart.length === 0 || readOnly} className="w-full mt-3 py-3 rounded-xl border border-red-200 text-red-500 font-bold hover:bg-red-50 transition-all text-sm disabled:opacity-50 disabled:border-slate-200 disabled:text-slate-400 active:scale-95">Batalkan Transaksi</button>
+                            <div className="flex items-center gap-3 mt-3">
+                                <button onClick={() => { if(readOnly){showToast('Akses terbatas — hubungi owner','error');return;} setPaymentAmount(''); setPaymentMethod(''); setCartPembulatan(0); setCheckoutModal(true); }} disabled={cart.length === 0} className="flex-1 py-3.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-bold shadow-sm active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2">Bayar</button>
+                                <button onClick={() => { if(readOnly) return; setCancelModal(true); }} disabled={cart.length === 0 || readOnly} className="flex flex-col items-center gap-0.5 text-orange-500 disabled:text-slate-300 active:scale-95 transition-all px-1" style={{minWidth:'64px'}}>
+                                    <Icon name="trash-can" className="text-lg" />
+                                    <span className="text-[10px] font-bold leading-tight text-center">Batalkan<br/>transaksi</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                     {checkoutModal && ( <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm fade-in"> {!paymentSuccess ? ( <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 relative"> <button onClick={() => { setCheckoutModal(false); setPaymentMethod(''); }} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><Icon name="xmark" /></button>
