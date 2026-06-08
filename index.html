@@ -3717,6 +3717,11 @@
             const [detailModalOpen, setDetailModalOpen] = useState(false);
             const [selectedPurchase, setSelectedPurchase] = useState(null);
             const [isEditMode, setIsEditMode] = useState(false);
+            // === KOMPARASI HARGA PBF ===
+            const [comparePriceModalOpen, setComparePriceModalOpen] = useState(false);
+            const [compareItemSearch, setCompareItemSearch] = useState('');
+            const [compareSelectedItem, setCompareSelectedItem] = useState(null);
+            const [compareSortBy, setCompareSortBy] = useState('name');
             const [editingPurchaseId, setEditingPurchaseId] = useState(null);
             const [addSupplierMode, setAddSupplierMode] = useState(false);
             const [submitting, setSubmitting] = useState(false);
@@ -3729,10 +3734,6 @@
             const [purchaseFilterDateTo, setPurchaseFilterDateTo] = useState('');
             const [purchaseFilterDueDateFrom, setPurchaseFilterDueDateFrom] = useState('');
             const [purchaseFilterDueDateTo, setPurchaseFilterDueDateTo] = useState('');
-            const [purchaseViewMode, setPurchaseViewMode] = useState('faktur');
-            const [priceCompareSearch, setPriceCompareSearch] = useState('');
-            const [priceCompareFilterSupplier, setPriceCompareFilterSupplier] = useState('all');
-            const [priceCompareExpandedItem, setPriceCompareExpandedItem] = useState(null);
             const [filterModalOpen, setFilterModalOpen] = useState(false);
             const [tempFilterStatus, setTempFilterStatus] = useState('all');
             const [tempFilterSupplier, setTempFilterSupplier] = useState('all');
@@ -4156,58 +4157,6 @@
                 });
                 return { totalPurchase, dueSoon, overdue, unpaid, countTotal, countDue, countOverdue, countUnpaid, consignmentTotal, consignmentUnpaid };
             }, [storePurchases]);
-
-            // ===== PRICE COMPARISON DATA =====
-            const priceCompareData = useMemo(() => {
-                const itemMap = {};
-                storePurchases.forEach(purchase => {
-                    const supplier = purchase.supplier || 'Tidak diketahui';
-                    const date = purchase.date ? new Date(purchase.date) : null;
-                    (purchase.items || []).forEach(item => {
-                        const name = (item.name || '').trim();
-                        const netPrice = Number(item.buyPrice || 0);
-                        const listPrice = Number(item.price || 0);
-                        if (!name) return;
-                        if (!itemMap[name]) itemMap[name] = { suppliers: {}, itemId: item.id || null };
-                        if (!itemMap[name].suppliers[supplier]) {
-                            itemMap[name].suppliers[supplier] = {
-                                latestNetPrice: 0, latestListPrice: 0, latestDate: null,
-                                minNetPrice: Infinity, maxNetPrice: 0,
-                                count: 0, totalNetPrice: 0, history: []
-                            };
-                        }
-                        const s = itemMap[name].suppliers[supplier];
-                        s.count++;
-                        if (netPrice > 0) { s.totalNetPrice += netPrice; if (netPrice < s.minNetPrice) s.minNetPrice = netPrice; if (netPrice > s.maxNetPrice) s.maxNetPrice = netPrice; }
-                        if (!s.latestDate || (date && date > s.latestDate)) {
-                            s.latestDate = date;
-                            s.latestNetPrice = netPrice;
-                            s.latestListPrice = listPrice;
-                        }
-                        s.history.push({ date, netPrice, listPrice, invoiceNumber: purchase.invoiceNumber || '' });
-                    });
-                });
-                return itemMap;
-            }, [storePurchases]);
-
-            const allPBFNames = useMemo(() => {
-                return [...new Set(storePurchases.map(p => p.supplier).filter(Boolean))].sort();
-            }, [storePurchases]);
-
-            const priceCompareItems = useMemo(() => {
-                const search = priceCompareSearch.toLowerCase();
-                return Object.entries(priceCompareData)
-                    .filter(([name]) => !search || name.toLowerCase().includes(search))
-                    .filter(([, data]) => priceCompareFilterSupplier === 'all' || data.suppliers[priceCompareFilterSupplier])
-                    .map(([name, data]) => {
-                        const supplierList = Object.entries(data.suppliers).map(([sup, info]) => ({ sup, ...info }));
-                        const validPrices = supplierList.map(s => s.latestNetPrice).filter(p => p > 0);
-                        const cheapestPrice = validPrices.length > 0 ? Math.min(...validPrices) : 0;
-                        const mostExpensive = validPrices.length > 0 ? Math.max(...validPrices) : 0;
-                        return { name, supplierList, cheapestPrice, mostExpensive, supplierCount: supplierList.length };
-                    })
-                    .sort((a, b) => a.name.localeCompare(b.name));
-            }, [priceCompareData, priceCompareSearch, priceCompareFilterSupplier]);
 
             const handleSelectSupplier = (supplier) => { 
                 // Check if there's a draft for this supplier
@@ -4695,7 +4644,7 @@
                 <>
                 <div className="fade-in pb-20 md:pb-0 h-full flex flex-col relative z-10">
                      
-                     <header className="mb-6 flex items-center justify-between"><div><h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Faktur Pembelian</h2><p className="text-slate-500 text-xs mt-1">{isAllStores ? 'Semua toko — lihat saja' : 'Kelola tagihan supplier'}</p></div><div className="flex gap-2"><button className="hidden md:flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-600 font-bold text-xs hover:bg-slate-50 transition-all shadow-sm"><Icon name="download" /> Unduh Laporan</button>{!readOnly && !isAllStores && <button onClick={() => setSupplierModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-xl font-bold text-xs hover:bg-teal-700 transition-all shadow-lg shadow-teal-200 active:scale-95"><Icon name="plus" /> Catat Faktur</button>}</div></header>
+                     <header className="mb-6 flex items-center justify-between"><div><h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Faktur Pembelian</h2><p className="text-slate-500 text-xs mt-1">{isAllStores ? 'Semua toko — lihat saja' : 'Kelola tagihan supplier'}</p></div><div className="flex gap-2"><button onClick={() => { setCompareItemSearch(''); setCompareSelectedItem(null); setCompareSortBy('name'); setComparePriceModalOpen(true); }} className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-xl font-bold text-xs hover:bg-violet-700 transition-all shadow-lg shadow-violet-200 active:scale-95"><Icon name="scale-balanced" /> <span className="hidden sm:inline">Komparasi PBF</span><span className="sm:hidden">PBF</span></button>{!readOnly && !isAllStores && <button onClick={() => setSupplierModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-xl font-bold text-xs hover:bg-teal-700 transition-all shadow-lg shadow-teal-200 active:scale-95"><Icon name="plus" /> Catat Faktur</button>}</div></header>
                     {isAllStores && <div className="mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-700 font-medium flex items-center gap-2"><Icon name="circle-info" /> Mode Semua Toko — data dari semua toko ditampilkan. Untuk input faktur baru, pilih toko spesifik.</div>}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                          <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm relative overflow-hidden"><h4 className="font-bold text-slate-800 text-xs mb-1">Total Pembelian</h4><div className="text-xl font-black text-slate-800 mb-1">{formatRupiah(stats.totalPurchase)}</div><p className="text-[10px] text-slate-400">{stats.countTotal} faktur tercatat</p></div>
@@ -4707,28 +4656,18 @@
                         <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-xl border border-indigo-100 shadow-sm flex items-center justify-between"><div><div className="flex items-center gap-2 mb-1"><Icon name="handshake" className="text-indigo-500" /><h4 className="font-bold text-indigo-800 text-xs">Total Konsinyasi Masuk</h4></div><div className="text-lg font-black text-indigo-900">{formatRupiah(stats.consignmentTotal)}</div></div></div>
                         <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-xl border border-indigo-100 shadow-sm flex items-center justify-between"><div><div className="flex items-center gap-2 mb-1"><Icon name="file-invoice-dollar" className="text-purple-500" /><h4 className="font-bold text-purple-800 text-xs">Konsinyasi Belum Bayar</h4></div><div className="text-lg font-black text-purple-900">{formatRupiah(stats.consignmentUnpaid)}</div></div></div>
                     </div>
-                    {/* ===== VIEW MODE TABS ===== */}
-                    <div className="flex gap-2 mb-4 border-b border-slate-200 pb-0">
-                        <button onClick={() => setPurchaseViewMode('faktur')} className={`px-4 py-2.5 text-xs font-bold rounded-t-lg transition-all border-b-2 -mb-px ${purchaseViewMode === 'faktur' ? 'border-teal-600 text-teal-700 bg-teal-50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}>
-                            <span className="flex items-center gap-1.5"><Icon name="file-invoice-dollar" /> Daftar Faktur</span>
-                        </button>
-                        <button onClick={() => setPurchaseViewMode('perbandingan')} className={`px-4 py-2.5 text-xs font-bold rounded-t-lg transition-all border-b-2 -mb-px ${purchaseViewMode === 'perbandingan' ? 'border-teal-600 text-teal-700 bg-teal-50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}>
-                            <span className="flex items-center gap-1.5"><Icon name="scale-balanced" /> Perbandingan Harga PBF</span>
+                    <div className="flex gap-2 mb-4">
+                        <div className="relative flex-1">
+                            <Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                            <input type="text" className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium outline-none focus:ring-2 focus:ring-teal-400 bg-white shadow-sm" placeholder="Cari no. faktur, nama barang, no. batch..." value={purchaseSearch} onChange={e => setPurchaseSearch(e.target.value)} />
+                            {purchaseSearch && <button onClick={() => setPurchaseSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"><Icon name="xmark" /></button>}
+                        </div>
+                        <button onClick={openFilterModal} className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all shadow-sm ${activeFilterCount > 0 ? 'bg-teal-600 border-teal-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                            <Icon name="sliders" />
+                            <span>Filter</span>
+
                         </button>
                     </div>
-                    {purchaseViewMode === 'faktur' && (<>
-                        <div className="flex gap-2 mb-4">
-                            <div className="relative flex-1">
-                                <Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
-                                <input type="text" className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium outline-none focus:ring-2 focus:ring-teal-400 bg-white shadow-sm" placeholder="Cari no. faktur, nama barang, no. batch..." value={purchaseSearch} onChange={e => setPurchaseSearch(e.target.value)} />
-                                {purchaseSearch && <button onClick={() => setPurchaseSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"><Icon name="xmark" /></button>}
-                            </div>
-                            <button onClick={openFilterModal} className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all shadow-sm ${activeFilterCount > 0 ? 'bg-teal-600 border-teal-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
-                                <Icon name="sliders" />
-                                <span>Filter</span>
-                            </button>
-                        </div>
-
                     {/* Filter active chips */}
                     {(purchaseFilterStatus !== 'all' || purchaseFilterSupplier !== 'all' || purchaseFilterPayment !== 'all' || purchaseFilterDateFrom || purchaseFilterDateTo || purchaseFilterDueDateFrom || purchaseFilterDueDateTo) && (
                         <div className="flex flex-wrap gap-2 mb-3">
@@ -4981,123 +4920,6 @@
                             );
                         })}
                     </div>
-                    </>)}
-
-                    {purchaseViewMode === 'perbandingan' && (
-                        <div className="flex-1 overflow-y-auto custom-scrollbar pb-4">
-                            <div className="mb-4 space-y-3">
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
-                                        <p className="text-[10px] font-bold text-slate-500 uppercase">Total Item Terlacak</p>
-                                        <p className="text-xl font-black text-slate-800">{priceCompareItems.length}</p>
-                                    </div>
-                                    <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
-                                        <p className="text-[10px] font-bold text-slate-500 uppercase">Total PBF</p>
-                                        <p className="text-xl font-black text-teal-600">{allPBFNames.length}</p>
-                                    </div>
-                                </div>
-                                <div className="relative">
-                                    <Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
-                                    <input type="text" className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium outline-none focus:ring-2 focus:ring-teal-400 bg-white shadow-sm" placeholder="Cari nama barang..." value={priceCompareSearch} onChange={e => setPriceCompareSearch(e.target.value)} />
-                                    {priceCompareSearch && <button onClick={() => setPriceCompareSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"><Icon name="xmark" /></button>}
-                                </div>
-                                <div className="flex gap-2 overflow-x-auto pb-1">
-                                    <button onClick={() => setPriceCompareFilterSupplier('all')} className={`whitespace-nowrap px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all ${priceCompareFilterSupplier === 'all' ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>Semua PBF</button>
-                                    {allPBFNames.map(pbfName => (
-                                        <button key={pbfName} onClick={() => setPriceCompareFilterSupplier(pbfName)} className={`whitespace-nowrap px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all ${priceCompareFilterSupplier === pbfName ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>{pbfName}</button>
-                                    ))}
-                                </div>
-                            </div>
-                            {priceCompareItems.length === 0 ? (
-                                <div className="text-center py-16 text-slate-400">
-                                    <div className="text-4xl mb-3"><Icon name="scale-balanced" /></div>
-                                    <p className="text-sm font-bold">{priceCompareSearch ? 'Tidak ada barang yang cocok.' : 'Belum ada data pembelian.'}</p>
-                                    <p className="text-xs mt-1">Data perbandingan diambil otomatis dari faktur yang sudah dicatat.</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {priceCompareItems.map(({ name, supplierList, cheapestPrice, mostExpensive, supplierCount }) => {
-                                        const isExpanded = priceCompareExpandedItem === name;
-                                        const priceDiff = cheapestPrice > 0 && mostExpensive > cheapestPrice ? Math.round((mostExpensive - cheapestPrice) / cheapestPrice * 100) : 0;
-                                        return (
-                                            <div key={name} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-                                                <button onClick={() => setPriceCompareExpandedItem(isExpanded ? null : name)} className="w-full text-left p-4 hover:bg-slate-50 transition-colors active:scale-[0.99]">
-                                                    <div className="flex items-start justify-between gap-3 mb-2">
-                                                        <div className="flex-1 min-w-0">
-                                                            <h4 className="font-bold text-slate-800 text-sm leading-tight">{name}</h4>
-                                                            <p className="text-[11px] text-slate-400 mt-0.5">{supplierCount} PBF menyediakan</p>
-                                                        </div>
-                                                        <div className="text-right flex-shrink-0">
-                                                            <p className="text-[10px] text-slate-400">Termurah</p>
-                                                            <p className="font-black text-green-600 text-base leading-tight">{cheapestPrice > 0 ? formatRupiah(cheapestPrice) : '-'}</p>
-                                                            {priceDiff > 0 && <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-1.5 py-0.5 rounded-full font-bold">selisih max {priceDiff}%</span>}
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                                        {[...supplierList].sort((a, b) => (a.latestNetPrice || 999999999) - (b.latestNetPrice || 999999999)).slice(0, 3).map(({ sup, latestNetPrice }) => (
-                                                            <span key={sup} className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${latestNetPrice === cheapestPrice && cheapestPrice > 0 ? 'bg-green-50 text-green-700 border-green-200' : latestNetPrice === mostExpensive && supplierList.length > 1 ? 'bg-red-50 text-red-600 border-red-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
-                                                                {sup}: {latestNetPrice > 0 ? formatRupiah(latestNetPrice) : '-'}
-                                                            </span>
-                                                        ))}
-                                                        {supplierList.length > 3 && <span className="text-[10px] text-slate-400">+{supplierList.length - 3} lainnya</span>}
-                                                        <span className="ml-auto text-slate-400 text-xs"><Icon name={isExpanded ? 'chevron-up' : 'chevron-down'} /></span>
-                                                    </div>
-                                                </button>
-                                                {isExpanded && (
-                                                    <div className="border-t border-slate-100 bg-slate-50 p-4">
-                                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-3">Detail Perbandingan per PBF</p>
-                                                        <div className="space-y-2">
-                                                            {[...supplierList].sort((a, b) => (a.latestNetPrice || 999999999) - (b.latestNetPrice || 999999999)).map(({ sup, latestNetPrice, latestListPrice, latestDate, minNetPrice, maxNetPrice, count }) => {
-                                                                const isCheapest = latestNetPrice === cheapestPrice && cheapestPrice > 0;
-                                                                const isMostExp = latestNetPrice === mostExpensive && supplierList.length > 1 && mostExpensive > cheapestPrice;
-                                                                const dateStr = latestDate ? new Date(latestDate).toLocaleDateString('id-ID', {day:'numeric',month:'short',year:'numeric'}) : '-';
-                                                                const selisihPct = cheapestPrice > 0 && latestNetPrice > cheapestPrice ? Math.round((latestNetPrice - cheapestPrice) / cheapestPrice * 100) : null;
-                                                                return (
-                                                                    <div key={sup} className={`p-3 rounded-xl border ${isCheapest ? 'bg-green-50 border-green-200' : isMostExp ? 'bg-red-50 border-red-200' : 'bg-white border-slate-200'}`}>
-                                                                        <div className="flex items-center justify-between mb-2">
-                                                                            <div className="flex items-center gap-1.5 flex-wrap">
-                                                                                <span className="font-bold text-slate-800 text-xs">{sup}</span>
-                                                                                {isCheapest && <span className="text-[9px] font-black bg-green-600 text-white px-1.5 py-0.5 rounded-full">✓ TERMURAH</span>}
-                                                                                {isMostExp && !isCheapest && <span className="text-[9px] font-bold bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full border border-red-200">TERMAHAL</span>}
-                                                                            </div>
-                                                                            <div className="text-right">
-                                                                                <span className={`font-black text-base ${isCheapest ? 'text-green-700' : isMostExp ? 'text-red-600' : 'text-slate-700'}`}>{latestNetPrice > 0 ? formatRupiah(latestNetPrice) : '-'}</span>
-                                                                                {selisihPct && <span className="ml-1 text-[10px] text-amber-600 font-bold">+{selisihPct}%</span>}
-                                                                            </div>
-                                                                        </div>
-                                                                        <div className="grid grid-cols-3 gap-2">
-                                                                            <div>
-                                                                                <p className="text-[9px] font-bold text-slate-400 uppercase">Harga Faktur</p>
-                                                                                <p className="text-xs font-bold text-slate-700">{latestListPrice > 0 ? formatRupiah(latestListPrice) : '-'}</p>
-                                                                            </div>
-                                                                            <div>
-                                                                                <p className="text-[9px] font-bold text-slate-400 uppercase">Terakhir Beli</p>
-                                                                                <p className="text-xs font-bold text-slate-700">{dateStr}</p>
-                                                                            </div>
-                                                                            <div>
-                                                                                <p className="text-[9px] font-bold text-slate-400 uppercase">Frekuensi</p>
-                                                                                <p className="text-xs font-bold text-slate-700">{count}× beli</p>
-                                                                            </div>
-                                                                        </div>
-                                                                        {count > 1 && minNetPrice > 0 && minNetPrice < maxNetPrice && (
-                                                                            <div className="mt-2 pt-2 border-t border-dashed border-slate-200 flex gap-4 text-[10px]">
-                                                                                <span className="text-slate-500">Min: <b className="text-green-700">{formatRupiah(minNetPrice)}</b></span>
-                                                                                <span className="text-slate-500">Max: <b className="text-red-600">{formatRupiah(maxNetPrice)}</b></span>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    )}
                 </div>
                 {/* Modals OUTSIDE z-10 stacking context */}
                 {supplierModalOpen && (
@@ -5854,6 +5676,268 @@
                         </div>
                     </div>
                 )}
+                {/* ===== MODAL KOMPARASI HARGA PBF ===== */}
+                {comparePriceModalOpen && (() => {
+                    // Build comparison data dari semua purchases di toko ini
+                    const itemPbfMap = {};
+                    storePurchases.forEach(purchase => {
+                        const pbfName = purchase.supplier || 'Tanpa PBF';
+                        const purchaseDate = purchase.date ? new Date(purchase.date) : null;
+                        const purchaseDateStr = purchaseDate ? purchaseDate.toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'2-digit' }) : '-';
+                        (purchase.items || []).forEach(item => {
+                            if (!item.name) return;
+                            let effPrice = item.buyPrice || 0;
+                            if (item.discountBeli > 0) effPrice = item.discountBeliType === 'Rp' ? Math.max(0, effPrice - item.discountBeli) : effPrice * (1 - item.discountBeli / 100);
+                            if (item.discountBeli2 > 0) effPrice = item.discountBeliType2 === 'Rp' ? Math.max(0, effPrice - item.discountBeli2) : effPrice * (1 - item.discountBeli2 / 100);
+                            if (item.discountBeli3 > 0) effPrice = item.discountBeliType3 === 'Rp' ? Math.max(0, effPrice - item.discountBeli3) : effPrice * (1 - item.discountBeli3 / 100);
+                            if (!itemPbfMap[item.name]) itemPbfMap[item.name] = {};
+                            if (!itemPbfMap[item.name][pbfName]) {
+                                itemPbfMap[item.name][pbfName] = { lastPrice: effPrice, lastDate: purchaseDate, lastDateStr: purchaseDateStr, count: 0, allPrices: [] };
+                            }
+                            itemPbfMap[item.name][pbfName].count++;
+                            itemPbfMap[item.name][pbfName].allPrices.push(effPrice);
+                            if (!itemPbfMap[item.name][pbfName].lastDate || purchaseDate > itemPbfMap[item.name][pbfName].lastDate) {
+                                itemPbfMap[item.name][pbfName].lastPrice = effPrice;
+                                itemPbfMap[item.name][pbfName].lastDate = purchaseDate;
+                                itemPbfMap[item.name][pbfName].lastDateStr = purchaseDateStr;
+                            }
+                        });
+                    });
+                    // All unique PBF names
+                    const allPbfNames = [...new Set(storePurchases.map(p => p.supplier || 'Tanpa PBF'))].sort();
+                    // Build rows
+                    let rows = Object.keys(itemPbfMap).map(itemName => {
+                        const pbfData = itemPbfMap[itemName];
+                        const prices = Object.values(pbfData).map(d => d.lastPrice).filter(p => p > 0);
+                        const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+                        const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
+                        const selisih = maxPrice - minPrice;
+                        const cheapestPbf = Object.entries(pbfData).filter(([,d]) => d.lastPrice > 0).sort((a,b) => a[1].lastPrice - b[1].lastPrice)[0]?.[0] || null;
+                        return { itemName, pbfData, minPrice, maxPrice, selisih, cheapestPbf, pbfCount: Object.keys(pbfData).length };
+                    });
+                    // Filter
+                    if (compareItemSearch.trim()) {
+                        const q = compareItemSearch.toLowerCase();
+                        rows = rows.filter(r => r.itemName.toLowerCase().includes(q));
+                    }
+                    // Sort
+                    if (compareSortBy === 'name') rows.sort((a,b) => a.itemName.localeCompare(b.itemName));
+                    else if (compareSortBy === 'selisih') rows.sort((a,b) => b.selisih - a.selisih);
+                    else if (compareSortBy === 'pbf') rows.sort((a,b) => b.pbfCount - a.pbfCount);
+                    // Detail item data
+                    const detailItem = compareSelectedItem ? itemPbfMap[compareSelectedItem] : null;
+                    const pbfColors = ['#6d28d9','#0891b2','#059669','#d97706','#dc2626','#7c3aed','#0284c7','#0f766e'];
+                    return (
+                        <div className="fixed inset-0 z-[500] bg-slate-900/70 backdrop-blur-sm flex flex-col" onClick={() => setComparePriceModalOpen(false)}>
+                            <div className="absolute inset-x-0 bottom-0 top-0 flex flex-col" onClick={e => e.stopPropagation()} style={{maxWidth:'100vw'}}>
+                                <div className="flex-1 overflow-hidden flex flex-col bg-white md:rounded-none" style={{height:'100dvh'}}>
+                                    {/* Header */}
+                                    <div style={{background:'linear-gradient(135deg,#5b21b6 0%,#7c3aed 50%,#6d28d9 100%)',padding:'16px 16px 12px'}}>
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-3">
+                                                <button onClick={() => { if (compareSelectedItem) { setCompareSelectedItem(null); } else { setComparePriceModalOpen(false); } }} className="w-9 h-9 rounded-xl flex items-center justify-center" style={{background:'rgba(255,255,255,0.2)'}}>
+                                                    <Icon name={compareSelectedItem ? 'arrow-left' : 'xmark'} className="text-white text-sm" />
+                                                </button>
+                                                <div>
+                                                    <h2 className="font-black text-white text-base leading-tight">{compareSelectedItem ? compareSelectedItem : 'Komparasi Harga PBF'}</h2>
+                                                    <p className="text-violet-200 text-xs">{compareSelectedItem ? 'Riwayat harga per PBF' : `${rows.length} barang · ${allPbfNames.length} PBF`}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {!compareSelectedItem && (
+                                            <div className="flex gap-2">
+                                                <div className="relative flex-1">
+                                                    <Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-xs" style={{color:'rgba(255,255,255,0.6)'}} />
+                                                    <input type="text" value={compareItemSearch} onChange={e => setCompareItemSearch(e.target.value)} placeholder="Cari nama barang..." className="w-full pl-8 pr-3 py-2 rounded-xl text-xs font-medium outline-none border-0" style={{background:'rgba(255,255,255,0.15)',color:'white',fontSize:'12px'}} />
+                                                </div>
+                                                <select value={compareSortBy} onChange={e => setCompareSortBy(e.target.value)} className="rounded-xl px-3 py-2 text-xs font-bold border-0 outline-none" style={{background:'rgba(255,255,255,0.15)',color:'white',fontSize:'11px'}}>
+                                                    <option value="name" style={{color:'#1e293b'}}>A–Z</option>
+                                                    <option value="selisih" style={{color:'#1e293b'}}>Selisih Terbesar</option>
+                                                    <option value="pbf" style={{color:'#1e293b'}}>PBF Terbanyak</option>
+                                                </select>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {/* Body */}
+                                    <div className="flex-1 overflow-y-auto" style={{background:'#f8f7ff'}}>
+                                        {!compareSelectedItem ? (
+                                            rows.length === 0 ? (
+                                                <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                                                    <div className="text-4xl mb-3">📦</div>
+                                                    <p className="text-sm font-bold">{compareItemSearch ? 'Barang tidak ditemukan' : 'Belum ada data faktur'}</p>
+                                                </div>
+                                            ) : (
+                                                <div className="p-3 space-y-2">
+                                                    {/* Legend PBF */}
+                                                    <div className="bg-white rounded-2xl p-3 border border-violet-100 shadow-sm mb-1">
+                                                        <p className="text-[10px] font-black text-violet-700 uppercase tracking-wider mb-2">Daftar PBF</p>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {allPbfNames.map((pbf, i) => (
+                                                                <div key={pbf} className="flex items-center gap-1.5 bg-slate-50 rounded-lg px-2 py-1">
+                                                                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{background: pbfColors[i % pbfColors.length]}}></div>
+                                                                    <span className="text-[11px] font-bold text-slate-700">{pbf}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                    {rows.map((row) => {
+                                                        const pbfEntries = Object.entries(row.pbfData).sort((a,b) => a[1].lastPrice - b[1].lastPrice);
+                                                        const maxP = row.maxPrice || 1;
+                                                        return (
+                                                            <div key={row.itemName} onClick={() => setCompareSelectedItem(row.itemName)} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden cursor-pointer active:scale-[0.99] transition-all hover:border-violet-200 hover:shadow-md">
+                                                                {/* Item header */}
+                                                                <div className="px-4 pt-3 pb-2 flex items-start justify-between gap-2">
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <p className="font-black text-slate-800 text-sm truncate">{row.itemName}</p>
+                                                                        <p className="text-[10px] text-slate-400 font-medium mt-0.5">{row.pbfCount} PBF · selisih {formatRupiah(row.selisih)}</p>
+                                                                    </div>
+                                                                    <div className="flex-shrink-0 flex items-center gap-1 text-violet-500">
+                                                                        <span className="text-[10px] font-bold">Detail</span>
+                                                                        <Icon name="chevron-right" className="text-[10px]" />
+                                                                    </div>
+                                                                </div>
+                                                                {/* Bar chart per PBF */}
+                                                                <div className="px-4 pb-3 space-y-2">
+                                                                    {pbfEntries.map(([pbfName, d], i) => {
+                                                                        const pbfIdx = allPbfNames.indexOf(pbfName);
+                                                                        const color = pbfColors[pbfIdx % pbfColors.length];
+                                                                        const pct = maxP > 0 ? Math.max(8, (d.lastPrice / maxP) * 100) : 8;
+                                                                        const isCheapest = pbfName === row.cheapestPbf && row.pbfCount > 1;
+                                                                        return (
+                                                                            <div key={pbfName}>
+                                                                                <div className="flex items-center justify-between mb-0.5">
+                                                                                    <div className="flex items-center gap-1.5">
+                                                                                        <div className="w-2 h-2 rounded-full" style={{background:color}}></div>
+                                                                                        <span className="text-[11px] font-bold text-slate-600">{pbfName}</span>
+                                                                                        {isCheapest && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full" style={{background:'#dcfce7',color:'#15803d'}}>TERMURAH</span>}
+                                                                                    </div>
+                                                                                    <div className="text-right">
+                                                                                        <span className="text-[12px] font-black" style={{color}}>{formatRupiah(d.lastPrice)}</span>
+                                                                                        <span className="text-[9px] text-slate-400 ml-1">{d.lastDateStr}</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                                                                                    <div className="h-full rounded-full transition-all" style={{width:`${pct}%`,background:color,opacity:0.8}}></div>
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                                {/* Summary row */}
+                                                                {row.pbfCount > 1 && (
+                                                                    <div className="mx-3 mb-3 rounded-xl px-3 py-2 flex items-center justify-between" style={{background:'#f5f3ff'}}>
+                                                                        <div>
+                                                                            <p className="text-[9px] font-black text-violet-500 uppercase tracking-wider">Harga Terbaik</p>
+                                                                            <p className="text-sm font-black text-violet-800">{row.cheapestPbf}</p>
+                                                                        </div>
+                                                                        <div className="text-right">
+                                                                            <p className="text-[9px] font-black text-violet-500 uppercase tracking-wider">Hemat vs Termahal</p>
+                                                                            <p className="text-sm font-black text-green-700">{formatRupiah(row.selisih)}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )
+                                        ) : (
+                                            /* DETAIL VIEW - Riwayat satu barang */
+                                            detailItem && (() => {
+                                                const pbfEntries = Object.entries(detailItem).sort((a,b) => a[1].lastPrice - b[1].lastPrice);
+                                                const minP = Math.min(...pbfEntries.filter(([,d])=>d.lastPrice>0).map(([,d])=>d.lastPrice));
+                                                const maxP = Math.max(...pbfEntries.map(([,d])=>d.lastPrice)) || 1;
+                                                // Build full history from all purchases
+                                                const fullHistory = [];
+                                                storePurchases.forEach(purchase => {
+                                                    const pbfName = purchase.supplier || 'Tanpa PBF';
+                                                    const purchaseDate = purchase.date ? new Date(purchase.date) : null;
+                                                    (purchase.items || []).forEach(item => {
+                                                        if (item.name !== compareSelectedItem) return;
+                                                        let effPrice = item.buyPrice || 0;
+                                                        if (item.discountBeli > 0) effPrice = item.discountBeliType === 'Rp' ? Math.max(0, effPrice - item.discountBeli) : effPrice * (1 - item.discountBeli / 100);
+                                                        if (item.discountBeli2 > 0) effPrice = item.discountBeliType2 === 'Rp' ? Math.max(0, effPrice - item.discountBeli2) : effPrice * (1 - item.discountBeli2 / 100);
+                                                        if (item.discountBeli3 > 0) effPrice = item.discountBeliType3 === 'Rp' ? Math.max(0, effPrice - item.discountBeli3) : effPrice * (1 - item.discountBeli3 / 100);
+                                                        fullHistory.push({ pbf: pbfName, price: effPrice, rawPrice: item.buyPrice || 0, date: purchaseDate, qty: item.qty || 0, invoiceNumber: purchase.invoiceNumber || '-' });
+                                                    });
+                                                });
+                                                fullHistory.sort((a,b) => (b.date||0) - (a.date||0));
+                                                return (
+                                                    <div className="p-3 space-y-3">
+                                                        {/* Summary cards per PBF */}
+                                                        <div className="grid grid-cols-1 gap-2">
+                                                            {pbfEntries.map(([pbfName, d]) => {
+                                                                const pbfIdx = allPbfNames.indexOf(pbfName);
+                                                                const color = pbfColors[pbfIdx % pbfColors.length];
+                                                                const isCheapest = d.lastPrice > 0 && d.lastPrice === minP && pbfEntries.filter(([,x])=>x.lastPrice>0).length > 1;
+                                                                const pct = maxP > 0 ? Math.max(12, (d.lastPrice / maxP) * 100) : 12;
+                                                                const avgPrice = d.allPrices.length > 0 ? d.allPrices.reduce((s,x) => s+x, 0) / d.allPrices.length : 0;
+                                                                return (
+                                                                    <div key={pbfName} className="bg-white rounded-2xl border shadow-sm overflow-hidden" style={{borderColor: isCheapest ? '#86efac' : '#f1f5f9'}}>
+                                                                        <div className="flex items-center gap-3 p-3">
+                                                                            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{background:`${color}18`}}>
+                                                                                <Icon name="building" className="text-sm" style={{color}} />
+                                                                            </div>
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <p className="font-black text-slate-800 text-sm truncate">{pbfName}</p>
+                                                                                    {isCheapest && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full flex-shrink-0" style={{background:'#dcfce7',color:'#15803d'}}>TERMURAH</span>}
+                                                                                </div>
+                                                                                <p className="text-[10px] text-slate-400">{d.count}x dibeli · terakhir {d.lastDateStr}</p>
+                                                                            </div>
+                                                                            <div className="text-right flex-shrink-0">
+                                                                                <p className="font-black text-base" style={{color}}>{formatRupiah(d.lastPrice)}</p>
+                                                                                {d.count > 1 && <p className="text-[10px] text-slate-400">rata² {formatRupiah(Math.round(avgPrice))}</p>}
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="px-3 pb-3">
+                                                                            <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                                                                                <div className="h-full rounded-full" style={{width:`${pct}%`,background:color}}></div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                        {/* Riwayat transaksi */}
+                                                        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                                                            <div className="px-4 py-3 border-b border-slate-100">
+                                                                <p className="font-black text-slate-800 text-sm">Riwayat Pembelian</p>
+                                                                <p className="text-[10px] text-slate-400">{fullHistory.length} transaksi tercatat</p>
+                                                            </div>
+                                                            <div className="divide-y divide-slate-50">
+                                                                {fullHistory.slice(0, 30).map((h, idx) => {
+                                                                    const pbfIdx = allPbfNames.indexOf(h.pbf);
+                                                                    const color = pbfColors[pbfIdx % pbfColors.length];
+                                                                    return (
+                                                                        <div key={idx} className="flex items-center gap-3 px-4 py-3">
+                                                                            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{background:color}}></div>
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <p className="text-xs font-bold text-slate-700 truncate">{h.pbf}</p>
+                                                                                <p className="text-[10px] text-slate-400">{h.date ? h.date.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'2-digit'}) : '-'} · No. {h.invoiceNumber} · {h.qty} unit</p>
+                                                                            </div>
+                                                                            <div className="text-right flex-shrink-0">
+                                                                                <p className="text-sm font-black" style={{color}}>{formatRupiah(h.price)}</p>
+                                                                                {h.rawPrice !== h.price && <p className="text-[9px] text-slate-400 line-through">{formatRupiah(h.rawPrice)}</p>}
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                                {fullHistory.length === 0 && (
+                                                                    <div className="py-8 text-center text-slate-400 text-xs">Tidak ada riwayat</div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
                 </>
             );
         };
