@@ -3729,6 +3729,10 @@
             const [purchaseFilterDateTo, setPurchaseFilterDateTo] = useState('');
             const [purchaseFilterDueDateFrom, setPurchaseFilterDueDateFrom] = useState('');
             const [purchaseFilterDueDateTo, setPurchaseFilterDueDateTo] = useState('');
+            const [purchaseViewMode, setPurchaseViewMode] = useState('faktur');
+            const [priceCompareSearch, setPriceCompareSearch] = useState('');
+            const [priceCompareFilterSupplier, setPriceCompareFilterSupplier] = useState('all');
+            const [priceCompareExpandedItem, setPriceCompareExpandedItem] = useState(null);
             const [filterModalOpen, setFilterModalOpen] = useState(false);
             const [tempFilterStatus, setTempFilterStatus] = useState('all');
             const [tempFilterSupplier, setTempFilterSupplier] = useState('all');
@@ -4152,6 +4156,58 @@
                 });
                 return { totalPurchase, dueSoon, overdue, unpaid, countTotal, countDue, countOverdue, countUnpaid, consignmentTotal, consignmentUnpaid };
             }, [storePurchases]);
+
+            // ===== PRICE COMPARISON DATA =====
+            const priceCompareData = useMemo(() => {
+                const itemMap = {};
+                storePurchases.forEach(purchase => {
+                    const supplier = purchase.supplier || 'Tidak diketahui';
+                    const date = purchase.date ? new Date(purchase.date) : null;
+                    (purchase.items || []).forEach(item => {
+                        const name = (item.name || '').trim();
+                        const netPrice = Number(item.buyPrice || 0);
+                        const listPrice = Number(item.price || 0);
+                        if (!name) return;
+                        if (!itemMap[name]) itemMap[name] = { suppliers: {}, itemId: item.id || null };
+                        if (!itemMap[name].suppliers[supplier]) {
+                            itemMap[name].suppliers[supplier] = {
+                                latestNetPrice: 0, latestListPrice: 0, latestDate: null,
+                                minNetPrice: Infinity, maxNetPrice: 0,
+                                count: 0, totalNetPrice: 0, history: []
+                            };
+                        }
+                        const s = itemMap[name].suppliers[supplier];
+                        s.count++;
+                        if (netPrice > 0) { s.totalNetPrice += netPrice; if (netPrice < s.minNetPrice) s.minNetPrice = netPrice; if (netPrice > s.maxNetPrice) s.maxNetPrice = netPrice; }
+                        if (!s.latestDate || (date && date > s.latestDate)) {
+                            s.latestDate = date;
+                            s.latestNetPrice = netPrice;
+                            s.latestListPrice = listPrice;
+                        }
+                        s.history.push({ date, netPrice, listPrice, invoiceNumber: purchase.invoiceNumber || '' });
+                    });
+                });
+                return itemMap;
+            }, [storePurchases]);
+
+            const allPBFNames = useMemo(() => {
+                return [...new Set(storePurchases.map(p => p.supplier).filter(Boolean))].sort();
+            }, [storePurchases]);
+
+            const priceCompareItems = useMemo(() => {
+                const search = priceCompareSearch.toLowerCase();
+                return Object.entries(priceCompareData)
+                    .filter(([name]) => !search || name.toLowerCase().includes(search))
+                    .filter(([, data]) => priceCompareFilterSupplier === 'all' || data.suppliers[priceCompareFilterSupplier])
+                    .map(([name, data]) => {
+                        const supplierList = Object.entries(data.suppliers).map(([sup, info]) => ({ sup, ...info }));
+                        const validPrices = supplierList.map(s => s.latestNetPrice).filter(p => p > 0);
+                        const cheapestPrice = validPrices.length > 0 ? Math.min(...validPrices) : 0;
+                        const mostExpensive = validPrices.length > 0 ? Math.max(...validPrices) : 0;
+                        return { name, supplierList, cheapestPrice, mostExpensive, supplierCount: supplierList.length };
+                    })
+                    .sort((a, b) => a.name.localeCompare(b.name));
+            }, [priceCompareData, priceCompareSearch, priceCompareFilterSupplier]);
 
             const handleSelectSupplier = (supplier) => { 
                 // Check if there's a draft for this supplier
@@ -4651,18 +4707,28 @@
                         <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-xl border border-indigo-100 shadow-sm flex items-center justify-between"><div><div className="flex items-center gap-2 mb-1"><Icon name="handshake" className="text-indigo-500" /><h4 className="font-bold text-indigo-800 text-xs">Total Konsinyasi Masuk</h4></div><div className="text-lg font-black text-indigo-900">{formatRupiah(stats.consignmentTotal)}</div></div></div>
                         <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-xl border border-indigo-100 shadow-sm flex items-center justify-between"><div><div className="flex items-center gap-2 mb-1"><Icon name="file-invoice-dollar" className="text-purple-500" /><h4 className="font-bold text-purple-800 text-xs">Konsinyasi Belum Bayar</h4></div><div className="text-lg font-black text-purple-900">{formatRupiah(stats.consignmentUnpaid)}</div></div></div>
                     </div>
-                    <div className="flex gap-2 mb-4">
-                        <div className="relative flex-1">
-                            <Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
-                            <input type="text" className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium outline-none focus:ring-2 focus:ring-teal-400 bg-white shadow-sm" placeholder="Cari no. faktur, nama barang, no. batch..." value={purchaseSearch} onChange={e => setPurchaseSearch(e.target.value)} />
-                            {purchaseSearch && <button onClick={() => setPurchaseSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"><Icon name="xmark" /></button>}
-                        </div>
-                        <button onClick={openFilterModal} className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all shadow-sm ${activeFilterCount > 0 ? 'bg-teal-600 border-teal-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
-                            <Icon name="sliders" />
-                            <span>Filter</span>
-
+                    {/* ===== VIEW MODE TABS ===== */}
+                    <div className="flex gap-2 mb-4 border-b border-slate-200 pb-0">
+                        <button onClick={() => setPurchaseViewMode('faktur')} className={`px-4 py-2.5 text-xs font-bold rounded-t-lg transition-all border-b-2 -mb-px ${purchaseViewMode === 'faktur' ? 'border-teal-600 text-teal-700 bg-teal-50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}>
+                            <span className="flex items-center gap-1.5"><Icon name="file-invoice-dollar" /> Daftar Faktur</span>
+                        </button>
+                        <button onClick={() => setPurchaseViewMode('perbandingan')} className={`px-4 py-2.5 text-xs font-bold rounded-t-lg transition-all border-b-2 -mb-px ${purchaseViewMode === 'perbandingan' ? 'border-teal-600 text-teal-700 bg-teal-50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}>
+                            <span className="flex items-center gap-1.5"><Icon name="scale-balanced" /> Perbandingan Harga PBF</span>
                         </button>
                     </div>
+                    {purchaseViewMode === 'faktur' && (<>
+                        <div className="flex gap-2 mb-4">
+                            <div className="relative flex-1">
+                                <Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                                <input type="text" className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium outline-none focus:ring-2 focus:ring-teal-400 bg-white shadow-sm" placeholder="Cari no. faktur, nama barang, no. batch..." value={purchaseSearch} onChange={e => setPurchaseSearch(e.target.value)} />
+                                {purchaseSearch && <button onClick={() => setPurchaseSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"><Icon name="xmark" /></button>}
+                            </div>
+                            <button onClick={openFilterModal} className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all shadow-sm ${activeFilterCount > 0 ? 'bg-teal-600 border-teal-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                                <Icon name="sliders" />
+                                <span>Filter</span>
+                            </button>
+                        </div>
+
                     {/* Filter active chips */}
                     {(purchaseFilterStatus !== 'all' || purchaseFilterSupplier !== 'all' || purchaseFilterPayment !== 'all' || purchaseFilterDateFrom || purchaseFilterDateTo || purchaseFilterDueDateFrom || purchaseFilterDueDateTo) && (
                         <div className="flex flex-wrap gap-2 mb-3">
@@ -4915,6 +4981,123 @@
                             );
                         })}
                     </div>
+                    </>)}
+
+                    {purchaseViewMode === 'perbandingan' && (
+                        <div className="flex-1 overflow-y-auto custom-scrollbar pb-4">
+                            <div className="mb-4 space-y-3">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase">Total Item Terlacak</p>
+                                        <p className="text-xl font-black text-slate-800">{priceCompareItems.length}</p>
+                                    </div>
+                                    <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase">Total PBF</p>
+                                        <p className="text-xl font-black text-teal-600">{allPBFNames.length}</p>
+                                    </div>
+                                </div>
+                                <div className="relative">
+                                    <Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                                    <input type="text" className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium outline-none focus:ring-2 focus:ring-teal-400 bg-white shadow-sm" placeholder="Cari nama barang..." value={priceCompareSearch} onChange={e => setPriceCompareSearch(e.target.value)} />
+                                    {priceCompareSearch && <button onClick={() => setPriceCompareSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"><Icon name="xmark" /></button>}
+                                </div>
+                                <div className="flex gap-2 overflow-x-auto pb-1">
+                                    <button onClick={() => setPriceCompareFilterSupplier('all')} className={`whitespace-nowrap px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all ${priceCompareFilterSupplier === 'all' ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>Semua PBF</button>
+                                    {allPBFNames.map(pbfName => (
+                                        <button key={pbfName} onClick={() => setPriceCompareFilterSupplier(pbfName)} className={`whitespace-nowrap px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all ${priceCompareFilterSupplier === pbfName ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>{pbfName}</button>
+                                    ))}
+                                </div>
+                            </div>
+                            {priceCompareItems.length === 0 ? (
+                                <div className="text-center py-16 text-slate-400">
+                                    <div className="text-4xl mb-3"><Icon name="scale-balanced" /></div>
+                                    <p className="text-sm font-bold">{priceCompareSearch ? 'Tidak ada barang yang cocok.' : 'Belum ada data pembelian.'}</p>
+                                    <p className="text-xs mt-1">Data perbandingan diambil otomatis dari faktur yang sudah dicatat.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {priceCompareItems.map(({ name, supplierList, cheapestPrice, mostExpensive, supplierCount }) => {
+                                        const isExpanded = priceCompareExpandedItem === name;
+                                        const priceDiff = cheapestPrice > 0 && mostExpensive > cheapestPrice ? Math.round((mostExpensive - cheapestPrice) / cheapestPrice * 100) : 0;
+                                        return (
+                                            <div key={name} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                                                <button onClick={() => setPriceCompareExpandedItem(isExpanded ? null : name)} className="w-full text-left p-4 hover:bg-slate-50 transition-colors active:scale-[0.99]">
+                                                    <div className="flex items-start justify-between gap-3 mb-2">
+                                                        <div className="flex-1 min-w-0">
+                                                            <h4 className="font-bold text-slate-800 text-sm leading-tight">{name}</h4>
+                                                            <p className="text-[11px] text-slate-400 mt-0.5">{supplierCount} PBF menyediakan</p>
+                                                        </div>
+                                                        <div className="text-right flex-shrink-0">
+                                                            <p className="text-[10px] text-slate-400">Termurah</p>
+                                                            <p className="font-black text-green-600 text-base leading-tight">{cheapestPrice > 0 ? formatRupiah(cheapestPrice) : '-'}</p>
+                                                            {priceDiff > 0 && <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-1.5 py-0.5 rounded-full font-bold">selisih max {priceDiff}%</span>}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        {[...supplierList].sort((a, b) => (a.latestNetPrice || 999999999) - (b.latestNetPrice || 999999999)).slice(0, 3).map(({ sup, latestNetPrice }) => (
+                                                            <span key={sup} className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${latestNetPrice === cheapestPrice && cheapestPrice > 0 ? 'bg-green-50 text-green-700 border-green-200' : latestNetPrice === mostExpensive && supplierList.length > 1 ? 'bg-red-50 text-red-600 border-red-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                                                                {sup}: {latestNetPrice > 0 ? formatRupiah(latestNetPrice) : '-'}
+                                                            </span>
+                                                        ))}
+                                                        {supplierList.length > 3 && <span className="text-[10px] text-slate-400">+{supplierList.length - 3} lainnya</span>}
+                                                        <span className="ml-auto text-slate-400 text-xs"><Icon name={isExpanded ? 'chevron-up' : 'chevron-down'} /></span>
+                                                    </div>
+                                                </button>
+                                                {isExpanded && (
+                                                    <div className="border-t border-slate-100 bg-slate-50 p-4">
+                                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-3">Detail Perbandingan per PBF</p>
+                                                        <div className="space-y-2">
+                                                            {[...supplierList].sort((a, b) => (a.latestNetPrice || 999999999) - (b.latestNetPrice || 999999999)).map(({ sup, latestNetPrice, latestListPrice, latestDate, minNetPrice, maxNetPrice, count }) => {
+                                                                const isCheapest = latestNetPrice === cheapestPrice && cheapestPrice > 0;
+                                                                const isMostExp = latestNetPrice === mostExpensive && supplierList.length > 1 && mostExpensive > cheapestPrice;
+                                                                const dateStr = latestDate ? new Date(latestDate).toLocaleDateString('id-ID', {day:'numeric',month:'short',year:'numeric'}) : '-';
+                                                                const selisihPct = cheapestPrice > 0 && latestNetPrice > cheapestPrice ? Math.round((latestNetPrice - cheapestPrice) / cheapestPrice * 100) : null;
+                                                                return (
+                                                                    <div key={sup} className={`p-3 rounded-xl border ${isCheapest ? 'bg-green-50 border-green-200' : isMostExp ? 'bg-red-50 border-red-200' : 'bg-white border-slate-200'}`}>
+                                                                        <div className="flex items-center justify-between mb-2">
+                                                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                                                <span className="font-bold text-slate-800 text-xs">{sup}</span>
+                                                                                {isCheapest && <span className="text-[9px] font-black bg-green-600 text-white px-1.5 py-0.5 rounded-full">✓ TERMURAH</span>}
+                                                                                {isMostExp && !isCheapest && <span className="text-[9px] font-bold bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full border border-red-200">TERMAHAL</span>}
+                                                                            </div>
+                                                                            <div className="text-right">
+                                                                                <span className={`font-black text-base ${isCheapest ? 'text-green-700' : isMostExp ? 'text-red-600' : 'text-slate-700'}`}>{latestNetPrice > 0 ? formatRupiah(latestNetPrice) : '-'}</span>
+                                                                                {selisihPct && <span className="ml-1 text-[10px] text-amber-600 font-bold">+{selisihPct}%</span>}
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="grid grid-cols-3 gap-2">
+                                                                            <div>
+                                                                                <p className="text-[9px] font-bold text-slate-400 uppercase">Harga Faktur</p>
+                                                                                <p className="text-xs font-bold text-slate-700">{latestListPrice > 0 ? formatRupiah(latestListPrice) : '-'}</p>
+                                                                            </div>
+                                                                            <div>
+                                                                                <p className="text-[9px] font-bold text-slate-400 uppercase">Terakhir Beli</p>
+                                                                                <p className="text-xs font-bold text-slate-700">{dateStr}</p>
+                                                                            </div>
+                                                                            <div>
+                                                                                <p className="text-[9px] font-bold text-slate-400 uppercase">Frekuensi</p>
+                                                                                <p className="text-xs font-bold text-slate-700">{count}× beli</p>
+                                                                            </div>
+                                                                        </div>
+                                                                        {count > 1 && minNetPrice > 0 && minNetPrice < maxNetPrice && (
+                                                                            <div className="mt-2 pt-2 border-t border-dashed border-slate-200 flex gap-4 text-[10px]">
+                                                                                <span className="text-slate-500">Min: <b className="text-green-700">{formatRupiah(minNetPrice)}</b></span>
+                                                                                <span className="text-slate-500">Max: <b className="text-red-600">{formatRupiah(maxNetPrice)}</b></span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
                 {/* Modals OUTSIDE z-10 stacking context */}
                 {supplierModalOpen && (
