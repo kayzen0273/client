@@ -9391,8 +9391,9 @@
             const handleReturLanjut = () => {
                 const selItems = returItemsState.filter(i => i.checked);
                 if (selItems.length === 0) { showToast('Pilih minimal satu barang untuk diretur', 'error'); return; }
+                if (selItems.some(i => i.returQty === '' || i.returQty < 1)) { showToast('Jumlah retur tidak boleh kosong atau 0', 'error'); return; }
                 if (!returAlasan.trim()) { showToast('Alasan retur wajib diisi', 'error'); return; }
-                const total = selItems.reduce((acc, i) => acc + (i.price * i.returQty), 0);
+                const total = selItems.reduce((acc, i) => acc + (i.price * (parseInt(i.returQty) || 1)), 0);
                 setReturPayMethod('tunai');
                 setReturTotalKembali(String(total));
                 setReturNote('');
@@ -10666,10 +10667,22 @@
                                         <div className="flex items-center gap-1.5 flex-shrink-0">
                                             <input type="number" value={item.returQty} min={1} max={item.maxRetur}
                                                 onChange={e => {
-                                                    const v = Math.min(item.maxRetur, Math.max(1, parseInt(e.target.value) || 1));
+                                                    const raw = e.target.value;
                                                     const next = [...returItemsState];
-                                                    next[idx] = {...next[idx], returQty: v};
+                                                    if (raw === '') {
+                                                        next[idx] = {...next[idx], returQty: ''};
+                                                    } else {
+                                                        const v = Math.min(item.maxRetur, Math.max(1, parseInt(raw) || 1));
+                                                        next[idx] = {...next[idx], returQty: v};
+                                                    }
                                                     setReturItemsState(next);
+                                                }}
+                                                onBlur={() => {
+                                                    if (item.returQty === '' || item.returQty === undefined) {
+                                                        const next = [...returItemsState];
+                                                        next[idx] = {...next[idx], returQty: 1};
+                                                        setReturItemsState(next);
+                                                    }
                                                 }}
                                                 className="w-14 border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold text-slate-800 outline-none focus:border-teal-400"
                                             />
