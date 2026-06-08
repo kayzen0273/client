@@ -9138,7 +9138,7 @@
                 if (!selectedTx) return;
                 setUploadingProof(true);
                 try {
-                    const updates = { paymentNote: editTransferForm.keterangan };
+                    const updates = { catatanPembayaran: editTransferForm.keterangan, paymentNote: editTransferForm.keterangan };
                     if (editTransferForm.proofChanged) updates.paymentProofImage = editTransferForm.proofImage;
                     const txRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'transactions', selectedTx.id);
                     await window.updateDoc(txRef, updates);
@@ -10208,7 +10208,7 @@
                                 <div className="flex items-center justify-between mb-1">
                                     <p className="tx-section-title" style={{marginBottom:0}}>Pembayaran</p>
                                     {(selectedTx.paymentMethod === 'transfer' || selectedTx.paymentMethod === 'qris') && (
-                                        <button onClick={() => { setEditTransferForm({ keterangan: selectedTx.paymentNote || '', proofImage: selectedTx.paymentProofImage || null, proofChanged: false }); setShowEditTransferPage(true); }} className="flex items-center gap-1 text-teal-600 text-sm font-bold hover:bg-teal-50 px-2 py-1 rounded-lg transition-colors">
+                                        <button onClick={() => { setEditTransferForm({ keterangan: selectedTx.catatanPembayaran || selectedTx.paymentNote || '', proofImage: selectedTx.paymentProofImage || null, proofChanged: false }); setShowEditTransferPage(true); }} className="flex items-center gap-1 text-teal-600 text-sm font-bold hover:bg-teal-50 px-2 py-1 rounded-lg transition-colors">
                                             <Icon name="pen" className="text-xs" /> Edit
                                         </button>
                                     )}
@@ -10221,7 +10221,7 @@
                                     </div>
                                     <div className="tx-detail-row">
                                         <span className="tx-detail-label">Catatan</span>
-                                        <span className="tx-detail-value">{selectedTx.paymentNote || '-'}</span>
+                                        <span className="tx-detail-value">{selectedTx.catatanPembayaran || selectedTx.paymentNote || '-'}</span>
                                     </div>
                                     <div className="tx-detail-row">
                                         <span className="tx-detail-label">Bukti transfer</span>
