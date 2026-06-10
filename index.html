@@ -4691,26 +4691,45 @@
                 <>
                 <div className="fade-in pb-20 md:pb-0 h-full flex flex-col relative z-10">
                      
-                     <header className="mb-6 flex items-center justify-between"><div><h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Faktur Pembelian</h2><p className="text-slate-500 text-xs mt-1">{isAllStores ? 'Semua toko — lihat saja' : 'Kelola tagihan supplier'}</p></div><div className="flex gap-2"><button className="hidden md:flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-600 font-bold text-xs hover:bg-slate-50 transition-all shadow-sm"><Icon name="download" /> Unduh Laporan</button>{!readOnly && !isAllStores && <button onClick={() => setSupplierModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-xl font-bold text-xs hover:bg-teal-700 transition-all shadow-lg shadow-teal-200 active:scale-95"><Icon name="plus" /> Catat Faktur</button>}</div></header>
-                    {isAllStores && <div className="mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-700 font-medium flex items-center gap-2"><Icon name="circle-info" /> Mode Semua Toko — data dari semua toko ditampilkan. Untuk input faktur baru, pilih toko spesifik.</div>}
-
-                    {/* ── Tab Navigation ── */}
-                    <div className="flex gap-1 mb-5 bg-slate-100 p-1 rounded-xl flex-shrink-0">
-                        <button
-                            onClick={() => setPurchaseMainView('faktur')}
-                            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all ${purchaseMainView === 'faktur' ? 'bg-white text-teal-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                            <Icon name="file-invoice" /> Daftar Faktur
-                        </button>
-                        <button
-                            onClick={() => { setPurchaseMainView('perbandingan'); setPriceSearchQuery(''); }}
-                            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all ${purchaseMainView === 'perbandingan' ? 'bg-white text-teal-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                            <Icon name="scale-balanced" />
-                            <span>Perbandingan Harga PBF</span>
-                            {priceComparisonData.length > 0 && <span className={`ml-1 text-[9px] font-black px-1.5 py-0.5 rounded-full ${purchaseMainView === 'perbandingan' ? 'bg-teal-100 text-teal-700' : 'bg-slate-200 text-slate-500'}`}>{priceComparisonData.length}</span>}
-                        </button>
-                    </div>
+                     {/* ── Header Kondisional: Faktur vs Subpage Perbandingan ── */}
+                     {purchaseMainView === 'faktur' ? (
+                        <header className="mb-6 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Faktur Pembelian</h2>
+                                <p className="text-slate-500 text-xs mt-1">{isAllStores ? 'Semua toko — lihat saja' : 'Kelola tagihan supplier'}</p>
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => { setPurchaseMainView('perbandingan'); setPriceSearchQuery(''); }}
+                                    className="flex items-center gap-1.5 px-3 py-2 bg-teal-50 border border-teal-200 text-teal-700 rounded-xl font-bold text-xs hover:bg-teal-100 transition-all shadow-sm active:scale-95"
+                                    title="Perbandingan Harga PBF"
+                                >
+                                    <Icon name="scale-balanced" />
+                                    <span className="hidden sm:inline">Perbandingan PBF</span>
+                                    {priceComparisonData.length > 0 && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-teal-200 text-teal-800">{priceComparisonData.length}</span>}
+                                </button>
+                                <button className="hidden md:flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-600 font-bold text-xs hover:bg-slate-50 transition-all shadow-sm"><Icon name="download" /> Unduh Laporan</button>
+                                {!readOnly && !isAllStores && <button onClick={() => setSupplierModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-xl font-bold text-xs hover:bg-teal-700 transition-all shadow-lg shadow-teal-200 active:scale-95"><Icon name="plus" /> Catat Faktur</button>}
+                            </div>
+                        </header>
+                     ) : (
+                        <header className="mb-5 flex items-center gap-3 flex-shrink-0">
+                            <button
+                                onClick={() => setPurchaseMainView('faktur')}
+                                className="flex items-center gap-1 px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold text-xs hover:bg-slate-50 transition-all shadow-sm active:scale-95 flex-shrink-0"
+                            >
+                                <Icon name="chevron-left" /> Kembali
+                            </button>
+                            <div className="min-w-0">
+                                <h2 className="text-xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
+                                    <Icon name="scale-balanced" className="text-teal-600" />
+                                    Perbandingan Harga PBF
+                                </h2>
+                                <p className="text-slate-500 text-xs mt-0.5 truncate">Bandingkan harga dari berbagai PBF / supplier</p>
+                            </div>
+                        </header>
+                     )}
+                    {isAllStores && purchaseMainView === 'faktur' && <div className="mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-700 font-medium flex items-center gap-2"><Icon name="circle-info" /> Mode Semua Toko — data dari semua toko ditampilkan. Untuk input faktur baru, pilih toko spesifik.</div>}
 
                     {purchaseMainView === 'faktur' && <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                          <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm relative overflow-hidden"><h4 className="font-bold text-slate-800 text-xs mb-1">Total Pembelian</h4><div className="text-xl font-black text-slate-800 mb-1">{formatRupiah(stats.totalPurchase)}</div><p className="text-[10px] text-slate-400">{stats.countTotal} faktur tercatat</p></div>
