@@ -4237,6 +4237,34 @@
                     const dateStr = `${String(now.getDate()).padStart(2,'0')}-${String(now.getMonth()+1).padStart(2,'0')}-${now.getFullYear()}`;
                     const totalPBF = [...new Set(storePurchases.map(p => p.supplier).filter(Boolean))].length;
 
+                    // ── Definisi border yang dipakai berulang ──
+                    const bThin   = c => ({ style: 'thin',   color: { argb: c } });
+                    const bMedium = c => ({ style: 'medium', color: { argb: c } });
+
+                    // Border tipis antar sel dalam satu grup
+                    const innerBorder = {
+                        top:    bThin('FFA0AEC0'),
+                        left:   bThin('FFA0AEC0'),
+                        bottom: bThin('FFA0AEC0'),
+                        right:  bThin('FFA0AEC0'),
+                    };
+                    // Border tebal di sisi luar tabel & pemisah antar grup barang
+                    const outerV  = bMedium('FF475569'); // kiri/kanan luar tabel
+                    const groupSep = bMedium('FF475569'); // bawah baris terakhir setiap grup
+
+                    // Helper: pasang border ke baris (semua 6 kolom, termasuk sel kosong)
+                    const applyBorder = (row, borderObj, overrides = {}) => {
+                        for (let c = 1; c <= 6; c++) {
+                            const cell = row.getCell(c);
+                            cell.border = {
+                                ...borderObj,
+                                left:  c === 1 ? outerV : (overrides.left  || borderObj.left),
+                                right: c === 6 ? outerV : (overrides.right || borderObj.right),
+                                ...(overrides.bottom ? { bottom: overrides.bottom } : {}),
+                            };
+                        }
+                    };
+
                     // ── Baris Judul ──
                     sheet.mergeCells('A1:F1');
                     const titleCell = sheet.getCell('A1');
@@ -4244,6 +4272,12 @@
                     titleCell.font = { bold: true, size: 14, color: { argb: 'FF0F172A' } };
                     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
                     titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
+                    titleCell.border = {
+                        top:    bMedium('FF475569'),
+                        left:   bMedium('FF475569'),
+                        bottom: bThin('FFA0AEC0'),
+                        right:  bMedium('FF475569'),
+                    };
                     sheet.getRow(1).height = 32;
 
                     // ── Baris Info ──
@@ -4254,6 +4288,12 @@
                     infoCell.font = { italic: true, size: 9, color: { argb: 'FF475569' } };
                     infoCell.alignment = { horizontal: 'center', vertical: 'middle' };
                     infoCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDF4' } };
+                    infoCell.border = {
+                        top:    bThin('FFA0AEC0'),
+                        left:   bMedium('FF475569'),
+                        bottom: bMedium('FF475569'),
+                        right:  bMedium('FF475569'),
+                    };
                     sheet.getRow(2).height = 16;
 
                     sheet.addRow([]);
@@ -4261,24 +4301,28 @@
                     // ── Header Kolom ──
                     const hRow = sheet.addRow(['No', 'Nama Barang', 'PBF / Supplier', 'Harga Beli', 'Selisih vs Termurah', 'Keterangan']);
                     hRow.height = 24;
-                    hRow.eachCell(cell => {
+                    for (let c = 1; c <= 6; c++) {
+                        const cell = hRow.getCell(c);
                         cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
                         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
                         cell.alignment = { horizontal: 'center', vertical: 'middle' };
                         cell.border = {
-                            top:    { style: 'thin', color: { argb: 'FF0F766E' } },
-                            left:   { style: 'thin', color: { argb: 'FF0F766E' } },
-                            bottom: { style: 'thin', color: { argb: 'FF0F766E' } },
-                            right:  { style: 'thin', color: { argb: 'FF0F766E' } },
+                            top:    bMedium('FF0F766E'),
+                            left:   c === 1 ? bMedium('FF0F766E') : bThin('FF0F766E'),
+                            bottom: bMedium('FF0F766E'),
+                            right:  c === 6 ? bMedium('FF0F766E') : bThin('FF0F766E'),
                         };
-                    });
+                    }
 
                     // ── Baris Data ──
                     filteredPriceData.forEach((item, itemIdx) => {
+                        const totalRows  = item.rows.length;
+                        const evenItem   = itemIdx % 2 === 0;
+
                         item.rows.forEach((row, rowIdx) => {
                             const isFirst   = rowIdx === 0;
+                            const isLast    = rowIdx === totalRows - 1;
                             const isCheap   = row.isCheapest;
-                            const evenItem  = itemIdx % 2 === 0;
                             const rowBg     = isCheap ? 'FFD1FAE5' : (evenItem ? 'FFFFFFFF' : 'FFF8FAFC');
 
                             const r = sheet.addRow([
@@ -4290,38 +4334,29 @@
                                 isCheap ? '★ Termurah' : '',
                             ]);
 
-                            r.eachCell((cell, colNum) => {
+                            // Terapkan border & fill ke SEMUA 6 kolom (termasuk sel kosong)
+                            for (let c = 1; c <= 6; c++) {
+                                const cell = r.getCell(c);
                                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
-                                cell.border = {
-                                    top:    { style: 'hair', color: { argb: 'FFE2E8F0' } },
-                                    left:   { style: 'hair', color: { argb: 'FFE2E8F0' } },
-                                    bottom: { style: 'hair', color: { argb: 'FFE2E8F0' } },
-                                    right:  { style: 'hair', color: { argb: 'FFE2E8F0' } },
-                                };
                                 cell.alignment = {
-                                    horizontal: (colNum === 2 || colNum === 3) ? 'left' : 'center',
+                                    horizontal: (c === 2 || c === 3) ? 'left' : 'center',
                                     vertical: 'middle',
                                 };
-                            });
+                                cell.border = {
+                                    top:    isFirst ? bThin('FF64748B') : bThin('FFA0AEC0'),
+                                    bottom: isLast  ? groupSep          : bThin('FFA0AEC0'),
+                                    left:   c === 1 ? outerV             : bThin('FFA0AEC0'),
+                                    right:  c === 6 ? outerV             : bThin('FFA0AEC0'),
+                                };
+                            }
 
-                            // No urut
+                            // Font per kolom
                             if (isFirst) r.getCell(1).font = { bold: true, color: { argb: 'FF94A3B8' } };
-                            // Nama barang
                             if (isFirst) r.getCell(2).font = { bold: true, color: { argb: 'FF0F172A' } };
-                            // Supplier
-                            r.getCell(3).font = isCheap
-                                ? { bold: true, color: { argb: 'FF0D9488' } }
-                                : { color: { argb: 'FF475569' } };
-                            // Harga beli
+                            r.getCell(3).font = isCheap ? { bold: true, color: { argb: 'FF0D9488' } } : { color: { argb: 'FF475569' } };
                             r.getCell(4).numFmt = '"Rp"#,##0';
-                            r.getCell(4).font = isCheap
-                                ? { bold: true, color: { argb: 'FF0D9488' } }
-                                : { color: { argb: 'FF334155' } };
-                            // Selisih
-                            r.getCell(5).font = isCheap
-                                ? { color: { argb: 'FF94A3B8' } }
-                                : { bold: true, color: { argb: 'FFEF4444' } };
-                            // Keterangan
+                            r.getCell(4).font = isCheap ? { bold: true, color: { argb: 'FF0D9488' } } : { color: { argb: 'FF334155' } };
+                            r.getCell(5).font = isCheap ? { color: { argb: 'FF94A3B8' } } : { bold: true, color: { argb: 'FFEF4444' } };
                             if (isCheap) r.getCell(6).font = { bold: true, color: { argb: 'FF0D9488' } };
                         });
                     });
@@ -4330,9 +4365,16 @@
                     sheet.addRow([]);
                     const summRow = sheet.addRow(['', `Total: ${filteredPriceData.length} jenis barang dari ${totalPBF} PBF terdaftar`, '', '', '', '']);
                     sheet.mergeCells(`A${summRow.number}:F${summRow.number}`);
-                    summRow.getCell(1).font = { italic: true, size: 9, color: { argb: 'FF64748B' } };
-                    summRow.getCell(1).alignment = { horizontal: 'center' };
-                    summRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDF4' } };
+                    const sCell = summRow.getCell(1);
+                    sCell.font      = { italic: true, size: 9, color: { argb: 'FF64748B' } };
+                    sCell.alignment = { horizontal: 'center', vertical: 'middle' };
+                    sCell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDF4' } };
+                    sCell.border    = {
+                        top:    bThin('FFA0AEC0'),
+                        left:   bMedium('FF475569'),
+                        bottom: bMedium('FF475569'),
+                        right:  bMedium('FF475569'),
+                    };
 
                     // ── Download ──
                     const buffer = await workbook.xlsx.writeBuffer();
