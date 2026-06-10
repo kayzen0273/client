@@ -3747,6 +3747,8 @@
             ].filter(Boolean).length;
             const [purchaseMainView, setPurchaseMainView] = useState('faktur');
             const [priceSearchQuery, setPriceSearchQuery] = useState('');
+            const PBF_PAGE_SIZE = 25;
+            const [pbfPage, setPbfPage] = useState(1);
             const openFilterModal = () => {
                 setTempFilterStatus(purchaseFilterStatus);
                 setTempFilterSupplier(purchaseFilterSupplier);
@@ -4204,6 +4206,11 @@
                     item.rows.some(r => r.supplier.toLowerCase().includes(q))
                 );
             }, [priceComparisonData, priceSearchQuery]);
+
+            // Reset page ke 1 saat search berubah
+            useEffect(() => { setPbfPage(1); }, [priceSearchQuery]);
+            const pbfTotalPages = Math.max(1, Math.ceil(filteredPriceData.length / PBF_PAGE_SIZE));
+            const paginatedPriceData = filteredPriceData.slice((pbfPage - 1) * PBF_PAGE_SIZE, pbfPage * PBF_PAGE_SIZE);
 
             const handleSelectSupplier = (supplier) => { 
                 // Check if there's a draft for this supplier
@@ -4700,7 +4707,7 @@
                             </div>
                             <div className="flex gap-2">
                                 <button
-                                    onClick={() => { setPurchaseMainView('perbandingan'); setPriceSearchQuery(''); }}
+                                    onClick={() => { setPurchaseMainView('perbandingan'); setPriceSearchQuery(''); setPbfPage(1); }}
                                     className="flex items-center gap-1.5 px-3 py-2 bg-teal-50 border border-teal-200 text-teal-700 rounded-xl font-bold text-xs hover:bg-teal-100 transition-all shadow-sm active:scale-95"
                                     title="Perbandingan Harga PBF"
                                 >
@@ -4967,13 +4974,16 @@
                                         <div className="text-center py-12 text-slate-400 text-xs">
                                             {priceSearchQuery ? 'Tidak ada barang yang cocok dengan pencarian.' : 'Belum ada data pembelian untuk dibandingkan.'}
                                         </div>
-                                    ) : filteredPriceData.map((item) => (
+                                    ) : paginatedPriceData.map((item, idx) => (
                                         <div key={item.itemName} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
                                             {/* Header kartu barang */}
                                             <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-start justify-between gap-2">
-                                                <div className="min-w-0">
-                                                    <h4 className="font-bold text-slate-800 text-sm leading-tight">{item.itemName}</h4>
-                                                    <p className="text-[10px] text-slate-400 mt-0.5 font-medium">Termurah: <span className="text-teal-600 font-bold">{formatRupiah(item.cheapestPrice)}</span></p>
+                                                <div className="flex items-start gap-2.5 min-w-0">
+                                                    <span className="text-xs font-bold text-slate-400 mt-0.5 flex-shrink-0">{(pbfPage - 1) * PBF_PAGE_SIZE + idx + 1}</span>
+                                                    <div className="min-w-0">
+                                                        <h4 className="font-bold text-slate-800 text-sm leading-tight">{item.itemName}</h4>
+                                                        <p className="text-[10px] text-slate-400 mt-0.5 font-medium">Termurah: <span className="text-teal-600 font-bold">{formatRupiah(item.cheapestPrice)}</span></p>
+                                                    </div>
                                                 </div>
                                                 <div className="flex items-center gap-1.5 flex-shrink-0">
                                                     <span className="text-[10px] font-bold text-slate-500 bg-white border border-slate-200 px-2 py-1 rounded-lg whitespace-nowrap">{item.pbfCount} PBF</span>
@@ -5026,6 +5036,28 @@
                                             </div>
                                         </div>
                                     ))}
+                                    {/* Pagination Controls */}
+                                    {filteredPriceData.length > 0 && (
+                                        <div className="flex items-center justify-center gap-2 pt-1 pb-3">
+                                            <button
+                                                onClick={() => setPbfPage(p => Math.max(1, p - 1))}
+                                                disabled={pbfPage === 1}
+                                                className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all active:scale-95 ${pbfPage === 1 ? 'border-slate-100 text-slate-300 bg-slate-50 cursor-not-allowed' : 'border-slate-200 text-slate-500 bg-white hover:bg-teal-50 hover:border-teal-300 hover:text-teal-600 shadow-sm'}`}
+                                            >
+                                                <Icon name="chevron-left" className="text-xs" />
+                                            </button>
+                                            <span className="text-xs font-bold text-slate-500 px-2">
+                                                {pbfPage} dari {pbfTotalPages}
+                                            </span>
+                                            <button
+                                                onClick={() => setPbfPage(p => Math.min(pbfTotalPages, p + 1))}
+                                                disabled={pbfPage === pbfTotalPages}
+                                                className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all active:scale-95 ${pbfPage === pbfTotalPages ? 'border-slate-100 text-slate-300 bg-slate-50 cursor-not-allowed' : 'border-slate-200 text-slate-500 bg-white hover:bg-teal-50 hover:border-teal-300 hover:text-teal-600 shadow-sm'}`}
+                                            >
+                                                <Icon name="chevron-right" className="text-xs" />
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </>
                         ) : (
