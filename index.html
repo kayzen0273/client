@@ -3747,6 +3747,8 @@
             ].filter(Boolean).length;
             const [purchaseMainView, setPurchaseMainView] = useState('faktur');
             const [priceSearchQuery, setPriceSearchQuery] = useState('');
+            const PBF_PAGE_SIZE = 25;
+            const [pbfPage, setPbfPage] = useState(1);
             const openFilterModal = () => {
                 setTempFilterStatus(purchaseFilterStatus);
                 setTempFilterSupplier(purchaseFilterSupplier);
@@ -4205,177 +4207,10 @@
                 );
             }, [priceComparisonData, priceSearchQuery]);
 
-            // ── Download Perbandingan Harga PBF ke Excel ──
-            const [pbfExcelLoading, setPbfExcelLoading] = React.useState(false);
-            const downloadPBFExcel = async () => {
-                if (filteredPriceData.length === 0) return;
-                setPbfExcelLoading(true);
-                try {
-                    const workbook = new ExcelJS.Workbook();
-                    workbook.creator = 'Sistem Kasir Husna';
-                    workbook.created = new Date();
-                    const sheet = workbook.addWorksheet('Perbandingan Harga PBF', {
-                        pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true }
-                    });
-
-                    sheet.columns = [
-                        { key: 'no',      width: 5  },
-                        { key: 'barang',  width: 38 },
-                        { key: 'pbf',     width: 28 },
-                        { key: 'harga',   width: 20 },
-                        { key: 'selisih', width: 22 },
-                        { key: 'status',  width: 16 },
-                    ];
-
-                    const teal   = 'FF0F766E';
-                    const tealBg = 'FFE6FFFA';
-                    const tealLt = 'FFF0FDFA';
-                    const white  = 'FFFFFFFF';
-                    const slate8 = 'FF1E293B';
-                    const slate5 = 'FF64748B';
-                    const slate2 = 'FFE2E8F0';
-                    const red    = 'FFDC2626';
-                    const green  = 'FF059669';
-
-                    const applyBorder = (row, style = 'thin', color = slate2) => {
-                        row.eachCell({ includeEmpty: true }, cell => {
-                            cell.border = {
-                                top:    { style, color: { argb: color } },
-                                bottom: { style, color: { argb: color } },
-                                left:   { style, color: { argb: color } },
-                                right:  { style, color: { argb: color } },
-                            };
-                        });
-                    };
-
-                    // ── Judul utama ──
-                    const titleRow = sheet.addRow(['', 'PERBANDINGAN HARGA PBF / SUPPLIER']);
-                    sheet.mergeCells(`B${titleRow.number}:F${titleRow.number}`);
-                    titleRow.height = 32;
-                    titleRow.getCell('B').font = { bold: true, size: 16, color: { argb: teal }, name: 'Arial' };
-                    titleRow.getCell('B').alignment = { horizontal: 'left', vertical: 'middle' };
-
-                    // ── Subjudul / info ──
-                    const tanggal = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-                    const infoRow = sheet.addRow(['', `Dicetak: ${tanggal}   |   ${filteredPriceData.length} jenis barang   |   ${[...new Set(storePurchases.map(p => p.supplier).filter(Boolean))].length} PBF terdaftar${priceSearchQuery ? `   |   Filter: "${priceSearchQuery}"` : ''}`]);
-                    sheet.mergeCells(`B${infoRow.number}:F${infoRow.number}`);
-                    infoRow.height = 18;
-                    infoRow.getCell('B').font = { size: 9, color: { argb: slate5 }, name: 'Arial' };
-                    infoRow.getCell('B').alignment = { horizontal: 'left', vertical: 'middle' };
-
-                    sheet.addRow([]); // spacer
-
-                    // ── Data per item ──
-                    filteredPriceData.forEach((item) => {
-                        // Card header - nama barang
-                        const cardRow = sheet.addRow([
-                            '', item.itemName,
-                            `${item.pbfCount} PBF`,
-                            `Termurah: Rp ${item.cheapestPrice.toLocaleString('id-ID')}`,
-                            item.pbfCount > 1 ? `Hemat: Rp ${(item.maxPrice - item.cheapestPrice).toLocaleString('id-ID')}` : '',
-                            ''
-                        ]);
-                        cardRow.height = 22;
-                        cardRow.eachCell({ includeEmpty: true }, cell => {
-                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: tealLt } };
-                            cell.border = {
-                                top:    { style: 'medium', color: { argb: teal } },
-                                bottom: { style: 'thin',   color: { argb: 'FF99F6E4' } },
-                                left:   { style: 'thin',   color: { argb: 'FFCCFBF1' } },
-                                right:  { style: 'thin',   color: { argb: 'FFCCFBF1' } },
-                            };
-                        });
-                        cardRow.getCell('B').font = { bold: true, size: 11, color: { argb: slate8 }, name: 'Arial' };
-                        cardRow.getCell('B').alignment = { vertical: 'middle' };
-                        cardRow.getCell('C').font = { bold: true, size: 9, color: { argb: slate5 }, name: 'Arial' };
-                        cardRow.getCell('C').alignment = { horizontal: 'center', vertical: 'middle' };
-                        cardRow.getCell('D').font = { bold: true, size: 9, color: { argb: teal }, name: 'Arial' };
-                        cardRow.getCell('D').alignment = { horizontal: 'right', vertical: 'middle' };
-                        cardRow.getCell('E').font = { bold: true, size: 9, color: { argb: green }, name: 'Arial' };
-                        cardRow.getCell('E').alignment = { horizontal: 'right', vertical: 'middle' };
-
-                        // Sub-header kolom
-                        const hdrRow = sheet.addRow(['No', 'Nama Barang', 'PBF / Supplier', 'Harga Beli (Rp)', 'Selisih vs Termurah', 'Status']);
-                        hdrRow.height = 18;
-                        hdrRow.eachCell({ includeEmpty: true }, cell => {
-                            cell.fill   = { type: 'pattern', pattern: 'solid', fgColor: { argb: teal } };
-                            cell.font   = { bold: true, size: 9, color: { argb: white }, name: 'Arial' };
-                            cell.border = {
-                                top:    { style: 'thin', color: { argb: teal } },
-                                bottom: { style: 'thin', color: { argb: teal } },
-                                left:   { style: 'thin', color: { argb: teal } },
-                                right:  { style: 'thin', color: { argb: teal } },
-                            };
-                        });
-                        hdrRow.getCell('A').alignment = { horizontal: 'center', vertical: 'middle' };
-                        hdrRow.getCell('B').alignment = { horizontal: 'left',   vertical: 'middle' };
-                        hdrRow.getCell('C').alignment = { horizontal: 'left',   vertical: 'middle' };
-                        hdrRow.getCell('D').alignment = { horizontal: 'right',  vertical: 'middle' };
-                        hdrRow.getCell('E').alignment = { horizontal: 'right',  vertical: 'middle' };
-                        hdrRow.getCell('F').alignment = { horizontal: 'center', vertical: 'middle' };
-
-                        // Baris data PBF
-                        item.rows.forEach((row, rIdx) => {
-                            const isCheap  = row.isCheapest;
-                            const bgArgb   = isCheap ? tealBg : white;
-                            const fgArgb   = isCheap ? teal   : slate8;
-                            const dataRow  = sheet.addRow([
-                                rIdx + 1,
-                                item.itemName,
-                                row.supplier,
-                                row.price,
-                                isCheap ? '' : row.selisih,
-                                isCheap ? '★ Termurah' : `+Rp ${row.selisih.toLocaleString('id-ID')}`
-                            ]);
-                            dataRow.height = 17;
-                            dataRow.eachCell({ includeEmpty: true }, cell => {
-                                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgArgb } };
-                                cell.border = {
-                                    top:    { style: 'hair', color: { argb: slate2 } },
-                                    bottom: { style: 'hair', color: { argb: slate2 } },
-                                    left:   { style: 'thin', color: { argb: slate2 } },
-                                    right:  { style: 'thin', color: { argb: slate2 } },
-                                };
-                                cell.font = { size: 9, color: { argb: fgArgb }, bold: isCheap, name: 'Arial' };
-                            });
-                            dataRow.getCell('A').alignment = { horizontal: 'center', vertical: 'middle' };
-                            dataRow.getCell('B').alignment = { horizontal: 'left',   vertical: 'middle' };
-                            dataRow.getCell('C').alignment = { horizontal: 'left',   vertical: 'middle' };
-                            dataRow.getCell('D').numFmt = '#,##0';
-                            dataRow.getCell('D').alignment = { horizontal: 'right',  vertical: 'middle' };
-                            dataRow.getCell('E').numFmt = '#,##0';
-                            dataRow.getCell('E').alignment = { horizontal: 'right',  vertical: 'middle' };
-                            if (!isCheap) dataRow.getCell('E').font = { size: 9, color: { argb: red }, name: 'Arial' };
-                            dataRow.getCell('F').alignment = { horizontal: 'center', vertical: 'middle' };
-                            if (isCheap) dataRow.getCell('F').font = { bold: true, size: 9, color: { argb: teal }, name: 'Arial' };
-                        });
-
-                        sheet.addRow([]); // jarak antar item
-                    });
-
-                    // ── Footer ──
-                    sheet.addRow([]);
-                    const footerRow = sheet.addRow(['', `Digenerate otomatis oleh Sistem Kasir Husna — ${new Date().toLocaleString('id-ID')}`]);
-                    sheet.mergeCells(`B${footerRow.number}:F${footerRow.number}`);
-                    footerRow.getCell('B').font = { size: 8, italic: true, color: { argb: 'FF94A3B8' }, name: 'Arial' };
-
-                    // ── Ekspor ──
-                    const buffer = await workbook.xlsx.writeBuffer();
-                    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-                    const url  = URL.createObjectURL(blob);
-                    const a    = document.createElement('a');
-                    a.href     = url;
-                    const tgl  = new Date().toLocaleDateString('id-ID').replace(/\//g, '-');
-                    a.download = `Perbandingan_Harga_PBF_${tgl}.xlsx`;
-                    a.click();
-                    URL.revokeObjectURL(url);
-                } catch(err) {
-                    console.error('Export Excel gagal:', err);
-                    alert('Gagal mengekspor Excel. Pastikan library ExcelJS sudah termuat.');
-                } finally {
-                    setPbfExcelLoading(false);
-                }
-            };
+            // Reset page ke 1 saat search berubah
+            useEffect(() => { setPbfPage(1); }, [priceSearchQuery]);
+            const pbfTotalPages = Math.max(1, Math.ceil(filteredPriceData.length / PBF_PAGE_SIZE));
+            const paginatedPriceData = filteredPriceData.slice((pbfPage - 1) * PBF_PAGE_SIZE, pbfPage * PBF_PAGE_SIZE);
 
             const handleSelectSupplier = (supplier) => { 
                 // Check if there's a draft for this supplier
@@ -4872,7 +4707,7 @@
                             </div>
                             <div className="flex gap-2">
                                 <button
-                                    onClick={() => { setPurchaseMainView('perbandingan'); setPriceSearchQuery(''); }}
+                                    onClick={() => { setPurchaseMainView('perbandingan'); setPriceSearchQuery(''); setPbfPage(1); }}
                                     className="flex items-center gap-1.5 px-3 py-2 bg-teal-50 border border-teal-200 text-teal-700 rounded-xl font-bold text-xs hover:bg-teal-100 transition-all shadow-sm active:scale-95"
                                     title="Perbandingan Harga PBF"
                                 >
@@ -4892,24 +4727,13 @@
                             >
                                 <Icon name="chevron-left" /> Kembali
                             </button>
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-0">
                                 <h2 className="text-xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
                                     <Icon name="scale-balanced" className="text-teal-600" />
                                     Perbandingan Harga PBF
                                 </h2>
                                 <p className="text-slate-500 text-xs mt-0.5 truncate">Bandingkan harga dari berbagai PBF / supplier</p>
                             </div>
-                            <button
-                                onClick={downloadPBFExcel}
-                                disabled={pbfExcelLoading || filteredPriceData.length === 0}
-                                title="Download perbandingan harga sebagai file Excel"
-                                className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold text-xs transition-all shadow-md shadow-emerald-200 active:scale-95 flex-shrink-0"
-                            >
-                                {pbfExcelLoading
-                                    ? <><Icon name="spinner" className="text-xs animate-spin" /><span className="hidden sm:inline">Menyiapkan...</span></>
-                                    : <><Icon name="file-excel" className="text-sm" /><span className="hidden sm:inline">Download Excel</span><span className="sm:hidden">Excel</span></>
-                                }
-                            </button>
                         </header>
                      )}
                     {isAllStores && purchaseMainView === 'faktur' && <div className="mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-700 font-medium flex items-center gap-2"><Icon name="circle-info" /> Mode Semua Toko — data dari semua toko ditampilkan. Untuk input faktur baru, pilih toko spesifik.</div>}
@@ -5150,13 +4974,16 @@
                                         <div className="text-center py-12 text-slate-400 text-xs">
                                             {priceSearchQuery ? 'Tidak ada barang yang cocok dengan pencarian.' : 'Belum ada data pembelian untuk dibandingkan.'}
                                         </div>
-                                    ) : filteredPriceData.map((item) => (
+                                    ) : paginatedPriceData.map((item, idx) => (
                                         <div key={item.itemName} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
                                             {/* Header kartu barang */}
                                             <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-start justify-between gap-2">
-                                                <div className="min-w-0">
-                                                    <h4 className="font-bold text-slate-800 text-sm leading-tight">{item.itemName}</h4>
-                                                    <p className="text-[10px] text-slate-400 mt-0.5 font-medium">Termurah: <span className="text-teal-600 font-bold">{formatRupiah(item.cheapestPrice)}</span></p>
+                                                <div className="flex items-start gap-2.5 min-w-0">
+                                                    <span className="text-xs font-bold text-slate-400 mt-0.5 flex-shrink-0">{(pbfPage - 1) * PBF_PAGE_SIZE + idx + 1}</span>
+                                                    <div className="min-w-0">
+                                                        <h4 className="font-bold text-slate-800 text-sm leading-tight">{item.itemName}</h4>
+                                                        <p className="text-[10px] text-slate-400 mt-0.5 font-medium">Termurah: <span className="text-teal-600 font-bold">{formatRupiah(item.cheapestPrice)}</span></p>
+                                                    </div>
                                                 </div>
                                                 <div className="flex items-center gap-1.5 flex-shrink-0">
                                                     <span className="text-[10px] font-bold text-slate-500 bg-white border border-slate-200 px-2 py-1 rounded-lg whitespace-nowrap">{item.pbfCount} PBF</span>
@@ -5209,6 +5036,28 @@
                                             </div>
                                         </div>
                                     ))}
+                                    {/* Pagination Controls */}
+                                    {filteredPriceData.length > 0 && (
+                                        <div className="flex items-center justify-center gap-2 pt-1 pb-3">
+                                            <button
+                                                onClick={() => setPbfPage(p => Math.max(1, p - 1))}
+                                                disabled={pbfPage === 1}
+                                                className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all active:scale-95 ${pbfPage === 1 ? 'border-slate-100 text-slate-300 bg-slate-50 cursor-not-allowed' : 'border-slate-200 text-slate-500 bg-white hover:bg-teal-50 hover:border-teal-300 hover:text-teal-600 shadow-sm'}`}
+                                            >
+                                                <Icon name="chevron-left" className="text-xs" />
+                                            </button>
+                                            <span className="text-xs font-bold text-slate-500 px-2">
+                                                {pbfPage} dari {pbfTotalPages}
+                                            </span>
+                                            <button
+                                                onClick={() => setPbfPage(p => Math.min(pbfTotalPages, p + 1))}
+                                                disabled={pbfPage === pbfTotalPages}
+                                                className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all active:scale-95 ${pbfPage === pbfTotalPages ? 'border-slate-100 text-slate-300 bg-slate-50 cursor-not-allowed' : 'border-slate-200 text-slate-500 bg-white hover:bg-teal-50 hover:border-teal-300 hover:text-teal-600 shadow-sm'}`}
+                                            >
+                                                <Icon name="chevron-right" className="text-xs" />
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </>
                         ) : (
