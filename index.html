@@ -4902,33 +4902,31 @@
                             </div>
                         </header>
                      ) : (
-                        <header className="mb-5 flex-shrink-0">
-                            <div className="flex items-center justify-between mb-2">
-                                <button
-                                    onClick={() => setPurchaseMainView('faktur')}
-                                    className="flex items-center gap-1 px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold text-xs hover:bg-slate-50 transition-all shadow-sm active:scale-95 flex-shrink-0"
-                                >
-                                    <Icon name="chevron-left" /> Kembali
-                                </button>
-                                <button
-                                    onClick={handleExportPBFExcel}
-                                    disabled={exportingPBF || filteredPriceData.length === 0}
-                                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs transition-all shadow-sm active:scale-95 flex-shrink-0 ${exportingPBF || filteredPriceData.length === 0 ? 'bg-slate-50 border border-slate-200 text-slate-300 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200'}`}
-                                    title="Download Excel"
-                                >
-                                    {exportingPBF
-                                        ? <><Icon name="spinner" className="text-xs animate-spin" /> Proses...</>
-                                        : <><Icon name="file-excel" className="text-sm" /> <span className="hidden sm:inline">Excel</span></>
-                                    }
-                                </button>
-                            </div>
-                            <div className="min-w-0">
+                        <header className="mb-5 flex items-center gap-3 flex-shrink-0">
+                            <button
+                                onClick={() => setPurchaseMainView('faktur')}
+                                className="flex items-center gap-1 px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold text-xs hover:bg-slate-50 transition-all shadow-sm active:scale-95 flex-shrink-0"
+                            >
+                                <Icon name="chevron-left" /> Kembali
+                            </button>
+                            <div className="min-w-0 flex-1">
                                 <h2 className="text-xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
                                     <Icon name="scale-balanced" className="text-teal-600" />
                                     Perbandingan Harga PBF
                                 </h2>
                                 <p className="text-slate-500 text-xs mt-0.5 truncate">Bandingkan harga dari berbagai PBF / supplier</p>
                             </div>
+                            <button
+                                onClick={handleExportPBFExcel}
+                                disabled={exportingPBF || filteredPriceData.length === 0}
+                                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs transition-all shadow-sm active:scale-95 flex-shrink-0 ${exportingPBF || filteredPriceData.length === 0 ? 'bg-slate-50 border border-slate-200 text-slate-300 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200'}`}
+                                title="Download Excel"
+                            >
+                                {exportingPBF
+                                    ? <><Icon name="spinner" className="text-xs animate-spin" /> Proses...</>
+                                    : <><Icon name="file-excel" className="text-sm" /> <span className="hidden sm:inline">Excel</span></>
+                                }
+                            </button>
                         </header>
                      )}
                     {isAllStores && purchaseMainView === 'faktur' && <div className="mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-700 font-medium flex items-center gap-2"><Icon name="circle-info" /> Mode Semua Toko — data dari semua toko ditampilkan. Untuk input faktur baru, pilih toko spesifik.</div>}
@@ -18157,6 +18155,352 @@
 
 
                 // ====== REKAP BARANG TERJUAL VIEW ======
+                const LaporanLabaRugiView = ({ user, currentProfile }) => {
+                    const [transactions, setTransactions] = useState([]);
+                    const [loading, setLoading] = useState(true);
+                    const [filterMode, setFilterMode] = useState('this_month');
+                    const [startDate, setStartDate] = useState('');
+                    const [endDate, setEndDate] = useState('');
+                    const [activeSection, setActiveSection] = useState('produk');
+                    const [searchQuery, setSearchQuery] = useState('');
+
+                    useEffect(() => {
+                        if (!user) return;
+                        setLoading(true);
+                        const q = window.query(
+                            window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'transactions'),
+                            window.orderBy('date', 'desc'),
+                            window.limit(2000)
+                        );
+                        const unsub = window.onSnapshot(q, snap => {
+                            setTransactions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                            setLoading(false);
+                        }, () => setLoading(false));
+                        return () => unsub();
+                    }, [user]);
+
+                    const getPeriodLabel = () => {
+                        if (filterMode === 'today') return 'Hari Ini';
+                        if (filterMode === 'this_week') return 'Minggu Ini';
+                        if (filterMode === 'this_month') return new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' });
+                        if (filterMode === 'last_month') { const lm = new Date(); lm.setMonth(lm.getMonth() - 1); return lm.toLocaleString('id-ID', { month: 'long', year: 'numeric' }); }
+                        if (filterMode === 'custom' && startDate && endDate) return `${new Date(startDate).toLocaleDateString('id-ID')} s/d ${new Date(endDate).toLocaleDateString('id-ID')}`;
+                        return '-';
+                    };
+
+                    const filteredTx = React.useMemo(() => {
+                        const now = new Date();
+                        return transactions.filter(tx => {
+                            if (tx.status === 'returned') return false;
+                            if (currentProfile?.id && currentProfile.id !== 'all_stores' && tx.storeId && tx.storeId !== currentProfile.id) return false;
+                            const txDate = tx.date?.seconds ? new Date(tx.date.seconds * 1000) : new Date(tx.date);
+                            if (filterMode === 'today') return txDate.toDateString() === now.toDateString();
+                            if (filterMode === 'this_week') { const sow = new Date(now); sow.setDate(now.getDate() - now.getDay()); sow.setHours(0,0,0,0); return txDate >= sow; }
+                            if (filterMode === 'this_month') return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear();
+                            if (filterMode === 'last_month') { const lm = new Date(now.getFullYear(), now.getMonth()-1, 1); const lmEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59); return txDate >= lm && txDate <= lmEnd; }
+                            if (filterMode === 'custom') { if (!startDate || !endDate) return true; const s = new Date(startDate); s.setHours(0,0,0,0); const e = new Date(endDate); e.setHours(23,59,59,999); return txDate >= s && txDate <= e; }
+                            return true;
+                        });
+                    }, [transactions, filterMode, currentProfile, startDate, endDate]);
+
+                    const plData = React.useMemo(() => {
+                        let omzet = 0, hpp = 0, retur = 0, txCount = 0;
+                        let itemsNoCost = 0, totalValidItems = 0;
+                        const productMap = {}, kasirMap = {}, paymentMap = {};
+
+                        filteredTx.forEach(tx => {
+                            txCount++;
+                            let txOmzet = 0, txHPP = 0;
+
+                            (tx.items || []).forEach(item => {
+                                if (item.isRacikanGroup) return;
+                                const validQty = Math.max(0, (item.cartQty || 0) - (item.returnedQty || 0));
+                                const returQty = item.returnedQty || 0;
+                                if (returQty > 0) retur += returQty * (item.price || 0);
+                                if (validQty <= 0) return;
+
+                                const itemOmzet = validQty * (item.price || 0);
+                                const itemHPP = (item.costPrice > 0) ? validQty * item.costPrice : 0;
+                                txOmzet += itemOmzet;
+                                txHPP += itemHPP;
+                                totalValidItems++;
+                                if (!item.costPrice || item.costPrice === 0) itemsNoCost++;
+
+                                const pKey = item.name || 'Unknown';
+                                if (!productMap[pKey]) productMap[pKey] = { name: pKey, qty: 0, omzet: 0, hpp: 0, missingCost: false };
+                                productMap[pKey].qty += validQty;
+                                productMap[pKey].omzet += itemOmzet;
+                                productMap[pKey].hpp += itemHPP;
+                                if (!item.costPrice || item.costPrice === 0) productMap[pKey].missingCost = true;
+                            });
+
+                            omzet += txOmzet;
+                            hpp += txHPP;
+
+                            const kKey = tx.cashierName || 'Unknown';
+                            if (!kasirMap[kKey]) kasirMap[kKey] = { name: kKey, omzet: 0, hpp: 0, txCount: 0 };
+                            kasirMap[kKey].omzet += txOmzet;
+                            kasirMap[kKey].hpp += txHPP;
+                            kasirMap[kKey].txCount++;
+
+                            const pm = tx.paymentMethod || 'tunai';
+                            if (!paymentMap[pm]) paymentMap[pm] = { method: pm, omzet: 0, count: 0 };
+                            paymentMap[pm].omzet += txOmzet;
+                            paymentMap[pm].count++;
+                        });
+
+                        const laba = omzet - hpp;
+                        const margin = omzet > 0 ? (laba / omzet) * 100 : 0;
+                        const coveragePct = totalValidItems > 0 ? ((totalValidItems - itemsNoCost) / totalValidItems * 100) : 100;
+                        const products = Object.values(productMap).map(p => ({ ...p, laba: p.omzet - p.hpp, margin: p.omzet > 0 ? (p.omzet - p.hpp) / p.omzet * 100 : 0 })).sort((a, b) => b.laba - a.laba);
+                        const kasirs = Object.values(kasirMap).map(k => ({ ...k, laba: k.omzet - k.hpp, margin: k.omzet > 0 ? (k.omzet - k.hpp) / k.omzet * 100 : 0 })).sort((a, b) => b.omzet - a.omzet);
+                        const payments = Object.values(paymentMap).sort((a, b) => b.omzet - a.omzet);
+                        const totalPayOmzet = payments.reduce((s, p) => s + p.omzet, 0);
+                        return { omzet, hpp, laba, margin, retur, txCount, coveragePct, itemsNoCost, totalValidItems, products, kasirs, payments, totalPayOmzet };
+                    }, [filteredTx]);
+
+                    const filteredProducts = React.useMemo(() => {
+                        if (!searchQuery) return plData.products;
+                        return plData.products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+                    }, [plData.products, searchQuery]);
+
+                    const pmMeta = { tunai: { label: 'Tunai', color: '#0ea5e9', icon: 'money-bill' }, qris: { label: 'QRIS', color: '#8b5cf6', icon: 'qrcode' }, transfer: { label: 'Transfer', color: '#f59e0b', icon: 'building-columns' }, kartu: { label: 'Kartu', color: '#ec4899', icon: 'credit-card' } };
+                    const filterOptions = [{ id: 'today', label: 'Hari Ini' }, { id: 'this_week', label: 'Minggu Ini' }, { id: 'this_month', label: 'Bulan Ini' }, { id: 'last_month', label: 'Bulan Lalu' }, { id: 'custom', label: 'Custom' }];
+
+                    if (loading) return (
+                        <div className="flex items-center justify-center py-24 text-slate-400">
+                            <Icon name="spinner" className="animate-spin mr-2 text-xl" /> Memuat laporan...
+                        </div>
+                    );
+
+                    const { omzet, hpp, laba, margin, retur, txCount, coveragePct, products, kasirs, payments, totalPayOmzet } = plData;
+                    const isHPPMissing = coveragePct === 0 && plData.totalValidItems > 0;
+                    const isHPPPartial = coveragePct > 0 && coveragePct < 100;
+
+                    return (
+                        <div className="space-y-4 pb-10">
+                            {/* Header */}
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-lg flex-shrink-0">
+                                    <Icon name="chart-line" className="text-lg" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <h2 className="text-xl font-black text-slate-800">Laporan Laba Rugi</h2>
+                                    <p className="text-xs text-slate-400">{currentProfile?.name || 'Semua Toko'} · {getPeriodLabel()}</p>
+                                </div>
+                            </div>
+
+                            {/* Filter Period */}
+                            <div className="flex flex-wrap gap-2">
+                                {filterOptions.map(f => (
+                                    <button key={f.id} onClick={() => setFilterMode(f.id)}
+                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${filterMode === f.id ? 'bg-emerald-600 text-white shadow' : 'bg-white text-slate-500 border border-slate-200 hover:bg-emerald-50'}`}>
+                                        {f.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Custom range */}
+                            {filterMode === 'custom' && (
+                                <div className="flex gap-2 items-center flex-wrap">
+                                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                                        className="flex-1 min-w-[130px] border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300" />
+                                    <span className="text-slate-400 text-xs font-bold">s/d</span>
+                                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+                                        className="flex-1 min-w-[130px] border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300" />
+                                </div>
+                            )}
+
+                            {/* HPP Warning */}
+                            {isHPPMissing && (
+                                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-start gap-2">
+                                    <Icon name="triangle-exclamation" className="text-amber-500 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <p className="text-xs font-bold text-amber-800">Data Harga Modal Belum Ada</p>
+                                        <p className="text-xs text-amber-600 mt-0.5">HPP dan laba belum bisa dihitung. Isi harga modal di menu Katalog agar laporan akurat.</p>
+                                    </div>
+                                </div>
+                            )}
+                            {isHPPPartial && (
+                                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-start gap-2">
+                                    <Icon name="circle-exclamation" className="text-amber-500 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <p className="text-xs font-bold text-amber-800">Data HPP Sebagian ({Math.round(coveragePct)}% lengkap)</p>
+                                        <p className="text-xs text-amber-600 mt-0.5">Beberapa barang belum punya harga modal — estimasi laba mungkin lebih tinggi dari kenyataan.</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Omzet full-width */}
+                            <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-soft">
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-wide">Omzet Bersih</p>
+                                <p className="text-3xl font-black text-slate-800 mt-1">{formatRupiah(omzet)}</p>
+                                <div className="flex gap-4 mt-2">
+                                    <div><p className="text-[10px] text-slate-400">Transaksi</p><p className="text-sm font-bold text-slate-700">{txCount.toLocaleString('id-ID')}</p></div>
+                                    <div><p className="text-[10px] text-slate-400">Rata-rata</p><p className="text-sm font-bold text-slate-700">{txCount > 0 ? formatRupiah(Math.round(omzet / txCount)) : '-'}</p></div>
+                                    {retur > 0 && <div><p className="text-[10px] text-red-400">Nilai Retur</p><p className="text-sm font-bold text-red-500">-{formatRupiah(retur)}</p></div>}
+                                </div>
+                            </div>
+
+                            {/* HPP + Laba grid */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-soft">
+                                    <p className="text-xs text-slate-400 font-bold uppercase tracking-wide">Est. HPP</p>
+                                    <p className="text-lg font-black text-orange-600 mt-1">{isHPPMissing ? <span className="text-slate-300">—</span> : formatRupiah(hpp)}</p>
+                                    <p className="text-[10px] text-slate-400 mt-0.5">Total harga modal</p>
+                                </div>
+                                <div className={`rounded-2xl p-4 border shadow-soft ${laba >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+                                    <p className="text-xs text-slate-400 font-bold uppercase tracking-wide">Est. Laba Kotor</p>
+                                    <p className={`text-lg font-black mt-1 ${laba >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{isHPPMissing ? <span className="text-slate-300">—</span> : formatRupiah(laba)}</p>
+                                    <p className="text-[10px] text-slate-500 mt-0.5">Omzet − HPP</p>
+                                </div>
+                            </div>
+
+                            {/* Margin bar */}
+                            {!isHPPMissing && omzet > 0 && (
+                                <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-soft">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Gross Margin</p>
+                                        <span className={`text-base font-black ${margin >= 20 ? 'text-emerald-600' : margin >= 10 ? 'text-amber-500' : 'text-red-500'}`}>{margin.toFixed(1)}%</span>
+                                    </div>
+                                    <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+                                        <div className={`h-full rounded-full transition-all ${margin >= 20 ? 'bg-emerald-500' : margin >= 10 ? 'bg-amber-400' : 'bg-red-400'}`} style={{ width: `${Math.min(100, Math.max(2, margin))}%` }}></div>
+                                    </div>
+                                    <div className="flex justify-between mt-1.5 text-[10px] text-slate-300 font-semibold">
+                                        <span>0%</span><span>25%</span><span>50%+</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Section tabs */}
+                            <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                                {[{ id: 'produk', label: 'Per Produk', icon: 'box' }, { id: 'kasir', label: 'Per Kasir', icon: 'user' }, { id: 'bayar', label: 'Metode Bayar', icon: 'wallet' }].map(s => (
+                                    <button key={s.id} onClick={() => setActiveSection(s.id)}
+                                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition-all ${activeSection === s.id ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                                        <Icon name={s.icon} className="text-xs" />
+                                        <span className="hidden sm:inline">{s.label}</span>
+                                        <span className="sm:hidden">{s.label.split(' ')[1] || s.label.split(' ')[0]}</span>
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Per Produk */}
+                            {activeSection === 'produk' && (
+                                <div className="space-y-3">
+                                    <div className="relative">
+                                        <Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                                        <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Cari nama barang..."
+                                            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300" />
+                                    </div>
+                                    <p className="text-xs text-slate-400 font-semibold">{filteredProducts.length} jenis barang · Urut: Laba Tertinggi</p>
+                                    {filteredProducts.length === 0 && (
+                                        <div className="text-center py-12 text-slate-400"><Icon name="box-open" className="text-4xl mb-2" /><p className="text-sm">Tidak ada data</p></div>
+                                    )}
+                                    {filteredProducts.map((p, i) => {
+                                        const maxOmzet = filteredProducts[0]?.omzet || 1;
+                                        const barW = Math.max(3, (p.omzet / maxOmzet) * 100);
+                                        const labaColor = !p.hpp ? 'text-slate-400' : p.laba > 0 ? 'text-emerald-700' : p.laba < 0 ? 'text-red-600' : 'text-slate-500';
+                                        const barColor = p.laba >= 0 ? '#34d399' : '#f87171';
+                                        return (
+                                            <div key={p.name + i} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-soft">
+                                                <div className="flex items-start justify-between gap-2 mb-2">
+                                                    <div className="flex items-start gap-2 min-w-0">
+                                                        <span className="text-xs text-slate-300 font-black w-5 flex-shrink-0 mt-0.5">#{i+1}</span>
+                                                        <div className="min-w-0">
+                                                            <p className="text-sm font-bold text-slate-800 truncate">{p.name}</p>
+                                                            {p.missingCost && <span className="inline-flex items-center gap-0.5 text-[9px] bg-amber-100 text-amber-600 font-bold px-1.5 py-0.5 rounded-full mt-0.5"><Icon name="triangle-exclamation" className="text-[8px]" /> No HPP</span>}
+                                                        </div>
+                                                    </div>
+                                                    <p className={`text-sm font-black flex-shrink-0 ${labaColor}`}>{(p.hpp > 0) ? formatRupiah(p.laba) : '—'}</p>
+                                                </div>
+                                                <div className="h-1.5 bg-slate-100 rounded-full mb-3 overflow-hidden">
+                                                    <div className="h-full rounded-full transition-all" style={{ width: `${barW}%`, background: barColor }}></div>
+                                                </div>
+                                                <div className="grid grid-cols-3 gap-1 text-center">
+                                                    <div className="bg-slate-50 rounded-lg py-1.5">
+                                                        <p className="text-[9px] text-slate-400 font-bold uppercase">Qty</p>
+                                                        <p className="text-xs font-black text-slate-700">{p.qty.toLocaleString('id-ID')}</p>
+                                                    </div>
+                                                    <div className="bg-slate-50 rounded-lg py-1.5">
+                                                        <p className="text-[9px] text-slate-400 font-bold uppercase">Omzet</p>
+                                                        <p className="text-[11px] font-black text-slate-700">{formatRupiah(p.omzet)}</p>
+                                                    </div>
+                                                    <div className="bg-slate-50 rounded-lg py-1.5">
+                                                        <p className="text-[9px] text-slate-400 font-bold uppercase">Margin</p>
+                                                        <p className={`text-xs font-black ${labaColor}`}>{(p.hpp > 0) ? `${p.margin.toFixed(1)}%` : '—'}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {/* Per Kasir */}
+                            {activeSection === 'kasir' && (
+                                <div className="space-y-2">
+                                    {kasirs.length === 0 && <div className="text-center py-12 text-slate-400"><Icon name="user" className="text-4xl mb-2" /><p className="text-sm">Tidak ada data</p></div>}
+                                    {kasirs.map((k, i) => {
+                                        const maxOmzet = kasirs[0]?.omzet || 1;
+                                        const barW = Math.max(3, (k.omzet / maxOmzet) * 100);
+                                        const colors = ['#0ea5e9','#8b5cf6','#f59e0b','#ec4899','#10b981','#f97316'];
+                                        const col = colors[i % colors.length];
+                                        return (
+                                            <div key={k.name} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-soft">
+                                                <div className="flex items-center gap-3 mb-2">
+                                                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black text-white flex-shrink-0" style={{ background: col }}>
+                                                        {k.name.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-bold text-slate-800 truncate">{k.name}</p>
+                                                        <p className="text-[10px] text-slate-400">{k.txCount} transaksi</p>
+                                                    </div>
+                                                    <div className="text-right flex-shrink-0">
+                                                        <p className="text-sm font-black text-slate-800">{formatRupiah(k.omzet)}</p>
+                                                        {k.hpp > 0 && <p className="text-[10px] text-emerald-600 font-bold">{formatRupiah(k.laba)} laba</p>}
+                                                    </div>
+                                                </div>
+                                                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                    <div className="h-full rounded-full" style={{ width: `${barW}%`, background: col }}></div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {/* Metode Bayar */}
+                            {activeSection === 'bayar' && (
+                                <div className="space-y-2">
+                                    {payments.length === 0 && <div className="text-center py-12 text-slate-400"><Icon name="wallet" className="text-4xl mb-2" /><p className="text-sm">Tidak ada data</p></div>}
+                                    {payments.map(p => {
+                                        const barW = totalPayOmzet > 0 ? Math.max(3, (p.omzet / totalPayOmzet) * 100) : 3;
+                                        const info = pmMeta[p.method] || { label: p.method.charAt(0).toUpperCase() + p.method.slice(1), color: '#94a3b8', icon: 'money-bill' };
+                                        const pct = totalPayOmzet > 0 ? (p.omzet / totalPayOmzet * 100) : 0;
+                                        return (
+                                            <div key={p.method} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-soft">
+                                                <div className="flex items-center gap-3 mb-2">
+                                                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0" style={{ background: info.color + '20', color: info.color }}>
+                                                        <Icon name={info.icon} />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-bold text-slate-800">{info.label}</p>
+                                                        <p className="text-[10px] text-slate-400">{p.count} transaksi · {pct.toFixed(1)}%</p>
+                                                    </div>
+                                                    <p className="text-sm font-black text-slate-800 flex-shrink-0">{formatRupiah(p.omzet)}</p>
+                                                </div>
+                                                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                                    <div className="h-full rounded-full transition-all" style={{ width: `${barW}%`, background: info.color }}></div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    );
+                };
+
                 const RekapBarangView = ({ user, currentProfile, settings }) => {
                     const [transactions, setTransactions] = useState([]);
                     const [loading, setLoading] = useState(true);
@@ -18892,7 +19236,7 @@
             const handleSaveSettings = async (newSettings) => { if(!user) return; setSubmitting(true); try { const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'settings', 'global'); await window.setDoc(docRef, newSettings); showToast("Pengaturan disimpan"); } catch(error) { console.error(error); showToast("Gagal simpan pengaturan", "error"); } finally { setSubmitting(false); } };
             const handleDelete = async () => { if (!deleteModal.item || !user) return; try { const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', deleteModal.item.id); await window.deleteDoc(docRef); showToast("Barang dihapus (dari semua toko)"); } catch (error) { showToast("Gagal menghapus", "error"); } finally { setDeleteModal({ show: false, item: null }); } };
             const handleConfirmDeleteRack = async () => { if (!deleteRackModal.rackName || !user) return; const rackName = deleteRackModal.rackName; try { const batch = window.writeBatch(window.db); const itemsToUpdate = inventoryData.filter(item => item.rack && item.rack.includes(rackName)); if (itemsToUpdate.length === 0) { showToast("Tidak ada item di rak ini"); setDeleteRackModal({ show: false, rackName: null }); return; } itemsToUpdate.forEach(item => { const newRacks = item.rack.split(',').map(r => r.trim()).filter(r => r !== rackName); const newRackString = newRacks.length > 0 ? newRacks.join(', ') : '-'; const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', item.id); batch.update(docRef, { rack: newRackString }); }); await batch.commit(); showToast(`Rak "${rackName}" berhasil dihapus`); setSelectedRacks([]); } catch (err) { console.error("Failed delete rack", err); showToast("Gagal menghapus rak", "error"); } finally { setDeleteRackModal({ show: false, rackName: null }); } };
-            const handleNavClick = (tabId, event) => { setActiveTab(tabId); if (tabId !== 'list') setShowOnlyLowStock(false); setIsSidebarOpen(false); if (['cashier','history','rekap_barang'].includes(tabId)) setKasirDropdownOpen(true); else setKasirDropdownOpen(false); if (['list','stok_view','stock_opname','add','import','transfer_barang','batch_ed'].includes(tabId)) setBarangDropdownOpen(true); else setBarangDropdownOpen(false); if (['purchases'].includes(tabId)) setPembelianDropdownOpen(true); else setPembelianDropdownOpen(false); };
+            const handleNavClick = (tabId, event) => { setActiveTab(tabId); if (tabId !== 'list') setShowOnlyLowStock(false); setIsSidebarOpen(false); if (['cashier','history','rekap_barang','laporan_lr'].includes(tabId)) setKasirDropdownOpen(true); else setKasirDropdownOpen(false); if (['list','stok_view','stock_opname','add','import','transfer_barang','batch_ed'].includes(tabId)) setBarangDropdownOpen(true); else setBarangDropdownOpen(false); if (['purchases'].includes(tabId)) setPembelianDropdownOpen(true); else setPembelianDropdownOpen(false); };
             
             const handleLogout = () => {
                 clearSession();
@@ -19061,6 +19405,7 @@
                                             { id: 'cashier', label: 'Kasir', icon: 'cash-register' },
                                             { id: 'history', label: 'Riwayat Kasir', icon: 'clock-rotate-left' },
                                             { id: 'rekap_barang', label: 'Rekap Barang Terjual', icon: 'chart-bar' },
+                                            { id: 'laporan_lr', label: 'Laporan Laba Rugi', icon: 'chart-line' },
                                         ];
                                         const kasirSubIds = kasirSubItems.map(s => s.id);
                                         const isKasirGroupActive = kasirSubIds.includes(activeTab);
@@ -19084,7 +19429,7 @@
                                                 </div>
                                                 {/* Dropdown sub-menu */}
                                                 {kasirDropdownOpen && (
-                                                    <div style={{overflow:'hidden',maxHeight: kasirDropdownOpen ? '250px' : '0',transition:'max-height .28s ease'}}>
+                                                    <div style={{overflow:'hidden',maxHeight: kasirDropdownOpen ? '320px' : '0',transition:'max-height .28s ease'}}>
                                                         {kasirSubItems.map(sub => (
                                                             <button
                                                                 key={sub.id}
@@ -19475,6 +19820,7 @@
                         {activeTab === 'cashier' && (<CashierView items={inventoryData} user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='cashier')?.readOnly} authSession={authSession} onNavigateToAdd={() => setActiveTab('add')} isOwner={isOwner} />)}
                         {activeTab === 'history' && (<HistoryView user={user} showToast={showToast} settings={settingsData} onGenerateImage={handleGenerateImage} currentProfile={currentProfile} items={inventoryData} readOnly={menuItems.find(m=>m.id==='history')?.readOnly} isOwner={isOwner} authSession={authSession} defaultOpenTransactionId={pendingTransactionId} onClearPendingTransaction={() => setPendingTransactionId(null)} />)}
                         {activeTab === 'rekap_barang' && (<RekapBarangView user={user} currentProfile={currentProfile} settings={settingsData} />)}
+                        {activeTab === 'laporan_lr' && (<LaporanLabaRugiView user={user} currentProfile={currentProfile} />)}
                         {activeTab === 'purchases' && (<PurchaseView user={user} showToast={showToast} items={inventoryData} currentProfile={currentProfile} settings={settingsData} readOnly={menuItems.find(m=>m.id==='purchases')?.readOnly} authSession={authSession} defaultOpenPurchaseId={pendingPurchaseId} onClearPendingPurchase={() => setPendingPurchaseId(null)} onBackFromDetail={() => setActiveTab('list')} />)}
                         {activeTab === 'cashbook' && (<CashBookView user={user} currentProfile={currentProfile} showToast={showToast} readOnly={menuItems.find(m=>m.id==='cashbook')?.readOnly} />)}
                         {activeTab === 'list' && (<ListView items={inventoryData} loading={loading} settings={settingsData} searchQuery={searchQuery} setSearchQuery={setSearchQuery} showOnlyLowStock={showOnlyLowStock} setShowOnlyLowStock={setShowOnlyLowStock} selectedRacks={selectedRacks} setSelectedRacks={setSelectedRacks} uniqueRacksData={uniqueRacksData} onCopySuccess={showToast} onEdit={(item) => { setFormData({...item}); setEditingItem(item); setActiveTab('add'); }} onDelete={(item) => setDeleteModal({ show: true, item: item })} onDeleteRack={(rackName) => setDeleteRackModal({ show: true, rackName })} currentProfile={currentProfile} readOnly={menuItems.find(m=>m.id==='list')?.readOnly} isOwner={isOwner} onNavigateToPurchases={(purchaseId, returnItem) => { setPendingPurchaseId(purchaseId); if (returnItem) { setReturnDetailItem(returnItem); setReturnInitialTab('riwayat'); } setActiveTab('purchases'); }} onNavigateToHistory={(transactionId) => { setPendingTransactionId(transactionId); setActiveTab('history'); }} returnDetailItem={returnDetailItem} onClearReturnDetailItem={() => { setReturnDetailItem(null); setReturnInitialTab(null); }} returnInitialTab={returnInitialTab} />)}
