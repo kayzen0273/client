@@ -156,6 +156,24 @@
             background-image: none;
         }
 
+        /* ── BACKGROUND GALLERY ── */
+        .bg-gallery-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.48); z-index: 500; backdrop-filter: blur(4px); }
+        .bg-gallery-panel { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-radius: 22px 22px 0 0; z-index: 501; display: flex; flex-direction: column; max-height: 88vh; box-shadow: 0 -10px 50px rgba(0,0,0,0.28); }
+        .bg-swatch { width: 46px; height: 46px; border-radius: 11px; cursor: pointer; border: 2.5px solid transparent; transition: all 0.18s; flex-shrink: 0; }
+        .bg-swatch:hover { transform: scale(1.1); box-shadow: 0 4px 14px rgba(0,0,0,0.22); }
+        .bg-swatch.bg-sel { border-color: #19737c !important; transform: scale(1.13); box-shadow: 0 4px 18px rgba(25,115,124,0.45); }
+        .bg-img-thumb { width: 74px; height: 52px; border-radius: 10px; cursor: pointer; border: 2.5px solid transparent; overflow: hidden; background-size: cover; background-position: center; transition: all 0.18s; flex-shrink: 0; position: relative; }
+        .bg-img-thumb:hover { transform: scale(1.07); box-shadow: 0 4px 14px rgba(0,0,0,0.22); }
+        .bg-img-thumb.bg-sel { border-color: #19737c !important; transform: scale(1.09); box-shadow: 0 4px 18px rgba(25,115,124,0.45); }
+        .bg-img-thumb.bg-sel::after { content:'✓'; position:absolute; top:2px; right:4px; color:#fff; font-size:11px; font-weight:900; text-shadow:0 1px 3px rgba(0,0,0,0.7); }
+        .bg-tab-btn { flex: 1; padding: 9px 4px; font-size: 11.5px; font-weight: 800; text-align: center; border: none; background: none; cursor: pointer; color: #94a3b8; border-bottom: 2.5px solid transparent; transition: all 0.18s; letter-spacing: 0.2px; }
+        .bg-tab-btn.active { color: #19737c; border-bottom-color: #19737c; }
+        .bg-ctrl-btn { padding: 5px 11px; border-radius: 9px; font-size: 11px; font-weight: 700; border: 1.5px solid #e2e8f0; background: #fff; color: #64748b; cursor: pointer; transition: all 0.18s; white-space: nowrap; }
+        .bg-ctrl-btn.active { background: #19737c; color: #fff; border-color: #19737c; }
+        .bg-pos-btn { width: 36px; height: 32px; border-radius: 7px; font-size: 14px; border: none; cursor: pointer; font-weight: 900; background: transparent; color: #64748b; transition: all 0.15s; }
+        .bg-pos-btn.active { background: #19737c; color: #fff; }
+        #app-bg-layer { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
         .font-arab { font-family: 'Amiri', serif; }
 
         /* Receipt Tag Style */
@@ -19128,6 +19146,246 @@
                 };
                 // ====== END REKAP BARANG TERJUAL VIEW ======
 
+                // ====== BACKGROUND GALLERY PANEL COMPONENT ======
+                const BackgroundGalleryPanel = ({ currentBg, onApply, onClose }) => {
+                    const [tab, setTab] = React.useState(currentBg?.type || 'color');
+                    const [sel, setSel] = React.useState(currentBg || null);
+                    const [bgSize, setBgSize] = React.useState(currentBg?.size || 'cover');
+                    const [bgPos, setBgPos] = React.useState(currentBg?.position || 'center');
+                    const [bgOpacity, setBgOpacity] = React.useState(currentBg?.opacity !== undefined ? currentBg.opacity : 1);
+
+                    const COLORS = [
+                        { v: '#ffffff', n: 'Putih' }, { v: '#f8fafc', n: 'Abu Sangat Muda' },
+                        { v: '#f1f5f9', n: 'Abu Muda' }, { v: '#e2e8f0', n: 'Abu' },
+                        { v: '#f0f9ff', n: 'Biru Langit' }, { v: '#dbeafe', n: 'Biru Muda' },
+                        { v: '#ede9fe', n: 'Lavender' }, { v: '#f0fdf4', n: 'Hijau Muda' },
+                        { v: '#dcfce7', n: 'Hijau' }, { v: '#fefce8', n: 'Kuning Muda' },
+                        { v: '#fef3c7', n: 'Kuning' }, { v: '#fff7ed', n: 'Peach' },
+                        { v: '#fce7f3', n: 'Pink Muda' }, { v: '#fdf2f8', n: 'Pink' },
+                        { v: '#fef2f2', n: 'Merah Muda' }, { v: '#f8f4f0', n: 'Krem' },
+                        { v: '#1e293b', n: 'Biru Gelap' }, { v: '#0f172a', n: 'Hitam Biru' },
+                        { v: '#134e4a', n: 'Teal Gelap' }, { v: '#14532d', n: 'Hijau Gelap' },
+                        { v: '#4a1942', n: 'Ungu Tua' }, { v: '#7c2d12', n: 'Coklat Tua' },
+                        { v: '#1e3a5f', n: 'Biru Tua' }, { v: '#374151', n: 'Abu Gelap' },
+                    ];
+
+                    const GRADIENTS = [
+                        { n: 'Langit', v: 'linear-gradient(135deg,#667eea,#764ba2)' },
+                        { n: 'Sunset', v: 'linear-gradient(135deg,#f093fb,#f5576c)' },
+                        { n: 'Laut', v: 'linear-gradient(135deg,#4facfe,#00f2fe)' },
+                        { n: 'Hutan', v: 'linear-gradient(135deg,#43e97b,#38f9d7)' },
+                        { n: 'Senja', v: 'linear-gradient(135deg,#fa709a,#fee140)' },
+                        { n: 'Aurora', v: 'linear-gradient(135deg,#a18cd1,#fbc2eb)' },
+                        { n: 'Mawar', v: 'linear-gradient(135deg,#ffecd2,#fcb69f)' },
+                        { n: 'Toska', v: 'linear-gradient(135deg,#a1c4fd,#c2e9fb)' },
+                        { n: 'Emas', v: 'linear-gradient(135deg,#f6d365,#fda085)' },
+                        { n: 'Malam', v: 'linear-gradient(160deg,#0f0c29,#302b63,#24243e)' },
+                        { n: 'Zamrud', v: 'linear-gradient(135deg,#d4fc79,#96e6a1)' },
+                        { n: 'Kopi', v: 'linear-gradient(135deg,#6f4e37,#c4a882)' },
+                        { n: 'Bata', v: 'linear-gradient(135deg,#eb3349,#f45c43)' },
+                        { n: 'Perak', v: 'linear-gradient(135deg,#bdc3c7,#2c3e50)' },
+                        { n: 'Pagi', v: 'linear-gradient(135deg,#fddb92,#d1fdff)' },
+                        { n: 'Lautan', v: 'linear-gradient(135deg,#1a6274,#2bc0e4)' },
+                        { n: 'Ungu', v: 'linear-gradient(135deg,#7028e4,#e5b2ca)' },
+                        { n: 'Alam', v: 'linear-gradient(135deg,#134e5e,#71b280)' },
+                        { n: 'Merah', v: 'linear-gradient(135deg,#c0392b,#8e44ad)' },
+                        { n: 'Bahari', v: 'linear-gradient(135deg,#005c97,#363795)' },
+                    ];
+
+                    const IMAGES = [
+                        { id: 10, n: 'Sungai Hutan' }, { id: 11, n: 'Pepohonan' },
+                        { id: 13, n: 'Aliran Air' }, { id: 15, n: 'Jalan Hutan' },
+                        { id: 16, n: 'Hutan Hijau' }, { id: 24, n: 'Pegunungan' },
+                        { id: 30, n: 'Bunga' }, { id: 37, n: 'Pantai' },
+                        { id: 43, n: 'Desa' }, { id: 48, n: 'Langit Senja' },
+                        { id: 65, n: 'Kota' }, { id: 74, n: 'Cakrawala' },
+                        { id: 85, n: 'Taman' }, { id: 91, n: 'Danau' },
+                        { id: 96, n: 'Ladang' }, { id: 100, n: 'Pantai Biru' },
+                        { id: 106, n: 'Batuan' }, { id: 119, n: 'Gunung Salju' },
+                        { id: 129, n: 'Hamparan Hijau' }, { id: 143, n: 'Lembah' },
+                    ];
+
+                    const SIZE_OPTS = [
+                        { v: 'cover', l: 'Cover' }, { v: 'contain', l: 'Contain' },
+                        { v: 'auto', l: 'Auto' }, { v: '100% 100%', l: 'Stretch' },
+                        { v: '50%', l: '50%' }, { v: '75%', l: '75%' },
+                        { v: '125%', l: '125%' }, { v: '150%', l: '150%' },
+                    ];
+
+                    const POS_OPTS = [
+                        { v: 'top left', l: '↖' }, { v: 'top center', l: '↑' }, { v: 'top right', l: '↗' },
+                        { v: 'center left', l: '←' }, { v: 'center', l: '●' }, { v: 'center right', l: '→' },
+                        { v: 'bottom left', l: '↙' }, { v: 'bottom center', l: '↓' }, { v: 'bottom right', l: '↘' },
+                    ];
+
+                    const handleUpload = (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = (ev) => setSel({ type: 'image', url: ev.target.result, isCustom: true });
+                        reader.readAsDataURL(file);
+                    };
+
+                    const handleApply = () => {
+                        if (!sel) { onApply(null); onClose(); return; }
+                        onApply({ ...sel, size: bgSize, position: bgPos, opacity: bgOpacity });
+                        onClose();
+                    };
+
+                    const isImgType = sel?.type === 'image';
+
+                    return (
+                        <>
+                            <div className="bg-gallery-overlay" onClick={onClose} />
+                            <div className="bg-gallery-panel">
+                                {/* Header */}
+                                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 16px 0',flexShrink:0}}>
+                                    <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+                                        <div style={{width:'34px',height:'34px',borderRadius:'10px',background:'linear-gradient(135deg,#19737c,#2bc0b4)',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 3px 10px rgba(25,115,124,0.3)'}}>
+                                            <Icon name="palette" style={{color:'#fff',fontSize:'15px'}} />
+                                        </div>
+                                        <div>
+                                            <p style={{fontSize:'15px',fontWeight:900,color:'#1e293b',lineHeight:1.2}}>Ganti Background</p>
+                                            <p style={{fontSize:'10.5px',color:'#94a3b8',fontWeight:600}}>Sesuaikan tampilan latar belakang</p>
+                                        </div>
+                                    </div>
+                                    <button onClick={onClose} style={{width:'30px',height:'30px',border:'1.5px solid #e2e8f0',borderRadius:'8px',background:'#f8fafc',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'#64748b',fontSize:'13px',fontWeight:900}}>✕</button>
+                                </div>
+
+                                {/* Tabs */}
+                                <div style={{display:'flex',borderBottom:'1.5px solid #f1f5f9',margin:'12px 16px 0',flexShrink:0}}>
+                                    {[['color','🎨 Warna'],['gradient','🌈 Gradien'],['image','🖼 Foto']].map(([t,l]) => (
+                                        <button key={t} onClick={() => setTab(t)} className={`bg-tab-btn${tab===t?' active':''}`}>{l}</button>
+                                    ))}
+                                </div>
+
+                                {/* Scrollable content */}
+                                <div style={{flex:1,overflowY:'auto',padding:'12px 16px 4px'}}>
+
+                                    {/* Color Tab */}
+                                    {tab === 'color' && (
+                                        <div style={{display:'flex',flexWrap:'wrap',gap:'8px',paddingBottom:'6px'}}>
+                                            {COLORS.map(c => (
+                                                <div
+                                                    key={c.v}
+                                                    className={`bg-swatch${sel?.type==='color'&&sel?.value===c.v?' bg-sel':''}`}
+                                                    style={{background:c.v,boxShadow:c.v==='#ffffff'?'inset 0 0 0 1px #e2e8f0':undefined}}
+                                                    title={c.n}
+                                                    onClick={() => setSel({type:'color',value:c.v})}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Gradient Tab */}
+                                    {tab === 'gradient' && (
+                                        <div style={{display:'flex',flexWrap:'wrap',gap:'8px',paddingBottom:'6px'}}>
+                                            {GRADIENTS.map(g => (
+                                                <div
+                                                    key={g.n}
+                                                    className={`bg-swatch${sel?.type==='gradient'&&sel?.value===g.v?' bg-sel':''}`}
+                                                    style={{background:g.v}}
+                                                    title={g.n}
+                                                    onClick={() => setSel({type:'gradient',value:g.v})}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Image Tab */}
+                                    {tab === 'image' && (
+                                        <div>
+                                            <div style={{display:'flex',flexWrap:'wrap',gap:'8px',marginBottom:'12px'}}>
+                                                {IMAGES.map(img => (
+                                                    <div
+                                                        key={img.id}
+                                                        className={`bg-img-thumb${sel?.type==='image'&&sel?.picId===img.id?' bg-sel':''}`}
+                                                        style={{backgroundImage:`url(https://picsum.photos/id/${img.id}/120/80)`}}
+                                                        title={img.n}
+                                                        onClick={() => setSel({type:'image',url:`https://picsum.photos/id/${img.id}/1920/1080`,picId:img.id,name:img.n})}
+                                                    />
+                                                ))}
+                                            </div>
+                                            <input type="file" accept="image/*" onChange={handleUpload} id="bgFileInput" style={{display:'none'}} />
+                                            <label htmlFor="bgFileInput" style={{display:'flex',alignItems:'center',gap:'8px',padding:'11px 14px',background:'#f0fdf4',border:'1.5px dashed #86efac',borderRadius:'12px',cursor:'pointer',color:'#15803d',fontWeight:800,fontSize:'12px'}}>
+                                                <Icon name="cloud-arrow-up" />
+                                                Upload Foto Sendiri
+                                                {sel?.isCustom && <span style={{marginLeft:'auto',background:'#19737c',color:'#fff',fontSize:'9px',fontWeight:900,padding:'2px 7px',borderRadius:'99px'}}>✓ Aktif</span>}
+                                            </label>
+                                        </div>
+                                    )}
+
+                                    {/* Image size & position controls */}
+                                    {isImgType && (
+                                        <div style={{marginTop:'14px',background:'#f8fafc',borderRadius:'14px',padding:'13px',display:'flex',flexDirection:'column',gap:'12px'}}>
+                                            <div>
+                                                <p style={{fontSize:'10.5px',fontWeight:900,color:'#475569',marginBottom:'8px',textTransform:'uppercase',letterSpacing:'0.5px'}}>📐 Ukuran Gambar</p>
+                                                <div style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>
+                                                    {SIZE_OPTS.map(s => (
+                                                        <button key={s.v} onClick={() => setBgSize(s.v)} className={`bg-ctrl-btn${bgSize===s.v?' active':''}`}>{s.l}</button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p style={{fontSize:'10.5px',fontWeight:900,color:'#475569',marginBottom:'8px',textTransform:'uppercase',letterSpacing:'0.5px'}}>📍 Posisi Gambar</p>
+                                                <div style={{display:'inline-grid',gridTemplateColumns:'repeat(3,1fr)',gap:'3px',background:'#e2e8f0',padding:'4px',borderRadius:'11px'}}>
+                                                    {POS_OPTS.map(p => (
+                                                        <button key={p.v} onClick={() => setBgPos(p.v)} className={`bg-pos-btn${bgPos===p.v?' active':''}`}>{p.l}</button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Opacity control */}
+                                    {sel && (
+                                        <div style={{marginTop:'12px',background:'#f8fafc',borderRadius:'14px',padding:'13px'}}>
+                                            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px'}}>
+                                                <p style={{fontSize:'10.5px',fontWeight:900,color:'#475569',textTransform:'uppercase',letterSpacing:'0.5px'}}>☀️ Kecerahan</p>
+                                                <span style={{fontSize:'12px',fontWeight:900,color:'#19737c',background:'#e8f8f8',padding:'2px 8px',borderRadius:'99px'}}>{Math.round(bgOpacity*100)}%</span>
+                                            </div>
+                                            <input type="range" min="0.1" max="1" step="0.05" value={bgOpacity}
+                                                onChange={e => setBgOpacity(Number(e.target.value))}
+                                                style={{width:'100%',accentColor:'#19737c',height:'4px',cursor:'pointer'}} />
+                                            <div style={{display:'flex',justifyContent:'space-between',marginTop:'4px'}}>
+                                                <span style={{fontSize:'9px',color:'#94a3b8',fontWeight:700}}>Redup</span>
+                                                <span style={{fontSize:'9px',color:'#94a3b8',fontWeight:700}}>Terang</span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Live preview bar */}
+                                    {sel && (
+                                        <div style={{marginTop:'12px',height:'48px',borderRadius:'12px',overflow:'hidden',border:'1.5px solid #e2e8f0',position:'relative',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                                            <div style={{
+                                                position:'absolute',inset:0,
+                                                ...(sel.type==='color'?{background:sel.value}:{}),
+                                                ...(sel.type==='gradient'?{background:sel.value}:{}),
+                                                ...(sel.type==='image'?{backgroundImage:`url(${sel.url||`https://picsum.photos/id/${sel.picId}/200/80`})`,backgroundSize:bgSize,backgroundPosition:bgPos,backgroundRepeat:'no-repeat'}:{}),
+                                                opacity:bgOpacity,
+                                            }} />
+                                            <span style={{position:'relative',zIndex:1,fontSize:'11px',fontWeight:800,color:'#1e293b',textShadow:'0 1px 4px rgba(255,255,255,0.8)',background:'rgba(255,255,255,0.6)',padding:'3px 10px',borderRadius:'99px',backdropFilter:'blur(4px)'}}>Pratinjau Background</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Footer */}
+                                <div style={{padding:'12px 16px 20px',display:'flex',gap:'10px',flexShrink:0,borderTop:'1px solid #f1f5f9',marginTop:'8px'}}>
+                                    <button onClick={() => { setSel(null); onApply(null); onClose(); }}
+                                        style={{flex:1,padding:'11px',borderRadius:'13px',border:'1.5px solid #e2e8f0',background:'#fff',color:'#64748b',fontWeight:800,fontSize:'13px',cursor:'pointer'}}>
+                                        Reset
+                                    </button>
+                                    <button onClick={handleApply}
+                                        style={{flex:2,padding:'11px',borderRadius:'13px',border:'none',background:sel?'linear-gradient(135deg,#19737c,#0ea5e9)':'#cbd5e1',color:'#fff',fontWeight:900,fontSize:'13px',cursor:sel?'pointer':'not-allowed',boxShadow:sel?'0 4px 14px rgba(25,115,124,0.35)':'none',transition:'all 0.2s'}}>
+                                        {sel ? '✓ Terapkan' : 'Pilih dulu'}
+                                    </button>
+                                </div>
+                            </div>
+                        </>
+                    );
+                };
+                // ====== END BACKGROUND GALLERY PANEL ======
+
                 const App = () => {
             const [inventoryData, setInventoryData] = useState([]);
             const [rawInventory, setRawInventory] = useState([]); // Store original data from DB
@@ -19167,6 +19425,32 @@
                 try { return JSON.parse(localStorage.getItem(CHANGELOG_STORAGE_KEY) || '[]'); } catch { return []; }
             });
             const [liveChangelog, setLiveChangelog] = useState(CHANGELOG);
+
+            // ── App Background State ──
+            const [appBg, setAppBg] = useState(() => {
+                try { return JSON.parse(localStorage.getItem('husna_app_bg') || 'null'); } catch { return null; }
+            });
+            const [showBgPanel, setShowBgPanel] = useState(false);
+
+            const handleApplyBg = React.useCallback((bg) => {
+                setAppBg(bg);
+                try { localStorage.setItem('husna_app_bg', JSON.stringify(bg)); } catch {}
+            }, []);
+
+            const getAppBgLayerStyle = React.useCallback(() => {
+                if (!appBg) return null;
+                const base = { opacity: appBg.opacity !== undefined ? appBg.opacity : 1 };
+                if (appBg.type === 'color') return { ...base, background: appBg.value };
+                if (appBg.type === 'gradient') return { ...base, background: appBg.value };
+                if (appBg.type === 'image') return {
+                    ...base,
+                    backgroundImage: `url(${appBg.url})`,
+                    backgroundSize: appBg.size || 'cover',
+                    backgroundPosition: appBg.position || 'center',
+                    backgroundRepeat: 'no-repeat',
+                };
+                return null;
+            }, [appBg]);
 
             // Firestore real-time listener untuk changelog notifikasi (dari admin panel)
             React.useEffect(() => {
@@ -19763,7 +20047,19 @@
             const visibleMenuItems = menuItems.filter(m => m.enabled);
 
             return (
-                <div className={`min-h-screen flex flex-col md:flex-row bg-white transition-colors duration-500 ${activeStoreId === 'all_stores' ? 'theme-all-stores' : ''}`}>
+                <div className={`min-h-screen flex flex-col md:flex-row transition-colors duration-500 ${activeStoreId === 'all_stores' ? 'theme-all-stores' : ''}${!appBg ? ' bg-white' : ''}`} style={{position:'relative'}}>
+                    {/* ── App Background Layer ── */}
+                    {appBg && getAppBgLayerStyle() && (
+                        <div id="app-bg-layer" style={getAppBgLayerStyle()} />
+                    )}
+                    {/* ── Background Gallery Panel ── */}
+                    {showBgPanel && (
+                        <BackgroundGalleryPanel
+                            currentBg={appBg}
+                            onApply={handleApplyBg}
+                            onClose={() => setShowBgPanel(false)}
+                        />
+                    )}
                     <RamadhanDecor /> <Toast show={toast.show} message={toast.message} type={toast.type} /> <ExpiryBanner items={expiryAlertItems} thresholdDays={(settingsData.expiryNotifMonths || 3) * 30} durationMs={(settingsData.expiryNotifSeconds || 3) * 1000} /> {isSidebarOpen && (<div className="fixed inset-0 bg-slate-900/50 z-40 md:hidden backdrop-blur-sm fade-in" onClick={() => setIsSidebarOpen(false)}></div>)}
                     
                     {/* HIDDEN RECEIPT CONTAINER (UPDATED FOR DYNAMIC STORE) */}
@@ -20059,6 +20355,15 @@
                                         </div>
                                     </div>
                                 )}
+                                {/* Tombol Ganti Background */}
+                                <button
+                                    onClick={() => { setShowBgPanel(true); setIsSidebarOpen(false); }}
+                                    style={{width:'100%',display:'flex',alignItems:'center',gap:'10px',padding:'9px 10px',borderRadius:'8px',color:'rgba(255,255,255,0.85)',fontWeight:700,fontSize:'13.5px',background:appBg?'rgba(255,255,255,0.12)':'none',border:appBg?'1px solid rgba(255,255,255,0.2)':'none',cursor:'pointer',transition:'background .1s',marginBottom:'4px'}}
+                                >
+                                    <Icon name="palette" className="text-sm" />
+                                    <span style={{flex:1}}>Ganti Background</span>
+                                    {appBg && <span style={{fontSize:'8px',background:'rgba(255,255,255,0.25)',color:'#fff',padding:'2px 6px',borderRadius:'99px',fontWeight:900}}>Aktif</span>}
+                                </button>
                                 <button onClick={handleLogout} style={{width:'100%',display:'flex',alignItems:'center',gap:'10px',padding:'9px 10px',borderRadius:'8px',color:'rgba(255,255,255,0.85)',fontWeight:700,fontSize:'13.5px',background:'none',border:'none',cursor:'pointer',transition:'background .1s'}}>
                                     <Icon name="right-from-bracket" className="text-sm" /> Keluar / Logout
                                 </button>
@@ -20092,6 +20397,13 @@
                                     <circle cx="12" cy="12" r="10"/>
                                     <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
                                     <circle cx="12" cy="17" r=".5" fill="#19737c"/>
+                                </svg>
+                            </button>
+                            {/* BG Palette btn */}
+                            <button onClick={() => setShowBgPanel(true)} className="relative flex items-center justify-center flex-shrink-0 active:bg-slate-50 transition-colors" style={{width:'34px',height:'34px',borderRadius:'8px',border:'1.5px solid #c0c0c0',background:appBg?'#19737c':'#fff'}}>
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={appBg?'#fff':'#19737c'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/>
+                                    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
                                 </svg>
                             </button>
                             {/* Bell */}
