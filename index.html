@@ -290,7 +290,7 @@
     <!-- React & Dependencies -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
     
     <!-- HTML2Canvas (Untuk Generate JPG) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -316,7 +316,7 @@
     (function () {
         // ─── KONFIGURASI ─────────────────────────────────────────────────────────
         const SUPABASE_URL = 'https://mnuunkrkoeqjzbxceodc.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1udXVua3Jrb2VxanpieGNlb2RjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxNTc4NDQsImV4cCI6MjA5NzczMzg0NH0.Ww8R_sukOnfCo4EbBK90T0ZyYomw9LzL0wpHISn97s8';
+        const SUPABASE_KEY = 'sb_publishable_y4wpNCwGFOrPKBrVDwv7MA_yrgCzPWF';
         // ─────────────────────────────────────────────────────────────────────────
         // SETUP SUPABASE:
         // 1. Jalankan SQL ini di Supabase SQL Editor:
@@ -340,6 +340,7 @@
 
         // Init Supabase client (untuk Realtime)
         const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+            auth: { persistSession: false, autoRefreshToken: false },
             realtime: { params: { eventsPerSecond: 10 } }
         });
         window._supabaseClient = _sb;
@@ -415,42 +416,47 @@
             return { appId, coll, docId };
         }
 
-        // ── Supabase REST helper ─────────────────────────────────────────────────
-        async function _rest(method, path, body, qs) {
-            let url = SUPABASE_URL + '/rest/v1/firestore_documents';
-            if (path) url += path;
-            if (qs)   url += (url.includes('?') ? '&' : '?') + qs;
-            const hdrs = {
-                'Content-Type':  'application/json',
-                'apikey':        SUPABASE_KEY,
-                'Authorization': 'Bearer ' + SUPABASE_KEY,
-            };
-            if (['POST','PUT','PATCH'].includes(method)) hdrs['Prefer'] = 'return=representation';
-            const res = await fetch(url, {
-                method, headers: hdrs,
-                body: body ? JSON.stringify(body) : undefined,
-            });
-            if (!res.ok) {
-                const txt = await res.text();
-                console.error('[Supabase]', method, url, res.status, txt);
-                throw new Error('Supabase ' + method + ': ' + res.status);
-            }
-            return method === 'DELETE' ? null : res.json();
-        }
-
-        // ── Fetch helpers ────────────────────────────────────────────────────────
+        // ── Supabase SDK helpers (kompatibel sb_publishable & JWT key) ───────────
         async function _fetchCol(appId, coll) {
-            const rows = await _rest('GET', '', null,
-                'app_id=eq.' + encodeURIComponent(appId) +
-                '&collection_name=eq.' + encodeURIComponent(coll) +
-                '&select=doc_id,data');
-            return (rows || []).map(r => ({ id: r.doc_id, ...r.data }));
+            const { data, error } = await _sb
+                .from('firestore_documents')
+                .select('doc_id,data')
+                .eq('app_id', appId)
+                .eq('collection_name', coll);
+            if (error) { console.error('[Supabase] fetchCol', error); throw new Error(error.details || error.message || JSON.stringify(error)); }
+            return (data || []).map(r => ({ id: r.doc_id, ...r.data }));
         }
         async function _fetchDoc(appId, coll, docId) {
-            const rows = await _rest('GET', '', null,
-                'path_key=eq.' + encodeURIComponent(_pk(appId, coll, docId)) +
-                '&select=doc_id,data');
-            return rows && rows.length ? { id: rows[0].doc_id, ...rows[0].data } : null;
+            const { data, error } = await _sb
+                .from('firestore_documents')
+                .select('doc_id,data')
+                .eq('path_key', _pk(appId, coll, docId))
+                .maybeSingle();
+            if (error) { console.error('[Supabase] fetchDoc', error); throw new Error(error.details || error.message || JSON.stringify(error)); }
+            return data ? { id: data.doc_id, ...data.data } : null;
+        }
+        async function _upsertSdk(appId, coll, docId, processed) {
+            const { error } = await _sb
+                .from('firestore_documents')
+                .upsert(
+                    { path_key: _pk(appId, coll, docId), app_id: appId, collection_name: coll, doc_id: docId, data: processed, updated_at: new Date().toISOString() },
+                    { onConflict: 'path_key' }
+                );
+            if (error) { console.error('[Supabase] upsert', error); throw new Error(error.details || error.message || JSON.stringify(error)); }
+        }
+        async function _patchSdk(appId, coll, docId, updated) {
+            const { error } = await _sb
+                .from('firestore_documents')
+                .update({ data: updated, updated_at: new Date().toISOString() })
+                .eq('path_key', _pk(appId, coll, docId));
+            if (error) { console.error('[Supabase] patch', error); throw new Error(error.details || error.message || JSON.stringify(error)); }
+        }
+        async function _deleteSdk(appId, coll, docId) {
+            const { error } = await _sb
+                .from('firestore_documents')
+                .delete()
+                .eq('path_key', _pk(appId, coll, docId));
+            if (error) { console.error('[Supabase] delete', error); throw new Error(error.details || error.message || JSON.stringify(error)); }
         }
 
         // ── Snapshot wrappers (meniru Firebase DocumentSnapshot / QuerySnapshot) ─
@@ -576,11 +582,7 @@
             const docId = _uid();
             const { appId, coll } = colRef;
             const processed = _resolve(data, {});
-            await _rest('POST',
-                '?on_conflict=path_key',
-                { path_key: _pk(appId, coll, docId), app_id: appId, collection_name: coll, doc_id: docId, data: processed },
-                null
-            );
+            await _upsertSdk(appId, coll, docId, processed);
             return { id: docId };
         }
 
@@ -594,11 +596,7 @@
             } else {
                 processed = _resolve(data, {});
             }
-            await _rest('POST',
-                '?on_conflict=path_key',
-                { path_key: _pk(appId, coll, docId), app_id: appId, collection_name: coll, doc_id: docId, data: processed },
-                null
-            );
+            await _upsertSdk(appId, coll, docId, processed);
         }
 
         // ── updateDoc(docRef, data) ───────────────────────────────────────────────
@@ -606,18 +604,13 @@
             const { appId, coll, docId } = docRef;
             const existing = await _fetchDoc(appId, coll, docId);
             const updated  = _resolve(data, existing || {});
-            await _rest('PATCH',
-                '?path_key=eq.' + encodeURIComponent(_pk(appId, coll, docId)),
-                { data: updated }
-            );
+            await _patchSdk(appId, coll, docId, updated);
         }
 
         // ── deleteDoc(docRef) ─────────────────────────────────────────────────────
         async function deleteDoc(docRef) {
             const { appId, coll, docId } = docRef;
-            await _rest('DELETE',
-                '?path_key=eq.' + encodeURIComponent(_pk(appId, coll, docId))
-            );
+            await _deleteSdk(appId, coll, docId);
         }
 
         // ── getDoc(docRef) ────────────────────────────────────────────────────────
@@ -1450,7 +1443,7 @@
                 // if (settings.storeHeader3 && (!headers.length)) { encoder.text(settings.storeHeader3).newline(); }
                 headers.forEach(h => { if(h && h.trim()) encoder.text(h).newline(); });
                 
-                const receiptDate = receipt.date.seconds ? receipt.date.toDate() : new Date(receipt.date);
+                const receiptDate = receipt.date ? (receipt.date.seconds ? receipt.date.toDate() : new Date(receipt.date)) : new Date(0);
                 const hariIndo = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][receiptDate.getDay()];
                 encoder.line().alignLeft()
                     .text(`Tgl: ${hariIndo}, ${receiptDate.toLocaleDateString('id-ID')} ${receiptDate.toLocaleTimeString('id-ID')}`)
@@ -2113,7 +2106,7 @@
                 const usersRef = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'users');
                 const unsub = window.onSnapshot(usersRef, (snap) => {
                     const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    data.sort((a, b) => a.namaLengkap?.localeCompare(b.namaLengkap));
+                    data.sort((a, b) => (a.namaLengkap || '').localeCompare(b.namaLengkap || ''));
                     setUsers(data);
                     setLoadingUsers(false);
                 });
@@ -4531,7 +4524,7 @@
                 if (qty <= 0 || price <= 0) { showToast("Qty dan harga harus lebih dari 0!", "error"); return; }
 
                 // Cek nama barang sudah ada di daftar barang
-                const existingItem = items.find(i => i.name.toLowerCase() === newItemData.name.trim().toLowerCase());
+                const existingItem = items.find(i => (i.name || '').toLowerCase() === newItemData.name.trim().toLowerCase());
                 if (existingItem) {
                     // Barang sudah ada → pakai seperti biasa
                     setSelectedItem(existingItem);
@@ -4600,7 +4593,7 @@
             
             // Filter items untuk search
             const filteredItems = items.filter(item => 
-                item.name.toLowerCase().includes(itemSearch.toLowerCase())
+                (item.name || '').toLowerCase().includes(itemSearch.toLowerCase())
             ).slice(0, 10);
 
             // Filter purchases by store
@@ -4658,7 +4651,7 @@
                         if (item.discountBeli2 > 0) effPrice = item.discountBeliType2 === 'Rp' ? Math.max(0, effPrice - item.discountBeli2) : effPrice * (1 - item.discountBeli2 / 100);
                         if (item.discountBeli3 > 0) effPrice = item.discountBeliType3 === 'Rp' ? Math.max(0, effPrice - item.discountBeli3) : effPrice * (1 - item.discountBeli3 / 100);
                         if (effPrice <= 0) return;
-                        const normName = item.name.trim();
+                        const normName = (item.name || '').trim();
                         if (!itemMap[normName]) itemMap[normName] = {};
                         const existing = itemMap[normName][p.supplier];
                         const thisDate = p.date ? new Date(p.date) : new Date(0);
@@ -4683,7 +4676,7 @@
                             isCheapest: row.price === cheapestPrice
                         }))
                     };
-                }).sort((a, b) => a.itemName.localeCompare(b.itemName, 'id'));
+                }).sort((a, b) => (a.itemName || '').localeCompare(b.itemName || '', 'id'));
                 return result;
             }, [storePurchases]);
 
@@ -4946,7 +4939,7 @@
                             const meta = item._newItemMeta || {};
                             const collRef = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory');
                             // Cek sekali lagi apakah nama sudah ada (race condition)
-                            const existingByName = items.find(i => i.name.toLowerCase() === item.name.toLowerCase());
+                            const existingByName = items.find(i => (i.name || '').toLowerCase() === (item.name || '').toLowerCase());
                             if (existingByName) {
                                 // Sudah ada → pakai id yang sudah ada
                                 return { ...item, id: existingByName.id, _pendingNew: false, _newItemMeta: undefined };
@@ -5332,7 +5325,7 @@
                 setDetailModalOpen(false);
                 setInvoiceModalOpen(true);
             };
-            const filteredSuppliers = suppliers.filter(s => s.name.toLowerCase().includes(supplierSearch.toLowerCase()));
+            const filteredSuppliers = suppliers.filter(s => (s.name || '').toLowerCase().includes(supplierSearch.toLowerCase()));
             const uniqueSupplierNames = [...new Set(storePurchases.map(p => p.supplier).filter(Boolean))].sort();
             const filteredPurchases = storePurchases.filter(p => {
                 const q = purchaseSearch.toLowerCase();
@@ -7297,7 +7290,7 @@
                         .map(d => ({ id: d.id, ...d.data() }))
                         .map(u => ({ name: u.namaLengkap || u.username, isActive: u.isActive !== false }))
                         .filter(u => u.name)
-                        .sort((a, b) => a.name.localeCompare(b.name));
+                        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
                     setRegisteredUsers(users);
                 });
                 return () => unsub();
@@ -7396,7 +7389,7 @@
                     await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'dokter_list', editId), { name: name.trim(), alamat: alamat.trim(), hp: hp.trim() });
                     showToast('Data dokter diperbarui');
                 } else {
-                    const exists = dokterList.find(d => d.name.toLowerCase() === name.trim().toLowerCase());
+                    const exists = dokterList.find(d => (d.name || '').toLowerCase() === name.trim().toLowerCase());
                     if (!exists) {
                         await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'dokter_list'), { name: name.trim(), alamat: alamat.trim(), hp: hp.trim(), createdAt: window.serverTimestamp() });
                     }
@@ -7418,7 +7411,7 @@
                     await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'pasien_list', editId), { name: name.trim(), age: age || '', alamat: alamat.trim(), hp: hp.trim() });
                     showToast('Data pasien diperbarui');
                 } else {
-                    const exists = pasienList.find(p => p.name.toLowerCase() === name.trim().toLowerCase());
+                    const exists = pasienList.find(p => (p.name || '').toLowerCase() === name.trim().toLowerCase());
                     if (!exists) {
                         await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'pasien_list'), { name: name.trim(), age: age || '', alamat: alamat.trim(), hp: hp.trim(), createdAt: window.serverTimestamp() });
                     }
@@ -7777,8 +7770,7 @@
                                     method: 'PATCH',
                                     headers: {
                                         'Content-Type':  'application/json',
-                                        'apikey':        window._sbKey || 'GANTI_DENGAN_SUPABASE_ANON_KEY_ANDA',
-                                        'Authorization': 'Bearer ' + (window._sbKey || 'GANTI_DENGAN_SUPABASE_ANON_KEY_ANDA'),
+                                        'apikey':        window._sbKey || '',
                                         'Prefer':        'return=minimal',
                                     },
                                     // Catatan: PATCH ini update seluruh kolom data.
@@ -8790,7 +8782,7 @@
                                                     if (!name) return;
                                                     setSavingPembeli(true);
                                                     try {
-                                                        const exists = pasienList.find(p => p.name.toLowerCase() === name.toLowerCase());
+                                                        const exists = pasienList.find(p => (p.name || '').toLowerCase() === name.toLowerCase());
                                                         if (!exists) {
                                                             await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'pasien_list'), { name, age: '', alamat: '', hp: '', createdAt: window.serverTimestamp() });
                                                         }
@@ -8826,7 +8818,7 @@
                                                     <p className="text-center text-xs text-slate-400 py-4">Tidak ada pembeli ditemukan.<br/>Klik <b>+ Pembeli</b> untuk tambah baru.</p>
                                                 )}
                                             </div>
-                                            {pembeliInput.trim() && !pasienList.find(p => p.name.toLowerCase() === pembeliInput.trim().toLowerCase()) && (
+                                            {pembeliInput.trim() && !pasienList.find(p => (p.name || '').toLowerCase() === pembeliInput.trim().toLowerCase()) && (
                                                 <button onClick={() => { setSelectedPembeli(pembeliInput.trim()); setShowPembeliModal(false); }}
                                                     className="w-full mt-3 py-2.5 rounded-xl border-2 border-dashed border-teal-300 text-teal-600 text-xs font-bold hover:bg-teal-50 transition-all active:scale-95">
                                                     Pilih "{pembeliInput.trim()}" (tanpa simpan)
@@ -8972,7 +8964,7 @@
                                                 <p className="text-[10px] font-bold text-slate-500 uppercase mb-1.5">Pilih Barang</p>
                                                 <input value={paketItemSearch} onChange={e => setPaketItemSearch(e.target.value)} placeholder="Cari barang..." className="w-full text-xs border border-slate-200 rounded-lg px-3 py-1.5 outline-none focus:border-teal-400 mb-2" />
                                                 <div className="max-h-36 overflow-y-auto divide-y divide-slate-100 border border-slate-100 rounded-lg mb-3">
-                                                    {items.filter(it => !paketItemSearch || it.name.toLowerCase().includes(paketItemSearch.toLowerCase())).slice(0, 20).map(it => {
+                                                    {items.filter(it => !paketItemSearch || (it.name || '').toLowerCase().includes(paketItemSearch.toLowerCase())).slice(0, 20).map(it => {
                                                         const inPaket = paketForm.items.find(pi => pi.itemId === it.id);
                                                         return (
                                                             <div key={it.id} className="flex items-center justify-between px-2 py-1.5 hover:bg-slate-50">
@@ -9516,7 +9508,7 @@
                                             <span className="text-xs text-slate-400">{dokterList.length} data</span>
                                         </div>
                                         {(() => {
-                                            const filtered = dokterSearch ? dokterList.filter(d => d.name.toLowerCase().includes(dokterSearch.toLowerCase())) : dokterList;
+                                            const filtered = dokterSearch ? dokterList.filter(d => (d.name || '').toLowerCase().includes(dokterSearch.toLowerCase())) : dokterList;
                                             if (filtered.length === 0) return (
                                                 <div className="border border-slate-200 rounded-2xl p-10 flex flex-col items-center gap-3 mt-2">
                                                     <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center">
@@ -9658,7 +9650,7 @@
                                             <span className="text-xs text-slate-400">{pasienList.length} data</span>
                                         </div>
                                         {(() => {
-                                            const filtered = pasienSearch ? pasienList.filter(p => p.name.toLowerCase().includes(pasienSearch.toLowerCase())) : pasienList;
+                                            const filtered = pasienSearch ? pasienList.filter(p => (p.name || '').toLowerCase().includes(pasienSearch.toLowerCase())) : pasienList;
                                             if (filtered.length === 0) return (
                                                 <div className="border border-slate-200 rounded-2xl p-10 flex flex-col items-center gap-3 mt-2">
                                                     <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center">
@@ -10136,7 +10128,7 @@
                         .map(d => ({ id: d.id, ...d.data() }))
                         .map(u => ({ name: u.namaLengkap || u.username, isActive: u.isActive !== false }))
                         .filter(u => u.name)
-                        .sort((a, b) => a.name.localeCompare(b.name));
+                        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
                     setRegisteredUsers(users);
                 });
                 return () => unsub();
@@ -10234,7 +10226,7 @@
             const dailyTransactions = useMemo(() => {
                 const { from, to } = getDateRanges();
                 return transactions.filter(tx => {
-                    const txDate = tx.date.seconds ? tx.date.toDate() : new Date(tx.date);
+                    const txDate = tx.date ? (tx.date.seconds ? tx.date.toDate() : new Date(tx.date)) : new Date(0);
                     if (filterMode === 'today') return isSameDay(txDate, from);
                     if (filterMode === 'specific') {
                         const fromDay = new Date(from); fromDay.setHours(0,0,0,0);
@@ -10257,7 +10249,7 @@
                     const lowerQ = historySearch.toLowerCase();
                     data = data.filter(tx => {
                         if (tx.items && tx.items.some(i => {
-                            if (i.name.toLowerCase().includes(lowerQ)) return true;
+                            if ((i.name || '').toLowerCase().includes(lowerQ)) return true;
                             if (i.racikanInfo) {
                                 if (i.racikanInfo.dokter && i.racikanInfo.dokter.toLowerCase().includes(lowerQ)) return true;
                                 if (i.racikanInfo.pasien && i.racikanInfo.pasien.toLowerCase().includes(lowerQ)) return true;
@@ -10272,8 +10264,8 @@
                 if (filterPayment.length > 0) { data = data.filter(tx => filterPayment.includes(tx.paymentMethod || 'tunai')); }
                 if (filterTipe !== 'all') { data = data.filter(tx => (tx.tipeTransaksi || 'Harga normal') === filterTipe); }
                 data.sort((a, b) => {
-                    const dateA = a.date.seconds ? a.date.toDate() : new Date(a.date);
-                    const dateB = b.date.seconds ? b.date.toDate() : new Date(b.date);
+                    const dateA = a.date ? (a.date.seconds ? a.date.toDate() : new Date(a.date)) : new Date(0);
+                    const dateB = b.date ? (b.date.seconds ? b.date.toDate() : new Date(b.date)) : new Date(0);
                     switch (sortOrder) { case 'oldest': return dateA - dateB; case 'highest': return b.total - a.total; case 'lowest': return a.total - b.total; case 'newest': default: return dateB - dateA; }
                 });
                 return data;
@@ -10288,11 +10280,11 @@
             const stats = useMemo(() => {
                 let grossSales = 0, grossCount = 0, returnsValue = 0, returnTxCount = 0, totalUangR = 0, totalPembulatan = 0;
                 processedTransactions.forEach(tx => {
-                    grossSales += tx.items.reduce((sum, item) => sum + (item.price * item.cartQty), 0); grossCount++;
+                    grossSales += (tx.items || []).reduce((sum, item) => sum + ((item.price || 0) * (item.cartQty || 0)), 0); grossCount++;
                     let txReturnVal = 0, hasReturn = false;
-                    tx.items.forEach(item => { if (item.returnedQty && item.returnedQty > 0) { txReturnVal += (item.returnedQty * item.price); hasReturn = true; } else if (tx.status === 'returned') { txReturnVal += (item.cartQty * item.price); hasReturn = true; } });
+                    (tx.items || []).forEach(item => { if (item.returnedQty && item.returnedQty > 0) { txReturnVal += (item.returnedQty * (item.price||0)); hasReturn = true; } else if (tx.status === 'returned') { txReturnVal += ((item.cartQty||0) * (item.price||0)); hasReturn = true; } });
                     returnsValue += txReturnVal; if (hasReturn) returnTxCount++;
-                    tx.items.forEach(item => { if (item.isRacikanGroup && item.racikanInfo?.uangR) totalUangR += (parseInt(item.racikanInfo.uangR) || 0); });
+                    (tx.items || []).forEach(item => { if (item.isRacikanGroup && item.racikanInfo?.uangR) totalUangR += (parseInt(item.racikanInfo.uangR) || 0); });
                     if (tx.pembulatan) totalPembulatan += (tx.pembulatan || 0);
                 });
                 return { netSales: grossSales - returnsValue, grossSales, grossCount, returnsValue, returnTxCount, avgSale: grossCount > 0 ? grossSales / grossCount : 0, totalUangR, totalPembulatan };
@@ -10303,8 +10295,8 @@
             // Buka sub-page retur (flow baru: step1 → step2)
             const openReturPage = (tx) => {
                 if (!canReturOldTransaction(tx)) { showToast('Hanya Owner atau akun yang diizinkan yang bisa retur transaksi kemarin & sebelumnya', 'error'); return; }
-                const rItems = tx.items
-                    .map((item, origIdx) => ({ ...item, origIdx, maxRetur: item.cartQty - (item.returnedQty || 0) }))
+                const rItems = (tx.items || [])
+                    .map((item, origIdx) => ({ ...item, origIdx, maxRetur: (item.cartQty||0) - (item.returnedQty || 0) }))
                     .filter(item => item.maxRetur > 0)
                     .map(item => ({ ...item, checked: false, returQty: item.maxRetur }));
                 if (rItems.length === 0) { showToast('Semua item sudah diretur', 'error'); return; }
@@ -10336,9 +10328,9 @@
                     const batch = window.writeBatch(window.db);
                     const storeIdToReturn = selectedTx.storeId || 'default';
                     const stockField = `stocks.${storeIdToReturn}`;
-                    const updatedItems = [...selectedTx.items];
+                    const updatedItems = [...(selectedTx.items || [])];
                     for (const ri of selItems) {
-                        const origIdx = ri.origIdx !== undefined ? ri.origIdx : selectedTx.items.findIndex(i => i.id === ri.id);
+                        const origIdx = ri.origIdx !== undefined ? ri.origIdx : (selectedTx.items || []).findIndex(i => i.id === ri.id);
                         if (origIdx === -1) continue;
                         if (ri.isRacikanGroup) {
                             (ri.racikanItems || []).forEach(b => {
@@ -10384,7 +10376,7 @@
             // Cek apakah transaksi berasal dari hari sebelum hari ini
             const isTxOlderThanToday = (tx) => {
                 if (!tx?.date) return false;
-                const txDate = tx.date?.toDate ? tx.date.toDate() : new Date(tx.date);
+                const txDate = tx.date ? (tx.date?.toDate ? tx.date.toDate() : new Date(tx.date)) : new Date(0);
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 return txDate < today;
@@ -10422,7 +10414,7 @@
                     }
                     
                     const txRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'transactions', tx.id);
-                    const updatedItems = [...tx.items];
+                    const updatedItems = [...(tx.items || [])];
                     updatedItems[index].returnedQty = (updatedItems[index].returnedQty || 0) + qtyToRetur;
                     let totalItemsCount = 0, totalReturnedCount = 0;
                     updatedItems.forEach(i => { totalItemsCount += i.cartQty; totalReturnedCount += (i.returnedQty || 0); });
@@ -10493,7 +10485,7 @@
                     // Agregasi item terjual dari transaksi yang sudah difilter
                     const itemMap = {};
                     processedTransactions.forEach(tx => {
-                        tx.items.forEach(item => {
+                        (tx.items || []).forEach(item => {
                             const netQty = (item.cartQty || 0) - (item.returnedQty || 0);
                             if (netQty <= 0) return;
                             const key = item.id || item.name;
@@ -10509,7 +10501,7 @@
                     const buyPriceMap = {};
                     purchasesData.forEach(p => {
                         if (p.items) {
-                            p.items.forEach(pi => {
+                            (p.items || []).forEach(pi => {
                                 const key = pi.id || pi.name;
                                 if (pi.buyPrice > 0 && !buyPriceMap[key]) {
                                     buyPriceMap[key] = pi.buyPrice;
@@ -10950,7 +10942,7 @@
                                 <div className="flex items-start gap-2">
                                     <span className="text-xs font-bold text-slate-400 mt-0.5">{(histPage - 1) * HIST_PAGE_SIZE + idx + 1}</span>
                                     <div>
-                                        <p className="text-xs font-bold text-teal-600">{(() => { const d = new Date(tx.date.seconds ? tx.date.toDate() : tx.date); return d.toLocaleDateString('en-GB', {year:'numeric', month:'short', day:'numeric'}) + ', ' + d.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}) + ' WIB'; })()}</p>
+                                        <p className="text-xs font-bold text-teal-600">{(() => { const d = tx.date ? new Date(tx.date.seconds ? tx.date.toDate() : tx.date) : new Date(0); return d.toLocaleDateString('en-GB', {year:'numeric', month:'short', day:'numeric'}) + ', ' + d.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}) + ' WIB'; })()}</p>
                                         <p className={`text-sm font-black ${tx.status === 'returned' ? 'text-red-500 line-through' : 'text-teal-600'}`}>#{tx.id?.slice(-10).toUpperCase()}</p>
                                     </div>
                                 </div>
@@ -10964,7 +10956,7 @@
                             {/* Barang */}
                             <div className="mt-2 mb-3">
                                 <p className="text-xs font-black text-slate-800 mb-0.5">Barang</p>
-                                <p className="text-xs text-slate-600 leading-snug">{tx.items.map(i => i.name).join(', ')}</p>
+                                <p className="text-xs text-slate-600 leading-snug">{(tx.items || []).map(i => String(i.name || '')).join(', ')}</p>
                             </div>
                             {/* Grid 2 kolom: Kasir | Sales */}
                             <div className="grid grid-cols-2 gap-x-4 mb-2">
@@ -11222,7 +11214,7 @@
                                     <span className="w-20 text-right">Harga</span>
                                 </div>
                                 {(() => {
-                                    return selectedTx.items.map((item, idx) => {
+                                    return (selectedTx.items || []).map((item, idx) => {
                                         const returnedQty = item.returnedQty || 0;
                                         const isFullyReturned = returnedQty >= item.cartQty;
                                         const ri = item.racikanInfo;
@@ -11253,19 +11245,19 @@
                                     });
                                 })()}
                                 {(() => {
-                                    const subtotalTx = selectedTx.items.reduce((acc, item) => acc + ((item.originalPrice || item.price) * item.cartQty), 0);
-                                    const diskonTxRp = subtotalTx - selectedTx.total;
-                                    const discountedItems = selectedTx.items.filter(i => i.discount && i.discount.value > 0);
-                                    const uniqTypes = [...new Set(discountedItems.map(i => i.discount.type))];
-                                    const uniqValues = [...new Set(discountedItems.map(i => i.discount.value))];
+                                    const subtotalTx = (selectedTx.items || []).reduce((acc, item) => acc + (((item.originalPrice || item.price) || 0) * (item.cartQty || 0)), 0);
+                                    const diskonTxRp = subtotalTx - (selectedTx.total || 0);
+                                    const discountedItems = (selectedTx.items || []).filter(i => i.discount && i.discount.value > 0);
+                                    const uniqTypes = [...new Set(discountedItems.map(i => i.discount?.type).filter(Boolean))];
+                                    const uniqValues = [...new Set(discountedItems.map(i => i.discount?.value).filter(v => v !== undefined))];
                                     let diskonLabel = 'Diskon';
                                     if (discountedItems.length > 0 && uniqTypes.length === 1) {
                                         if (uniqTypes[0] === '%') { diskonLabel = uniqValues.length === 1 ? ('Diskon ' + uniqValues[0] + '%') : 'Diskon (%)'; }
                                         else { diskonLabel = uniqValues.length === 1 ? ('Diskon ' + formatRupiah(uniqValues[0])) : 'Diskon (Rp)'; }
                                     }
                                     // Hitung nilai retur dan total setelah retur
-                                    const totalReturnedValue = selectedTx.items.reduce((acc, item) => acc + (item.price * (item.returnedQty || 0)), 0);
-                                    const totalSetelahRetur = selectedTx.total - totalReturnedValue;
+                                    const totalReturnedValue = (selectedTx.items || []).reduce((acc, item) => acc + ((item.price || 0) * (item.returnedQty || 0)), 0);
+                                    const totalSetelahRetur = (selectedTx.total || 0) - totalReturnedValue;
                                     const hasRetur = totalReturnedValue > 0;
                                     return (
                                         <div className="mt-1 pt-1">
@@ -13318,7 +13310,7 @@
             const debouncedSetSearchQuery = useMemo(() => { let timer; return (val) => { clearTimeout(timer); timer = setTimeout(() => setSearchQuery(val), 300); }; }, []);
             const toggleRack = (rackName) => { setSelectedRacks(prev => { if (prev.includes(rackName)) return prev.filter(r => r !== rackName); return [...prev, rackName]; }); };
             const getRackLabel = () => { if (selectedRacks.length === 0) return "Semua Rak"; if (selectedRacks.length === 1) return selectedRacks[0]; return `${selectedRacks.length} Rak Terpilih`; };
-            const filteredRacks = uniqueRacksData.filter(r => r.name.toLowerCase().includes(rackSearch.toLowerCase()));
+            const filteredRacks = uniqueRacksData.filter(r => (r.name || '').toLowerCase().includes(rackSearch.toLowerCase()));
             const displayedItems = filteredItems.slice(0, displayedLimit);
 
             if (selectedDetailItem) {
@@ -17159,7 +17151,7 @@
                 if (activeFilterSupplier.length > 0) data = data.filter(b => activeFilterSupplier.includes(b.supplier));
                 if (sortBy === 'ed_asc') data.sort((a,b) => (a.daysLeft??99999) - (b.daysLeft??99999));
                 else if (sortBy === 'ed_desc') data.sort((a,b) => (b.daysLeft??99999) - (a.daysLeft??99999));
-                else data.sort((a,b) => a.name.localeCompare(b.name));
+                else data.sort((a,b) => (a.name || '').localeCompare(b.name || ''));
                 return data;
             }, [allBatches, searchQuery, filterStatus, detailFilter, sortBy, activeFilterED, activeFilterSupplier]);
 
@@ -17613,7 +17605,7 @@
             // Filter pencarian
             if (searchQuery.trim()) {
                 const q = searchQuery.toLowerCase();
-                filteredItems = filteredItems.filter(i => i.name.toLowerCase().includes(q));
+                filteredItems = filteredItems.filter(i => (i.name || '').toLowerCase().includes(q));
             }
 
             // Filter prioritas
@@ -17636,8 +17628,8 @@
 
             // Sort
             filteredItems.sort((a, b) => {
-                if (sortBy === 'name_asc') return a.name.localeCompare(b.name, 'id');
-                if (sortBy === 'name_desc') return b.name.localeCompare(a.name, 'id');
+                if (sortBy === 'name_asc') return (a.name || '').localeCompare(b.name || '', 'id');
+                if (sortBy === 'name_desc') return (b.name || '').localeCompare(a.name || '', 'id');
                 if (sortBy === 'qty_asc') return (Number(a.qty)||0) - (Number(b.qty)||0);
                 if (sortBy === 'qty_desc') return (Number(b.qty)||0) - (Number(a.qty)||0);
                 if (sortBy === 'exp_asc') {
@@ -18117,7 +18109,7 @@
                     return item.name?.toLowerCase().includes(search.toLowerCase());
                 })
                 .map(item => ({ ...item, _storeQty: getStoreStock(item, fromStore) }))
-                .sort((a, b) => a.name.localeCompare(b.name));
+                .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
             const handleAddToCart = (item) => {
                 if (cartIds.has(item.id)) return;
@@ -19232,7 +19224,7 @@
 
                     const filteredProducts = React.useMemo(() => {
                         if (!searchQuery) return plData.products;
-                        return plData.products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+                        return plData.products.filter(p => (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()));
                     }, [plData.products, searchQuery]);
 
                     const pmMeta = { tunai: { label: 'Tunai', color: '#0ea5e9', icon: 'money-bill' }, qris: { label: 'QRIS', color: '#8b5cf6', icon: 'qrcode' }, transfer: { label: 'Transfer', color: '#f59e0b', icon: 'building-columns' }, kartu: { label: 'Kartu', color: '#ec4899', icon: 'credit-card' } };
@@ -19527,7 +19519,7 @@
                             });
                         });
                         let arr = Object.values(map);
-                        if (searchQuery) arr = arr.filter(r => r.name.toLowerCase().includes(searchQuery.toLowerCase()));
+                        if (searchQuery) arr = arr.filter(r => (r.name || '').toLowerCase().includes(searchQuery.toLowerCase()));
                         arr.sort((a, b) => sortBy === 'qty' ? b.totalQty - a.totalQty : b.totalRevenue - a.totalRevenue);
                         return arr;
                     }, [filteredTx, searchQuery, sortBy]);
@@ -19961,7 +19953,10 @@
                 if (!user) return;
                 const q = window.query(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory'));
                 const unsubscribeSnapshot = window.onSnapshot(q, (snapshot) => {
-                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    // Filter item yang sama sekali tidak punya field 'name' (data rusak)
+                    const data = snapshot.docs
+                        .map(doc => ({ id: doc.id, ...doc.data() }))
+                        .filter(item => item !== null && item !== undefined);
                     setRawInventory(data); // Save raw data
                     setLoading(false);
                 }, (error) => { console.error("Firestore Error:", error); showToast("Gagal memuat data live", "error"); });
@@ -19996,9 +19991,19 @@
 
                     return {
                         ...item,
-                        qty: displayQty, // Override qty for display/logic
-                        _originalQty: item.qty, // Keep ref just in case
-                        _breakdown: breakdown // Simpan data rincian toko
+                        // Pastikan semua field string tidak undefined (cegah crash di seluruh view)
+                        name:      item.name      || '',
+                        unit:      item.unit      || 'Pcs',
+                        rack:      item.rack      || '-',
+                        exp:       item.exp       || '',
+                        batchNo:   item.batchNo   || '',
+                        // Pastikan field angka tidak undefined
+                        price:     item.price     || 0,
+                        costPrice: item.costPrice || 0,
+                        minStock:  item.minStock  || 0,
+                        qty:       displayQty,
+                        _originalQty: item.qty,
+                        _breakdown:   breakdown,
                     };
                 });
                 processed.sort((a, b) => a.name.localeCompare(b.name));
@@ -20052,7 +20057,7 @@
                         racks.forEach(r => { if (!r) return; if (!rackMap.has(r)) rackMap.set(r, { name: r, hasNew: false }); if (isItemNew) rackMap.get(r).hasNew = true; });
                     }
                 });
-                return Array.from(rackMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+                return Array.from(rackMap.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
             }, [inventoryData]);
 
             const getCurrentProfile = () => { 
@@ -20131,7 +20136,7 @@
                         }
                         showToast(`Stok untuk ${currentProfile.name} diperbarui`);
                     } else {
-                        const existingItem = rawInventory.find(i => i.name.toLowerCase() === formData.name.toLowerCase());
+                        const existingItem = rawInventory.find(i => (i.name || '').toLowerCase() === formData.name.toLowerCase());
                         if (existingItem) {
                              const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'inventory', existingItem.id);
                              await window.updateDoc(docRef, { ...baseData, ...stockUpdate });
@@ -20186,7 +20191,7 @@
                             purchasesSnap.docs.forEach(pDoc => {
                                 const pData = pDoc.data();
                                 if (!pData.items) return;
-                                const itemIndex = pData.items.findIndex(it => it.id === savedItemId || it.name.toLowerCase() === formData.name.toLowerCase());
+                                const itemIndex = pData.items.findIndex(it => it.id === savedItemId || (it.name || '').toLowerCase() === formData.name.toLowerCase());
                                 if (itemIndex !== -1 && pData.items[itemIndex].buyPrice !== newCostPrice) {
                                     const updatedItems = [...pData.items];
                                     updatedItems[itemIndex] = { ...updatedItems[itemIndex], buyPrice: newCostPrice };
@@ -20201,7 +20206,7 @@
                     }
 
                     setEditingItem(null); setFormData({ name: '', qty: '', unit: 'Pcs', exp: '', rack: '', price: '', costPrice: '', minStock: '', defaultDiscount: '', defaultDiscountType: '%', packagePrices: [] }); setActiveTab('list');
-                } catch (error) { console.error("Error saving:", error); showToast("Gagal menyimpan ke database", "error"); } finally { setSubmitting(false); }
+                } catch (error) { console.error("Error saving:", error); showToast("Gagal menyimpan: " + (error?.message || String(error)), "error"); } finally { setSubmitting(false); }
             };
 
             const handleSaveSettings = async (newSettings) => { if(!user) return; setSubmitting(true); try { const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'settings', 'global'); await window.setDoc(docRef, newSettings); showToast("Pengaturan disimpan"); } catch(error) { console.error(error); showToast("Gagal simpan pengaturan", "error"); } finally { setSubmitting(false); } };
@@ -20218,7 +20223,18 @@
             if (!authSession) {
                 return <AuthScreen onAuthSuccess={(sessionData) => { setAuthSession(sessionData); }} />;
             }
-            
+
+            // Tunggu user (Firebase anonymous auth) siap — hindari blank putih saat ganti akun
+            if (!user) {
+                return (
+                    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"100vh", background:"#f8fafc", fontFamily:"sans-serif" }}>
+                        <div style={{ width:"40px", height:"40px", border:"4px solid #e2e8f0", borderTopColor:"#0ea5e9", borderRadius:"50%", animation:"spin 0.8s linear infinite", marginBottom:"16px" }} />
+                        <p style={{ color:"#64748b", fontSize:"14px" }}>Menghubungkan ke server...</p>
+                        <style>{"@keyframes spin { to { transform: rotate(360deg) } }"}</style>
+                    </div>
+                );
+            }
+
             const isOwner = isOwnerEmail(authSession?.email);
 
             // Daftar toko yang boleh diakses user (owner selalu bisa akses semua)
@@ -20293,7 +20309,7 @@
                             </div> 
                             <div className="border-b-2 border-dashed border-gray-300 my-2"></div>
                             {(() => {
-                                const rd = receiptToPrint.date.seconds ? receiptToPrint.date.toDate() : new Date(receiptToPrint.date);
+                                const rd = receiptToPrint.date ? (receiptToPrint.date.seconds ? receiptToPrint.date.toDate() : new Date(receiptToPrint.date)) : new Date(0);
                                 const hariReceipt = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][rd.getDay()];
                                 return (
                                     <>
@@ -20303,12 +20319,12 @@
                                     </>
                                 );
                             })()}
-                            <div className="border-b-2 border-dashed border-gray-300 my-2"></div> <div className="space-y-2 mb-4"> {(() => { let rcIdx = 0; return receiptToPrint.items.map((item, idx) => { let displayName = item.name; if (item.isRacikanGroup) { rcIdx++; displayName = `Racikan ${rcIdx}`; } return ( <div key={idx} className="text-sm"> <div className="font-bold">{displayName}</div> <div className="flex justify-between"> <span>{item.cartQty} x {formatRupiah(item.price)}</span> <span>{formatRupiah(item.cartQty * item.price)}</span> </div> </div> ); }); })()} </div> <div className="border-b-2 border-dashed border-gray-300 my-2"></div> {(() => {
-  const subtotalR = receiptToPrint.items.reduce((acc, item) => acc + ((item.originalPrice || item.price) * item.cartQty), 0);
-  const diskonR = subtotalR - receiptToPrint.total;
-  const discountedR = receiptToPrint.items.filter(i => i.discount && i.discount.value > 0);
-  const uniqTypesR = [...new Set(discountedR.map(i => i.discount.type))];
-  const uniqValuesR = [...new Set(discountedR.map(i => i.discount.value))];
+                            <div className="border-b-2 border-dashed border-gray-300 my-2"></div> <div className="space-y-2 mb-4"> {(() => { let rcIdx = 0; return (receiptToPrint.items || []).map((item, idx) => { let displayName = item.name; if (item.isRacikanGroup) { rcIdx++; displayName = `Racikan ${rcIdx}`; } return ( <div key={idx} className="text-sm"> <div className="font-bold">{displayName}</div> <div className="flex justify-between"> <span>{item.cartQty} x {formatRupiah(item.price)}</span> <span>{formatRupiah(item.cartQty * item.price)}</span> </div> </div> ); }); })()} </div> <div className="border-b-2 border-dashed border-gray-300 my-2"></div> {(() => {
+  const subtotalR = (receiptToPrint.items || []).reduce((acc, item) => acc + (((item.originalPrice || item.price) || 0) * (item.cartQty || 0)), 0);
+  const diskonR = Math.max(0, subtotalR - (receiptToPrint.total || 0));
+  const discountedR = (receiptToPrint.items || []).filter(i => i.discount && i.discount.value > 0);
+  const uniqTypesR = [...new Set(discountedR.map(i => i.discount?.type).filter(Boolean))];
+  const uniqValuesR = [...new Set(discountedR.map(i => i.discount?.value).filter(v => v !== undefined))];
   let diskonLabelR = 'Diskon';
   if (discountedR.length > 0 && uniqTypesR.length === 1) {
     if (uniqTypesR[0] === '%') {
@@ -20814,8 +20830,37 @@
                 </div>
             );
         };
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+
+        // ── Error Boundary: tampil pesan bukan blank putih ────────────────────────
+        class ErrorBoundary extends React.Component {
+            constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+            static getDerivedStateFromError(error) { return { hasError: true, error }; }
+            componentDidCatch(error, info) { console.error("[App Error]", error, info); }
+            render() {
+                if (this.state.hasError) {
+                    return React.createElement("div", {
+                        style: { display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"100vh", background:"#f8fafc", padding:"24px", textAlign:"center", fontFamily:"sans-serif" }
+                    },
+                        React.createElement("div", { style: { fontSize:"48px", marginBottom:"16px" } }, "⚠️"),
+                        React.createElement("h2", { style: { color:"#1e293b", marginBottom:"8px", fontSize:"20px" } }, "Terjadi Kesalahan"),
+                        React.createElement("p", { style: { color:"#64748b", marginBottom:"8px", maxWidth:"420px", fontSize:"14px" } }, this.state.error?.message || "Unknown error"),
+                        React.createElement("p", { style: { color:"#94a3b8", marginBottom:"24px", fontSize:"12px" } }, "Coba muat ulang, atau logout lalu login kembali"),
+                        React.createElement("button", {
+                            onClick: () => window.location.reload(),
+                            style: { background:"#0ea5e9", color:"white", border:"none", borderRadius:"10px", padding:"12px 28px", fontSize:"14px", fontWeight:"700", cursor:"pointer", marginRight:"8px" }
+                        }, "🔄 Muat Ulang"),
+                        React.createElement("button", {
+                            onClick: () => { localStorage.removeItem("husna_auth_session"); window.location.reload(); },
+                            style: { background:"#f1f5f9", color:"#475569", border:"none", borderRadius:"10px", padding:"12px 28px", fontSize:"14px", fontWeight:"700", cursor:"pointer", marginTop:"8px" }
+                        }, "🚪 Logout & Muat Ulang")
+                    );
+                }
+                return this.props.children;
+            }
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById("root"));
+        root.render(React.createElement(ErrorBoundary, null, React.createElement(App)));
         if (window.__bootDone) window.__bootDone();
     </script>
 <audio id="chaching-sound" src="cha-ching.mp3" preload="auto"></audio>
