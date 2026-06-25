@@ -6,37 +6,51 @@
     <title>Stock Opname Supabase</title>
     <!-- Import Supabase Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Pustaka untuk Export Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 15px; background-color: #f4f7f6; color: #333; }
         .container { max-width: 1100px; margin: 0 auto; background: white; padding: 15px 18px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .header-area { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f4f7f6; padding-bottom: 10px; margin-bottom: 15px; }
-        select { padding: 10px; width: 100%; border: 1px solid #2980b9; border-radius: 4px; font-weight: bold; }
-        .form-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 25px; padding: 15px; border: 1px dashed #cbd5e1; border-radius: 6px; }
-        input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; flex: 1; }
-        button { padding: 10px 20px; color: white; border: none; border-radius: 4px; cursor: pointer; background-color: #27ae60; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; }
-        .btn-hapus { background-color: #e74c3c; padding: 5px 10px; }
+        .header-area { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f4f7f6; padding-bottom: 15px; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
+        h2 { margin: 0; color: #2c3e50; font-size: 20px; }
+        .action-area { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        select { padding: 10px; border: 1px solid #2980b9; border-radius: 4px; font-weight: bold; width: 200px; }
+        .checkbox-abjad { font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; background: #e2e8f0; padding: 8px 12px; border-radius: 6px; }
+        .form-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 25px; background: #fdfdfd; padding: 15px; border: 1px dashed #cbd5e1; border-radius: 6px; }
+        input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; flex: 1; min-width: 120px; }
+        button { padding: 10px 20px; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; }
+        .btn-tambah { background-color: #27ae60; }
+        .btn-excel { background-color: #1f6e43; }
+        .btn-hapus { background-color: #e74c3c; padding: 5px 10px; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #cbd5e1; padding: 8px 12px; font-size: 13px; }
+        th { background-color: #f8fafc; color: #475569; }
+        .group-title { background-color: #e2e8f0; padding: 6px 12px; font-weight: bold; border-left: 5px solid #2980b9; margin-top: 15px; margin-bottom: 5px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header-area">
-        <h2>📦 Stock Opname (Supabase)</h2>
+        <h2>Stock Opname (Supabase)</h2>
+        <div class="action-area">
+            <select id="pilihOutlet" onchange="loadData()">
+                <option value="Outlet_A">📍 Outlet A</option>
+                <option value="Outlet_B">📍 Outlet B</option>
+            </select>
+            <label class="checkbox-abjad">
+                <input type="checkbox" id="modeAbjad" onchange="loadData()"> Urutkan A-Z
+            </label>
+            <button class="btn-excel" onclick="exportKeExcel()">📊 Excel</button>
+        </div>
     </div>
-
-    <select id="pilihOutlet" onchange="loadData()">
-        <option value="Outlet_A">📍 Outlet A</option>
-        <option value="Outlet_B">📍 Outlet B</option>
-    </select>
     
     <div class="form-group">
-        <input type="text" id="nama" placeholder="Nama Barang...">
-        <input type="number" id="jumlah" placeholder="Stok">
+        <input type="text" id="nama" placeholder="Nama Barang..." autocomplete="off">
+        <input type="number" id="jumlah" placeholder="Stok" min="0">
         <input type="text" id="golongan" placeholder="Rak/Golongan...">
-        <button onclick="tambahData()">Tambah</button>
+        <button class="btn-tambah" onclick="tambahData()">Tambah</button>
     </div>
 
     <div id="tabelContainer">Memuat data...</div>
@@ -45,58 +59,94 @@
 <script>
     const SUPABASE_URL = 'https://mczuqbwofvlzcfezlptu.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jenVxYndvZnZsemNmZXpscHR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzNzU4MzEsImV4cCI6MjA5Nzk1MTgzMX0.zZNZGVVuyhXSltqZWiCrEZsdHSJqS_Tf9kyXkioy_G0';
-    
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    let currentData = [];
 
     async function loadData() {
         const outlet = document.getElementById('pilihOutlet').value;
-        // Menggunakan nama tabel yang benar: stok_barang
-        const { data, error } = await supabaseClient
-            .from('stok_barang')
-            .select('*')
-            .eq('outlet', outlet)
-            .order('created_at', { ascending: true });
+        const urutAbjad = document.getElementById('modeAbjad').checked;
+        
+        let query = supabaseClient.from('stok_barang').select('*').eq('outlet', outlet);
+        
+        if (urutAbjad) {
+            query = query.order('nama', { ascending: true });
+        } else {
+            query = query.order('created_at', { ascending: true });
+        }
 
+        const { data, error } = await query;
         if (error) return console.error("Error loadData:", error);
-        renderTabel(data);
+        
+        currentData = data;
+        renderTabel(data, urutAbjad);
+    }
+
+    function renderTabel(data, urutAbjad) {
+        const container = document.getElementById('tabelContainer');
+        container.innerHTML = '';
+        if (!data || !data.length) return container.innerHTML = '<p style="text-align:center;">Data kosong.</p>';
+        
+        if (urutAbjad) {
+            buatTabel(data, "Semua Barang (Urut A-Z)");
+        } else {
+            const kelompok = {};
+            data.forEach(item => {
+                const rak = item.golongan?.trim() || 'Tanpa Rak';
+                if (!kelompok[rak]) kelompok[rak] = [];
+                kelompok[rak].push(item);
+            });
+            for (const rak in kelompok) buatTabel(kelompok[rak], rak);
+        }
+    }
+
+    function buatTabel(data, title) {
+        const div = document.createElement('div');
+        div.innerHTML = `<div class="group-title">📍 ${title}</div>`;
+        let rows = data.map(item => `
+            <tr>
+                <td>${item.nama}</td>
+                <td>${item.jumlah}</td>
+                <td>${item.golongan || '-'}</td>
+                <td><button class="btn-hapus" onclick="hapusData('${item.id}')">Hapus</button></td>
+            </tr>
+        `).join('');
+        div.innerHTML += `<table><tr><th>Barang</th><th>Stok</th><th>Rak</th><th>Aksi</th></tr>${rows}</table>`;
+        document.getElementById('tabelContainer').appendChild(div);
     }
 
     async function tambahData() {
-        const nama = document.getElementById('nama').value;
+        const nama = document.getElementById('nama').value.trim();
         const jumlah = document.getElementById('jumlah').value;
-        const golongan = document.getElementById('golongan').value;
+        const golongan = document.getElementById('golongan').value.trim();
         const outlet = document.getElementById('pilihOutlet').value;
-
-        // Menggunakan nama tabel yang benar: stok_barang
+        
+        if(!nama || !jumlah) return alert('Isi Nama Barang dan Stok!');
+        
         const { error } = await supabaseClient
             .from('stok_barang')
             .insert([{ nama, jumlah: parseInt(jumlah), golongan, outlet }]);
 
-        if (error) alert('Gagal menambah: ' + error.message);
-        else loadData();
+        if (error) alert('Gagal: ' + error.message);
+        else {
+            document.getElementById('nama').value = '';
+            document.getElementById('jumlah').value = '';
+            loadData();
+        }
     }
 
     async function hapusData(id) {
-        // Menggunakan nama tabel yang benar: stok_barang
         const { error } = await supabaseClient.from('stok_barang').delete().eq('id', id);
         if (error) alert('Gagal menghapus');
         else loadData();
     }
 
-    function renderTabel(data) {
-        const container = document.getElementById('tabelContainer');
-        if (!data || !data.length) return container.innerHTML = 'Data kosong.';
-        
-        let html = `<table><tr><th>Barang</th><th>Stok</th><th>Rak</th><th>Aksi</th></tr>`;
-        data.forEach(item => {
-            html += `<tr>
-                <td>${item.nama}</td>
-                <td>${item.jumlah}</td>
-                <td>${item.golongan}</td>
-                <td><button class="btn-hapus" onclick="hapusData('${item.id}')">Hapus</button></td>
-            </tr>`;
-        });
-        container.innerHTML = html + `</table>`;
+    function exportKeExcel() {
+        if (currentData.length === 0) return alert("Tidak ada data untuk di-export.");
+        const ws = XLSX.utils.json_to_sheet(currentData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "StockOpname");
+        XLSX.writeFile(wb, "StockOpname.xlsx");
     }
 
     loadData();
