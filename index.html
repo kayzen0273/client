@@ -3,270 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Opname Multi-Outlet</title>
+    <title>Stock Opname Supabase</title>
+    <!-- Import Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 15px; background-color: #f4f7f6; color: #333; }
         .container { max-width: 1100px; margin: 0 auto; background: white; padding: 15px 18px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .header-area { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f4f7f6; padding-bottom: 10px; margin-bottom: 15px; flex-wrap: wrap; gap: 15px; }
-        h2 { margin: 0; color: #2c3e50; font-size: 20px; }
-        .status-text { font-size: 13px; font-weight: 500; color: #7f8c8d; }
-        
-        .outlet-selector { margin-bottom: 15px; }
-        select { padding: 10px; width: 100%; border: 1px solid #2980b9; border-radius: 4px; font-weight: bold; cursor: pointer; background: white; }
-
-        .form-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 25px; background: #fdfdfd; padding: 15px; border: 1px dashed #cbd5e1; border-radius: 6px; }
-        input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
-        #nama { flex: 2; min-width: 180px; }
-        #jumlah { flex: 0.8; min-width: 80px; }
-        #golongan { flex: 1.5; min-width: 150px; }
-        
-        button { padding: 10px 20px; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background 0.2s; }
-        .btn-tambah { background-color: #27ae60; }
-        .btn-tambah:hover { background-color: #219653; }
-        .btn-hapus { background-color: #e74c3c; padding: 6px 12px; font-size: 12px; }
-        .btn-hapus:hover { background-color: #c0392b; }
-        
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th, td { border: 1px solid #cbd5e1; padding: 10px 12px; font-size: 13px; text-align: left; }
-        th { background-color: #f8fafc; color: #475569; }
-        .group-title { background-color: #e2e8f0; padding: 8px 12px; font-weight: bold; border-left: 5px solid #2980b9; margin-top: 15px; border-radius: 4px 4px 0 0; }
-        
-        .loading { text-align: center; padding: 20px; color: #666; font-style: italic; }
+        .header-area { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f4f7f6; padding-bottom: 10px; margin-bottom: 15px; }
+        select { padding: 10px; width: 100%; border: 1px solid #2980b9; border-radius: 4px; font-weight: bold; }
+        .form-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 25px; padding: 15px; border: 1px dashed #cbd5e1; border-radius: 6px; }
+        input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; flex: 1; }
+        button { padding: 10px 20px; color: white; border: none; border-radius: 4px; cursor: pointer; background-color: #27ae60; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; }
+        .btn-hapus { background-color: #e74c3c; padding: 5px 10px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header-area">
-        <h2>📦 Stock Opname Multi-Outlet</h2>
-        <span id="koneksiStatus" class="status-text">⏳ Menghubungkan ke Cloud...</span>
+        <h2>📦 Stock Opname (Supabase)</h2>
     </div>
 
-    <div class="outlet-selector">
-        <select id="pilihOutlet" onchange="window.loadData()">
-            <option value="Outlet_A">📍 Outlet A</option>
-            <option value="Outlet_B">📍 Outlet B</option>
-        </select>
-    </div>
+    <select id="pilihOutlet" onchange="loadData()">
+        <option value="Outlet_A">📍 Outlet A</option>
+        <option value="Outlet_B">📍 Outlet B</option>
+    </select>
     
     <div class="form-group">
-        <input type="text" id="nama" placeholder="Nama Barang..." autocomplete="off">
-        <input type="number" id="jumlah" placeholder="Stok" min="0">
-        <input type="text" id="golongan" placeholder="Pilih/Ketik Rak..." list="listRak" autocomplete="off">
-        <datalist id="listRak"></datalist>
-        <button class="btn-tambah" onclick="window.tambahData()">Tambah</button>
+        <input type="text" id="nama" placeholder="Nama Barang...">
+        <input type="number" id="jumlah" placeholder="Stok">
+        <input type="text" id="golongan" placeholder="Rak/Golongan...">
+        <button onclick="tambahData()">Tambah</button>
     </div>
 
-    <div id="tabelContainer">
-        <div class="loading">Memuat data dari cloud...</div>
-    </div>
+    <div id="tabelContainer">Memuat data...</div>
 </div>
 
 <script>
-    // Pengecekan jika module Firebase gagal dimuat (misal karena AdBlock, Brave Shields, atau dijalankan offline)
-    window.firebaseLoaded = false;
-    setTimeout(() => {
-        if (!window.firebaseLoaded) {
-            document.getElementById('koneksiStatus').innerText = '❌ Koneksi Diblokir / Offline';
-            document.getElementById('koneksiStatus').style.color = '#e74c3c';
-            document.getElementById('tabelContainer').innerHTML = '<div style="text-align:center; padding:20px; color:#e74c3c; line-height: 1.5;"><b>Gagal memuat database!</b><br><br>Penyebab umum:<br>1. Anda mengunduh file ini dan membukanya secara offline (Pastikan menjalankannya via jendela <b>Preview</b> di layar ini).<br>2. Ada <b>AdBlock / Brave Shields</b> yang memblokir koneksi database. Harap matikan sementara.</div>';
-        }
-    }, 4000);
-</script>
+    const SUPABASE_URL = 'https://mczuqbwofvlzcfezlptu.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jenVxYndvZnZsemNmZXpscHR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzNzU4MzEsImV4cCI6MjA5Nzk1MTgzMX0.zZNZGVVuyhXSltqZWiCrEZsdHSJqS_Tf9kyXkioy_G0';
+    
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-<!-- Firebase SDKs -->
-<script type="module">
-    window.firebaseLoaded = true;
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-    // Fungsi Alert Kustom (menggantikan alert browser standar)
-    window.alertUI = function(msg) {
-        const modal = document.createElement('div');
-        modal.style.cssText = "position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#e74c3c;color:white;padding:12px 24px;border-radius:6px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15); font-weight: 500;";
-        modal.innerText = msg;
-        document.body.appendChild(modal);
-        setTimeout(() => modal.remove(), 3000);
-    };
-
-    let app, auth, db, appId;
-    let currentUser = null;
-    let unsubscribeSnapshot = null;
-    let stokBarang = [];
-
-    // Konfigurasi Database Cloud terotomatisasi dari environment dengan penanganan error
-    try {
-        if (typeof __firebase_config === 'undefined') {
-            throw new Error("Konfigurasi tidak ditemukan. Pastikan Anda berada di mode Preview.");
-        }
-        const firebaseConfig = JSON.parse(__firebase_config);
-        app = initializeApp(firebaseConfig);
-        auth = getAuth(app);
-        db = getFirestore(app);
-        appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-    } catch (error) {
-        console.error("Setup Error:", error);
-        document.getElementById('koneksiStatus').innerText = '❌ Error Konfigurasi';
-        document.getElementById('koneksiStatus').style.color = '#e74c3c';
-        document.getElementById('tabelContainer').innerHTML = '<div style="text-align:center; padding:20px; color:#e74c3c; line-height: 1.5;"><b>Konfigurasi Database Hilang</b><br>Tolong jalankan file ini langsung dari jendela <b>Preview</b> aplikasi ini, jangan diunduh dan dibuka secara offline.</div>';
-    }
-
-    if (auth && db) {
-        // Inisialisasi Autentikasi
-        const initAuth = async () => {
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (error) {
-                console.error("Auth Error", error);
-                window.alertUI("Gagal menghubungkan autentikasi.");
-            }
-        };
-
-        initAuth();
-
-        // Pantau Status Autentikasi
-        onAuthStateChanged(auth, (user) => {
-            const statusEl = document.getElementById('koneksiStatus');
-            if (user) {
-                currentUser = user;
-                statusEl.innerText = '✅ Tersinkronisasi dengan Cloud';
-                statusEl.style.color = '#27ae60';
-                window.loadData();
-            } else {
-                currentUser = null;
-                statusEl.innerText = '❌ Terputus dari Cloud';
-                statusEl.style.color = '#e74c3c';
-            }
-        });
-    }
-
-    // Memuat Data secara Real-time
-    window.loadData = function() {
-        if (!currentUser || !db) return;
-        
+    async function loadData() {
         const outlet = document.getElementById('pilihOutlet').value;
-        const collectionName = 'stock_' + outlet;
-        // Path Database Privat sesuai dengan Standar Sistem
-        const colRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, collectionName);
+        // Menggunakan nama tabel yang benar: stok_barang
+        const { data, error } = await supabaseClient
+            .from('stok_barang')
+            .select('*')
+            .eq('outlet', outlet)
+            .order('created_at', { ascending: true });
 
-        // Bersihkan listener lama jika outlet diganti
-        if (unsubscribeSnapshot) unsubscribeSnapshot();
-        
-        document.getElementById('tabelContainer').innerHTML = '<div class="loading">Memuat data dari cloud...</div>';
-
-        // Mendengarkan perubahan data
-        unsubscribeSnapshot = onSnapshot(colRef, (snapshot) => {
-            stokBarang = [];
-            snapshot.forEach(doc => {
-                stokBarang.push({ id: doc.id, ...doc.data() });
-            });
-            
-            // Urutkan berdasarkan waktu ditambahkan (tertua ke terbaru)
-            stokBarang.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-            
-            renderTabelUI();
-        }, (error) => {
-            console.error("Error mengambil data: ", error);
-            window.alertUI("Gagal memuat data dari Cloud.");
-        });
-    };
-
-    // Render Tabel ke Layar
-    function renderTabelUI() {
-        const container = document.getElementById('tabelContainer');
-        container.innerHTML = '';
-        
-        // Update Datalist Rak untuk autocomplete
-        const datalist = document.getElementById('listRak');
-        datalist.innerHTML = '';
-        const rakUnik = [...new Set(stokBarang.map(item => (item.golongan || '').trim()))].filter(r => r !== '');
-        rakUnik.forEach(r => { 
-            const opt = document.createElement('option'); 
-            opt.value = r; 
-            datalist.appendChild(opt); 
-        });
-
-        if (stokBarang.length === 0) {
-            container.innerHTML = '<p class="loading">Belum ada data di outlet ini.</p>';
-            return;
-        }
-
-        // Kelompokkan barang per rak
-        const kelompok = {};
-        stokBarang.forEach((item) => {
-            const rak = (item.golongan || '').trim() || 'Tanpa Rak';
-            if (!kelompok[rak]) kelompok[rak] = [];
-            kelompok[rak].push(item);
-        });
-
-        for (const rak in kelompok) {
-            container.innerHTML += `<div class="group-title">📍 ${rak}</div>`;
-            let rows = kelompok[rak].map(item => `
-                <tr>
-                    <td>${item.nama}</td>
-                    <td>${item.jumlah}</td>
-                    <td style="width: 80px; text-align: center;">
-                        <button class="btn-hapus" onclick="window.hapusData('${item.id}')">Hapus</button>
-                    </td>
-                </tr>
-            `).join('');
-            container.innerHTML += `<table><tr><th>Barang</th><th style="width: 100px;">Stok</th><th style="width: 100px; text-align: center;">Aksi</th></tr>${rows}</table>`;
-        }
+        if (error) return console.error("Error loadData:", error);
+        renderTabel(data);
     }
 
-    // Menambah Data ke Cloud
-    window.tambahData = async function() {
-        if (!currentUser || !db) return window.alertUI('Gagal: Belum terhubung ke Cloud.');
-        
-        const nama = document.getElementById('nama').value.trim();
+    async function tambahData() {
+        const nama = document.getElementById('nama').value;
         const jumlah = document.getElementById('jumlah').value;
-        const golongan = document.getElementById('golongan').value.trim();
-        
-        if(!nama || !jumlah) return window.alertUI('Harap isi Nama dan Stok Barang!');
-
+        const golongan = document.getElementById('golongan').value;
         const outlet = document.getElementById('pilihOutlet').value;
-        const collectionName = 'stock_' + outlet;
-        const colRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, collectionName);
 
-        try {
-            await addDoc(colRef, { 
-                nama: nama, 
-                jumlah: Number(jumlah), 
-                golongan: golongan,
-                timestamp: Date.now() 
-            });
-            
-            // Kosongkan form setelah berhasil
-            document.getElementById('nama').value = '';
-            document.getElementById('jumlah').value = '';
-            document.getElementById('nama').focus();
-        } catch (error) {
-            console.error("Error menambah dokumen: ", error);
-            window.alertUI("Gagal menambah data ke Cloud");
-        }
-    };
+        // Menggunakan nama tabel yang benar: stok_barang
+        const { error } = await supabaseClient
+            .from('stok_barang')
+            .insert([{ nama, jumlah: parseInt(jumlah), golongan, outlet }]);
 
-    // Menghapus Data dari Cloud
-    window.hapusData = async function(id) {
-        if (!currentUser || !db) return;
+        if (error) alert('Gagal menambah: ' + error.message);
+        else loadData();
+    }
+
+    async function hapusData(id) {
+        // Menggunakan nama tabel yang benar: stok_barang
+        const { error } = await supabaseClient.from('stok_barang').delete().eq('id', id);
+        if (error) alert('Gagal menghapus');
+        else loadData();
+    }
+
+    function renderTabel(data) {
+        const container = document.getElementById('tabelContainer');
+        if (!data || !data.length) return container.innerHTML = 'Data kosong.';
         
-        const outlet = document.getElementById('pilihOutlet').value;
-        const collectionName = 'stock_' + outlet;
-        const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, collectionName, id);
+        let html = `<table><tr><th>Barang</th><th>Stok</th><th>Rak</th><th>Aksi</th></tr>`;
+        data.forEach(item => {
+            html += `<tr>
+                <td>${item.nama}</td>
+                <td>${item.jumlah}</td>
+                <td>${item.golongan}</td>
+                <td><button class="btn-hapus" onclick="hapusData('${item.id}')">Hapus</button></td>
+            </tr>`;
+        });
+        container.innerHTML = html + `</table>`;
+    }
 
-        try {
-            await deleteDoc(docRef);
-        } catch (error) {
-            console.error("Error menghapus dokumen: ", error);
-            window.alertUI("Gagal menghapus data");
-        }
-    };
+    loadData();
 </script>
 
 </body>
