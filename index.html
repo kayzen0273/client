@@ -3,478 +3,245 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Opname - Rafa 1</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <title>Stock Opname Multi-Outlet</title>
     <style>
-        /* Gaya tambahan untuk menyembunyikan scrollbar namun tetap bisa scroll */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 15px; background-color: #f4f7f6; color: #333; }
+        .container { max-width: 1100px; margin: 0 auto; background: white; padding: 15px 18px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .header-area { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f4f7f6; padding-bottom: 10px; margin-bottom: 15px; flex-wrap: wrap; gap: 15px; }
+        h2 { margin: 0; color: #2c3e50; font-size: 20px; }
+        .status-text { font-size: 13px; font-weight: 500; color: #7f8c8d; }
+        
+        .outlet-selector { margin-bottom: 15px; }
+        select { padding: 10px; width: 100%; border: 1px solid #2980b9; border-radius: 4px; font-weight: bold; cursor: pointer; background: white; }
+
+        .form-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 25px; background: #fdfdfd; padding: 15px; border: 1px dashed #cbd5e1; border-radius: 6px; }
+        input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+        #nama { flex: 2; min-width: 180px; }
+        #jumlah { flex: 0.8; min-width: 80px; }
+        #golongan { flex: 1.5; min-width: 150px; }
+        
+        button { padding: 10px 20px; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background 0.2s; }
+        .btn-tambah { background-color: #27ae60; }
+        .btn-tambah:hover { background-color: #219653; }
+        .btn-hapus { background-color: #e74c3c; padding: 6px 12px; font-size: 12px; }
+        .btn-hapus:hover { background-color: #c0392b; }
+        
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #cbd5e1; padding: 10px 12px; font-size: 13px; text-align: left; }
+        th { background-color: #f8fafc; color: #475569; }
+        .group-title { background-color: #e2e8f0; padding: 8px 12px; font-weight: bold; border-left: 5px solid #2980b9; margin-top: 15px; border-radius: 4px 4px 0 0; }
+        
+        .loading { text-align: center; padding: 20px; color: #666; font-style: italic; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased min-h-screen pb-12">
+<body>
 
-<div class="max-w-5xl mx-auto pt-6 px-4">
-    <!-- Header Area -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-            <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight">📦 Stock Opname</h2>
-            <p class="text-sm text-slate-500 mt-1">Kelola stok barang multi-outlet dengan Cloud Database.</p>
-        </div>
-        
-        <!-- Pemilihan Outlet -->
-        <div class="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200 w-full md:w-auto">
-            <label class="text-sm font-semibold text-slate-600 pl-2">🏠 Cabang:</label>
-            <select id="pilihOutlet" onchange="gantiOutlet()" class="bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 outline-none cursor-pointer flex-1 md:w-40 font-medium">
-                <!-- Opsi dirender via JS -->
-            </select>
-            <button onclick="tambahOutlet()" class="bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-bold py-2 px-3 rounded-lg transition-colors" title="Tambah Cabang Baru">
-                + Baru
-            </button>
-        </div>
+<div class="container">
+    <div class="header-area">
+        <h2>📦 Stock Opname Multi-Outlet</h2>
+        <span id="koneksiStatus" class="status-text">⏳ Menghubungkan ke Cloud...</span>
     </div>
 
-    <!-- Form Input Area -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-6">
-        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
-            <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-            Tambah Barang Baru
-        </h3>
-        
-        <div class="flex flex-col md:flex-row items-start gap-4">
-            <div class="w-full md:flex-1">
-                <label class="block text-xs font-semibold text-slate-500 mb-1.5 uppercase">Nama Barang <span class="text-red-500">*</span></label>
-                <input type="text" id="nama" placeholder="Contoh: Indomie Goreng..." autocomplete="off" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition-all">
-            </div>
-            
-            <div class="w-full md:w-32">
-                <label class="block text-xs font-semibold text-slate-500 mb-1.5 uppercase">Stok <span class="text-red-500">*</span></label>
-                <input type="number" id="jumlah" placeholder="0" min="0" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition-all font-semibold">
-            </div>
-            
-            <div class="w-full md:flex-1">
-                <label class="block text-xs font-semibold text-slate-500 mb-1.5 uppercase">Golongan / Rak</label>
-                <input type="text" id="golongan" placeholder="Pilih / Ketik Baru..." list="listRak" autocomplete="off" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition-all">
-                <datalist id="listRak"></datalist>
-            </div>
-            
-            <div class="flex items-end w-full md:w-auto mt-1 md:mt-0 pt-0 md:pt-6">
-                <button onclick="tambahData()" class="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-sm transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-                    Simpan
-                </button>
-            </div>
-        </div>
+    <div class="outlet-selector">
+        <select id="pilihOutlet" onchange="window.loadData()">
+            <option value="Outlet_A">📍 Outlet A</option>
+            <option value="Outlet_B">📍 Outlet B</option>
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <input type="text" id="nama" placeholder="Nama Barang..." autocomplete="off">
+        <input type="number" id="jumlah" placeholder="Stok" min="0">
+        <input type="text" id="golongan" placeholder="Pilih/Ketik Rak..." list="listRak" autocomplete="off">
+        <datalist id="listRak"></datalist>
+        <button class="btn-tambah" onclick="window.tambahData()">Tambah</button>
     </div>
 
-    <!-- Action Control (Sort & Export) -->
-    <div class="flex flex-wrap justify-between items-center mb-4 gap-4 px-1">
-        <label class="inline-flex items-center cursor-pointer bg-white px-4 py-2 rounded-lg shadow-sm border border-slate-200">
-            <input type="checkbox" id="modeAbjad" onchange="renderTabel()" class="sr-only peer">
-            <div class="relative w-9 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-            <span class="ms-3 text-sm font-semibold text-slate-700">Urutkan A-Z (Abaikan Rak)</span>
-        </label>
-        
-        <button onclick="exportKeExcel()" class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm flex items-center gap-2 transition-colors">
-            <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-            Export CSV
-        </button>
-    </div>
-
-    <!-- Container Table -->
-    <div id="tabelContainer" class="space-y-6">
-        <!-- Render data akan masuk kesini -->
+    <div id="tabelContainer">
+        <div class="loading">Memuat data dari cloud...</div>
     </div>
 </div>
 
-<!-- CUSTOM MODAL (Pengganti Alert/Confirm/Prompt Browser) -->
-<div id="customModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4 transition-opacity">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md transform transition-all overflow-hidden border border-slate-100">
-        <div class="p-6">
-            <h3 id="modalTitle" class="text-lg font-bold text-slate-900 mb-2">Judul Modal</h3>
-            <p id="modalMessage" class="text-slate-600 text-sm mb-4">Pesan modal disini.</p>
-            
-            <div id="modalInputContainer" class="hidden mb-4">
-                <input type="text" id="modalInput" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none" placeholder="Ketik disini...">
-            </div>
-            
-            <div class="flex justify-end gap-3 mt-6">
-                <button id="modalBtnCancel" onclick="closeModal()" class="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-colors hidden">
-                    Batal
-                </button>
-                <button onclick="confirmModal()" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 shadow-sm transition-colors">
-                    Oke, Lanjutkan
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Firebase SDKs -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-<script>
-    // Konfigurasi API Supabase (Disesuaikan dengan project mczuqbwofvlzcfezlptu)
-    const supabaseUrl = 'https://mczuqbwofvlzcfezlptu.supabase.co';
-    // Menghapus kata "Mengkomunikasikan." yang tidak sengaja tertempel dari copy-paste user agar token valid
-    const supabaseKey = 'eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jenVxYndvZnZsemNmZXpscHR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzNzU4MzEsImV4cCI6MjA5Nzk1MTgzMX0.zZNZGVVuyhXSltqZWiCrEZsdHSJqS_Tf9kyXkioy_G0';
-    const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
-
-    // Konfigurasi Default & State Aplikasi
-    const DEFAULT_OUTLET = 'Rafa 1';
-    let listOutlet = JSON.parse(localStorage.getItem('listOutletApp')) || [DEFAULT_OUTLET];
-    let activeOutlet = localStorage.getItem('activeOutletApp') || listOutlet[0];
-    let stokBarang = []; // Data akan ditarik murni dari database cloud
-    let isLoading = false;
-
-    // Validasi Outlet (jika active outlet dihapus dari cache, kembalikan ke default)
-    if(!listOutlet.includes(activeOutlet)) activeOutlet = listOutlet[0];
-
-    // Dijalankan saat halaman pertama kali dibuka
-    window.onload = function() {
-        renderOutletSelect();
-        fetchStokBarang(); 
+    // Fungsi Alert Kustom (menggantikan alert browser standar)
+    window.alertUI = function(msg) {
+        const modal = document.createElement('div');
+        modal.style.cssText = "position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#e74c3c;color:white;padding:12px 24px;border-radius:6px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15); font-weight: 500;";
+        modal.innerText = msg;
+        document.body.appendChild(modal);
+        setTimeout(() => modal.remove(), 3000);
     };
 
-    /* ================= MANAJEMEN DATABASE SUPABASE ================= */
-    async function fetchStokBarang() {
-        isLoading = true;
-        renderTabel(); // Tampilkan animasi loading
+    // Konfigurasi Database Cloud terotomatisasi dari environment
+    const firebaseConfig = JSON.parse(__firebase_config);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
+    let currentUser = null;
+    let unsubscribeSnapshot = null;
+    let stokBarang = [];
+
+    // Inisialisasi Autentikasi
+    const initAuth = async () => {
         try {
-            const { data, error } = await supabaseClient
-                .from('stok_barang')
-                .select('*')
-                .order('created_at', { ascending: true }); // Opsional: urutkan berdasarkan waktu input
-
-            if (error) throw error;
-            stokBarang = data || [];
-        } catch (error) {
-            console.error("Error Database:", error);
-            showModal({ title: 'Error Sinkronisasi', message: error.message });
-        } finally {
-            isLoading = false;
-            renderTabel();
-        }
-    }
-
-    /* ================= MANAJEMEN MODAL CUSTOM ================= */
-    let modalCallback = null;
-    
-    function showModal({title, message, type='alert', onConfirm}) {
-        document.getElementById('modalTitle').innerText = title;
-        document.getElementById('modalMessage').innerText = message;
-        
-        const inputContainer = document.getElementById('modalInputContainer');
-        const inputField = document.getElementById('modalInput');
-        const cancelBtn = document.getElementById('modalBtnCancel');
-        
-        if (type === 'prompt') {
-            inputContainer.classList.remove('hidden');
-            inputField.value = '';
-            cancelBtn.classList.remove('hidden');
-        } else if (type === 'confirm') {
-            inputContainer.classList.add('hidden');
-            cancelBtn.classList.remove('hidden');
-        } else {
-            // Mode Alert biasa
-            inputContainer.classList.add('hidden');
-            cancelBtn.classList.add('hidden');
-        }
-        
-        modalCallback = onConfirm;
-        const modalEl = document.getElementById('customModal');
-        modalEl.classList.remove('hidden');
-        modalEl.classList.add('flex'); // Tampilkan dengan Flexbox (center)
-        
-        if(type === 'prompt') {
-            setTimeout(() => inputField.focus(), 100);
-        }
-    }
-    
-    function closeModal() {
-        const modalEl = document.getElementById('customModal');
-        modalEl.classList.add('hidden');
-        modalEl.classList.remove('flex');
-        modalCallback = null;
-    }
-    
-    function confirmModal() {
-        const inputField = document.getElementById('modalInput');
-        const val = inputField.value;
-        const cb = modalCallback;
-        closeModal();
-        if(cb) cb(val); // Eksekusi callback jika ada
-    }
-
-    /* ================= MANAJEMEN OUTLET ================= */
-    function renderOutletSelect() {
-        const select = document.getElementById('pilihOutlet');
-        select.innerHTML = listOutlet.map(o => 
-            `<option value="${o}" ${o === activeOutlet ? 'selected' : ''}>${o}</option>`
-        ).join('');
-    }
-
-    function gantiOutlet() {
-        activeOutlet = document.getElementById('pilihOutlet').value;
-        localStorage.setItem('activeOutletApp', activeOutlet);
-        renderTabel();
-    }
-
-    function tambahOutlet() {
-        showModal({
-            title: 'Tambah Outlet Baru',
-            message: 'Masukkan nama cabang/outlet baru (Misal: Rafa 2):',
-            type: 'prompt',
-            onConfirm: (namaBaru) => {
-                const nama = (namaBaru || '').trim();
-                if(!nama) return; // Jika kosong, batal
-                
-                // Cek duplikasi
-                if(listOutlet.includes(nama)) {
-                    showModal({ title: 'Gagal', message: 'Nama outlet tersebut sudah ada di daftar!' });
-                    return;
-                }
-                
-                listOutlet.push(nama);
-                localStorage.setItem('listOutletApp', JSON.stringify(listOutlet));
-                
-                // Jadikan outlet baru sebagai yang aktif
-                activeOutlet = nama;
-                localStorage.setItem('activeOutletApp', activeOutlet);
-                
-                renderOutletSelect();
-                renderTabel();
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
             }
-        });
-    }
-
-    /* ================= MANAJEMEN DATA & TABEL ================= */
-    function updateDatalist(dataAktif) {
-        const datalist = document.getElementById('listRak');
-        datalist.innerHTML = '';
-        // Kumpulkan data golongan dari database, filter yang unik dan tidak kosong
-        const rakUnik = [...new Set(dataAktif.map(item => (item.golongan || '').trim()))].filter(r => r !== '');
-        
-        rakUnik.forEach(rak => {
-            const option = document.createElement('option');
-            option.value = rak;
-            datalist.appendChild(option);
-        });
-    }
-
-    function renderTabel() {
-        const container = document.getElementById('tabelContainer');
-        container.innerHTML = '';
-
-        if (isLoading) {
-            container.innerHTML = `
-                <div class="text-center py-12 px-4 border-2 border-dashed border-slate-200 rounded-2xl bg-white shadow-sm">
-                    <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                    <p class="text-slate-500 font-medium text-sm">Menyinkronkan data dengan Database Cloud...</p>
-                </div>`;
-            return;
+        } catch (error) {
+            console.error("Auth Error", error);
+            window.alertUI("Gagal menghubungkan autentikasi.");
         }
-        
-        // Filter data HANYA untuk outlet yang sedang aktif
-        let dataOutletAktif = stokBarang.filter(item => item.outlet === activeOutlet);
-        
-        updateDatalist(dataOutletAktif);
-        
-        if (dataOutletAktif.length === 0) {
-            container.innerHTML = `
-                <div class="text-center py-16 px-4 border-2 border-dashed border-slate-200 rounded-2xl bg-white shadow-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-slate-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
-                    <p class="text-slate-500 font-medium">Belum ada barang di outlet <span class="font-bold text-slate-800">${activeOutlet}</span>.</p>
-                    <p class="text-sm text-slate-400 mt-1">Silakan tambah barang baru melalui form di atas.</p>
-                </div>`;
-            return;
-        }
+    };
 
-        const urutAbjad = document.getElementById('modeAbjad').checked;
+    initAuth();
 
-        if (urutAbjad) {
-            let dataTampil = [...dataOutletAktif].sort((a, b) => a.nama.localeCompare(b.nama));
-            buatTabel(dataTampil, "Menampilkan Semua Barang (Urut A-Z)");
+    // Pantau Status Autentikasi
+    onAuthStateChanged(auth, (user) => {
+        const statusEl = document.getElementById('koneksiStatus');
+        if (user) {
+            currentUser = user;
+            statusEl.innerText = '✅ Tersinkronisasi dengan Cloud';
+            statusEl.style.color = '#27ae60';
+            window.loadData();
         } else {
-            const kelompok = {};
-            dataOutletAktif.forEach(item => {
-                const rak = (item.golongan || '').trim() || 'Tanpa Kategori/Rak';
-                if (!kelompok[rak]) kelompok[rak] = [];
-                kelompok[rak].push(item);
+            currentUser = null;
+            statusEl.innerText = '❌ Terputus dari Cloud';
+            statusEl.style.color = '#e74c3c';
+        }
+    });
+
+    // Memuat Data secara Real-time
+    window.loadData = function() {
+        if (!currentUser) return;
+        
+        const outlet = document.getElementById('pilihOutlet').value;
+        const collectionName = 'stock_' + outlet;
+        // Path Database Privat sesuai dengan Standar Sistem
+        const colRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, collectionName);
+
+        // Bersihkan listener lama jika outlet diganti
+        if (unsubscribeSnapshot) unsubscribeSnapshot();
+        
+        document.getElementById('tabelContainer').innerHTML = '<div class="loading">Memuat data dari cloud...</div>';
+
+        // Mendengarkan perubahan data
+        unsubscribeSnapshot = onSnapshot(colRef, (snapshot) => {
+            stokBarang = [];
+            snapshot.forEach(doc => {
+                stokBarang.push({ id: doc.id, ...doc.data() });
             });
             
-            // Render setiap kelompok rak
-            for (const rak in kelompok) {
-                buatTabel(kelompok[rak], rak);
-            }
+            // Urutkan berdasarkan waktu ditambahkan (tertua ke terbaru)
+            stokBarang.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+            
+            renderTabelUI();
+        }, (error) => {
+            console.error("Error mengambil data: ", error);
+            window.alertUI("Gagal memuat data dari Cloud.");
+        });
+    };
+
+    // Render Tabel ke Layar
+    function renderTabelUI() {
+        const container = document.getElementById('tabelContainer');
+        container.innerHTML = '';
+        
+        // Update Datalist Rak untuk autocomplete
+        const datalist = document.getElementById('listRak');
+        datalist.innerHTML = '';
+        const rakUnik = [...new Set(stokBarang.map(item => (item.golongan || '').trim()))].filter(r => r !== '');
+        rakUnik.forEach(r => { 
+            const opt = document.createElement('option'); 
+            opt.value = r; 
+            datalist.appendChild(opt); 
+        });
+
+        if (stokBarang.length === 0) {
+            container.innerHTML = '<p class="loading">Belum ada data di outlet ini.</p>';
+            return;
+        }
+
+        // Kelompokkan barang per rak
+        const kelompok = {};
+        stokBarang.forEach((item) => {
+            const rak = (item.golongan || '').trim() || 'Tanpa Rak';
+            if (!kelompok[rak]) kelompok[rak] = [];
+            kelompok[rak].push(item);
+        });
+
+        for (const rak in kelompok) {
+            container.innerHTML += `<div class="group-title">📍 ${rak}</div>`;
+            let rows = kelompok[rak].map(item => `
+                <tr>
+                    <td>${item.nama}</td>
+                    <td>${item.jumlah}</td>
+                    <td style="width: 80px; text-align: center;">
+                        <button class="btn-hapus" onclick="window.hapusData('${item.id}')">Hapus</button>
+                    </td>
+                </tr>
+            `).join('');
+            container.innerHTML += `<table><tr><th>Barang</th><th style="width: 100px;">Stok</th><th style="width: 100px; text-align: center;">Aksi</th></tr>${rows}</table>`;
         }
     }
 
-    function buatTabel(data, title) {
-        const div = document.createElement('div');
-        div.className = 'bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm';
+    // Menambah Data ke Cloud
+    window.tambahData = async function() {
+        if (!currentUser) return window.alertUI('Gagal: Belum terhubung ke Cloud.');
         
-        // Header Grup/Rak
-        div.innerHTML = `
-            <div class="bg-slate-50 px-5 py-3.5 border-b border-slate-200 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                <h4 class="font-bold text-slate-800 text-sm tracking-wide uppercase">${title}</h4>
-                <span class="ml-auto bg-white px-2.5 py-0.5 rounded-full text-xs font-bold text-slate-500 border border-slate-200 shadow-sm">${data.length} Item</span>
-            </div>`;
-            
-        let rows = data.map((item, i) => `
-            <tr class="hover:bg-blue-50/50 border-b border-slate-100 last:border-0 transition-colors group">
-                <td class="px-5 py-3.5 text-sm text-slate-500 w-12 text-center font-medium">${i + 1}</td>
-                <td class="px-5 py-3.5 text-sm font-semibold text-slate-800">${item.nama}</td>
-                <td class="px-5 py-3.5 text-sm w-28 text-center">
-                    <span class="inline-block min-w-[3rem] bg-blue-100 text-blue-700 px-3 py-1 rounded-md border border-blue-200 font-bold">${item.jumlah}</span>
-                </td>
-                <td class="px-5 py-3.5 text-sm w-20 text-center">
-                    <button onclick="konfirmasiHapus('${item.id}', '${item.nama}')" class="text-slate-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-all" title="Hapus Barang">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
-                </td>
-            </tr>
-        `).join('');
-        
-        div.innerHTML += `
-            <div class="overflow-x-auto no-scrollbar">
-                <table class="w-full text-left border-collapse">
-                    <thead class="bg-white text-slate-400 text-xs uppercase font-bold border-b border-slate-100">
-                        <tr>
-                            <th class="px-5 py-3 text-center w-12">No</th>
-                            <th class="px-5 py-3">Nama Barang</th>
-                            <th class="px-5 py-3 text-center">Stok</th>
-                            <th class="px-5 py-3 text-center">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">${rows}</tbody>
-                </table>
-            </div>`;
-            
-        document.getElementById('tabelContainer').appendChild(div);
-    }
-
-    async function tambahData() {
         const nama = document.getElementById('nama').value.trim();
         const jumlah = document.getElementById('jumlah').value;
         const golongan = document.getElementById('golongan').value.trim();
         
-        if(!nama || !jumlah) {
-            showModal({ title: 'Peringatan Form', message: 'Harap isi Nama Barang dan Jumlah Stok terlebih dahulu sebelum menyimpan.' });
-            return;
-        }
+        if(!nama || !jumlah) return window.alertUI('Harap isi Nama dan Stok Barang!');
 
-        // Tampilkan indikator loading UI di tombol agar mencegah double-click
-        const btnContainer = document.querySelector('.flex.items-end.w-full.md\\:w-auto');
-        const btnAsli = btnContainer.innerHTML;
-        btnContainer.innerHTML = `
-            <button disabled class="w-full md:w-auto bg-slate-400 text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-sm flex items-center justify-center gap-2 cursor-not-allowed">
-                <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 
-                Menyimpan...
-            </button>`;
-        
-        const newItem = { 
-            nama: nama, 
-            jumlah: parseInt(jumlah), 
-            golongan: golongan,
-            outlet: activeOutlet // Mengikat barang dengan cabang saat ini
-        };
-        
+        const outlet = document.getElementById('pilihOutlet').value;
+        const collectionName = 'stock_' + outlet;
+        const colRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, collectionName);
+
         try {
-            // Proses Insert ke tabel 'stok_barang'
-            const { data, error } = await supabaseClient
-                .from('stok_barang')
-                .insert([newItem])
-                .select();
-
-            if (error) throw error;
+            await addDoc(colRef, { 
+                nama: nama, 
+                jumlah: Number(jumlah), 
+                golongan: golongan,
+                timestamp: Date.now() 
+            });
             
-            // Tambahkan data kembalian (dengan ID asli) ke state lokal
-            if(data && data.length > 0) {
-                stokBarang.push(data[0]);
-            } else {
-                fetchStokBarang(); // fallback ambil semua ulang
-            }
-            
-            // Reset input form
+            // Kosongkan form setelah berhasil
             document.getElementById('nama').value = '';
             document.getElementById('jumlah').value = '';
             document.getElementById('nama').focus();
-            
-            renderTabel();
-            
         } catch (error) {
-            console.error("Gagal tambah:", error);
-            showModal({ title: 'Gagal Menyimpan Database', message: error.message });
-        } finally {
-            // Kembalikan tombol ke bentuk semula
-            btnContainer.innerHTML = btnAsli;
+            console.error("Error menambah dokumen: ", error);
+            window.alertUI("Gagal menambah data ke Cloud");
         }
-    }
+    };
 
-    function konfirmasiHapus(id, nama) {
-        showModal({
-            title: 'Hapus Barang',
-            message: `Yakin ingin menghapus secara permanen '${nama}' dari outlet ${activeOutlet}?`,
-            type: 'confirm',
-            onConfirm: async () => {
-                
-                try {
-                    // Eksekusi hapus di database
-                    const { error } = await supabaseClient
-                        .from('stok_barang')
-                        .delete()
-                        .eq('id', id);
-
-                    if (error) throw error;
-
-                    // Hapus dari state lokal
-                    stokBarang = stokBarang.filter(item => String(item.id) !== String(id));
-                    renderTabel();
-                    
-                } catch(error) {
-                    showModal({ title: 'Gagal Menghapus', message: error.message });
-                }
-            }
-        });
-    }
-
-    function exportKeExcel() {
-        let dataExport = stokBarang.filter(item => item.outlet === activeOutlet);
+    // Menghapus Data dari Cloud
+    window.hapusData = async function(id) {
+        if (!currentUser) return;
         
-        if(dataExport.length === 0) {
-            showModal({ title: 'Informasi', message: 'Tidak ada data barang untuk diekspor pada cabang ini.' });
-            return;
+        const outlet = document.getElementById('pilihOutlet').value;
+        const collectionName = 'stock_' + outlet;
+        const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, collectionName, id);
+
+        try {
+            await deleteDoc(docRef);
+        } catch (error) {
+            console.error("Error menghapus dokumen: ", error);
+            window.alertUI("Gagal menghapus data");
         }
-
-        // Membuat format CSV UTF-8
-        let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "No,Nama Barang,Jumlah Stok,Rak/Golongan,Outlet\n";
-        
-        dataExport.forEach((row, index) => {
-            // Normalisasi teks untuk CSV (mencegah error karena koma/karakter)
-            let namaAman = (row.nama || '').replace(/,/g, ' ');
-            let rakAman = (row.golongan || '').replace(/,/g, ' ');
-            csvContent += `${index + 1},${namaAman},${row.jumlah},${rakAman},${row.outlet}\n`;
-        });
-
-        // Trigger unduhan file di browser
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        
-        // Penamaan file dinamis berdasarkan outlet
-        const namaFile = `Data_Stok_${activeOutlet.replace(/\s+/g, '_')}.csv`;
-        link.setAttribute("download", namaFile);
-        
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
+    };
 </script>
+
 </body>
 </html>
