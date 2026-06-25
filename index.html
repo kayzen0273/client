@@ -63,8 +63,21 @@
     </div>
 </div>
 
+<script>
+    // Pengecekan jika module Firebase gagal dimuat (misal karena AdBlock, Brave Shields, atau dijalankan offline)
+    window.firebaseLoaded = false;
+    setTimeout(() => {
+        if (!window.firebaseLoaded) {
+            document.getElementById('koneksiStatus').innerText = '❌ Koneksi Diblokir / Offline';
+            document.getElementById('koneksiStatus').style.color = '#e74c3c';
+            document.getElementById('tabelContainer').innerHTML = '<div style="text-align:center; padding:20px; color:#e74c3c; line-height: 1.5;"><b>Gagal memuat database!</b><br><br>Penyebab umum:<br>1. Anda mengunduh file ini dan membukanya secara offline (Pastikan menjalankannya via jendela <b>Preview</b> di layar ini).<br>2. Ada <b>AdBlock / Brave Shields</b> yang memblokir koneksi database. Harap matikan sementara.</div>';
+        }
+    }, 4000);
+</script>
+
 <!-- Firebase SDKs -->
 <script type="module">
+    window.firebaseLoaded = true;
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -78,51 +91,64 @@
         setTimeout(() => modal.remove(), 3000);
     };
 
-    // Konfigurasi Database Cloud terotomatisasi dari environment
-    const firebaseConfig = JSON.parse(__firebase_config);
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
+    let app, auth, db, appId;
     let currentUser = null;
     let unsubscribeSnapshot = null;
     let stokBarang = [];
 
-    // Inisialisasi Autentikasi
-    const initAuth = async () => {
-        try {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
+    // Konfigurasi Database Cloud terotomatisasi dari environment dengan penanganan error
+    try {
+        if (typeof __firebase_config === 'undefined') {
+            throw new Error("Konfigurasi tidak ditemukan. Pastikan Anda berada di mode Preview.");
+        }
+        const firebaseConfig = JSON.parse(__firebase_config);
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+        appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    } catch (error) {
+        console.error("Setup Error:", error);
+        document.getElementById('koneksiStatus').innerText = '❌ Error Konfigurasi';
+        document.getElementById('koneksiStatus').style.color = '#e74c3c';
+        document.getElementById('tabelContainer').innerHTML = '<div style="text-align:center; padding:20px; color:#e74c3c; line-height: 1.5;"><b>Konfigurasi Database Hilang</b><br>Tolong jalankan file ini langsung dari jendela <b>Preview</b> aplikasi ini, jangan diunduh dan dibuka secara offline.</div>';
+    }
+
+    if (auth && db) {
+        // Inisialisasi Autentikasi
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Auth Error", error);
+                window.alertUI("Gagal menghubungkan autentikasi.");
             }
-        } catch (error) {
-            console.error("Auth Error", error);
-            window.alertUI("Gagal menghubungkan autentikasi.");
-        }
-    };
+        };
 
-    initAuth();
+        initAuth();
 
-    // Pantau Status Autentikasi
-    onAuthStateChanged(auth, (user) => {
-        const statusEl = document.getElementById('koneksiStatus');
-        if (user) {
-            currentUser = user;
-            statusEl.innerText = '✅ Tersinkronisasi dengan Cloud';
-            statusEl.style.color = '#27ae60';
-            window.loadData();
-        } else {
-            currentUser = null;
-            statusEl.innerText = '❌ Terputus dari Cloud';
-            statusEl.style.color = '#e74c3c';
-        }
-    });
+        // Pantau Status Autentikasi
+        onAuthStateChanged(auth, (user) => {
+            const statusEl = document.getElementById('koneksiStatus');
+            if (user) {
+                currentUser = user;
+                statusEl.innerText = '✅ Tersinkronisasi dengan Cloud';
+                statusEl.style.color = '#27ae60';
+                window.loadData();
+            } else {
+                currentUser = null;
+                statusEl.innerText = '❌ Terputus dari Cloud';
+                statusEl.style.color = '#e74c3c';
+            }
+        });
+    }
 
     // Memuat Data secara Real-time
     window.loadData = function() {
-        if (!currentUser) return;
+        if (!currentUser || !db) return;
         
         const outlet = document.getElementById('pilihOutlet').value;
         const collectionName = 'stock_' + outlet;
@@ -196,7 +222,7 @@
 
     // Menambah Data ke Cloud
     window.tambahData = async function() {
-        if (!currentUser) return window.alertUI('Gagal: Belum terhubung ke Cloud.');
+        if (!currentUser || !db) return window.alertUI('Gagal: Belum terhubung ke Cloud.');
         
         const nama = document.getElementById('nama').value.trim();
         const jumlah = document.getElementById('jumlah').value;
@@ -228,7 +254,7 @@
 
     // Menghapus Data dari Cloud
     window.hapusData = async function(id) {
-        if (!currentUser) return;
+        if (!currentUser || !db) return;
         
         const outlet = document.getElementById('pilihOutlet').value;
         const collectionName = 'stock_' + outlet;
