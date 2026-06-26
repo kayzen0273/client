@@ -4,22 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stock Opname Supabase</title>
-    <!-- Import Supabase Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Pustaka untuk Export Excel -->
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 15px; background-color: #f4f7f6; color: #333; }
         .container { max-width: 1100px; margin: 0 auto; background: white; padding: 15px 18px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .header-area { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f4f7f6; padding-bottom: 15px; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
+        .header-area { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f4f7f6; padding-bottom: 15px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
         h2 { margin: 0; color: #2c3e50; font-size: 20px; }
-        .action-area { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-        select { padding: 10px; border: 1px solid #2980b9; border-radius: 4px; font-weight: bold; width: 200px; }
-        .checkbox-abjad { font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; background: #e2e8f0; padding: 8px 12px; border-radius: 6px; }
+        .action-area { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        
+        select { padding: 8px; border: 1px solid #2980b9; border-radius: 4px; font-weight: bold; width: 140px; cursor: pointer; }
+        
+        /* Tombol Edit diperjelas agar bisa diklik */
+        .edit-outlet { 
+            background: #3498db; color: white; padding: 8px 12px; border-radius: 4px; 
+            cursor: pointer; font-size: 13px; font-weight: bold; border: none;
+            display: inline-block; position: relative; z-index: 10;
+        }
+        .edit-outlet:hover { background: #2980b9; }
+
+        .checkbox-abjad { font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; background: #e2e8f0; padding: 8px 12px; border-radius: 6px; }
         .form-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 25px; background: #fdfdfd; padding: 15px; border: 1px dashed #cbd5e1; border-radius: 6px; }
         input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; flex: 1; min-width: 120px; }
-        button { padding: 10px 20px; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; }
+        button { padding: 10px 15px; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; }
         .btn-tambah { background-color: #27ae60; }
         .btn-excel { background-color: #1f6e43; }
         .btn-hapus { background-color: #e74c3c; padding: 5px 10px; font-size: 12px; }
@@ -33,14 +41,16 @@
 
 <div class="container">
     <div class="header-area">
-        <h2>Stock Opname (Supabase)</h2>
+        <h2>Stock Opname</h2>
         <div class="action-area">
             <select id="pilihOutlet" onchange="loadData()">
-                <option value="Outlet_A">📍 Outlet A</option>
-                <option value="Outlet_B">📍 Outlet B</option>
+                <option value="Outlet_A">Outlet A</option>
+                <option value="Outlet_B">Outlet B</option>
             </select>
+            <!-- Tombol Edit diperbaiki -->
+            <button type="button" class="edit-outlet" onclick="editNamaOutlet()">Edit Nama</button>
             <label class="checkbox-abjad">
-                <input type="checkbox" id="modeAbjad" onchange="loadData()"> Urutkan A-Z
+                <input type="checkbox" id="modeAbjad" onchange="loadData()"> A-Z
             </label>
             <button class="btn-excel" onclick="exportKeExcel()">📊 Excel</button>
         </div>
@@ -63,17 +73,33 @@
     
     let currentData = [];
 
+    // Fungsi edit yang lebih tangguh
+    async function editNamaOutlet() {
+        const select = document.getElementById('pilihOutlet');
+        const outletLama = select.value;
+        const namaBaru = prompt("Masukkan nama baru untuk " + outletLama + ":", select.options[select.selectedIndex].text);
+        
+        if (namaBaru && namaBaru.trim() !== "" && namaBaru !== select.options[select.selectedIndex].text) {
+            const { error } = await supabaseClient
+                .from('stok_barang')
+                .update({ outlet: namaBaru })
+                .eq('outlet', outletLama);
+            
+            if (error) return alert("Gagal update nama: " + error.message);
+            
+            select.options[select.selectedIndex].text = namaBaru;
+            select.options[select.selectedIndex].value = namaBaru;
+            alert("Nama outlet berhasil diubah!");
+        }
+    }
+
     async function loadData() {
         const outlet = document.getElementById('pilihOutlet').value;
         const urutAbjad = document.getElementById('modeAbjad').checked;
         
         let query = supabaseClient.from('stok_barang').select('*').eq('outlet', outlet);
-        
-        if (urutAbjad) {
-            query = query.order('nama', { ascending: true });
-        } else {
-            query = query.order('created_at', { ascending: true });
-        }
+        if (urutAbjad) query = query.order('nama', { ascending: true });
+        else query = query.order('created_at', { ascending: true });
 
         const { data, error } = await query;
         if (error) return console.error("Error loadData:", error);
@@ -87,9 +113,8 @@
         container.innerHTML = '';
         if (!data || !data.length) return container.innerHTML = '<p style="text-align:center;">Data kosong.</p>';
         
-        if (urutAbjad) {
-            buatTabel(data, "Semua Barang (Urut A-Z)");
-        } else {
+        if (urutAbjad) buatTabel(data, "Semua Barang (Urut A-Z)");
+        else {
             const kelompok = {};
             data.forEach(item => {
                 const rak = item.golongan?.trim() || 'Tanpa Rak';
@@ -108,11 +133,19 @@
                 <td>${item.nama}</td>
                 <td>${item.jumlah}</td>
                 <td>${item.golongan || '-'}</td>
-                <td><button class="btn-hapus" onclick="hapusData('${item.id}')">Hapus</button></td>
+                <td><button class="btn-hapus" onclick="konfirmasiHapus('${item.id}', '${item.nama}')">Hapus</button></td>
             </tr>
         `).join('');
         div.innerHTML += `<table><tr><th>Barang</th><th>Stok</th><th>Rak</th><th>Aksi</th></tr>${rows}</table>`;
         document.getElementById('tabelContainer').appendChild(div);
+    }
+
+    async function konfirmasiHapus(id, nama) {
+        if (confirm(`Hapus barang "${nama}"?`)) {
+            const { error } = await supabaseClient.from('stok_barang').delete().eq('id', id);
+            if (error) alert('Gagal menghapus');
+            else loadData();
+        }
     }
 
     async function tambahData() {
@@ -135,14 +168,8 @@
         }
     }
 
-    async function hapusData(id) {
-        const { error } = await supabaseClient.from('stok_barang').delete().eq('id', id);
-        if (error) alert('Gagal menghapus');
-        else loadData();
-    }
-
     function exportKeExcel() {
-        if (currentData.length === 0) return alert("Tidak ada data untuk di-export.");
+        if (currentData.length === 0) return alert("Tidak ada data.");
         const ws = XLSX.utils.json_to_sheet(currentData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "StockOpname");
