@@ -1,427 +1,436 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Peace Sign Blur ✌️</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Opname Supabase</title>
+    <!-- Import Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Pustaka untuk Export Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 15px; background-color: #f4f7f6; color: #333; }
+        .container { max-width: 1100px; margin: 0 auto; background: white; padding: 15px 18px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .header-area { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f4f7f6; padding-bottom: 12px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        h2 { margin: 0; color: #2c3e50; font-size: 18px; }
+        
+        /* Area tombol aksi dibuat lebih rapat */
+        .action-area { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        
+        /* Dropdown Outlet diperpendek */
+        select { padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: bold; width: 110px; cursor: pointer; font-size: 12px; background-color: #fff; height: 30px; }
+        
+        /* Tombol Edit Nama diperpendek */
+        .edit-outlet { background: #3498db; color: white; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; border: none; transition: background 0.2s ease; height: 30px; display: inline-flex; align-items: center; }
+        .edit-outlet:hover { background: #2980b9; }
 
-    :root {
-      --bg:          #070710;
-      --surface:     #10101a;
-      --surface2:    #16162a;
-      --border:      rgba(255,255,255,0.07);
-      --accent:      #7c3aed;
-      --accent-glow: rgba(124, 58, 237, 0.35);
-      --peace:       #ec4899;
-      --peace-glow:  rgba(236, 72, 153, 0.4);
-      --text:        #f0eff8;
-      --muted:       #6b7280;
-      --ok:          #22c55e;
-    }
+        /* Tombol Centang Abjad diperpendek */
+        .checkbox-abjad { 
+            font-size: 12px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            display: inline-flex; 
+            align-items: center; 
+            gap: 4px; 
+            background: #f1f5f9; 
+            color: #475569; 
+            padding: 6px 10px; 
+            border: 1px solid #cbd5e1; 
+            border-radius: 20px; 
+            transition: all 0.2s ease;
+            user-select: none;
+            white-space: nowrap;
+            height: 30px;
+        }
+        .checkbox-abjad:hover { 
+            background: #e2e8f0; 
+            border-color: #94a3b8;
+        }
+        .checkbox-abjad:has(input:checked) {
+            background: #2980b9;
+            color: white;
+            border-color: #2980b9;
+            box-shadow: 0 2px 6px rgba(41, 128, 185, 0.2);
+        }
+        .checkbox-abjad input[type="checkbox"] {
+            cursor: pointer;
+            accent-color: #ffffff;
+            width: 12px;
+            height: 12px;
+            margin: 0;
+        }
 
-    html, body {
-      min-height: 100dvh;
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Inter', system-ui, sans-serif;
-    }
+        /* Tombol Excel diperpendek menyesuaikan tinggi tombol lainnya */
+        .btn-excel { background-color: #1f6e43; font-weight: bold; padding: 6px 10px; font-size: 12px; height: 30px; display: inline-flex; align-items: center; border-radius: 6px; color: white; border: none; cursor: pointer; transition: background 0.2s ease; }
+        .btn-excel:hover { background-color: #165231; }
 
-    body {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 32px 16px 48px;
-    }
+        .form-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 25px; background: #fdfdfd; padding: 15px; border: 1px dashed #cbd5e1; border-radius: 6px; }
+        input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; flex: 1; min-width: 120px; font-size: 14px; }
+        
+        /* Tombol Tambah Barang Utama tetap proporsional */
+        button { padding: 10px 15px; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; transition: background 0.2s ease; }
+        .btn-tambah { background-color: #27ae60; }
+        .btn-tambah:hover { background-color: #219653; }
+        
+        /* Tombol aksi dalam tabel */
+        .btn-hapus { background-color: #e74c3c; padding: 5px 10px; font-size: 12px; }
+        .btn-hapus:hover { background-color: #c0392b; }
+        .btn-edit { background-color: #f39c12; padding: 5px 10px; font-size: 12px; margin-right: 5px; }
+        .btn-edit:hover { background-color: #d35400; }
+        
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #cbd5e1; padding: 10px 12px; font-size: 13px; }
+        th { background-color: #f8fafc; color: #475569; text-align: left; }
+        .group-title { background-color: #e2e8f0; padding: 8px 12px; font-weight: bold; border-left: 5px solid #2980b9; margin-top: 15px; margin-bottom: 5px; border-radius: 0 4px 4px 0; }
 
-    /* ── Header ── */
-    header { text-align: center; margin-bottom: 28px; }
-
-    .eyebrow {
-      font-size: 0.7rem;
-      font-weight: 600;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--accent);
-      margin-bottom: 10px;
-    }
-
-    h1 {
-      font-size: clamp(1.8rem, 5vw, 2.6rem);
-      font-weight: 800;
-      letter-spacing: -0.04em;
-      background: linear-gradient(135deg, #c4b5fd 0%, #ec4899 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .subtitle {
-      margin-top: 8px;
-      font-size: 0.88rem;
-      color: var(--muted);
-    }
-
-    /* ── Camera card ── */
-    .cam-card {
-      position: relative;
-      width: min(720px, 100%);
-      aspect-ratio: 16/9;
-      border-radius: 18px;
-      overflow: hidden;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      box-shadow:
-        0 0 0 1px var(--border),
-        0 40px 100px -20px rgba(0,0,0,0.7),
-        0 0 60px -10px var(--accent-glow);
-    }
-
-    #webcam {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-      transform: scaleX(-1);   /* mirror like a selfie cam */
-      transition: filter 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    #webcam.blurred {
-      filter: blur(24px) brightness(0.8) saturate(0.6);
-    }
-
-    /* ── Loading overlay ── */
-    #loadingOverlay {
-      position: absolute;
-      inset: 0;
-      background: var(--surface);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 14px;
-      z-index: 10;
-      transition: opacity 0.3s;
-    }
-    #loadingOverlay.hidden { display: none; }
-
-    .spinner {
-      width: 42px;
-      height: 42px;
-      border: 3px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .loading-label { font-weight: 700; font-size: 1rem; }
-    .loading-step  { font-size: 0.8rem; color: var(--muted); }
-
-    /* ── Error overlay ── */
-    #errorOverlay {
-      position: absolute;
-      inset: 0;
-      background: var(--surface);
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      padding: 28px;
-      text-align: center;
-      z-index: 20;
-    }
-    #errorOverlay.show { display: flex; }
-
-    .err-icon  { font-size: 2.8rem; margin-bottom: 4px; }
-    .err-title { font-weight: 700; font-size: 1.05rem; }
-    .err-msg   { font-size: 0.82rem; color: var(--muted); line-height: 1.55; max-width: 300px; }
-
-    .retry-btn {
-      margin-top: 10px;
-      padding: 9px 22px;
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      font-family: inherit;
-      font-size: 0.85rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity 0.15s;
-    }
-    .retry-btn:hover { opacity: 0.85; }
-
-    /* ── Status badge ── */
-    .status-badge {
-      position: absolute;
-      top: 14px;
-      left: 14px;
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      padding: 5px 14px 5px 9px;
-      border-radius: 999px;
-      background: rgba(7, 7, 16, 0.72);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border: 1px solid var(--border);
-      font-size: 0.75rem;
-      font-weight: 500;
-      color: var(--muted);
-      z-index: 5;
-      transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
-    }
-    .status-badge.peace {
-      border-color: var(--peace);
-      color: var(--peace);
-      box-shadow: 0 0 14px var(--peace-glow);
-    }
-    .status-badge.ready { color: #c4b5fd; }
-
-    .dot {
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      background: var(--muted);
-      flex-shrink: 0;
-      transition: background 0.2s;
-    }
-    .status-badge.ready .dot  { background: var(--ok); }
-    .status-badge.peace .dot  {
-      background: var(--peace);
-      animation: blink 0.7s ease-in-out infinite;
-    }
-    @keyframes blink {
-      0%,100% { opacity: 1; transform: scale(1); }
-      50%      { opacity: 0.4; transform: scale(1.4); }
-    }
-
-    /* ── Peace emoji pop ── */
-    .peace-overlay {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      pointer-events: none;
-      z-index: 4;
-    }
-
-    #peaceEmoji {
-      font-size: clamp(5rem, 18vw, 10rem);
-      opacity: 0;
-      transform: scale(0.5) rotate(-15deg);
-      transition:
-        opacity 0.22s ease,
-        transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
-      filter: drop-shadow(0 0 28px var(--peace-glow));
-      user-select: none;
-    }
-    #peaceEmoji.show {
-      opacity: 1;
-      transform: scale(1) rotate(0deg);
-    }
-
-    /* ── Instructions ── */
-    .hints {
-      margin-top: 22px;
-      display: flex;
-      gap: 32px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-    .hint {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.82rem;
-      color: var(--muted);
-    }
-    .hint span:first-child { font-size: 1.1rem; }
-  </style>
+        /* Gaya CSS untuk Pop-up/Modal Kustom */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 22px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            animation: fadeIn 0.2s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .modal-content h3 {
+            margin-top: 0;
+            margin-bottom: 18px;
+            color: #2c3e50;
+            font-size: 18px;
+            border-bottom: 2px solid #f4f7f6;
+            padding-bottom: 8px;
+        }
+        .modal-field {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .modal-field label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+        }
+        .modal-field input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .btn-batal {
+            background-color: #95a5a6;
+        }
+        .btn-batal:hover {
+            background-color: #7f8c8d;
+        }
+        .btn-simpan {
+            background-color: #27ae60;
+        }
+        .btn-simpan:hover {
+            background-color: #219653;
+        }
+    </style>
 </head>
 <body>
 
-<header>
-  <p class="eyebrow">Gesture Camera</p>
-  <h1>Peace Sign Blur ✌️</h1>
-  <p class="subtitle">Tunjukkan peace sign ke kamera untuk memblur layar</p>
-</header>
+<div class="container">
+    <div class="header-area">
+        <h2>Stock Opname</h2>
+        <div class="action-area">
+            <select id="pilihOutlet" onchange="loadData()">
+                <option value="Outlet_A">Outlet A</option>
+                <option value="Outlet_B">Outlet B</option>
+            </select>
+            <button type="button" class="edit-outlet" onclick="bukaEditOutletModal()">Edit Nama</button>
+            <label class="checkbox-abjad">
+                <input type="checkbox" id="modeAbjad" onchange="loadData()">
+                <span>A-Z</span>
+            </label>
+            <button class="btn-excel" onclick="exportKeExcel()">📊 Excel</button>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <input type="text" id="nama" placeholder="Nama Barang..." autocomplete="off">
+        <input type="number" id="jumlah" placeholder="Stok" min="0">
+        <input type="text" id="golongan" placeholder="Pilih/Ketik Rak..." list="listRak" autocomplete="off">
+        <datalist id="listRak"></datalist>
+        <button class="btn-tambah" onclick="tambahData()">Tambah</button>
+    </div>
 
-<div class="cam-card">
-
-  <!-- Video feed -->
-  <video id="webcam" autoplay playsinline muted></video>
-
-  <!-- Loading -->
-  <div id="loadingOverlay">
-    <div class="spinner"></div>
-    <p class="loading-label">Memuat model AI…</p>
-    <p class="loading-step" id="loadingStep">Menginisialisasi MediaPipe</p>
-  </div>
-
-  <!-- Error -->
-  <div id="errorOverlay">
-    <div class="err-icon">📵</div>
-    <p class="err-title" id="errTitle">Terjadi Masalah</p>
-    <p class="err-msg"   id="errMsg">—</p>
-    <button class="retry-btn" onclick="location.reload()">Coba Lagi</button>
-  </div>
-
-  <!-- Status badge -->
-  <div class="status-badge" id="badge">
-    <div class="dot"></div>
-    <span id="badgeText">Memuat…</span>
-  </div>
-
-  <!-- Peace emoji overlay -->
-  <div class="peace-overlay">
-    <span id="peaceEmoji">✌️</span>
-  </div>
-
+    <div id="tabelContainer">Memuat data...</div>
 </div>
 
-<div class="hints">
-  <div class="hint"><span>✌️</span><span>Peace sign → layar blur</span></div>
-  <div class="hint"><span>✋</span><span>Lepas → kembali normal</span></div>
+<!-- Pop-up/Modal untuk Edit Data Barang -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <h3>✏️ Edit Data Barang</h3>
+        <input type="hidden" id="editId">
+        <div class="modal-field">
+            <label for="editNama">Nama Barang</label>
+            <input type="text" id="editNama" autocomplete="off">
+        </div>
+        <div class="modal-field">
+            <label for="editJumlah">Jumlah Stok</label>
+            <input type="number" id="editJumlah" min="0">
+        </div>
+        <div class="modal-field">
+            <label for="editGolongan">Rak / Golongan</label>
+            <input type="text" id="editGolongan" autocomplete="off">
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn-batal" onclick="tutupEditModal()">Batal</button>
+            <button type="button" class="btn-simpan" onclick="simpanEditBarang()">Simpan Perubahan</button>
+        </div>
+    </div>
 </div>
 
-<script type="module">
-  import { HandLandmarker, FilesetResolver }
-    from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/vision_bundle.mjs";
+<!-- Pop-up/Modal untuk Edit Nama Outlet -->
+<div id="outletModal" class="modal">
+    <div class="modal-content">
+        <h3>🏬 Edit Nama Outlet</h3>
+        <div class="modal-field">
+            <label for="editOutletNama">Nama Outlet Baru</label>
+            <input type="text" id="editOutletNama" autocomplete="off">
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn-batal" onclick="tutupOutletModal()">Batal</button>
+            <button type="button" class="btn-simpan" onclick="simpanEditOutlet()">Simpan Perubahan</button>
+        </div>
+    </div>
+</div>
 
-  /* ── DOM refs ── */
-  const webcam    = document.getElementById('webcam');
-  const loading   = document.getElementById('loadingOverlay');
-  const stepEl    = document.getElementById('loadingStep');
-  const errorBox  = document.getElementById('errorOverlay');
-  const errTitle  = document.getElementById('errTitle');
-  const errMsg    = document.getElementById('errMsg');
-  const badge     = document.getElementById('badge');
-  const badgeText = document.getElementById('badgeText');
-  const peaceEmoji = document.getElementById('peaceEmoji');
+<script>
+    const SUPABASE_URL = 'https://mczuqbwofvlzcfezlptu.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jenVxYndvZnZsemNmZXpscHR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzNzU4MzEsImV4cCI6MjA5Nzk1MTgzMX0.zZNZGVVuyhXSltqZWiCrEZsdHSJqS_Tf9kyXkioy_G0';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    let currentData = [];
 
-  let landmarker   = null;
-  let lastVideoTime = -1;
-
-  /* ── Deteksi peace sign (logika sama dengan versi Python) ──
-     Landmark MediaPipe tangan:
-       8  = ujung telunjuk      6  = sendi tengah telunjuk
-       12 = ujung jari tengah  10  = sendi tengah jari tengah
-       16 = ujung jari manis   14  = sendi tengah jari manis
-       20 = ujung kelingking   18  = sendi tengah kelingking
-     Y=0 di atas, Y=1 di bawah (koordinat ternormalisasi).
-  */
-  function isPeace(lm) {
-    return (
-      lm[8].y  < lm[6].y  &&   // telunjuk tegak
-      lm[12].y < lm[10].y &&   // jari tengah tegak
-      lm[16].y > lm[14].y &&   // jari manis ditekuk
-      lm[20].y > lm[18].y      // kelingking ditekuk
-    );
-  }
-
-  function setStatus(text, mode) {
-    badge.className = 'status-badge ' + (mode || '');
-    badgeText.textContent = text;
-  }
-
-  function showError(title, msg) {
-    loading.classList.add('hidden');
-    errorBox.classList.add('show');
-    errTitle.textContent = title;
-    errMsg.textContent   = msg;
-  }
-
-  /* ── Inisialisasi ── */
-  async function init() {
-    try {
-      stepEl.textContent = 'Memuat WASM runtime…';
-      const vision = await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm"
-      );
-
-      stepEl.textContent = 'Mengunduh model tangan…';
-      landmarker = await HandLandmarker.createFromOptions(vision, {
-        baseOptions: {
-          modelAssetPath:
-            "https://storage.googleapis.com/mediapipe-models/hand_landmarker/" +
-            "hand_landmarker/float16/1/hand_landmarker.task",
-        },
-        runningMode: "VIDEO",
-        numHands: 2,
-        minHandDetectionConfidence: 0.5,
-        minHandPresenceConfidence : 0.5,
-        minTrackingConfidence     : 0.5,
-      });
-
-      stepEl.textContent = 'Mengakses kamera…';
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
-        audio: false,
-      });
-
-      webcam.srcObject = stream;
-      webcam.addEventListener('loadeddata', () => {
-        loading.classList.add('hidden');
-        setStatus('Siap — coba peace sign! ✌️', 'ready');
-        loop();
-      }, { once: true });
-
-    } catch (err) {
-      console.error(err);
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        showError(
-          'Izin Kamera Ditolak',
-          'Klik ikon 🔒 di address bar, lalu izinkan kamera. Setelah itu muat ulang halaman.'
-        );
-      } else if (err.name === 'NotFoundError') {
-        showError(
-          'Kamera Tidak Ditemukan',
-          'Pastikan webcam terpasang dan tidak sedang dipakai aplikasi lain.'
-        );
-      } else {
-        showError('Gagal Memuat', err.message || 'Terjadi kesalahan tidak terduga.');
-      }
+    // Fungsi untuk memperbarui datalist (autocomplete) rak
+    function updateDatalist(data) {
+        const datalist = document.getElementById('listRak');
+        datalist.innerHTML = '';
+        const rakUnik = [...new Set(data.map(item => (item.golongan || '').trim()))].filter(r => r !== '');
+        rakUnik.forEach(r => { 
+            const opt = document.createElement('option'); 
+            opt.value = r; 
+            datalist.appendChild(opt); 
+        });
     }
-  }
 
-  /* ── Loop deteksi per-frame ── */
-  function loop() {
-    if (webcam.currentTime !== lastVideoTime) {
-      lastVideoTime = webcam.currentTime;
+    // Membuka modal edit barang
+    function bukaEditModal(id, nama, jumlah, golongan) {
+        document.getElementById('editId').value = id;
+        document.getElementById('editNama').value = nama;
+        document.getElementById('editJumlah').value = jumlah;
+        document.getElementById('editGolongan').value = golongan || '';
+        document.getElementById('editModal').style.display = 'flex';
+    }
 
-      const results = landmarker.detectForVideo(webcam, performance.now());
-      let peace = false;
+    // Menutup modal edit barang
+    function tutupEditModal() {
+        document.getElementById('editModal').style.display = 'none';
+    }
 
-      if (results.landmarks?.length) {
-        for (const hand of results.landmarks) {
-          if (isPeace(hand)) { peace = true; break; }
+    // Menyimpan perubahan hasil edit barang ke Supabase
+    async function simpanEditBarang() {
+        const id = document.getElementById('editId').value;
+        const namaBaru = document.getElementById('editNama').value.trim();
+        const jumlahBaru = document.getElementById('editJumlah').value;
+        const golonganBaru = document.getElementById('editGolongan').value.trim();
+
+        if (!namaBaru || !jumlahBaru) {
+            return alert("Nama Barang dan Jumlah tidak boleh kosong!");
         }
-      }
 
-      if (peace) {
-        webcam.classList.add('blurred');
-        peaceEmoji.classList.add('show');
-        setStatus('Peace terdeteksi! ✌️', 'peace');
-      } else {
-        webcam.classList.remove('blurred');
-        peaceEmoji.classList.remove('show');
-        const hasHand = results.landmarks?.length > 0;
-        setStatus(hasHand ? 'Tangan terdeteksi 👋' : 'Menunggu gesture…', 'ready');
-      }
+        const { error } = await supabaseClient
+            .from('stok_barang')
+            .update({ 
+                nama: namaBaru, 
+                jumlah: parseInt(jumlahBaru), 
+                golongan: golonganBaru 
+            })
+            .eq('id', id);
+        
+        if (error) {
+            alert("Gagal memperbarui data: " + error.message);
+        } else {
+            tutupEditModal();
+            loadData();
+        }
     }
 
-    requestAnimationFrame(loop);
-  }
+    // Membuka modal edit outlet
+    function bukaEditOutletModal() {
+        const select = document.getElementById('pilihOutlet');
+        const outletAktif = select.options[select.selectedIndex].text;
+        document.getElementById('editOutletNama').value = outletAktif;
+        document.getElementById('outletModal').style.display = 'flex';
+    }
 
-  init();
+    // Menutup modal edit outlet
+    function tutupOutletModal() {
+        document.getElementById('outletModal').style.display = 'none';
+    }
+
+    // Menyimpan perubahan nama outlet ke Supabase
+    async function simpanEditOutlet() {
+        const select = document.getElementById('pilihOutlet');
+        const outletLama = select.value;
+        const namaBaru = document.getElementById('editOutletNama').value.trim();
+
+        if (!namaBaru) {
+            return alert("Nama outlet tidak boleh kosong!");
+        }
+
+        if (namaBaru === select.options[select.selectedIndex].text) {
+            tutupOutletModal();
+            return;
+        }
+
+        const { error } = await supabaseClient
+            .from('stok_barang')
+            .update({ outlet: namaBaru })
+            .eq('outlet', outletLama);
+        
+        if (error) {
+            alert("Gagal memperbarui nama outlet: " + error.message);
+        } else {
+            select.options[select.selectedIndex].text = namaBaru;
+            select.options[select.selectedIndex].value = namaBaru;
+            tutupOutletModal();
+            alert("Nama outlet berhasil diubah!");
+            loadData();
+        }
+    }
+
+    async function loadData() {
+        const outlet = document.getElementById('pilihOutlet').value;
+        const urutAbjad = document.getElementById('modeAbjad').checked;
+        
+        let query = supabaseClient.from('stok_barang').select('*').eq('outlet', outlet);
+        if (urutAbjad) query = query.order('nama', { ascending: true });
+        else query = query.order('created_at', { ascending: true });
+
+        const { data, error } = await query;
+        if (error) return console.error("Error loadData:", error);
+        
+        currentData = data;
+        updateDatalist(data);
+        renderTabel(data, urutAbjad);
+    }
+
+    function renderTabel(data, urutAbjad) {
+        const container = document.getElementById('tabelContainer');
+        container.innerHTML = '';
+        if (!data || !data.length) return container.innerHTML = '<p style="text-align:center; padding: 20px; color: #7f8c8d;">Belum ada data barang.</p>';
+        
+        if (urutAbjad) {
+            buatTabel(data, "Semua Barang (Urut A-Z)");
+        } else {
+            const kelompok = {};
+            data.forEach(item => {
+                const rak = item.golongan?.trim() || 'Tanpa Rak';
+                if (!kelompok[rak]) kelompok[rak] = [];
+                kelompok[rak].push(item);
+            });
+            for (const rak in kelompok) buatTabel(kelompok[rak], rak);
+        }
+    }
+
+    function buatTabel(data, title) {
+        const div = document.createElement('div');
+        div.innerHTML = `<div class="group-title">📍 ${title}</div>`;
+        let rows = data.map((item, index) => `
+            <tr>
+                <td style="width: 50px;">${index + 1}</td>
+                <td>${item.nama}</td>
+                <td style="width: 100px;">${item.jumlah}</td>
+                <td style="width: 200px;">${item.golongan || '-'}</td>
+                <td style="width: 150px; text-align: center;">
+                    <button class="btn-edit" onclick="bukaEditModal('${item.id}', '${item.nama.replace(/'/g, "\\'")}', '${item.jumlah}', '${(item.golongan || '').replace(/'/g, "\\'")}')">Edit</button>
+                    <button class="btn-hapus" onclick="konfirmasiHapus('${item.id}', '${item.nama.replace(/'/g, "\\'")}')">Hapus</button>
+                </td>
+            </tr>
+        `).join('');
+        div.innerHTML += `<table><thead><tr><th>No</th><th>Barang</th><th>Stok</th><th>Rak</th><th>Aksi</th></tr></thead><tbody>${rows}</tbody></table>`;
+        document.getElementById('tabelContainer').appendChild(div);
+    }
+
+    async function konfirmasiHapus(id, nama) {
+        if (confirm(`Apakah Anda yakin ingin menghapus barang "${nama}"?`)) {
+            const { error } = await supabaseClient.from('stok_barang').delete().eq('id', id);
+            if (error) alert('Gagal menghapus');
+            else loadData();
+        }
+    }
+
+    async function tambahData() {
+        const nama = document.getElementById('nama').value.trim();
+        const jumlah = document.getElementById('jumlah').value;
+        const golongan = document.getElementById('golongan').value.trim();
+        const outlet = document.getElementById('pilihOutlet').value;
+        
+        if(!nama || !jumlah) return alert('Isi Nama Barang dan Stok!');
+        
+        const { error } = await supabaseClient
+            .from('stok_barang')
+            .insert([{ nama, jumlah: parseInt(jumlah), golongan, outlet }]);
+
+        if (error) alert('Gagal: ' + error.message);
+        else {
+            document.getElementById('nama').value = '';
+            document.getElementById('jumlah').value = '';
+            loadData();
+        }
+    }
+
+    function exportKeExcel() {
+        if (currentData.length === 0) return alert("Tidak ada data untuk di-export.");
+        // Ambil hanya kolom-kolom yang relevan untuk file Excel agar rapi
+        const dataBersih = currentData.map((item, index) => ({
+            No: index + 1,
+            Barang: item.nama,
+            Stok: item.jumlah,
+            Rak: item.golongan || '-',
+            Outlet: item.outlet
+        }));
+        
+        const ws = XLSX.utils.json_to_sheet(dataBersih);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Stock_Opname");
+        
+        const outlet = document.getElementById('pilihOutlet').value;
+        XLSX.writeFile(wb, `Stock_Opname_${outlet}.xlsx`);
+    }
+
+    loadData();
 </script>
-
 </body>
 </html>
