@@ -58,8 +58,10 @@
         }
     </style>
 
+    <!-- Library MediaPipe untuk Web -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <!-- Library Three.js untuk Render 3D -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
@@ -82,8 +84,7 @@
         // ==========================================
         const NUM_PARTICLES = 1500;
         let currentMode = 1; 
-        // 1: Kosmos, 2: Saturnus, 3: Teks, 4: Hati
-
+        
         let handTarget = { x: 0, y: 0, z: 0 };
         let handCurrent = { x: 0, y: 0, z: -12 };
         let rotationAngle = 0;
@@ -93,7 +94,8 @@
             1: "ROTASI ANGCOSMOS (Terbuka)",
             2: "SATURNUS 3D (Satu Jari)",
             3: "TEKS I LOVE YOU (Peace)",
-            4: "BENTUK HATI / LOVE (Kepal)"
+            4: "BENTUK HATI / LOVE (Kepal)",
+            5: "SELY 🫰 (Finger Heart)"
         };
 
         // ==========================================
@@ -102,14 +104,13 @@
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 50);
-        camera.position.z = 0; // Kamera di pusat, partikel digeser ke z = -12
+        camera.position.z = 0; 
         
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
         container.appendChild(renderer.domElement);
 
-        // Geometri Partikel
         const geometry = new THREE.BufferGeometry();
         const positions = new Float32Array(NUM_PARTICLES * 3);
         const colors = new Float32Array(NUM_PARTICLES * 3);
@@ -120,11 +121,10 @@
         const posPlanet = new Float32Array(NUM_PARTICLES * 3);
         const posText = new Float32Array(NUM_PARTICLES * 3);
         const posHeart = new Float32Array(NUM_PARTICLES * 3);
+        const posSely = new Float32Array(NUM_PARTICLES * 3); // Array posisi SELY
 
-        // Inisialisasi Data Bentuk
         generateShapes();
 
-        // Salin posSpace ke currentPositions awal
         for(let i = 0; i < NUM_PARTICLES * 3; i++) {
             currentPositions[i] = posSpace[i];
             positions[i] = posSpace[i];
@@ -133,7 +133,6 @@
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
         geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-        // Material Partikel (Additive Blending agar bercahaya/neon)
         const material = new THREE.PointsMaterial({
             size: 0.15,
             vertexColors: true,
@@ -147,19 +146,49 @@
         scene.add(particleSystem);
 
         // ==========================================
-        // GENERASI DATA BENTUK (Matematika Python -> JS)
+        // GENERASI DATA BENTUK
         // ==========================================
+        function createTextParticles(text, targetArray, scaleX, scaleY, offsetX, offsetY) {
+            const offCanvas = document.createElement('canvas');
+            offCanvas.width = 800; offCanvas.height = 200;
+            const ctx = offCanvas.getContext('2d');
+            ctx.fillStyle = "black"; ctx.fillRect(0, 0, 800, 200);
+            ctx.fillStyle = "white"; ctx.font = "bold 130px sans-serif";
+            ctx.fillText(text, offsetX, offsetY);
+            
+            const imgData = ctx.getImageData(0, 0, 800, 200).data;
+            const textPoints = [];
+            for (let y = 0; y < 200; y += 2) {
+                for (let x = 0; x < 800; x += 2) {
+                    let alpha = imgData[((y * 800) + x) * 4 + 0]; 
+                    if (alpha > 128) {
+                        textPoints.push({
+                            x: (x - 400) / scaleX,
+                            y: -(y - 100) / scaleY,
+                            z: (Math.random() * 0.2) - 0.1
+                        });
+                    }
+                }
+            }
+            for(let i=0; i < NUM_PARTICLES; i++) {
+                let p = textPoints[Math.floor(Math.random() * textPoints.length)];
+                targetArray[i*3] = p.x;
+                targetArray[i*3+1] = p.y;
+                targetArray[i*3+2] = p.z;
+            }
+        }
+
         function generateShapes() {
             const NUM_SPHERE = 700;
 
-            // 1. Kosmos (Random Box)
+            // 1. Kosmos
             for(let i=0; i < NUM_PARTICLES; i++) {
                 posSpace[i*3] = (Math.random() * 8) - 4.0;
                 posSpace[i*3+1] = (Math.random() * 8) - 4.0;
                 posSpace[i*3+2] = (Math.random() * 8) - 4.0;
             }
 
-            // 2. Saturnus (Bola Inti + Cincin)
+            // 2. Saturnus
             for(let i=0; i < NUM_PARTICLES; i++) {
                 if(i < NUM_SPHERE) {
                     let phi = Math.random() * 2 * Math.PI;
@@ -171,44 +200,20 @@
                     posPlanet[i*3+2] = r * Math.cos(theta);
                 } else {
                     let theta = Math.random() * 2 * Math.PI;
-                    let r = 1.8 + Math.random() * 2.0; // 1.8 to 3.8
+                    let r = 1.8 + Math.random() * 2.0;
                     posPlanet[i*3] = r * Math.cos(theta);
                     posPlanet[i*3+1] = (Math.random() * 0.1) - 0.05;
                     posPlanet[i*3+2] = r * Math.sin(theta);
                 }
             }
 
-            // 3. Teks "I LOVE YOU" (Membaca pixel dari Canvas 2D)
-            const offCanvas = document.createElement('canvas');
-            offCanvas.width = 800; offCanvas.height = 200;
-            const ctx = offCanvas.getContext('2d');
-            ctx.fillStyle = "black"; ctx.fillRect(0, 0, 800, 200);
-            ctx.fillStyle = "white"; ctx.font = "bold 120px sans-serif";
-            ctx.fillText("I LOVE YOU", 20, 140);
-            
-            const imgData = ctx.getImageData(0, 0, 800, 200).data;
-            const textPoints = [];
-            for (let y = 0; y < 200; y += 2) {
-                for (let x = 0; x < 800; x += 2) {
-                    let alpha = imgData[((y * 800) + x) * 4 + 0]; // Cek channel R
-                    if (alpha > 128) {
-                        textPoints.push({
-                            x: (x - 400) / 70.0,
-                            y: -(y - 100) / 70.0,
-                            z: (Math.random() * 0.2) - 0.1
-                        });
-                    }
-                }
-            }
-            // Pilih 1500 titik secara acak dari pixel teks
-            for(let i=0; i < NUM_PARTICLES; i++) {
-                let p = textPoints[Math.floor(Math.random() * textPoints.length)];
-                posText[i*3] = p.x;
-                posText[i*3+1] = p.y;
-                posText[i*3+2] = p.z;
-            }
+            // 3. Teks "I LOVE YOU"
+            createTextParticles("I LOVE YOU", posText, 70.0, 70.0, 20, 140);
 
-            // 4. Bentuk Hati (Rumus Parametrik)
+            // 4. Teks "SELY"
+            createTextParticles("SELY", posSely, 70.0, 70.0, 230, 140);
+
+            // 5. Bentuk Hati
             for(let i=0; i < NUM_PARTICLES; i++) {
                 let t = (Math.random() * 2 * Math.PI) - Math.PI;
                 let p = (Math.random() * 2 * Math.PI) - Math.PI;
@@ -223,16 +228,27 @@
         }
 
         // ==========================================
-        // LOGIKA DETEKSI GESTUR (MEDIAPIPE)
+        // LOGIKA DETEKSI GESTUR
         // ==========================================
         function calculateGestureMode(landmarks) {
             const tips = [8, 12, 16, 20];
             const pips = [6, 10, 14, 18];
             
-            // MediaPipe Web Y-axis terbalik dibanding OpenCV desktop (0 di atas, 1 di bawah)
-            // Jari berdiri jika Y tip < Y pip
             let fingersUp = tips.map((tip, i) => landmarks[tip].y < landmarks[pips[i]].y);
             let upCount = fingersUp.filter(Boolean).length;
+
+            // Cek Finger Heart (SELY) 🫰
+            // Hitung jarak ujung jempol (4) dan ujung telunjuk (8)
+            const thumbTip = landmarks[4];
+            const indexTip = landmarks[8];
+            const dx = thumbTip.x - indexTip.x;
+            const dy = thumbTip.y - indexTip.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+
+            // Jika jempol dan telunjuk sangat dekat, dan jari lainnya mengepal
+            if (dist < 0.08 && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
+                return 5; // SELY Mode
+            }
 
             if (upCount === 0) return 4; // Hati (Kepal)
             if (fingersUp[0] && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) return 2; // Saturnus (Telunjuk)
@@ -261,13 +277,10 @@
                 currentMode = calculateGestureMode(landmarks);
                 document.getElementById('mode-text').innerText = "MODE: " + modeLabels[currentMode];
 
-                // Hitung translasi tangan berdasarkan Pergelangan (Wrist - index 0)
                 const wrist = landmarks[0];
-                // Mirror X (karena kamera di-mirror)
                 handTarget.x = -((wrist.x - 0.5) * 15.0); 
                 handTarget.y = -((wrist.y - 0.5) * 10.0);
                 
-                // Estimasi Z dari jarak pergelangan ke pangkal kelingking (Index 17)
                 const pinkyMcp = landmarks[17];
                 const dx = wrist.x - pinkyMcp.x;
                 const dy = wrist.y - pinkyMcp.y;
@@ -295,24 +308,21 @@
         function animate() {
             requestAnimationFrame(animate);
 
-            // Lerp pergerakan sistem (Tangan)
             handCurrent.x += (handTarget.x - handCurrent.x) * 0.15;
             handCurrent.y += (handTarget.y - handCurrent.y) * 0.15;
             handCurrent.z += (handTarget.z - handCurrent.z) * 0.15;
 
-            // Set referensi posisi target berdasarkan mode
             let targetPosArray;
             if (currentMode === 1) { targetPosArray = posSpace; rotationAngle += 0.005; }
             else if (currentMode === 2) { targetPosArray = posPlanet; rotationAngle += 0.02; }
             else if (currentMode === 3) { targetPosArray = posText; rotationAngle = 0; }
             else if (currentMode === 4) { targetPosArray = posHeart; rotationAngle += 0.015; }
+            else if (currentMode === 5) { targetPosArray = posSely; rotationAngle = 0; } // SELY Mode
 
             const posAttr = geometry.attributes.position.array;
             const colAttr = geometry.attributes.color.array;
 
-            // Update posisi tiap partikel (Lerp) & Warnanya
             for (let i = 0; i < NUM_PARTICLES; i++) {
-                // Lerp Posisi
                 currentPositions[i*3] += (targetPosArray[i*3] - currentPositions[i*3]) * 0.15;
                 currentPositions[i*3+1] += (targetPosArray[i*3+1] - currentPositions[i*3+1]) * 0.15;
                 currentPositions[i*3+2] += (targetPosArray[i*3+2] - currentPositions[i*3+2]) * 0.15;
@@ -321,11 +331,12 @@
                 posAttr[i*3+1] = currentPositions[i*3+1];
                 posAttr[i*3+2] = currentPositions[i*3+2];
 
-                // Warna (R, G, B)
                 if (currentMode === 3) { // Cyan
                     colAttr[i*3] = 0.0; colAttr[i*3+1] = 0.8; colAttr[i*3+2] = 1.0;
                 } else if (currentMode === 4) { // Pink/Red
                     colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.1; colAttr[i*3+2] = 0.4;
+                } else if (currentMode === 5) { // Ungu Sely
+                    colAttr[i*3] = 0.8; colAttr[i*3+1] = 0.2; colAttr[i*3+2] = 1.0;
                 } else if (currentMode === 2) { 
                     if (i < 700) { // Oranye Inti Saturnus
                         colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.5; colAttr[i*3+2] = 0.0;
@@ -340,11 +351,10 @@
             geometry.attributes.position.needsUpdate = true;
             geometry.attributes.color.needsUpdate = true;
 
-            // Transformasi Kamera/Grup
-            if ([2, 3, 4].includes(currentMode)) {
+            if ([2, 3, 4, 5].includes(currentMode)) {
                 particleSystem.position.set(handCurrent.x, handCurrent.y, handCurrent.z);
                 if (currentMode === 2) {
-                    particleSystem.rotation.set(0.43, rotationAngle, 0); // glRotatef(25, 1, 0, 0.5) equivalent approx
+                    particleSystem.rotation.set(0.43, rotationAngle, 0); 
                 } else {
                     particleSystem.rotation.set(0, rotationAngle, 0);
                 }
@@ -358,7 +368,6 @@
 
         animate();
 
-        // Handle Resize Layar
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
