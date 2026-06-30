@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NebulaHeart 3D - Web Gesture Controller (FINAL FIX)</title>
+    <title>NebulaHeart 3D - Multi-Hand Gesture Controller</title>
     <style>
         body {
             margin: 0;
@@ -27,6 +27,10 @@
             left: 20px;
             z-index: 2;
             pointer-events: none;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #333;
         }
         #camera-feed {
             position: absolute;
@@ -41,11 +45,15 @@
             background-color: #222;
         }
         .status-text {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
             color: #00ff00;
             text-shadow: 2px 2px 4px #000;
-            margin-bottom: 5px;
+        }
+        .info-text {
+            font-size: 14px;
+            color: #aaa;
+            margin-top: 5px;
         }
         .loading {
             position: absolute;
@@ -71,6 +79,7 @@
 
     <div id="ui-layer">
         <div class="status-text" id="mode-text">MODE: MENCARI TANGAN...</div>
+        <div class="info-text" id="hand-count">Tangan Terdeteksi: 0</div>
     </div>
     
     <video id="camera-feed" autoplay playsinline></video>
@@ -87,13 +96,16 @@
         let handCurrent = { x: 0, y: 0, z: -12 };
         let rotationAngle = 0;
 
-        // Teks Label Mode
         const modeLabels = {
-            1: "ROTASI KOSMOS (Semua Jari Buka)",
-            2: "SATURNUS 3D (1 Jari Telunjuk)",
-            3: "TEKS I LOVE YOU (2 Jari / Peace)",
-            4: "BENTUK HATI (Tangan Mengepal)",
-            5: "SELY 🫰 (Finger Heart)"
+            1: "KOSMOS (1 Tangan Buka)",
+            2: "SATURNUS 3D (1 Tangan Telunjuk)",
+            3: "TEKS I LOVE YOU (1 Tangan Peace)",
+            4: "BENTUK HATI (1 Tangan Kepal)",
+            5: "SELY 🫰 (1 Tangan Finger Heart)",
+            6: "GALAXY VORTEX (2 Tangan Terbuka)",
+            7: "BLACK HOLE (2 Tangan Mengepal)",
+            8: "KUBUS TESSERACT (2 Tangan Peace)",
+            9: "DNA HELIX (2 Tangan Telunjuk)"
         };
 
         // ==========================================
@@ -114,11 +126,16 @@
         const colors = new Float32Array(NUM_PARTICLES * 3);
         const currentPositions = new Float32Array(NUM_PARTICLES * 3);
         
+        // Data Target Posisi
         const posSpace = new Float32Array(NUM_PARTICLES * 3);
         const posPlanet = new Float32Array(NUM_PARTICLES * 3);
         const posText = new Float32Array(NUM_PARTICLES * 3);
         const posHeart = new Float32Array(NUM_PARTICLES * 3);
         const posSely = new Float32Array(NUM_PARTICLES * 3);
+        const posVortex = new Float32Array(NUM_PARTICLES * 3);
+        const posBlackHole = new Float32Array(NUM_PARTICLES * 3);
+        const posCube = new Float32Array(NUM_PARTICLES * 3);
+        const posDNA = new Float32Array(NUM_PARTICLES * 3);
 
         generateShapes();
 
@@ -154,115 +171,106 @@
             const textPoints = [];
             for (let y = 0; y < 200; y += 2) {
                 for (let x = 0; x < 800; x += 2) {
-                    let alpha = imgData[((y * 800) + x) * 4 + 0]; 
-                    if (alpha > 128) {
-                        textPoints.push({
-                            x: (x - 400) / scaleX,
-                            y: -(y - 100) / scaleY,
-                            z: (Math.random() * 0.2) - 0.1
-                        });
+                    if (imgData[((y * 800) + x) * 4 + 0] > 128) {
+                        textPoints.push({ x: (x - 400)/scaleX, y: -(y - 100)/scaleY, z: (Math.random()*0.2)-0.1 });
                     }
                 }
             }
             for(let i=0; i < NUM_PARTICLES; i++) {
                 let p = textPoints[Math.floor(Math.random() * textPoints.length)];
-                targetArray[i*3] = p.x;
-                targetArray[i*3+1] = p.y;
-                targetArray[i*3+2] = p.z;
+                targetArray[i*3] = p.x; targetArray[i*3+1] = p.y; targetArray[i*3+2] = p.z;
             }
         }
 
         function generateShapes() {
-            const NUM_SPHERE = 700;
-
+            // 1. Kosmos
             for(let i=0; i < NUM_PARTICLES; i++) {
-                posSpace[i*3] = (Math.random() * 8) - 4.0;
-                posSpace[i*3+1] = (Math.random() * 8) - 4.0;
-                posSpace[i*3+2] = (Math.random() * 8) - 4.0;
+                posSpace[i*3] = (Math.random()*8)-4.0; posSpace[i*3+1] = (Math.random()*8)-4.0; posSpace[i*3+2] = (Math.random()*8)-4.0;
             }
-
+            // 2. Saturnus
             for(let i=0; i < NUM_PARTICLES; i++) {
-                if(i < NUM_SPHERE) {
-                    let phi = Math.random() * 2 * Math.PI;
-                    let costheta = (Math.random() * 2) - 1;
-                    let theta = Math.acos(costheta);
-                    let r = 1.3;
-                    posPlanet[i*3] = r * Math.sin(theta) * Math.cos(phi);
-                    posPlanet[i*3+1] = r * Math.sin(theta) * Math.sin(phi);
-                    posPlanet[i*3+2] = r * Math.cos(theta);
+                if(i < 700) {
+                    let phi = Math.random()*2*Math.PI, theta = Math.acos((Math.random()*2)-1);
+                    posPlanet[i*3] = 1.3*Math.sin(theta)*Math.cos(phi); posPlanet[i*3+1] = 1.3*Math.sin(theta)*Math.sin(phi); posPlanet[i*3+2] = 1.3*Math.cos(theta);
                 } else {
-                    let theta = Math.random() * 2 * Math.PI;
-                    let r = 1.8 + Math.random() * 2.0;
-                    posPlanet[i*3] = r * Math.cos(theta);
-                    posPlanet[i*3+1] = (Math.random() * 0.1) - 0.05;
-                    posPlanet[i*3+2] = r * Math.sin(theta);
+                    let theta = Math.random()*2*Math.PI, r = 1.8 + Math.random()*2.0;
+                    posPlanet[i*3] = r*Math.cos(theta); posPlanet[i*3+1] = (Math.random()*0.1)-0.05; posPlanet[i*3+2] = r*Math.sin(theta);
                 }
             }
-
+            // 3. Text & Sely
             createTextParticles("I LOVE YOU", posText, 70.0, 70.0, 20, 140);
             createTextParticles("SELY", posSely, 70.0, 70.0, 230, 140);
-
+            
+            // 4. Hati
             for(let i=0; i < NUM_PARTICLES; i++) {
-                let t = (Math.random() * 2 * Math.PI) - Math.PI;
-                let p = (Math.random() * 2 * Math.PI) - Math.PI;
-                let x = 2.0 * Math.pow(Math.sin(t), 3);
-                let y = 2.0 * Math.cos(t) - 0.7 * Math.cos(2*t) - 0.3 * Math.cos(3*t) - 0.1 * Math.cos(4*t);
-                let z = Math.sin(p) * 0.4;
-                
-                posHeart[i*3] = x * 0.85;
-                posHeart[i*3+1] = (y * 0.85) + 0.5;
-                posHeart[i*3+2] = z;
+                let t = (Math.random()*2*Math.PI)-Math.PI;
+                posHeart[i*3] = (2.0*Math.pow(Math.sin(t), 3)) * 0.85;
+                posHeart[i*3+1] = (2.0*Math.cos(t) - 0.7*Math.cos(2*t) - 0.3*Math.cos(3*t) - 0.1*Math.cos(4*t)) * 0.85 + 0.5;
+                posHeart[i*3+2] = Math.sin((Math.random()*2*Math.PI)-Math.PI) * 0.4;
+            }
+
+            // --- BENTUK BARU UNTUK 2 TANGAN ---
+            // 6. Vortex (Puting Beliung)
+            for(let i=0; i < NUM_PARTICLES; i++) {
+                let t = (i / NUM_PARTICLES) * Math.PI * 20; // Banyak putaran
+                let r = 0.2 + (i / NUM_PARTICLES) * 4; 
+                posVortex[i*3] = r * Math.cos(t);
+                posVortex[i*3+1] = (i / NUM_PARTICLES) * 10 - 5; // Membumbung ke atas
+                posVortex[i*3+2] = r * Math.sin(t);
+            }
+            // 7. Black Hole (Titik super padat)
+            for(let i=0; i < NUM_PARTICLES; i++) {
+                let phi = Math.random()*2*Math.PI, theta = Math.acos((Math.random()*2)-1);
+                let r = Math.random() * 0.4; // Sangat kecil
+                posBlackHole[i*3] = r*Math.sin(theta)*Math.cos(phi); posBlackHole[i*3+1] = r*Math.sin(theta)*Math.sin(phi); posBlackHole[i*3+2] = r*Math.cos(theta);
+            }
+            // 8. Kubus Tesseract
+            for(let i=0; i < NUM_PARTICLES; i++) {
+                let face = Math.floor(Math.random() * 6);
+                let a = (Math.random() * 5) - 2.5, b = (Math.random() * 5) - 2.5, c = 2.5;
+                if (face===0) { posCube[i*3]=c; posCube[i*3+1]=a; posCube[i*3+2]=b; }
+                else if (face===1) { posCube[i*3]=-c; posCube[i*3+1]=a; posCube[i*3+2]=b; }
+                else if (face===2) { posCube[i*3]=a; posCube[i*3+1]=c; posCube[i*3+2]=b; }
+                else if (face===3) { posCube[i*3]=a; posCube[i*3+1]=-c; posCube[i*3+2]=b; }
+                else if (face===4) { posCube[i*3]=a; posCube[i*3+1]=b; posCube[i*3+2]=c; }
+                else { posCube[i*3]=a; posCube[i*3+1]=b; posCube[i*3+2]=-c; }
+            }
+            // 9. DNA Helix
+            for (let i = 0; i < NUM_PARTICLES; i++) {
+                let t = (i / (NUM_PARTICLES / 2)) * Math.PI * 6;
+                let y = (i % (NUM_PARTICLES / 2)) / (NUM_PARTICLES / 2) * 12 - 6;
+                let strand = i < (NUM_PARTICLES / 2) ? 0 : Math.PI; // Dua sisi DNA
+                posDNA[i*3] = 1.5 * Math.cos(t + strand);
+                posDNA[i*3+1] = y;
+                posDNA[i*3+2] = 1.5 * Math.sin(t + strand);
             }
         }
 
         // ==========================================
-        // LOGIKA DETEKSI GESTUR - URUTAN DIPERBAIKI
+        // LOGIKA DETEKSI GESTUR
         // ==========================================
-        function calculateGestureMode(landmarks) {
+        function getGestureName(landmarks) {
             const tips = [8, 12, 16, 20];
             const pips = [6, 10, 14, 18];
-            
-            // Cek status masing-masing 4 jari (Telunjuk, Tengah, Manis, Kelingking)
-            let fingersUp = tips.map((tip, i) => landmarks[tip].y < landmarks[pips[i]].y);
+            let up = tips.map((tip, i) => landmarks[tip].y < landmarks[pips[i]].y);
 
-            // 1. Cek Mode SELY 🫰 (Prioritas Pertama)
-            const thumbTip = landmarks[4];
-            const indexTip = landmarks[8];
-            const dxHeart = thumbTip.x - indexTip.x;
-            const dyHeart = thumbTip.y - indexTip.y;
-            const distHeart = Math.sqrt(dxHeart*dxHeart + dyHeart*dyHeart);
-            
-            // Jika Jempol & Telunjuk berdekatan, dan 3 jari lainnya menekuk
-            if (distHeart < 0.08 && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
-                return 5; 
-            }
+            // Cek Sely (Finger Heart)
+            let dx = landmarks[4].x - landmarks[8].x;
+            let dy = landmarks[4].y - landmarks[8].y;
+            if (Math.sqrt(dx*dx + dy*dy) < 0.08 && !up[1] && !up[2] && !up[3]) return "SELY";
 
-            // 2. Cek Mode I LOVE YOU (2 Jari: Telunjuk & Tengah berdiri)
-            if (fingersUp[0] && fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
-                return 3;
-            }
-
-            // 3. Cek Mode SATURNUS (Hanya 1 Jari Telunjuk berdiri)
-            if (fingersUp[0] && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
-                return 2;
-            }
-
-            // 4. Cek Mode KEPAL (Semua ke-4 jari menekuk)
-            if (!fingersUp[0] && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
-                return 4;
-            }
-
-            // 5. Default: KOSMOS (Semua jari terbuka bebas)
-            return 1; 
+            if (up[0] && up[1] && !up[2] && !up[3]) return "PEACE";
+            if (up[0] && !up[1] && !up[2] && !up[3]) return "INDEX";
+            if (!up[0] && !up[1] && !up[2] && !up[3]) return "FIST";
+            return "OPEN";
         }
 
         const videoElement = document.getElementById('camera-feed');
-        const hands = new Hands({locateFile: (file) => {
-            return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
-        }});
+        const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
 
+        // SET MAX HANDS MENJADI 2
         hands.setOptions({
-            maxNumHands: 1,
+            maxNumHands: 2, 
             modelComplexity: 1,
             minDetectionConfidence: 0.5,
             minTrackingConfidence: 0.5
@@ -270,34 +278,61 @@
 
         hands.onResults((results) => {
             document.getElementById('loading-screen').style.display = 'none';
+            let numHands = results.multiHandLandmarks ? results.multiHandLandmarks.length : 0;
+            document.getElementById('hand-count').innerText = "Tangan Terdeteksi: " + numHands;
 
-            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                const landmarks = results.multiHandLandmarks[0];
-                currentMode = calculateGestureMode(landmarks);
-                document.getElementById('mode-text').innerText = "MODE: " + modeLabels[currentMode];
-
-                const wrist = landmarks[0];
-                handTarget.x = -((wrist.x - 0.5) * 15.0); 
-                handTarget.y = -((wrist.y - 0.5) * 10.0);
+            if (numHands === 1) {
+                // LOGIKA 1 TANGAN (Mode 1-5)
+                const lm = results.multiHandLandmarks[0];
+                const gest = getGestureName(lm);
                 
-                const pinkyMcp = landmarks[17];
-                const dxDist = wrist.x - pinkyMcp.x;
-                const dyDist = wrist.y - pinkyMcp.y;
-                const distance = Math.sqrt(dxDist*dxDist + dyDist*dyDist);
-                handTarget.z = -10.0 - (1.0 / (distance + 0.01)) * 0.2;
+                if (gest === "SELY") currentMode = 5;
+                else if (gest === "PEACE") currentMode = 3;
+                else if (gest === "INDEX") currentMode = 2;
+                else if (gest === "FIST") currentMode = 4;
+                else currentMode = 1;
+
+                handTarget.x = -((lm[0].x - 0.5) * 15.0); 
+                handTarget.y = -((lm[0].y - 0.5) * 10.0);
+                
+                let dist = Math.sqrt(Math.pow(lm[0].x - lm[17].x, 2) + Math.pow(lm[0].y - lm[17].y, 2));
+                handTarget.z = -10.0 - (1.0 / (dist + 0.01)) * 0.2;
+
+            } else if (numHands === 2) {
+                // LOGIKA 2 TANGAN (Mode 6-9)
+                const lm1 = results.multiHandLandmarks[0];
+                const lm2 = results.multiHandLandmarks[1];
+                const gest1 = getGestureName(lm1);
+                const gest2 = getGestureName(lm2);
+
+                if (gest1 === "OPEN" && gest2 === "OPEN") currentMode = 6; // Vortex
+                else if (gest1 === "FIST" && gest2 === "FIST") currentMode = 7; // Black Hole
+                else if (gest1 === "PEACE" && gest2 === "PEACE") currentMode = 8; // Cube
+                else if (gest1 === "INDEX" && gest2 === "INDEX") currentMode = 9; // DNA
+                else currentMode = 6; // Default 2 Tangan campuran
+
+                // Cari titik tengah di antara kedua pergelangan tangan
+                let midX = (lm1[0].x + lm2[0].x) / 2.0;
+                let midY = (lm1[0].y + lm2[0].y) / 2.0;
+                
+                handTarget.x = -((midX - 0.5) * 15.0);
+                handTarget.y = -((midY - 0.5) * 10.0);
+                
+                // Rata-rata jarak kedalaman Z
+                let dist1 = Math.sqrt(Math.pow(lm1[0].x-lm1[17].x, 2) + Math.pow(lm1[0].y-lm1[17].y, 2));
+                let dist2 = Math.sqrt(Math.pow(lm2[0].x-lm2[17].x, 2) + Math.pow(lm2[0].y-lm2[17].y, 2));
+                handTarget.z = -10.0 - (1.0 / (((dist1+dist2)/2) + 0.01)) * 0.2;
+                
             } else {
                 currentMode = 1;
-                document.getElementById('mode-text').innerText = "MODE: ROTASI KOSMOS (Tidak ada tangan)";
                 handTarget = { x: 0, y: 0, z: -12 };
             }
+
+            document.getElementById('mode-text').innerText = "MODE: " + modeLabels[currentMode];
         });
 
         const cameraFeed = new Camera(videoElement, {
-            onFrame: async () => {
-                await hands.send({image: videoElement});
-            },
-            width: 480,
-            height: 360
+            onFrame: async () => { await hands.send({image: videoElement}); }, width: 480, height: 360
         });
         cameraFeed.start();
 
@@ -317,6 +352,10 @@
             else if (currentMode === 3) { targetPosArray = posText; rotationAngle = 0; }
             else if (currentMode === 4) { targetPosArray = posHeart; rotationAngle += 0.015; }
             else if (currentMode === 5) { targetPosArray = posSely; rotationAngle = 0; }
+            else if (currentMode === 6) { targetPosArray = posVortex; rotationAngle += 0.03; }
+            else if (currentMode === 7) { targetPosArray = posBlackHole; rotationAngle -= 0.05; }
+            else if (currentMode === 8) { targetPosArray = posCube; rotationAngle += 0.01; }
+            else if (currentMode === 9) { targetPosArray = posDNA; rotationAngle += 0.02; }
 
             const posAttr = geometry.attributes.position.array;
             const colAttr = geometry.attributes.color.array;
@@ -330,37 +369,32 @@
                 posAttr[i*3+1] = currentPositions[i*3+1];
                 posAttr[i*3+2] = currentPositions[i*3+2];
 
-                if (currentMode === 3) { // Cyan
-                    colAttr[i*3] = 0.0; colAttr[i*3+1] = 0.8; colAttr[i*3+2] = 1.0;
-                } else if (currentMode === 4) { // Pink/Red
-                    colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.1; colAttr[i*3+2] = 0.4;
-                } else if (currentMode === 5) { // Ungu Sely
-                    colAttr[i*3] = 0.8; colAttr[i*3+1] = 0.2; colAttr[i*3+2] = 1.0;
-                } else if (currentMode === 2) { 
-                    if (i < 700) { // Oranye Inti Saturnus
-                        colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.5; colAttr[i*3+2] = 0.0;
-                    } else { // Emas Cincin
-                        colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.7; colAttr[i*3+2] = 0.3;
-                    }
-                } else { // Biru Angcosmos
-                    colAttr[i*3] = 0.1; colAttr[i*3+1] = 0.5; colAttr[i*3+2] = 1.0;
+                // WARNA BERDASARKAN MODE
+                if (currentMode === 3) { colAttr[i*3]=0.0; colAttr[i*3+1]=0.8; colAttr[i*3+2]=1.0; } // I Love You (Cyan)
+                else if (currentMode === 4) { colAttr[i*3]=1.0; colAttr[i*3+1]=0.1; colAttr[i*3+2]=0.4; } // Hati (Pink/Red)
+                else if (currentMode === 5) { colAttr[i*3]=0.8; colAttr[i*3+1]=0.2; colAttr[i*3+2]=1.0; } // Sely (Ungu)
+                else if (currentMode === 6) { colAttr[i*3]=0.5; colAttr[i*3+1]=0.1; colAttr[i*3+2]=0.8; } // Vortex (Deep Purple)
+                else if (currentMode === 7) { colAttr[i*3]=0.8; colAttr[i*3+1]=0.0; colAttr[i*3+2]=0.0; } // Black Hole (Merah Gelap)
+                else if (currentMode === 8) { colAttr[i*3]=0.0; colAttr[i*3+1]=1.0; colAttr[i*3+2]=0.3; } // Kubus (Hijau Matrix)
+                else if (currentMode === 9) { 
+                    if(i < NUM_PARTICLES/2) { colAttr[i*3]=1.0; colAttr[i*3+1]=0.2; colAttr[i*3+2]=0.2; } // DNA Kiri Merah
+                    else { colAttr[i*3]=0.2; colAttr[i*3+1]=0.4; colAttr[i*3+2]=1.0; } // DNA Kanan Biru
+                }
+                else if (currentMode === 2) { 
+                    if (i < 700) { colAttr[i*3]=1.0; colAttr[i*3+1]=0.5; colAttr[i*3+2]=0.0; }
+                    else { colAttr[i*3]=1.0; colAttr[i*3+1]=0.7; colAttr[i*3+2]=0.3; }
+                } else { 
+                    colAttr[i*3]=0.1; colAttr[i*3+1]=0.5; colAttr[i*3+2]=1.0; 
                 }
             }
 
             geometry.attributes.position.needsUpdate = true;
             geometry.attributes.color.needsUpdate = true;
 
-            if ([2, 3, 4, 5].includes(currentMode)) {
-                particleSystem.position.set(handCurrent.x, handCurrent.y, handCurrent.z);
-                if (currentMode === 2) {
-                    particleSystem.rotation.set(0.43, rotationAngle, 0); 
-                } else {
-                    particleSystem.rotation.set(0, rotationAngle, 0);
-                }
-            } else {
-                particleSystem.position.set(0, 0, -12);
-                particleSystem.rotation.set(0, rotationAngle, 0);
-            }
+            particleSystem.position.set(handCurrent.x, handCurrent.y, handCurrent.z);
+            if (currentMode === 2) particleSystem.rotation.set(0.43, rotationAngle, 0); 
+            else if (currentMode === 8) particleSystem.rotation.set(rotationAngle, rotationAngle, rotationAngle); // Kubus mutar 3D
+            else particleSystem.rotation.set(0, rotationAngle, 0);
 
             renderer.render(scene, camera);
         }
