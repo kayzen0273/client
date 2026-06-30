@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NebulaHeart 3D - Web Gesture Controller</title>
+    <title>NebulaHeart 3D - Web Gesture Controller (FIXED)</title>
     <style>
         body {
             margin: 0;
@@ -58,10 +58,8 @@
         }
     </style>
 
-    <!-- Library MediaPipe untuk Web -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
-    <!-- Library Three.js untuk Render 3D -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
@@ -94,7 +92,7 @@
             1: "ROTASI ANGCOSMOS (Terbuka)",
             2: "SATURNUS 3D (Satu Jari)",
             3: "TEKS I LOVE YOU (Peace)",
-            4: "BENTUK HATI / LOVE (Kepal)",
+            4: "BENTUK HATI / LOVE (Kepal) - FIXED",
             5: "SELY 🫰 (Finger Heart)"
         };
 
@@ -116,12 +114,11 @@
         const colors = new Float32Array(NUM_PARTICLES * 3);
         const currentPositions = new Float32Array(NUM_PARTICLES * 3);
         
-        // Data Target Posisi
         const posSpace = new Float32Array(NUM_PARTICLES * 3);
         const posPlanet = new Float32Array(NUM_PARTICLES * 3);
         const posText = new Float32Array(NUM_PARTICLES * 3);
         const posHeart = new Float32Array(NUM_PARTICLES * 3);
-        const posSely = new Float32Array(NUM_PARTICLES * 3); // Array posisi SELY
+        const posSely = new Float32Array(NUM_PARTICLES * 3);
 
         generateShapes();
 
@@ -145,9 +142,6 @@
         const particleSystem = new THREE.Points(geometry, material);
         scene.add(particleSystem);
 
-        // ==========================================
-        // GENERASI DATA BENTUK
-        // ==========================================
         function createTextParticles(text, targetArray, scaleX, scaleY, offsetX, offsetY) {
             const offCanvas = document.createElement('canvas');
             offCanvas.width = 800; offCanvas.height = 200;
@@ -181,14 +175,12 @@
         function generateShapes() {
             const NUM_SPHERE = 700;
 
-            // 1. Kosmos
             for(let i=0; i < NUM_PARTICLES; i++) {
                 posSpace[i*3] = (Math.random() * 8) - 4.0;
                 posSpace[i*3+1] = (Math.random() * 8) - 4.0;
                 posSpace[i*3+2] = (Math.random() * 8) - 4.0;
             }
 
-            // 2. Saturnus
             for(let i=0; i < NUM_PARTICLES; i++) {
                 if(i < NUM_SPHERE) {
                     let phi = Math.random() * 2 * Math.PI;
@@ -207,13 +199,9 @@
                 }
             }
 
-            // 3. Teks "I LOVE YOU"
             createTextParticles("I LOVE YOU", posText, 70.0, 70.0, 20, 140);
-
-            // 4. Teks "SELY"
             createTextParticles("SELY", posSely, 70.0, 70.0, 230, 140);
 
-            // 5. Bentuk Hati
             for(let i=0; i < NUM_PARTICLES; i++) {
                 let t = (Math.random() * 2 * Math.PI) - Math.PI;
                 let p = (Math.random() * 2 * Math.PI) - Math.PI;
@@ -228,33 +216,47 @@
         }
 
         // ==========================================
-        // LOGIKA DETEKSI GESTUR
+        // LOGIKA DETEKSI GESTUR - PERBAIKAN BUG KEPAL
         // ==========================================
         function calculateGestureMode(landmarks) {
             const tips = [8, 12, 16, 20];
             const pips = [6, 10, 14, 18];
             
+            // Periksa apakah jari-jari terangkat (berdiri)
             let fingersUp = tips.map((tip, i) => landmarks[tip].y < landmarks[pips[i]].y);
             let upCount = fingersUp.filter(Boolean).length;
 
-            // Cek Finger Heart (SELY) 🫰
-            // Hitung jarak ujung jempol (4) dan ujung telunjuk (8)
+            // --- DETEKSI GESTUR ---
+
+            // Mode 5: SELY 🫰 (Finger Heart)
             const thumbTip = landmarks[4];
             const indexTip = landmarks[8];
-            const dx = thumbTip.x - indexTip.x;
-            const dy = thumbTip.y - indexTip.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-
-            // Jika jempol dan telunjuk sangat dekat, dan jari lainnya mengepal
-            if (dist < 0.08 && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
-                return 5; // SELY Mode
+            const dxHeart = thumbTip.x - indexTip.x;
+            const dyHeart = thumbTip.y - indexTip.y;
+            const distHeart = Math.sqrt(dxHeart*dxHeart + dyHeart*dyHeart);
+            if (distHeart < 0.06 && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
+                return 5;
             }
 
-            if (upCount === 0) return 4; // Hati (Kepal)
-            if (fingersUp[0] && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) return 2; // Saturnus (Telunjuk)
-            if (fingersUp[0] && fingersUp[1] && !fingersUp[2] && !fingersUp[3]) return 3; // Peace (Teks)
+            // Mode 4: BENTUK HATI (Kepal) - PERBAIKAN LOGIKA
+            // Kita anggap mengepal jika sebagian besar jari terlipat.
+            // Gunakan ambang batas upCount <= 1 untuk kestabilan.
+            if (upCount <= 1) {
+                return 4;
+            }
+
+            // Mode 2: SATURNUS (Satu Jari / Telunjuk Saja)
+            if (fingersUp[0] && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
+                return 2;
+            }
+
+            // Mode 3: I LOVE YOU (Peace / Dua Jari)
+            if (fingersUp[0] && fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
+                return 3;
+            }
             
-            return 1; // Default
+            // Mode 1: Default (Semua Jari Terbuka / Tidak Cocok)
+            return 1; 
         }
 
         const videoElement = document.getElementById('camera-feed');
@@ -282,9 +284,9 @@
                 handTarget.y = -((wrist.y - 0.5) * 10.0);
                 
                 const pinkyMcp = landmarks[17];
-                const dx = wrist.x - pinkyMcp.x;
-                const dy = wrist.y - pinkyMcp.y;
-                const distance = Math.sqrt(dx*dx + dy*dy);
+                const dxDist = wrist.x - pinkyMcp.x;
+                const dyDist = wrist.y - pinkyMcp.y;
+                const distance = Math.sqrt(dxDist*dxDist + dyDist*dyDist);
                 handTarget.z = -10.0 - (1.0 / (distance + 0.01)) * 0.2;
             } else {
                 currentMode = 1;
@@ -317,7 +319,7 @@
             else if (currentMode === 2) { targetPosArray = posPlanet; rotationAngle += 0.02; }
             else if (currentMode === 3) { targetPosArray = posText; rotationAngle = 0; }
             else if (currentMode === 4) { targetPosArray = posHeart; rotationAngle += 0.015; }
-            else if (currentMode === 5) { targetPosArray = posSely; rotationAngle = 0; } // SELY Mode
+            else if (currentMode === 5) { targetPosArray = posSely; rotationAngle = 0; }
 
             const posAttr = geometry.attributes.position.array;
             const colAttr = geometry.attributes.color.array;
