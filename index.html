@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NebulaHeart 3D - Web Gesture Controller (FIXED)</title>
+    <title>NebulaHeart 3D - Web Gesture Controller (FINAL FIX)</title>
     <style>
         body {
             margin: 0;
@@ -89,10 +89,10 @@
 
         // Teks Label Mode
         const modeLabels = {
-            1: "ROTASI ANGCOSMOS (Terbuka)",
-            2: "SATURNUS 3D (Satu Jari)",
-            3: "TEKS I LOVE YOU (Peace)",
-            4: "BENTUK HATI / LOVE (Kepal) - FIXED",
+            1: "ROTASI KOSMOS (Semua Jari Buka)",
+            2: "SATURNUS 3D (1 Jari Telunjuk)",
+            3: "TEKS I LOVE YOU (2 Jari / Peace)",
+            4: "BENTUK HATI (Tangan Mengepal)",
             5: "SELY 🫰 (Finger Heart)"
         };
 
@@ -216,46 +216,43 @@
         }
 
         // ==========================================
-        // LOGIKA DETEKSI GESTUR - PERBAIKAN BUG KEPAL
+        // LOGIKA DETEKSI GESTUR - URUTAN DIPERBAIKI
         // ==========================================
         function calculateGestureMode(landmarks) {
             const tips = [8, 12, 16, 20];
             const pips = [6, 10, 14, 18];
             
-            // Periksa apakah jari-jari terangkat (berdiri)
+            // Cek status masing-masing 4 jari (Telunjuk, Tengah, Manis, Kelingking)
             let fingersUp = tips.map((tip, i) => landmarks[tip].y < landmarks[pips[i]].y);
-            let upCount = fingersUp.filter(Boolean).length;
 
-            // --- DETEKSI GESTUR ---
-
-            // Mode 5: SELY 🫰 (Finger Heart)
+            // 1. Cek Mode SELY 🫰 (Prioritas Pertama)
             const thumbTip = landmarks[4];
             const indexTip = landmarks[8];
             const dxHeart = thumbTip.x - indexTip.x;
             const dyHeart = thumbTip.y - indexTip.y;
             const distHeart = Math.sqrt(dxHeart*dxHeart + dyHeart*dyHeart);
-            if (distHeart < 0.06 && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
-                return 5;
+            
+            // Jika Jempol & Telunjuk berdekatan, dan 3 jari lainnya menekuk
+            if (distHeart < 0.08 && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
+                return 5; 
             }
 
-            // Mode 4: BENTUK HATI (Kepal) - PERBAIKAN LOGIKA
-            // Kita anggap mengepal jika sebagian besar jari terlipat.
-            // Gunakan ambang batas upCount <= 1 untuk kestabilan.
-            if (upCount <= 1) {
-                return 4;
+            // 2. Cek Mode I LOVE YOU (2 Jari: Telunjuk & Tengah berdiri)
+            if (fingersUp[0] && fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
+                return 3;
             }
 
-            // Mode 2: SATURNUS (Satu Jari / Telunjuk Saja)
+            // 3. Cek Mode SATURNUS (Hanya 1 Jari Telunjuk berdiri)
             if (fingersUp[0] && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
                 return 2;
             }
 
-            // Mode 3: I LOVE YOU (Peace / Dua Jari)
-            if (fingersUp[0] && fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
-                return 3;
+            // 4. Cek Mode KEPAL (Semua ke-4 jari menekuk)
+            if (!fingersUp[0] && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
+                return 4;
             }
-            
-            // Mode 1: Default (Semua Jari Terbuka / Tidak Cocok)
+
+            // 5. Default: KOSMOS (Semua jari terbuka bebas)
             return 1; 
         }
 
@@ -290,7 +287,7 @@
                 handTarget.z = -10.0 - (1.0 / (distance + 0.01)) * 0.2;
             } else {
                 currentMode = 1;
-                document.getElementById('mode-text').innerText = "MODE: ROTASI ANGCOSMOS (Tidak ada tangan)";
+                document.getElementById('mode-text').innerText = "MODE: ROTASI KOSMOS (Tidak ada tangan)";
                 handTarget = { x: 0, y: 0, z: -12 };
             }
         });
