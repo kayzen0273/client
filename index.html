@@ -129,7 +129,7 @@
             2: "GALAKSI SPIRAL 🌌 (1 Jari Telunjuk)",
             3: "TEKS I LOVE YOU (2 Jari / Peace)",
             4: "BENTUK HATI (Tangan Mengepal)",
-            5: "SELY 🫰 (Finger Heart)",
+            5: "CINTA 🫶 (Dua Tangan Bentuk Hati)",
             7: "DNA HELIX 🧬 (Rock Sign)",
             8: "BUKET MAWAR 🌹 (OK Sign)"
         };
@@ -348,52 +348,58 @@
             // Cek status masing-masing 4 jari (Telunjuk, Tengah, Manis, Kelingking)
             let fingersUp = tips.map((tip, i) => landmarks[tip].y < landmarks[pips[i]].y);
 
-            // 1. Cek Mode SELY 🫰 (Prioritas Pertama)
             const thumbTip = landmarks[4];
             const indexTip = landmarks[8];
             const dxHeart = thumbTip.x - indexTip.x;
             const dyHeart = thumbTip.y - indexTip.y;
             const distHeart = Math.sqrt(dxHeart*dxHeart + dyHeart*dyHeart);
-            
-            // Jika Jempol & Telunjuk berdekatan, dan 3 jari lainnya menekuk
-            if (distHeart < 0.08 && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
-                return 5; 
-            }
 
-            // 2. Cek Mode BUKET MAWAR 🌹 (OK Sign: Jempol & Telunjuk berdekatan, 3 jari lain berdiri)
+            // 1. Cek Mode BUKET MAWAR 🌹 (OK Sign: Jempol & Telunjuk berdekatan, 3 jari lain berdiri)
             if (distHeart < 0.08 && fingersUp[1] && fingersUp[2] && fingersUp[3]) {
                 return 8;
             }
 
-            // 3. Cek Mode DNA HELIX 🧬 (Rock Sign: Telunjuk + Kelingking berdiri)
+            // 2. Cek Mode DNA HELIX 🧬 (Rock Sign: Telunjuk + Kelingking berdiri)
             if (fingersUp[0] && !fingersUp[1] && !fingersUp[2] && fingersUp[3]) {
                 return 7;
             }
 
-            // 4. Cek Mode I LOVE YOU (2 Jari: Telunjuk & Tengah berdiri)
+            // 3. Cek Mode I LOVE YOU (2 Jari: Telunjuk & Tengah berdiri)
             if (fingersUp[0] && fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
                 return 3;
             }
 
-            // 5. Cek Mode GALAKSI SPIRAL 🌌 (Hanya 1 Jari Telunjuk berdiri)
+            // 4. Cek Mode GALAKSI SPIRAL 🌌 (Hanya 1 Jari Telunjuk berdiri)
             if (fingersUp[0] && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
                 return 2;
             }
 
-            // 6. Cek Mode KEPAL (Semua ke-4 jari menekuk)
+            // 5. Cek Mode KEPAL (Semua ke-4 jari menekuk)
             if (!fingersUp[0] && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
                 return 4;
             }
 
-            // 7. Default: KOSMOS (Semua jari terbuka bebas)
+            // 6. Default: KOSMOS (Semua jari terbuka bebas)
             return 1; 
+        }
+
+        // Deteksi gestur "Heart Hands" 🫶 - dua tangan membentuk hati bersama
+        function dist2D(a, b) {
+            const dx = a.x - b.x;
+            const dy = a.y - b.y;
+            return Math.sqrt(dx*dx + dy*dy);
+        }
+        function isHeartHands(handA, handB) {
+            const indexClose = dist2D(handA[8], handB[8]) < 0.12;  // ujung telunjuk berdekatan (puncak hati)
+            const thumbClose = dist2D(handA[4], handB[4]) < 0.12;  // ujung jempol berdekatan (lancip bawah hati)
+            return indexClose && thumbClose;
         }
 
         const videoElement = document.getElementById('camera-feed');
         const captionEl = document.getElementById('love-caption');
         const loveCaptions = {
             4: "Untuk kamu, dengan sepenuh hati 💖",
-            5: "Kamu spesial banget buat aku 🫰",
+            5: "Kamu spesial banget buat aku 🫶",
             8: "Sebuket mawar untuk cewek terbaik 🌹"
         };
         function updateCaption(mode) {
@@ -409,7 +415,7 @@
         }});
 
         hands.setOptions({
-            maxNumHands: 1,
+            maxNumHands: 2,
             modelComplexity: 1,
             minDetectionConfidence: 0.5,
             minTrackingConfidence: 0.5
@@ -418,8 +424,28 @@
         hands.onResults((results) => {
             document.getElementById('loading-screen').style.display = 'none';
 
-            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                const landmarks = results.multiHandLandmarks[0];
+            const handsList = results.multiHandLandmarks;
+
+            if (handsList && handsList.length === 2 && isHeartHands(handsList[0], handsList[1])) {
+                // MODE CINTA 🫶 - dua tangan disatukan membentuk hati
+                currentMode = 5;
+                document.getElementById('mode-text').innerText = "MODE: " + modeLabels[currentMode];
+                updateCaption(currentMode);
+
+                const wristA = handsList[0][0];
+                const wristB = handsList[1][0];
+                const midX = (wristA.x + wristB.x) / 2;
+                const midY = (wristA.y + wristB.y) / 2;
+                handTarget.x = -((midX - 0.5) * 15.0);
+                handTarget.y = -((midY - 0.5) * 10.0);
+
+                const dA = dist2D(wristA, handsList[0][17]);
+                const dB = dist2D(wristB, handsList[1][17]);
+                const avgDist = (dA + dB) / 2;
+                handTarget.z = -10.0 - (1.0 / (avgDist + 0.01)) * 0.2;
+
+            } else if (handsList && handsList.length > 0) {
+                const landmarks = handsList[0];
                 currentMode = calculateGestureMode(landmarks);
                 document.getElementById('mode-text').innerText = "MODE: " + modeLabels[currentMode];
                 updateCaption(currentMode);
