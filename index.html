@@ -132,7 +132,7 @@
             5: "SELY 🫰 (Finger Heart)",
             7: "DNA HELIX 🧬 (Rock Sign)",
             8: "BUKET MAWAR 🌹 (OK Sign)",
-            9: "ZEN & CINTA 🙏 (Tangan Berdoa)"
+            9: "ZEN & CINTA 🤟 (I Love You Sign)"
         };
 
         // ==========================================
@@ -422,52 +422,46 @@
                 return 8;
             }
 
-            // 3. Cek Mode DNA HELIX 🧬 (Rock Sign: Telunjuk + Kelingking berdiri)
+            // 3. Cek Mode ZEN & CINTA 🤟 (Sign ILY: Jempol + Telunjuk + Kelingking berdiri,
+            //    Tengah & Manis menekuk, dan jempol terentang keluar dari telapak)
+            if (fingersUp[0] && !fingersUp[1] && !fingersUp[2] && fingersUp[3]) {
+                const thumbMcp = landmarks[2];
+                const pinkyMcp = landmarks[17];
+                const dxThumbTip = thumbTip.x - pinkyMcp.x;
+                const dyThumbTip = thumbTip.y - pinkyMcp.y;
+                const distThumbTipPinky = Math.sqrt(dxThumbTip*dxThumbTip + dyThumbTip*dyThumbTip);
+                const dxThumbMcp = thumbMcp.x - pinkyMcp.x;
+                const dyThumbMcp = thumbMcp.y - pinkyMcp.y;
+                const distThumbMcpPinky = Math.sqrt(dxThumbMcp*dxThumbMcp + dyThumbMcp*dyThumbMcp);
+
+                // Jempol terentang menjauh dari telapak (bukan terlipat) -> gestur 🤟
+                if (distThumbTipPinky > distThumbMcpPinky * 1.1) {
+                    return 9;
+                }
+            }
+
+            // 4. Cek Mode DNA HELIX 🧬 (Rock Sign: Telunjuk + Kelingking berdiri, jempol terlipat)
             if (fingersUp[0] && !fingersUp[1] && !fingersUp[2] && fingersUp[3]) {
                 return 7;
             }
 
-            // 4. Cek Mode I LOVE YOU (2 Jari: Telunjuk & Tengah berdiri)
+            // 5. Cek Mode I LOVE YOU (2 Jari: Telunjuk & Tengah berdiri)
             if (fingersUp[0] && fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
                 return 3;
             }
 
-            // 5. Cek Mode GALAKSI SPIRAL 🌌 (Hanya 1 Jari Telunjuk berdiri)
+            // 6. Cek Mode GALAKSI SPIRAL 🌌 (Hanya 1 Jari Telunjuk berdiri)
             if (fingersUp[0] && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
                 return 2;
             }
 
-            // 6. Cek Mode KEPAL (Semua ke-4 jari menekuk)
+            // 7. Cek Mode KEPAL (Semua ke-4 jari menekuk)
             if (!fingersUp[0] && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
                 return 4;
             }
 
-            // 7. Default: KOSMOS (Semua jari terbuka bebas)
+            // 8. Default: KOSMOS (Semua jari terbuka bebas)
             return 1; 
-        }
-
-        // Cek Mode ZEN & CINTA 🙏 (Kedua tangan menyatu seperti berdoa/namaste)
-        // Butuh 2 tangan terdeteksi: pergelangan berdekatan, ujung jari tengah
-        // berdekatan, dan ke-4 jari (selain jempol) berdiri lurus di kedua tangan.
-        function isPrayerGesture(handA, handB) {
-            const wristA = handA[0];
-            const wristB = handB[0];
-            const dxWrist = wristA.x - wristB.x;
-            const dyWrist = wristA.y - wristB.y;
-            const wristDist = Math.sqrt(dxWrist*dxWrist + dyWrist*dyWrist);
-
-            const midTipA = handA[12];
-            const midTipB = handB[12];
-            const dxTip = midTipA.x - midTipB.x;
-            const dyTip = midTipA.y - midTipB.y;
-            const tipDist = Math.sqrt(dxTip*dxTip + dyTip*dyTip);
-
-            const tips = [8, 12, 16, 20];
-            const pips = [6, 10, 14, 18];
-            const fingersUpA = tips.every((tip, i) => handA[tip].y < handA[pips[i]].y);
-            const fingersUpB = tips.every((tip, i) => handB[tip].y < handB[pips[i]].y);
-
-            return wristDist < 0.18 && tipDist < 0.13 && fingersUpA && fingersUpB;
         }
 
         const videoElement = document.getElementById('camera-feed');
@@ -476,7 +470,7 @@
             4: "Untuk kamu, dengan sepenuh hati 💖",
             5: "Kamu spesial banget buat aku 🫰",
             8: "Sebuket mawar untuk cewek terbaik 🌹",
-            9: "aku mau kamu jadi milik ku selamanya 🙏"
+            9: "aku mau kamu jadi milik ku selamanya 🤟"
         };
         function updateCaption(mode) {
             if (loveCaptions[mode]) {
@@ -491,7 +485,7 @@
         }});
 
         hands.setOptions({
-            maxNumHands: 2,
+            maxNumHands: 1,
             modelComplexity: 1,
             minDetectionConfidence: 0.5,
             minTrackingConfidence: 0.5
@@ -501,30 +495,16 @@
             document.getElementById('loading-screen').style.display = 'none';
 
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                const handA = results.multiHandLandmarks[0];
-                let wrist, pinkyMcp;
-
-                // Jika 2 tangan terdeteksi dan membentuk gestur berdoa 🙏 -> Mode ZEN & CINTA
-                if (results.multiHandLandmarks.length === 2 && isPrayerGesture(handA, results.multiHandLandmarks[1])) {
-                    currentMode = 9;
-                    const handB = results.multiHandLandmarks[1];
-                    wrist = {
-                        x: (handA[0].x + handB[0].x) / 2,
-                        y: (handA[0].y + handB[0].y) / 2
-                    };
-                    pinkyMcp = handA[17];
-                } else {
-                    currentMode = calculateGestureMode(handA);
-                    wrist = handA[0];
-                    pinkyMcp = handA[17];
-                }
-
+                const landmarks = results.multiHandLandmarks[0];
+                currentMode = calculateGestureMode(landmarks);
                 document.getElementById('mode-text').innerText = "MODE: " + modeLabels[currentMode];
                 updateCaption(currentMode);
 
+                const wrist = landmarks[0];
                 handTarget.x = -((wrist.x - 0.5) * 15.0); 
                 handTarget.y = -((wrist.y - 0.5) * 10.0);
                 
+                const pinkyMcp = landmarks[17];
                 const dxDist = wrist.x - pinkyMcp.x;
                 const dyDist = wrist.y - pinkyMcp.y;
                 const distance = Math.sqrt(dxDist*dxDist + dyDist*dyDist);
