@@ -56,41 +56,6 @@
             font-size: 20px;
             text-align: center;
         }
-        .falling-heart {
-            position: absolute;
-            top: -30px;
-            font-size: 18px;
-            opacity: 0;
-            pointer-events: none;
-            z-index: 3;
-            animation-name: fall;
-            animation-timing-function: linear;
-            animation-fill-mode: forwards;
-        }
-        @keyframes fall {
-            0% { transform: translateY(0) rotate(0deg); opacity: 0; }
-            10% { opacity: 0.9; }
-            100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
-        }
-        .love-caption {
-            position: absolute;
-            bottom: 40px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 3;
-            font-size: 22px;
-            font-weight: bold;
-            color: #ffb3d9;
-            text-shadow: 2px 2px 6px #000;
-            opacity: 0;
-            transition: opacity 0.6s ease;
-            pointer-events: none;
-            text-align: center;
-            max-width: 90vw;
-        }
-        .love-caption.show {
-            opacity: 1;
-        }
     </style>
 
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
@@ -110,7 +75,6 @@
     
     <video id="camera-feed" autoplay playsinline></video>
     <div id="canvas-container"></div>
-    <div id="love-caption" class="love-caption"></div>
 
     <script>
         // ==========================================
@@ -126,12 +90,10 @@
         // Teks Label Mode
         const modeLabels = {
             1: "ROTASI KOSMOS (Semua Jari Buka)",
-            2: "GALAKSI SPIRAL 🌌 (1 Jari Telunjuk)",
+            2: "SATURNUS 3D (1 Jari Telunjuk)",
             3: "TEKS I LOVE YOU (2 Jari / Peace)",
             4: "BENTUK HATI (Tangan Mengepal)",
-            5: "CINTA 🫶 (Dua Tangan Bentuk Hati)",
-            7: "DNA HELIX 🧬 (Rock Sign)",
-            8: "BUKET MAWAR 🌹 (OK Sign)"
+            5: "SELY 🫰 (Finger Heart)"
         };
 
         // ==========================================
@@ -147,55 +109,16 @@
         renderer.setPixelRatio(window.devicePixelRatio);
         container.appendChild(renderer.domElement);
 
-        // Render manual (autoClear = false) supaya bisa bikin efek "jejak komet" (trail)
-        renderer.autoClear = false;
-        const trailScene = new THREE.Scene();
-        const trailCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-        const trailPlane = new THREE.Mesh(
-            new THREE.PlaneGeometry(2, 2),
-            new THREE.MeshBasicMaterial({
-                color: 0x000000,
-                transparent: true,
-                opacity: 0.15,
-                depthWrite: false,
-                depthTest: false
-            })
-        );
-        trailScene.add(trailPlane);
-
-        // Latar bintang statis (Starfield) biar suasana makin "angkasa"
-        const NUM_STARS = 600;
-        const starGeometry = new THREE.BufferGeometry();
-        const starPositions = new Float32Array(NUM_STARS * 3);
-        for (let i = 0; i < NUM_STARS; i++) {
-            starPositions[i * 3]     = (Math.random() - 0.5) * 60;
-            starPositions[i * 3 + 1] = (Math.random() - 0.5) * 60;
-            starPositions[i * 3 + 2] = -15 - Math.random() * 25;
-        }
-        starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-        const starMaterial = new THREE.PointsMaterial({
-            size: 0.08,
-            color: 0xffffff,
-            transparent: true,
-            opacity: 0.5,
-            sizeAttenuation: true
-        });
-        const starField = new THREE.Points(starGeometry, starMaterial);
-        scene.add(starField);
-
         const geometry = new THREE.BufferGeometry();
         const positions = new Float32Array(NUM_PARTICLES * 3);
         const colors = new Float32Array(NUM_PARTICLES * 3);
         const currentPositions = new Float32Array(NUM_PARTICLES * 3);
         
         const posSpace = new Float32Array(NUM_PARTICLES * 3);
+        const posPlanet = new Float32Array(NUM_PARTICLES * 3);
         const posText = new Float32Array(NUM_PARTICLES * 3);
         const posHeart = new Float32Array(NUM_PARTICLES * 3);
         const posSely = new Float32Array(NUM_PARTICLES * 3);
-        const posGalaxy = new Float32Array(NUM_PARTICLES * 3);
-        const posDNA = new Float32Array(NUM_PARTICLES * 3);
-        const posRose = new Float32Array(NUM_PARTICLES * 3);
-        const ROSE_STEM_COUNT = Math.floor(NUM_PARTICLES * 0.15);
 
         generateShapes();
 
@@ -250,10 +173,30 @@
         }
 
         function generateShapes() {
+            const NUM_SPHERE = 700;
+
             for(let i=0; i < NUM_PARTICLES; i++) {
                 posSpace[i*3] = (Math.random() * 8) - 4.0;
                 posSpace[i*3+1] = (Math.random() * 8) - 4.0;
                 posSpace[i*3+2] = (Math.random() * 8) - 4.0;
+            }
+
+            for(let i=0; i < NUM_PARTICLES; i++) {
+                if(i < NUM_SPHERE) {
+                    let phi = Math.random() * 2 * Math.PI;
+                    let costheta = (Math.random() * 2) - 1;
+                    let theta = Math.acos(costheta);
+                    let r = 1.3;
+                    posPlanet[i*3] = r * Math.sin(theta) * Math.cos(phi);
+                    posPlanet[i*3+1] = r * Math.sin(theta) * Math.sin(phi);
+                    posPlanet[i*3+2] = r * Math.cos(theta);
+                } else {
+                    let theta = Math.random() * 2 * Math.PI;
+                    let r = 1.8 + Math.random() * 2.0;
+                    posPlanet[i*3] = r * Math.cos(theta);
+                    posPlanet[i*3+1] = (Math.random() * 0.1) - 0.05;
+                    posPlanet[i*3+2] = r * Math.sin(theta);
+                }
             }
 
             createTextParticles("I LOVE YOU", posText, 70.0, 70.0, 20, 140);
@@ -270,72 +213,6 @@
                 posHeart[i*3+1] = (y * 0.85) + 0.5;
                 posHeart[i*3+2] = z;
             }
-
-            // GALAKSI SPIRAL (Mode 6)
-            const numArms = 3;
-            const galaxyRadius = 2.6;
-            for (let i = 0; i < NUM_PARTICLES; i++) {
-                let arm = i % numArms;
-                let t = Math.random();
-                let angle = t * Math.PI * 4 + (arm * (2 * Math.PI / numArms));
-                angle += (Math.random() - 0.5) * 0.45;
-                let radius = t * galaxyRadius + (Math.random() - 0.5) * 0.15;
-                posGalaxy[i*3]   = radius * Math.cos(angle);
-                posGalaxy[i*3+1] = (Math.random() - 0.5) * 0.18 * (1 - t * 0.5);
-                posGalaxy[i*3+2] = radius * Math.sin(angle);
-            }
-
-            // DNA HELIX (Mode 7)
-            const dnaHeight = 3.6;
-            const dnaRadius = 0.9;
-            const dnaTurns = 3;
-            for (let i = 0; i < NUM_PARTICLES; i++) {
-                if (i % 10 === 0) {
-                    // Partikel "anak tangga" yang menghubungkan dua untai DNA
-                    let tt = (Math.floor(i / 10) / (NUM_PARTICLES / 10)) * dnaHeight - dnaHeight / 2;
-                    let angle = (tt / dnaHeight) * dnaTurns * Math.PI * 2;
-                    let frac = Math.random();
-                    let rx1 = dnaRadius * Math.cos(angle);
-                    let rz1 = dnaRadius * Math.sin(angle);
-                    let rx2 = dnaRadius * Math.cos(angle + Math.PI);
-                    let rz2 = dnaRadius * Math.sin(angle + Math.PI);
-                    posDNA[i*3]   = rx1 + (rx2 - rx1) * frac;
-                    posDNA[i*3+1] = tt;
-                    posDNA[i*3+2] = rz1 + (rz2 - rz1) * frac;
-                } else {
-                    let strand = i % 2;
-                    let tt = (i / NUM_PARTICLES) * dnaHeight - dnaHeight / 2;
-                    let angle = (tt / dnaHeight) * dnaTurns * Math.PI * 2 + (strand === 1 ? Math.PI : 0);
-                    posDNA[i*3]   = dnaRadius * Math.cos(angle) + (Math.random() - 0.5) * 0.05;
-                    posDNA[i*3+1] = tt;
-                    posDNA[i*3+2] = dnaRadius * Math.sin(angle) + (Math.random() - 0.5) * 0.05;
-                }
-            }
-
-            // BUKET MAWAR (Mode 8) - 3 tangkai mawar berdampingan
-            const numRoses = 3;
-            const roseOffsets = [-1.1, 0, 1.1];
-            for (let i = 0; i < NUM_PARTICLES; i++) {
-                let roseIdx = i % numRoses;
-                if (i < ROSE_STEM_COUNT) {
-                    // Batang & daun hijau di bagian bawah
-                    let tt = Math.random();
-                    posRose[i*3]   = roseOffsets[roseIdx] + (Math.random() - 0.5) * 0.08;
-                    posRose[i*3+1] = -1.0 - tt * 1.8;
-                    posRose[i*3+2] = (Math.random() - 0.5) * 0.08;
-                } else {
-                    // Kelopak: beberapa lapis kurva "rose curve" bertumpuk membentuk bunga
-                    let layer = Math.floor(Math.random() * 4); // 0 (dalam) - 3 (luar)
-                    let theta = Math.random() * Math.PI * 2;
-                    let rMax = 0.32 + layer * 0.14;
-                    let r = rMax * Math.abs(Math.cos(2 * theta + layer));
-                    let localX = r * Math.cos(theta);
-                    let localY = r * Math.sin(theta) * 0.9;
-                    posRose[i*3]   = roseOffsets[roseIdx] + localX + (Math.random() - 0.5) * 0.04;
-                    posRose[i*3+1] = 0.6 + localY * 0.8 + layer * 0.04 + (Math.random() - 0.5) * 0.04;
-                    posRose[i*3+2] = (layer - 1.5) * 0.09 + (Math.random() - 0.5) * 0.04;
-                }
-            }
         }
 
         // ==========================================
@@ -348,74 +225,44 @@
             // Cek status masing-masing 4 jari (Telunjuk, Tengah, Manis, Kelingking)
             let fingersUp = tips.map((tip, i) => landmarks[tip].y < landmarks[pips[i]].y);
 
+            // 1. Cek Mode SELY 🫰 (Prioritas Pertama)
             const thumbTip = landmarks[4];
             const indexTip = landmarks[8];
             const dxHeart = thumbTip.x - indexTip.x;
             const dyHeart = thumbTip.y - indexTip.y;
             const distHeart = Math.sqrt(dxHeart*dxHeart + dyHeart*dyHeart);
-
-            // 1. Cek Mode BUKET MAWAR 🌹 (OK Sign: Jempol & Telunjuk berdekatan, 3 jari lain berdiri)
-            if (distHeart < 0.08 && fingersUp[1] && fingersUp[2] && fingersUp[3]) {
-                return 8;
+            
+            // Jika Jempol & Telunjuk berdekatan, dan 3 jari lainnya menekuk
+            if (distHeart < 0.08 && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
+                return 5; 
             }
 
-            // 2. Cek Mode DNA HELIX 🧬 (Rock Sign: Telunjuk + Kelingking berdiri)
-            if (fingersUp[0] && !fingersUp[1] && !fingersUp[2] && fingersUp[3]) {
-                return 7;
-            }
-
-            // 3. Cek Mode I LOVE YOU (2 Jari: Telunjuk & Tengah berdiri)
+            // 2. Cek Mode I LOVE YOU (2 Jari: Telunjuk & Tengah berdiri)
             if (fingersUp[0] && fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
                 return 3;
             }
 
-            // 4. Cek Mode GALAKSI SPIRAL 🌌 (Hanya 1 Jari Telunjuk berdiri)
+            // 3. Cek Mode SATURNUS (Hanya 1 Jari Telunjuk berdiri)
             if (fingersUp[0] && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
                 return 2;
             }
 
-            // 5. Cek Mode KEPAL (Semua ke-4 jari menekuk)
+            // 4. Cek Mode KEPAL (Semua ke-4 jari menekuk)
             if (!fingersUp[0] && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
                 return 4;
             }
 
-            // 6. Default: KOSMOS (Semua jari terbuka bebas)
+            // 5. Default: KOSMOS (Semua jari terbuka bebas)
             return 1; 
         }
 
-        // Deteksi gestur "Heart Hands" 🫶 - dua tangan membentuk hati bersama
-        function dist2D(a, b) {
-            const dx = a.x - b.x;
-            const dy = a.y - b.y;
-            return Math.sqrt(dx*dx + dy*dy);
-        }
-        function isHeartHands(handA, handB) {
-            const indexClose = dist2D(handA[8], handB[8]) < 0.12;  // ujung telunjuk berdekatan (puncak hati)
-            const thumbClose = dist2D(handA[4], handB[4]) < 0.12;  // ujung jempol berdekatan (lancip bawah hati)
-            return indexClose && thumbClose;
-        }
-
         const videoElement = document.getElementById('camera-feed');
-        const captionEl = document.getElementById('love-caption');
-        const loveCaptions = {
-            4: "Untuk kamu, dengan sepenuh hati 💖",
-            5: "Kamu spesial banget buat aku 🫶",
-            8: "Sebuket mawar untuk cewek terbaik 🌹"
-        };
-        function updateCaption(mode) {
-            if (loveCaptions[mode]) {
-                captionEl.innerText = loveCaptions[mode];
-                captionEl.classList.add('show');
-            } else {
-                captionEl.classList.remove('show');
-            }
-        }
         const hands = new Hands({locateFile: (file) => {
             return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
         }});
 
         hands.setOptions({
-            maxNumHands: 2,
+            maxNumHands: 1,
             modelComplexity: 1,
             minDetectionConfidence: 0.5,
             minTrackingConfidence: 0.5
@@ -424,31 +271,10 @@
         hands.onResults((results) => {
             document.getElementById('loading-screen').style.display = 'none';
 
-            const handsList = results.multiHandLandmarks;
-
-            if (handsList && handsList.length === 2 && isHeartHands(handsList[0], handsList[1])) {
-                // MODE CINTA 🫶 - dua tangan disatukan membentuk hati
-                currentMode = 5;
-                document.getElementById('mode-text').innerText = "MODE: " + modeLabels[currentMode];
-                updateCaption(currentMode);
-
-                const wristA = handsList[0][0];
-                const wristB = handsList[1][0];
-                const midX = (wristA.x + wristB.x) / 2;
-                const midY = (wristA.y + wristB.y) / 2;
-                handTarget.x = -((midX - 0.5) * 15.0);
-                handTarget.y = -((midY - 0.5) * 10.0);
-
-                const dA = dist2D(wristA, handsList[0][17]);
-                const dB = dist2D(wristB, handsList[1][17]);
-                const avgDist = (dA + dB) / 2;
-                handTarget.z = -10.0 - (1.0 / (avgDist + 0.01)) * 0.2;
-
-            } else if (handsList && handsList.length > 0) {
-                const landmarks = handsList[0];
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const landmarks = results.multiHandLandmarks[0];
                 currentMode = calculateGestureMode(landmarks);
                 document.getElementById('mode-text').innerText = "MODE: " + modeLabels[currentMode];
-                updateCaption(currentMode);
 
                 const wrist = landmarks[0];
                 handTarget.x = -((wrist.x - 0.5) * 15.0); 
@@ -463,7 +289,6 @@
                 currentMode = 1;
                 document.getElementById('mode-text').innerText = "MODE: ROTASI KOSMOS (Tidak ada tangan)";
                 handTarget = { x: 0, y: 0, z: -12 };
-                updateCaption(1);
             }
         });
 
@@ -477,23 +302,6 @@
         cameraFeed.start();
 
         // ==========================================
-        // HUJAN HATI & KELOPAK BUNGA (Nuansa Romantis)
-        // ==========================================
-        const romanticEmojis = ['💗', '🌸', '💕', '✨'];
-        function spawnFallingHeart() {
-            const heart = document.createElement('div');
-            heart.className = 'falling-heart';
-            heart.innerText = romanticEmojis[Math.floor(Math.random() * romanticEmojis.length)];
-            heart.style.left = (Math.random() * 100) + 'vw';
-            const duration = 7 + Math.random() * 6;
-            heart.style.animationDuration = duration + 's';
-            heart.style.fontSize = (14 + Math.random() * 16) + 'px';
-            document.body.appendChild(heart);
-            setTimeout(() => heart.remove(), duration * 1000);
-        }
-        setInterval(spawnFallingHeart, 750);
-
-        // ==========================================
         // LOOP ANIMASI RENDERING 3D
         // ==========================================
         function animate() {
@@ -505,12 +313,10 @@
 
             let targetPosArray;
             if (currentMode === 1) { targetPosArray = posSpace; rotationAngle += 0.005; }
-            else if (currentMode === 2) { targetPosArray = posGalaxy; rotationAngle += 0.006; }
+            else if (currentMode === 2) { targetPosArray = posPlanet; rotationAngle += 0.02; }
             else if (currentMode === 3) { targetPosArray = posText; rotationAngle = 0; }
             else if (currentMode === 4) { targetPosArray = posHeart; rotationAngle += 0.015; }
             else if (currentMode === 5) { targetPosArray = posSely; rotationAngle = 0; }
-            else if (currentMode === 7) { targetPosArray = posDNA; rotationAngle += 0.02; }
-            else if (currentMode === 8) { targetPosArray = posRose; rotationAngle += 0.008; }
 
             const posAttr = geometry.attributes.position.array;
             const colAttr = geometry.attributes.color.array;
@@ -530,24 +336,12 @@
                     colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.1; colAttr[i*3+2] = 0.4;
                 } else if (currentMode === 5) { // Ungu Sely
                     colAttr[i*3] = 0.8; colAttr[i*3+1] = 0.2; colAttr[i*3+2] = 1.0;
-                } else if (currentMode === 7) { // DNA - untai cyan & magenta, anak tangga putih
-                    if (i % 10 === 0) { colAttr[i*3] = 1.0; colAttr[i*3+1] = 1.0; colAttr[i*3+2] = 1.0; }
-                    else if (i % 2 === 0) { colAttr[i*3] = 0.0; colAttr[i*3+1] = 1.0; colAttr[i*3+2] = 0.9; }
-                    else { colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.0; colAttr[i*3+2] = 0.6; }
-                } else if (currentMode === 8) { // Buket Mawar - batang hijau, kelopak merah muda ke merah tua
-                    if (i < ROSE_STEM_COUNT) {
-                        colAttr[i*3] = 0.1; colAttr[i*3+1] = 0.55; colAttr[i*3+2] = 0.2;
-                    } else {
-                        let shade = (i % 5) / 5;
-                        colAttr[i*3] = 0.9 + shade * 0.1;
-                        colAttr[i*3+1] = 0.08 + shade * 0.18;
-                        colAttr[i*3+2] = 0.3 + shade * 0.3;
+                } else if (currentMode === 2) { 
+                    if (i < 700) { // Oranye Inti Saturnus
+                        colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.5; colAttr[i*3+2] = 0.0;
+                    } else { // Emas Cincin
+                        colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.7; colAttr[i*3+2] = 0.3;
                     }
-                } else if (currentMode === 2) { // Galaksi - 3 lengan gradasi emas/ungu/biru
-                    let arm = i % 3;
-                    if (arm === 0) { colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.85; colAttr[i*3+2] = 0.4; }
-                    else if (arm === 1) { colAttr[i*3] = 0.6; colAttr[i*3+1] = 0.2; colAttr[i*3+2] = 1.0; }
-                    else { colAttr[i*3] = 0.2; colAttr[i*3+1] = 0.6; colAttr[i*3+2] = 1.0; }
                 } else { // Biru Angcosmos
                     colAttr[i*3] = 0.1; colAttr[i*3+1] = 0.5; colAttr[i*3+2] = 1.0;
                 }
@@ -556,10 +350,10 @@
             geometry.attributes.position.needsUpdate = true;
             geometry.attributes.color.needsUpdate = true;
 
-            if ([2, 3, 4, 5, 7, 8].includes(currentMode)) {
+            if ([2, 3, 4, 5].includes(currentMode)) {
                 particleSystem.position.set(handCurrent.x, handCurrent.y, handCurrent.z);
                 if (currentMode === 2) {
-                    particleSystem.rotation.set(0.3, rotationAngle, 0); // sedikit miring seperti galaksi asli
+                    particleSystem.rotation.set(0.43, rotationAngle, 0); 
                 } else {
                     particleSystem.rotation.set(0, rotationAngle, 0);
                 }
@@ -568,12 +362,6 @@
                 particleSystem.rotation.set(0, rotationAngle, 0);
             }
 
-            // Bintang latar berkelip pelan + rotasi sangat lambat
-            starMaterial.opacity = 0.35 + Math.sin(Date.now() * 0.001) * 0.15;
-            starField.rotation.y += 0.0002;
-
-            // Render dengan efek jejak (trail) lalu gambar scene utama di atasnya
-            renderer.render(trailScene, trailCamera);
             renderer.render(scene, camera);
         }
 
