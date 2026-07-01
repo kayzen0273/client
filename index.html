@@ -131,7 +131,8 @@
             4: "BENTUK HATI (Tangan Mengepal)",
             5: "SELY 🫰 (Finger Heart)",
             7: "DNA HELIX 🧬 (Rock Sign)",
-            8: "BUKET MAWAR 🌹 (OK Sign)"
+            8: "BUKET MAWAR 🌹 (OK Sign)",
+            9: "ZEN & CINTA 🙏 (Tangan Berdoa)"
         };
 
         // ==========================================
@@ -196,6 +197,9 @@
         const posDNA = new Float32Array(NUM_PARTICLES * 3);
         const posRose = new Float32Array(NUM_PARTICLES * 3);
         const ROSE_STEM_COUNT = Math.floor(NUM_PARTICLES * 0.15);
+        const posPray = new Float32Array(NUM_PARTICLES * 3); // Mode 9: ZEN + HATI + SELY (vertikal)
+        const PRAY_ZEN_COUNT = Math.floor(NUM_PARTICLES * 0.34);
+        const PRAY_HEART_COUNT = Math.floor(NUM_PARTICLES * 0.33);
 
         generateShapes();
 
@@ -336,6 +340,59 @@
                     posRose[i*3+2] = (layer - 1.5) * 0.09 + (Math.random() - 0.5) * 0.04;
                 }
             }
+
+            // ZEN + HATI + SELY (Mode 9) - disusun VERTIKAL: lingkaran Ensō (atas),
+            // bentuk hati (tengah), lalu teks "SELY" (bawah)
+            const selyTextPoints = [];
+            {
+                const offCanvas2 = document.createElement('canvas');
+                offCanvas2.width = 800; offCanvas2.height = 200;
+                const ctx2 = offCanvas2.getContext('2d');
+                ctx2.fillStyle = "black"; ctx2.fillRect(0, 0, 800, 200);
+                ctx2.fillStyle = "white"; ctx2.font = "bold 130px sans-serif";
+                ctx2.fillText("SELY", 230, 140);
+                const imgData2 = ctx2.getImageData(0, 0, 800, 200).data;
+                for (let y = 0; y < 200; y += 2) {
+                    for (let x = 0; x < 800; x += 2) {
+                        let alpha = imgData2[((y * 800) + x) * 4 + 0];
+                        if (alpha > 128) {
+                            selyTextPoints.push({
+                                x: (x - 400) / 90.0,
+                                y: -(y - 100) / 90.0,
+                                z: (Math.random() * 0.2) - 0.1
+                            });
+                        }
+                    }
+                }
+            }
+
+            for (let i = 0; i < NUM_PARTICLES; i++) {
+                if (i < PRAY_ZEN_COUNT) {
+                    // Lingkaran Ensō (simbol Zen) - lingkaran dengan sedikit celah,
+                    // gaya sapuan kuas yang tidak tertutup penuh
+                    const gapWidth = 0.5;
+                    const t = Math.random() * (Math.PI * 2 - gapWidth) + (gapWidth / 2);
+                    const wobble = (Math.random() - 0.5) * 0.14;
+                    const radius = 1.0 + wobble;
+                    posPray[i*3]   = Math.cos(t) * radius;
+                    posPray[i*3+1] = Math.sin(t) * radius + 2.3; // posisi ATAS
+                    posPray[i*3+2] = (Math.random() - 0.5) * 0.25;
+                } else if (i < PRAY_ZEN_COUNT + PRAY_HEART_COUNT) {
+                    // Bentuk hati kecil di TENGAH
+                    let t = (Math.random() * 2 * Math.PI) - Math.PI;
+                    let x = 2.0 * Math.pow(Math.sin(t), 3);
+                    let y = 2.0 * Math.cos(t) - 0.7 * Math.cos(2*t) - 0.3 * Math.cos(3*t) - 0.1 * Math.cos(4*t);
+                    posPray[i*3]   = x * 0.45;
+                    posPray[i*3+1] = (y * 0.45) + 0.1; // posisi TENGAH
+                    posPray[i*3+2] = (Math.random() - 0.5) * 0.3;
+                } else {
+                    // Teks "SELY" di BAWAH
+                    let p = selyTextPoints[Math.floor(Math.random() * selyTextPoints.length)];
+                    posPray[i*3]   = p.x;
+                    posPray[i*3+1] = p.y - 2.4; // posisi BAWAH
+                    posPray[i*3+2] = p.z;
+                }
+            }
         }
 
         // ==========================================
@@ -389,12 +446,37 @@
             return 1; 
         }
 
+        // Cek Mode ZEN & CINTA 🙏 (Kedua tangan menyatu seperti berdoa/namaste)
+        // Butuh 2 tangan terdeteksi: pergelangan berdekatan, ujung jari tengah
+        // berdekatan, dan ke-4 jari (selain jempol) berdiri lurus di kedua tangan.
+        function isPrayerGesture(handA, handB) {
+            const wristA = handA[0];
+            const wristB = handB[0];
+            const dxWrist = wristA.x - wristB.x;
+            const dyWrist = wristA.y - wristB.y;
+            const wristDist = Math.sqrt(dxWrist*dxWrist + dyWrist*dyWrist);
+
+            const midTipA = handA[12];
+            const midTipB = handB[12];
+            const dxTip = midTipA.x - midTipB.x;
+            const dyTip = midTipA.y - midTipB.y;
+            const tipDist = Math.sqrt(dxTip*dxTip + dyTip*dyTip);
+
+            const tips = [8, 12, 16, 20];
+            const pips = [6, 10, 14, 18];
+            const fingersUpA = tips.every((tip, i) => handA[tip].y < handA[pips[i]].y);
+            const fingersUpB = tips.every((tip, i) => handB[tip].y < handB[pips[i]].y);
+
+            return wristDist < 0.18 && tipDist < 0.13 && fingersUpA && fingersUpB;
+        }
+
         const videoElement = document.getElementById('camera-feed');
         const captionEl = document.getElementById('love-caption');
         const loveCaptions = {
             4: "Untuk kamu, dengan sepenuh hati 💖",
             5: "Kamu spesial banget buat aku 🫰",
-            8: "Sebuket mawar untuk cewek terbaik 🌹"
+            8: "Sebuket mawar untuk cewek terbaik 🌹",
+            9: "aku mau kamu jadi milik ku selamanya 🙏"
         };
         function updateCaption(mode) {
             if (loveCaptions[mode]) {
@@ -409,7 +491,7 @@
         }});
 
         hands.setOptions({
-            maxNumHands: 1,
+            maxNumHands: 2,
             modelComplexity: 1,
             minDetectionConfidence: 0.5,
             minTrackingConfidence: 0.5
@@ -419,16 +501,30 @@
             document.getElementById('loading-screen').style.display = 'none';
 
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                const landmarks = results.multiHandLandmarks[0];
-                currentMode = calculateGestureMode(landmarks);
+                const handA = results.multiHandLandmarks[0];
+                let wrist, pinkyMcp;
+
+                // Jika 2 tangan terdeteksi dan membentuk gestur berdoa 🙏 -> Mode ZEN & CINTA
+                if (results.multiHandLandmarks.length === 2 && isPrayerGesture(handA, results.multiHandLandmarks[1])) {
+                    currentMode = 9;
+                    const handB = results.multiHandLandmarks[1];
+                    wrist = {
+                        x: (handA[0].x + handB[0].x) / 2,
+                        y: (handA[0].y + handB[0].y) / 2
+                    };
+                    pinkyMcp = handA[17];
+                } else {
+                    currentMode = calculateGestureMode(handA);
+                    wrist = handA[0];
+                    pinkyMcp = handA[17];
+                }
+
                 document.getElementById('mode-text').innerText = "MODE: " + modeLabels[currentMode];
                 updateCaption(currentMode);
 
-                const wrist = landmarks[0];
                 handTarget.x = -((wrist.x - 0.5) * 15.0); 
                 handTarget.y = -((wrist.y - 0.5) * 10.0);
                 
-                const pinkyMcp = landmarks[17];
                 const dxDist = wrist.x - pinkyMcp.x;
                 const dyDist = wrist.y - pinkyMcp.y;
                 const distance = Math.sqrt(dxDist*dxDist + dyDist*dyDist);
@@ -485,6 +581,7 @@
             else if (currentMode === 5) { targetPosArray = posSely; rotationAngle = 0; }
             else if (currentMode === 7) { targetPosArray = posDNA; rotationAngle += 0.02; }
             else if (currentMode === 8) { targetPosArray = posRose; rotationAngle += 0.008; }
+            else if (currentMode === 9) { targetPosArray = posPray; rotationAngle = 0; }
 
             const posAttr = geometry.attributes.position.array;
             const colAttr = geometry.attributes.color.array;
@@ -517,6 +614,14 @@
                         colAttr[i*3+1] = 0.08 + shade * 0.18;
                         colAttr[i*3+2] = 0.3 + shade * 0.3;
                     }
+                } else if (currentMode === 9) { // ZEN (emas lembut) + HATI (pink) + SELY (putih keunguan)
+                    if (i < PRAY_ZEN_COUNT) {
+                        colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.85; colAttr[i*3+2] = 0.55;
+                    } else if (i < PRAY_ZEN_COUNT + PRAY_HEART_COUNT) {
+                        colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.15; colAttr[i*3+2] = 0.45;
+                    } else {
+                        colAttr[i*3] = 0.85; colAttr[i*3+1] = 0.75; colAttr[i*3+2] = 1.0;
+                    }
                 } else if (currentMode === 2) { // Galaksi - 3 lengan gradasi emas/ungu/biru
                     let arm = i % 3;
                     if (arm === 0) { colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.85; colAttr[i*3+2] = 0.4; }
@@ -530,7 +635,7 @@
             geometry.attributes.position.needsUpdate = true;
             geometry.attributes.color.needsUpdate = true;
 
-            if ([2, 3, 4, 5, 7, 8].includes(currentMode)) {
+            if ([2, 3, 4, 5, 7, 8, 9].includes(currentMode)) {
                 particleSystem.position.set(handCurrent.x, handCurrent.y, handCurrent.z);
                 if (currentMode === 2) {
                     particleSystem.rotation.set(0.3, rotationAngle, 0); // sedikit miring seperti galaksi asli
