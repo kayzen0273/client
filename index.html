@@ -341,8 +341,32 @@
                 }
             }
 
-            // ZEN + HATI + SELY (Mode 9) - disusun VERTIKAL: lingkaran Ensō (atas),
+            // ZEN + HATI + SELY (Mode 9) - disusun VERTIKAL: teks "ZEN" (atas),
             // bentuk hati (tengah), lalu teks "SELY" (bawah)
+            const zenTextPoints = [];
+            {
+                const offCanvas3 = document.createElement('canvas');
+                offCanvas3.width = 800; offCanvas3.height = 200;
+                const ctx3 = offCanvas3.getContext('2d');
+                ctx3.fillStyle = "black"; ctx3.fillRect(0, 0, 800, 200);
+                ctx3.fillStyle = "white"; ctx3.font = "bold 130px sans-serif";
+                const zenWidth = ctx3.measureText("ZEN").width;
+                ctx3.fillText("ZEN", (800 - zenWidth) / 2, 140);
+                const imgData3 = ctx3.getImageData(0, 0, 800, 200).data;
+                for (let y = 0; y < 200; y += 2) {
+                    for (let x = 0; x < 800; x += 2) {
+                        let alpha = imgData3[((y * 800) + x) * 4 + 0];
+                        if (alpha > 128) {
+                            zenTextPoints.push({
+                                x: (x - 400) / 90.0,
+                                y: -(y - 100) / 90.0,
+                                z: (Math.random() * 0.2) - 0.1
+                            });
+                        }
+                    }
+                }
+            }
+
             const selyTextPoints = [];
             {
                 const offCanvas2 = document.createElement('canvas');
@@ -368,15 +392,11 @@
 
             for (let i = 0; i < NUM_PARTICLES; i++) {
                 if (i < PRAY_ZEN_COUNT) {
-                    // Lingkaran Ensō (simbol Zen) - lingkaran dengan sedikit celah,
-                    // gaya sapuan kuas yang tidak tertutup penuh
-                    const gapWidth = 0.5;
-                    const t = Math.random() * (Math.PI * 2 - gapWidth) + (gapWidth / 2);
-                    const wobble = (Math.random() - 0.5) * 0.14;
-                    const radius = 1.0 + wobble;
-                    posPray[i*3]   = Math.cos(t) * radius;
-                    posPray[i*3+1] = Math.sin(t) * radius + 2.3; // posisi ATAS
-                    posPray[i*3+2] = (Math.random() - 0.5) * 0.25;
+                    // Teks "ZEN" di ATAS
+                    let p = zenTextPoints[Math.floor(Math.random() * zenTextPoints.length)];
+                    posPray[i*3]   = p.x;
+                    posPray[i*3+1] = p.y + 2.3; // posisi ATAS
+                    posPray[i*3+2] = p.z;
                 } else if (i < PRAY_ZEN_COUNT + PRAY_HEART_COUNT) {
                     // Bentuk hati kecil di TENGAH
                     let t = (Math.random() * 2 * Math.PI) - Math.PI;
