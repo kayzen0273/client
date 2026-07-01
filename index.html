@@ -126,11 +126,10 @@
         // Teks Label Mode
         const modeLabels = {
             1: "ROTASI KOSMOS (Semua Jari Buka)",
-            2: "SATURNUS 3D (1 Jari Telunjuk)",
+            2: "GALAKSI SPIRAL 🌌 (1 Jari Telunjuk)",
             3: "TEKS I LOVE YOU (2 Jari / Peace)",
             4: "BENTUK HATI (Tangan Mengepal)",
             5: "SELY 🫰 (Finger Heart)",
-            6: "GALAKSI SPIRAL 🌌 (Jempol Ke Atas)",
             7: "DNA HELIX 🧬 (Rock Sign)",
             8: "BUKET MAWAR 🌹 (OK Sign)"
         };
@@ -190,7 +189,6 @@
         const currentPositions = new Float32Array(NUM_PARTICLES * 3);
         
         const posSpace = new Float32Array(NUM_PARTICLES * 3);
-        const posPlanet = new Float32Array(NUM_PARTICLES * 3);
         const posText = new Float32Array(NUM_PARTICLES * 3);
         const posHeart = new Float32Array(NUM_PARTICLES * 3);
         const posSely = new Float32Array(NUM_PARTICLES * 3);
@@ -252,30 +250,10 @@
         }
 
         function generateShapes() {
-            const NUM_SPHERE = 700;
-
             for(let i=0; i < NUM_PARTICLES; i++) {
                 posSpace[i*3] = (Math.random() * 8) - 4.0;
                 posSpace[i*3+1] = (Math.random() * 8) - 4.0;
                 posSpace[i*3+2] = (Math.random() * 8) - 4.0;
-            }
-
-            for(let i=0; i < NUM_PARTICLES; i++) {
-                if(i < NUM_SPHERE) {
-                    let phi = Math.random() * 2 * Math.PI;
-                    let costheta = (Math.random() * 2) - 1;
-                    let theta = Math.acos(costheta);
-                    let r = 1.3;
-                    posPlanet[i*3] = r * Math.sin(theta) * Math.cos(phi);
-                    posPlanet[i*3+1] = r * Math.sin(theta) * Math.sin(phi);
-                    posPlanet[i*3+2] = r * Math.cos(theta);
-                } else {
-                    let theta = Math.random() * 2 * Math.PI;
-                    let r = 1.8 + Math.random() * 2.0;
-                    posPlanet[i*3] = r * Math.cos(theta);
-                    posPlanet[i*3+1] = (Math.random() * 0.1) - 0.05;
-                    posPlanet[i*3+2] = r * Math.sin(theta);
-                }
             }
 
             createTextParticles("I LOVE YOU", posText, 70.0, 70.0, 20, 140);
@@ -370,10 +348,6 @@
             // Cek status masing-masing 4 jari (Telunjuk, Tengah, Manis, Kelingking)
             let fingersUp = tips.map((tip, i) => landmarks[tip].y < landmarks[pips[i]].y);
 
-            // Cek apakah ibu jari (jempol) berdiri tegak & terentang jauh dari telapak
-            const thumbUp = landmarks[4].y < landmarks[3].y - 0.02 && landmarks[4].y < landmarks[2].y;
-            const thumbSpread = Math.abs(landmarks[4].x - landmarks[5].x) > 0.06;
-
             // 1. Cek Mode SELY 🫰 (Prioritas Pertama)
             const thumbTip = landmarks[4];
             const indexTip = landmarks[8];
@@ -391,32 +365,27 @@
                 return 8;
             }
 
-            // 3. Cek Mode GALAKSI SPIRAL 🌌 (Jempol berdiri tegak, 4 jari lain mengepal)
-            if (thumbUp && thumbSpread && !fingersUp[0] && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
-                return 6;
-            }
-
-            // 4. Cek Mode DNA HELIX 🧬 (Rock Sign: Telunjuk + Kelingking berdiri)
+            // 3. Cek Mode DNA HELIX 🧬 (Rock Sign: Telunjuk + Kelingking berdiri)
             if (fingersUp[0] && !fingersUp[1] && !fingersUp[2] && fingersUp[3]) {
                 return 7;
             }
 
-            // 5. Cek Mode I LOVE YOU (2 Jari: Telunjuk & Tengah berdiri)
+            // 4. Cek Mode I LOVE YOU (2 Jari: Telunjuk & Tengah berdiri)
             if (fingersUp[0] && fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
                 return 3;
             }
 
-            // 6. Cek Mode SATURNUS (Hanya 1 Jari Telunjuk berdiri)
+            // 5. Cek Mode GALAKSI SPIRAL 🌌 (Hanya 1 Jari Telunjuk berdiri)
             if (fingersUp[0] && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
                 return 2;
             }
 
-            // 7. Cek Mode KEPAL (Semua ke-4 jari menekuk)
+            // 6. Cek Mode KEPAL (Semua ke-4 jari menekuk)
             if (!fingersUp[0] && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
                 return 4;
             }
 
-            // 8. Default: KOSMOS (Semua jari terbuka bebas)
+            // 7. Default: KOSMOS (Semua jari terbuka bebas)
             return 1; 
         }
 
@@ -510,11 +479,10 @@
 
             let targetPosArray;
             if (currentMode === 1) { targetPosArray = posSpace; rotationAngle += 0.005; }
-            else if (currentMode === 2) { targetPosArray = posPlanet; rotationAngle += 0.02; }
+            else if (currentMode === 2) { targetPosArray = posGalaxy; rotationAngle += 0.006; }
             else if (currentMode === 3) { targetPosArray = posText; rotationAngle = 0; }
             else if (currentMode === 4) { targetPosArray = posHeart; rotationAngle += 0.015; }
             else if (currentMode === 5) { targetPosArray = posSely; rotationAngle = 0; }
-            else if (currentMode === 6) { targetPosArray = posGalaxy; rotationAngle += 0.006; }
             else if (currentMode === 7) { targetPosArray = posDNA; rotationAngle += 0.02; }
             else if (currentMode === 8) { targetPosArray = posRose; rotationAngle += 0.008; }
 
@@ -536,11 +504,6 @@
                     colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.1; colAttr[i*3+2] = 0.4;
                 } else if (currentMode === 5) { // Ungu Sely
                     colAttr[i*3] = 0.8; colAttr[i*3+1] = 0.2; colAttr[i*3+2] = 1.0;
-                } else if (currentMode === 6) { // Galaksi - 3 lengan gradasi emas/ungu/biru
-                    let arm = i % 3;
-                    if (arm === 0) { colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.85; colAttr[i*3+2] = 0.4; }
-                    else if (arm === 1) { colAttr[i*3] = 0.6; colAttr[i*3+1] = 0.2; colAttr[i*3+2] = 1.0; }
-                    else { colAttr[i*3] = 0.2; colAttr[i*3+1] = 0.6; colAttr[i*3+2] = 1.0; }
                 } else if (currentMode === 7) { // DNA - untai cyan & magenta, anak tangga putih
                     if (i % 10 === 0) { colAttr[i*3] = 1.0; colAttr[i*3+1] = 1.0; colAttr[i*3+2] = 1.0; }
                     else if (i % 2 === 0) { colAttr[i*3] = 0.0; colAttr[i*3+1] = 1.0; colAttr[i*3+2] = 0.9; }
@@ -554,12 +517,11 @@
                         colAttr[i*3+1] = 0.08 + shade * 0.18;
                         colAttr[i*3+2] = 0.3 + shade * 0.3;
                     }
-                } else if (currentMode === 2) { 
-                    if (i < 700) { // Oranye Inti Saturnus
-                        colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.5; colAttr[i*3+2] = 0.0;
-                    } else { // Emas Cincin
-                        colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.7; colAttr[i*3+2] = 0.3;
-                    }
+                } else if (currentMode === 2) { // Galaksi - 3 lengan gradasi emas/ungu/biru
+                    let arm = i % 3;
+                    if (arm === 0) { colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.85; colAttr[i*3+2] = 0.4; }
+                    else if (arm === 1) { colAttr[i*3] = 0.6; colAttr[i*3+1] = 0.2; colAttr[i*3+2] = 1.0; }
+                    else { colAttr[i*3] = 0.2; colAttr[i*3+1] = 0.6; colAttr[i*3+2] = 1.0; }
                 } else { // Biru Angcosmos
                     colAttr[i*3] = 0.1; colAttr[i*3+1] = 0.5; colAttr[i*3+2] = 1.0;
                 }
@@ -568,11 +530,9 @@
             geometry.attributes.position.needsUpdate = true;
             geometry.attributes.color.needsUpdate = true;
 
-            if ([2, 3, 4, 5, 6, 7, 8].includes(currentMode)) {
+            if ([2, 3, 4, 5, 7, 8].includes(currentMode)) {
                 particleSystem.position.set(handCurrent.x, handCurrent.y, handCurrent.z);
                 if (currentMode === 2) {
-                    particleSystem.rotation.set(0.43, rotationAngle, 0); 
-                } else if (currentMode === 6) {
                     particleSystem.rotation.set(0.3, rotationAngle, 0); // sedikit miring seperti galaksi asli
                 } else {
                     particleSystem.rotation.set(0, rotationAngle, 0);
