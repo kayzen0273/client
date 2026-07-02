@@ -91,22 +91,128 @@
         .love-caption.show {
             opacity: 1;
         }
-        #flower-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 4;
-            border: none;
-            display: none;
-            pointer-events: none;
-        }
     </style>
 
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <style>
+        /* ===== Overlay Galaksi Cinta (dibuka/ditutup dengan gestur 👌) ===== */
+        #galaxilove-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            background: black;
+        }
+        #galaxilove-overlay .webgl { position: fixed; top: 0; left: 0; outline: none; }
+        #gl-titulo-corazon {
+            position: fixed;
+            top: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffd7ef;
+            font-family: Arial, sans-serif;
+            font-size: clamp(1.2rem, 2.8vw, 2rem);
+            font-weight: bold;
+            text-shadow: 0 0 10px #ff3ea5, 0 0 24px #ff3ea5;
+            z-index: 20;
+            pointer-events: none;
+        }
+        #gl-hint {
+            position: fixed;
+            bottom: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffd7ef;
+            font-family: Arial, sans-serif;
+            font-size: 15px;
+            text-shadow: 0 0 8px #ff3ea5;
+            z-index: 20;
+            pointer-events: none;
+            text-align: center;
+        }
+        #gl-close-btn {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            z-index: 25;
+            background: rgba(255, 77, 166, 0.85);
+            color: #fff;
+            border: none;
+            border-radius: 999px;
+            width: 38px;
+            height: 38px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        #gl-modal-carta {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(3px);
+            z-index: 30;
+        }
+        #gl-modal-carta.visible { display: flex; }
+        #gl-modal-carta .carta {
+            width: min(86vw, 420px);
+            background: linear-gradient(160deg, #fff8fb 0%, #ffe9f4 100%);
+            border: 2px solid #ffc7e4;
+            border-radius: 18px;
+            padding: 22px 20px 16px;
+            box-shadow: 0 12px 36px rgba(255, 20, 147, 0.4);
+            color: #8a235f;
+            font-family: 'Georgia', serif;
+            text-align: center;
+            position: relative;
+            animation: cartaAparece 0.28s ease-out;
+        }
+        #gl-modal-carta .carta h3 { font-size: 1.15rem; margin-bottom: 10px; }
+        #gl-mensaje-romantico {
+            font-size: clamp(1.05rem, 2.5vw, 1.35rem);
+            line-height: 1.5;
+            color: #b01867;
+            text-shadow: 0 0 10px rgba(255, 70, 150, 0.2);
+        }
+        #gl-cerrar-carta {
+            margin-top: 14px;
+            border: none;
+            border-radius: 999px;
+            background: #ff4da6;
+            color: #fff;
+            font-size: 0.95rem;
+            font-weight: bold;
+            padding: 8px 16px;
+            cursor: pointer;
+        }
+        @keyframes cartaAparece {
+            from { opacity: 0; transform: scale(0.9) translateY(12px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        #gl-inicio {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: white;
+            font-family: 'Pacifico', cursive;
+            font-size: 2.2em;
+            text-shadow: 0 0 15px #ff00ff;
+            cursor: pointer;
+            z-index: 999;
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
 
@@ -121,8 +227,28 @@
     
     <video id="camera-feed" autoplay playsinline style="display: none;"></video>
     <div id="canvas-container"></div>
-    <iframe id="flower-overlay"></iframe>
     <div id="love-caption" class="love-caption"></div>
+
+    <!-- ===== Overlay Galaksi Cinta - dibuka/ditutup dengan gestur OK Sign 👌 ===== -->
+    <div id="galaxilove-overlay">
+        <canvas class="webgl" id="gl-canvas"></canvas>
+        <div id="gl-titulo-corazon">Tekan hatinya</div>
+        <div id="gl-hint">Buat gestur 👌 lagi untuk kembali</div>
+        <button id="gl-close-btn" title="Tutup">✕</button>
+        <div id="gl-modal-carta">
+            <div class="carta">
+                <h3>Untukmu</h3>
+                <p id="gl-mensaje-romantico"></p>
+                <button id="gl-cerrar-carta">Tutup</button>
+            </div>
+        </div>
+        <audio id="gl-musica-fondo" loop>
+            <source src="https://github.com/Baque2005/Organizador/raw/refs/heads/master/PUBLIC%20-%20Make%20You%20Mine%20%20Sub%20espa%C3%B1ol%20(lyrics).mp3" type="audio/mpeg">
+        </audio>
+        <div id="gl-inicio">
+            <p>Sentuh di sini</p>
+        </div>
+    </div>
 
     <script>
         // ==========================================
@@ -143,9 +269,13 @@
             4: "BENTUK HATI (Tangan Mengepal)",
             5: "SELY 🫰 (Finger Heart)",
             7: "DNA HELIX 🧬 (Rock Sign)",
-            8: "BUKET MAWAR 🌹 (OK Sign)",
             9: "ZEN & CINTA 🤟 (I Love You Sign)"
         };
+
+        // Gestur OK Sign 👌 sekarang dipakai untuk toggle overlay "Galaksi Cinta"
+        let lastOkSignActive = false;
+        let lastOkToggleTime = 0;
+        const OK_TOGGLE_COOLDOWN = 1500; // ms, biar tidak toggle berkali-kali per detik
 
         // ==========================================
         // SETUP THREE.JS (RENDERER 3D)
@@ -207,8 +337,6 @@
         const posSely = new Float32Array(NUM_PARTICLES * 3);
         const posGalaxy = new Float32Array(NUM_PARTICLES * 3);
         const posDNA = new Float32Array(NUM_PARTICLES * 3);
-        const posRose = new Float32Array(NUM_PARTICLES * 3);
-        const ROSE_STEM_COUNT = Math.floor(NUM_PARTICLES * 0.15);
         const posPray = new Float32Array(NUM_PARTICLES * 3); // Mode 9: ZEN + HATI + SELY (vertikal)
         const PRAY_ZEN_COUNT = Math.floor(NUM_PARTICLES * 0.34);
         const PRAY_HEART_COUNT = Math.floor(NUM_PARTICLES * 0.33);
@@ -328,31 +456,6 @@
                 }
             }
 
-            // BUKET MAWAR (Mode 8) - 3 tangkai mawar berdampingan
-            const numRoses = 3;
-            const roseOffsets = [-1.1, 0, 1.1];
-            for (let i = 0; i < NUM_PARTICLES; i++) {
-                let roseIdx = i % numRoses;
-                if (i < ROSE_STEM_COUNT) {
-                    // Batang & daun hijau di bagian bawah
-                    let tt = Math.random();
-                    posRose[i*3]   = roseOffsets[roseIdx] + (Math.random() - 0.5) * 0.08;
-                    posRose[i*3+1] = -1.0 - tt * 1.8;
-                    posRose[i*3+2] = (Math.random() - 0.5) * 0.08;
-                } else {
-                    // Kelopak: beberapa lapis kurva "rose curve" bertumpuk membentuk bunga
-                    let layer = Math.floor(Math.random() * 4); // 0 (dalam) - 3 (luar)
-                    let theta = Math.random() * Math.PI * 2;
-                    let rMax = 0.32 + layer * 0.14;
-                    let r = rMax * Math.abs(Math.cos(2 * theta + layer));
-                    let localX = r * Math.cos(theta);
-                    let localY = r * Math.sin(theta) * 0.9;
-                    posRose[i*3]   = roseOffsets[roseIdx] + localX + (Math.random() - 0.5) * 0.04;
-                    posRose[i*3+1] = 0.6 + localY * 0.8 + layer * 0.04 + (Math.random() - 0.5) * 0.04;
-                    posRose[i*3+2] = (layer - 1.5) * 0.09 + (Math.random() - 0.5) * 0.04;
-                }
-            }
-
             // ZEN + HATI + SELY (Mode 9) - disusun VERTIKAL: teks "ZEN" (atas),
             // bentuk hati (tengah), lalu teks "SELY" (bawah)
             const zenTextPoints = [];
@@ -449,10 +552,17 @@
                 return 5; 
             }
 
-            // 2. Cek Mode BUKET MAWAR 🌹 (OK Sign: Jempol & Telunjuk berdekatan, 3 jari lain berdiri)
+            // 2. Cek Mode OK Sign 👌 (Jempol & Telunjuk berdekatan, 3 jari lain berdiri)
+            //    Dipakai untuk toggle overlay "Galaksi Cinta" (buka/tutup dengan gestur yang sama)
             if (distHeart < 0.08 && fingersUp[1] && fingersUp[2] && fingersUp[3]) {
-                return 8;
+                if (!lastOkSignActive && (Date.now() - lastOkToggleTime > OK_TOGGLE_COOLDOWN)) {
+                    if (typeof toggleGalaxiloveOverlay === 'function') toggleGalaxiloveOverlay();
+                    lastOkToggleTime = Date.now();
+                }
+                lastOkSignActive = true;
+                return 1;
             }
+            lastOkSignActive = false;
 
             // 3. Cek Mode ZEN & CINTA 🤟 (Sign ILY: Jempol + Telunjuk + Kelingking berdiri,
             //    Tengah & Manis menekuk, dan jempol terentang keluar dari telapak)
@@ -496,1671 +606,11 @@
             return 1; 
         }
 
-        // ==========================================
-        // OVERLAY ANIMASI BUNGA (Mode 8 - OK Sign)
-        // ==========================================
-        const FLOWER_HTML = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-*,
-*::after,
-*::before {
-  padding: 0;
-  margin: 0;
-  box-sizing: border-box;
-}
-
-:root {
-  --dark-color: #000;
-}
-
-body {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  min-height: 100vh;
-  background-color: var(--dark-color);
-  overflow: hidden;
-  perspective: 1000px;
-}
-
-.night {
-  position: fixed;
-  left: 50%;
-  top: 0;
-  transform: translateX(-50%);
-  width: 100%;
-  height: 100%;
-  filter: blur(0.1vmin);
-  background-image: radial-gradient(ellipse at top, transparent 0%, var(--dark-color)), radial-gradient(ellipse at bottom, var(--dark-color), rgba(145, 233, 255, 0.2)), repeating-linear-gradient(220deg, rgb(0, 0, 0) 0px, rgb(0, 0, 0) 19px, transparent 19px, transparent 22px), repeating-linear-gradient(189deg, rgb(0, 0, 0) 0px, rgb(0, 0, 0) 19px, transparent 19px, transparent 22px), repeating-linear-gradient(148deg, rgb(0, 0, 0) 0px, rgb(0, 0, 0) 19px, transparent 19px, transparent 22px), linear-gradient(90deg, rgb(7, 107, 42), rgb(240, 240, 240));
-}
-
-.flowers {
-  position: relative;
-  transform: scale(0.9);
-}
-
-.flower {
-  position: absolute;
-  bottom: 10vmin;
-  transform-origin: bottom center;
-  z-index: 10;
-  --fl-speed: 0.3s;
-}
-.flower--1 {
-  -webkit-animation: moving-flower-1 4s linear infinite;
-          animation: moving-flower-1 4s linear infinite;
-}
-.flower--1 .flower__line {
-  height: 70vmin;
-  -webkit-animation-delay: 0.3s;
-          animation-delay: 0.3s;
-}
-.flower--1 .flower__line__leaf--1 {
-  -webkit-animation: blooming-leaf-right var(--fl-speed) 1.6s backwards;
-          animation: blooming-leaf-right var(--fl-speed) 1.6s backwards;
-}
-.flower--1 .flower__line__leaf--2 {
-  -webkit-animation: blooming-leaf-right var(--fl-speed) 1.4s backwards;
-          animation: blooming-leaf-right var(--fl-speed) 1.4s backwards;
-}
-.flower--1 .flower__line__leaf--3 {
-  -webkit-animation: blooming-leaf-left var(--fl-speed) 1.2s backwards;
-          animation: blooming-leaf-left var(--fl-speed) 1.2s backwards;
-}
-.flower--1 .flower__line__leaf--4 {
-  -webkit-animation: blooming-leaf-left var(--fl-speed) 1s backwards;
-          animation: blooming-leaf-left var(--fl-speed) 1s backwards;
-}
-.flower--1 .flower__line__leaf--5 {
-  -webkit-animation: blooming-leaf-right var(--fl-speed) 1.8s backwards;
-          animation: blooming-leaf-right var(--fl-speed) 1.8s backwards;
-}
-.flower--1 .flower__line__leaf--6 {
-  -webkit-animation: blooming-leaf-left var(--fl-speed) 2s backwards;
-          animation: blooming-leaf-left var(--fl-speed) 2s backwards;
-}
-.flower--2 {
-  left: 50%;
-  transform: rotate(20deg);
-  -webkit-animation: moving-flower-2 4s linear infinite;
-          animation: moving-flower-2 4s linear infinite;
-}
-.flower--2 .flower__line {
-  height: 60vmin;
-  -webkit-animation-delay: 0.6s;
-          animation-delay: 0.6s;
-}
-.flower--2 .flower__line__leaf--1 {
-  -webkit-animation: blooming-leaf-right var(--fl-speed) 1.9s backwards;
-          animation: blooming-leaf-right var(--fl-speed) 1.9s backwards;
-}
-.flower--2 .flower__line__leaf--2 {
-  -webkit-animation: blooming-leaf-right var(--fl-speed) 1.7s backwards;
-          animation: blooming-leaf-right var(--fl-speed) 1.7s backwards;
-}
-.flower--2 .flower__line__leaf--3 {
-  -webkit-animation: blooming-leaf-left var(--fl-speed) 1.5s backwards;
-          animation: blooming-leaf-left var(--fl-speed) 1.5s backwards;
-}
-.flower--2 .flower__line__leaf--4 {
-  -webkit-animation: blooming-leaf-left var(--fl-speed) 1.3s backwards;
-          animation: blooming-leaf-left var(--fl-speed) 1.3s backwards;
-}
-.flower--3 {
-  left: 50%;
-  transform: rotate(-15deg);
-  -webkit-animation: moving-flower-3 4s linear infinite;
-          animation: moving-flower-3 4s linear infinite;
-}
-.flower--3 .flower__line {
-  -webkit-animation-delay: 0.9s;
-          animation-delay: 0.9s;
-}
-.flower--3 .flower__line__leaf--1 {
-  -webkit-animation: blooming-leaf-right var(--fl-speed) 2.5s backwards;
-          animation: blooming-leaf-right var(--fl-speed) 2.5s backwards;
-}
-.flower--3 .flower__line__leaf--2 {
-  -webkit-animation: blooming-leaf-right var(--fl-speed) 2.3s backwards;
-          animation: blooming-leaf-right var(--fl-speed) 2.3s backwards;
-}
-.flower--3 .flower__line__leaf--3 {
-  -webkit-animation: blooming-leaf-left var(--fl-speed) 2.1s backwards;
-          animation: blooming-leaf-left var(--fl-speed) 2.1s backwards;
-}
-.flower--3 .flower__line__leaf--4 {
-  -webkit-animation: blooming-leaf-left var(--fl-speed) 1.9s backwards;
-          animation: blooming-leaf-left var(--fl-speed) 1.9s backwards;
-}
-.flower__leafs {
-  position: relative;
-  -webkit-animation: blooming-flower 2s backwards;
-          animation: blooming-flower 2s backwards;
-}
-.flower__leafs--1 {
-  -webkit-animation-delay: 1.1s;
-          animation-delay: 1.1s;
-}
-.flower__leafs--2 {
-  -webkit-animation-delay: 1.4s;
-          animation-delay: 1.4s;
-}
-.flower__leafs--3 {
-  -webkit-animation-delay: 1.7s;
-          animation-delay: 1.7s;
-}
-.flower__leafs::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  transform: translate(-50%, -100%);
-  width: 8vmin;
-  height: 8vmin;
-  background-color: #6bf0ff;
-  filter: blur(10vmin);
-}
-.flower__leaf {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  width: 8vmin;
-  height: 11vmin;
-  border-radius: 51% 49% 47% 53%/44% 45% 55% 69%;
-  background-color: #f672b0;
-  background-image: linear-gradient(to top, #ee5286, #ee5286);
-  transform-origin: bottom center;
-  opacity: 0.9;
-  box-shadow: inset 0 0 2vmin rgba(255, 255, 255, 0.5);
-}
-.flower__leaf--1 {
-  transform: translate(-10%, 1%) rotateY(40deg) rotateX(-50deg);
-}
-.flower__leaf--2 {
-  transform: translate(-50%, -4%) rotateX(40deg);
-}
-.flower__leaf--3 {
-  transform: translate(-90%, 0%) rotateY(45deg) rotateX(50deg);
-}
-.flower__leaf--4 {
-  width: 8vmin;
-  height: 8vmin;
-  transform-origin: bottom left;
-  border-radius: 4vmin 10vmin 4vmin 4vmin;
-  transform: translate(0%, 18%) rotateX(70deg) rotate(-43deg);
-  background-image: linear-gradient(to top, #ee5286, #ee5286);
-  z-index: 1;
-  opacity: 0.8;
-}
-.flower__white-circle {
-  position: absolute;
-  left: -3.5vmin;
-  top: -3vmin;
-  width: 9vmin;
-  height: 4vmin;
-  border-radius: 50%;
-  background-color: #fff;
-}
-.flower__white-circle::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 45%;
-  transform: translate(-50%, -50%);
-  width: 60%;
-  height: 60%;
-  border-radius: inherit;
-  background-image: repeating-linear-gradient(135deg, rgba(0, 0, 0, 0.03) 0px, rgba(0, 0, 0, 0.03) 1px, transparent 1px, transparent 12px), repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.03) 0px, rgba(0, 0, 0, 0.03) 1px, transparent 1px, transparent 12px), repeating-linear-gradient(67.5deg, rgba(0, 0, 0, 0.03) 0px, rgba(0, 0, 0, 0.03) 1px, transparent 1px, transparent 12px), repeating-linear-gradient(135deg, rgba(0, 0, 0, 0.03) 0px, rgba(0, 0, 0, 0.03) 1px, transparent 1px, transparent 12px), repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.03) 0px, rgba(0, 0, 0, 0.03) 1px, transparent 1px, transparent 12px), repeating-linear-gradient(112.5deg, rgba(0, 0, 0, 0.03) 0px, rgba(0, 0, 0, 0.03) 1px, transparent 1px, transparent 12px), repeating-linear-gradient(112.5deg, rgba(0, 0, 0, 0.03) 0px, rgba(0, 0, 0, 0.03) 1px, transparent 1px, transparent 12px), repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.03) 0px, rgba(0, 0, 0, 0.03) 1px, transparent 1px, transparent 12px), repeating-linear-gradient(22.5deg, rgba(0, 0, 0, 0.03) 0px, rgba(0, 0, 0, 0.03) 1px, transparent 1px, transparent 12px), repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.03) 0px, rgba(0, 0, 0, 0.03) 1px, transparent 1px, transparent 12px), repeating-linear-gradient(22.5deg, rgba(0, 0, 0, 0.03) 0px, rgba(0, 0, 0, 0.03) 1px, transparent 1px, transparent 12px), repeating-linear-gradient(135deg, rgba(0, 0, 0, 0.03) 0px, rgba(0, 0, 0, 0.03) 1px, transparent 1px, transparent 12px), repeating-linear-gradient(157.5deg, rgba(0, 0, 0, 0.03) 0px, rgba(0, 0, 0, 0.03) 1px, transparent 1px, transparent 12px), repeating-linear-gradient(67.5deg, rgba(0, 0, 0, 0.03) 0px, rgba(0, 0, 0, 0.03) 1px, transparent 1px, transparent 12px), repeating-linear-gradient(67.5deg, rgba(0, 0, 0, 0.03) 0px, rgba(0, 0, 0, 0.03) 1px, transparent 1px, transparent 12px), linear-gradient(90deg, rgb(127, 47, 21), rgb(255, 206, 0));
-}
-.flower__line {
-  height: 55vmin;
-  width: 1.5vmin;
-  background-image: linear-gradient(to left, rgba(0, 0, 0, 0.2), transparent, rgba(255, 255, 255, 0.2)), linear-gradient(to top, transparent 10%, #583e08, #944415);
-  box-shadow: inset 0 0 2px rgba(0, 0, 0, 0.5);
-  -webkit-animation: grow-flower-tree 4s backwards;
-          animation: grow-flower-tree 4s backwards;
-}
-.flower__line__leaf {
-  --w: 7vmin;
-  --h: calc(var(--w) + 2vmin);
-  position: absolute;
-  top: 20%;
-  left: 90%;
-  width: var(--w);
-  height: var(--h);
-  border-top-right-radius: var(--h);
-  border-bottom-left-radius: var(--h);
-  background-image: linear-gradient(to top, rgba(20, 117, 122, 0.4), #095721);
-}
-.flower__line__leaf--1 {
-  transform: rotate(70deg) rotateY(30deg);
-}
-.flower__line__leaf--2 {
-  top: 45%;
-  transform: rotate(70deg) rotateY(30deg);
-}
-.flower__line__leaf--3, .flower__line__leaf--4, .flower__line__leaf--6 {
-  border-top-right-radius: 0;
-  border-bottom-left-radius: 0;
-  border-top-left-radius: var(--h);
-  border-bottom-right-radius: var(--h);
-  left: -460%;
-  top: 12%;
-  transform: rotate(-70deg) rotateY(30deg);
-}
-.flower__line__leaf--4 {
-  top: 40%;
-}
-.flower__line__leaf--5 {
-  top: 0;
-  transform-origin: left;
-  transform: rotate(70deg) rotateY(30deg) scale(0.6);
-}
-.flower__line__leaf--6 {
-  top: -2%;
-  left: -450%;
-  transform-origin: right;
-  transform: rotate(-70deg) rotateY(30deg) scale(0.6);
-}
-.flower__light {
-  position: absolute;
-  bottom: 0vmin;
-  width: 1vmin;
-  height: 1vmin;
-  background-color: rgb(255, 251, 0);
-  border-radius: 50%;
-  filter: blur(0.2vmin);
-  -webkit-animation: light-ans 4s linear infinite backwards;
-          animation: light-ans 4s linear infinite backwards;
-}
-.flower__light:nth-child(odd) {
-  background-color: #f76baf;
-}
-.flower__light--1 {
-  left: -2vmin;
-  -webkit-animation-delay: 1s;
-          animation-delay: 1s;
-}
-.flower__light--2 {
-  left: 3vmin;
-  -webkit-animation-delay: 0.5s;
-          animation-delay: 0.5s;
-}
-.flower__light--3 {
-  left: -6vmin;
-  -webkit-animation-delay: 0.3s;
-          animation-delay: 0.3s;
-}
-.flower__light--4 {
-  left: 6vmin;
-  -webkit-animation-delay: 0.9s;
-          animation-delay: 0.9s;
-}
-.flower__light--5 {
-  left: -1vmin;
-  -webkit-animation-delay: 1.5s;
-          animation-delay: 1.5s;
-}
-.flower__light--6 {
-  left: -4vmin;
-  -webkit-animation-delay: 3s;
-          animation-delay: 3s;
-}
-.flower__light--7 {
-  left: 3vmin;
-  -webkit-animation-delay: 2s;
-          animation-delay: 2s;
-}
-.flower__light--8 {
-  left: -6vmin;
-  -webkit-animation-delay: 3.5s;
-          animation-delay: 3.5s;
-}
-.flower__grass {
-  --c: #04661f;
-  --line-w: 1.5vmin;
-  position: absolute;
-  bottom: 12vmin;
-  left: -7vmin;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  z-index: 20;
-  transform-origin: bottom center;
-  transform: rotate(-48deg) rotateY(40deg);
-}
-.flower__grass--1 {
-  -webkit-animation: moving-grass 2s linear infinite;
-          animation: moving-grass 2s linear infinite;
-}
-.flower__grass--2 {
-  left: 2vmin;
-  bottom: 10vmin;
-  transform: scale(0.5) rotate(75deg) rotateX(10deg) rotateY(-200deg);
-  opacity: 0.8;
-  z-index: 0;
-  -webkit-animation: moving-grass--2 1.5s linear infinite;
-          animation: moving-grass--2 1.5s linear infinite;
-}
-.flower__grass--top {
-  width: 7vmin;
-  height: 10vmin;
-  border-top-right-radius: 100%;
-  border-right: var(--line-w) solid var(--c);
-  transform-origin: bottom center;
-  transform: rotate(-2deg);
-}
-.flower__grass--bottom {
-  margin-top: -2px;
-  width: var(--line-w);
-  height: 25vmin;
-  background-image: linear-gradient(to top, transparent, var(--c));
-}
-.flower__grass__leaf {
-  --size: 10vmin;
-  position: absolute;
-  width: calc(var(--size) * 2.1);
-  height: var(--size);
-  border-top-left-radius: var(--size);
-  border-top-right-radius: var(--size);
-  background-image: linear-gradient(to top, transparent, transparent 30%, var(--c));
-  z-index: 100;
-}
-.flower__grass__leaf--1 {
-  top: -6%;
-  left: 30%;
-  --size: 6vmin;
-  transform: rotate(-20deg);
-  -webkit-animation: growing-grass-ans--1 2s 2.6s backwards;
-          animation: growing-grass-ans--1 2s 2.6s backwards;
-}
-@-webkit-keyframes growing-grass-ans--1 {
-  0% {
-    transform-origin: bottom left;
-    transform: rotate(-20deg) scale(0);
-  }
-}
-@keyframes growing-grass-ans--1 {
-  0% {
-    transform-origin: bottom left;
-    transform: rotate(-20deg) scale(0);
-  }
-}
-.flower__grass__leaf--2 {
-  top: -5%;
-  left: -110%;
-  --size: 6vmin;
-  transform: rotate(10deg);
-  -webkit-animation: growing-grass-ans--2 2s 2.4s linear backwards;
-          animation: growing-grass-ans--2 2s 2.4s linear backwards;
-}
-@-webkit-keyframes growing-grass-ans--2 {
-  0% {
-    transform-origin: bottom right;
-    transform: rotate(10deg) scale(0);
-  }
-}
-@keyframes growing-grass-ans--2 {
-  0% {
-    transform-origin: bottom right;
-    transform: rotate(10deg) scale(0);
-  }
-}
-.flower__grass__leaf--3 {
-  top: 5%;
-  left: 60%;
-  --size: 8vmin;
-  transform: rotate(-18deg) rotateX(-20deg);
-  -webkit-animation: growing-grass-ans--3 2s 2.2s linear backwards;
-          animation: growing-grass-ans--3 2s 2.2s linear backwards;
-}
-@-webkit-keyframes growing-grass-ans--3 {
-  0% {
-    transform-origin: bottom left;
-    transform: rotate(-18deg) rotateX(-20deg) scale(0);
-  }
-}
-@keyframes growing-grass-ans--3 {
-  0% {
-    transform-origin: bottom left;
-    transform: rotate(-18deg) rotateX(-20deg) scale(0);
-  }
-}
-.flower__grass__leaf--4 {
-  top: 6%;
-  left: -135%;
-  --size: 8vmin;
-  transform: rotate(2deg);
-  -webkit-animation: growing-grass-ans--4 2s 2s linear backwards;
-          animation: growing-grass-ans--4 2s 2s linear backwards;
-}
-@-webkit-keyframes growing-grass-ans--4 {
-  0% {
-    transform-origin: bottom right;
-    transform: rotate(2deg) scale(0);
-  }
-}
-@keyframes growing-grass-ans--4 {
-  0% {
-    transform-origin: bottom right;
-    transform: rotate(2deg) scale(0);
-  }
-}
-.flower__grass__leaf--5 {
-  top: 20%;
-  left: 60%;
-  --size: 10vmin;
-  transform: rotate(-24deg) rotateX(-20deg);
-  -webkit-animation: growing-grass-ans--5 2s 1.8s linear backwards;
-          animation: growing-grass-ans--5 2s 1.8s linear backwards;
-}
-@-webkit-keyframes growing-grass-ans--5 {
-  0% {
-    transform-origin: bottom left;
-    transform: rotate(-24deg) rotateX(-20deg) scale(0);
-  }
-}
-@keyframes growing-grass-ans--5 {
-  0% {
-    transform-origin: bottom left;
-    transform: rotate(-24deg) rotateX(-20deg) scale(0);
-  }
-}
-.flower__grass__leaf--6 {
-  top: 22%;
-  left: -180%;
-  --size: 10vmin;
-  transform: rotate(10deg);
-  -webkit-animation: growing-grass-ans--6 2s 1.6s linear backwards;
-          animation: growing-grass-ans--6 2s 1.6s linear backwards;
-}
-@-webkit-keyframes growing-grass-ans--6 {
-  0% {
-    transform-origin: bottom right;
-    transform: rotate(10deg) scale(0);
-  }
-}
-@keyframes growing-grass-ans--6 {
-  0% {
-    transform-origin: bottom right;
-    transform: rotate(10deg) scale(0);
-  }
-}
-.flower__grass__leaf--7 {
-  top: 39%;
-  left: 70%;
-  --size: 10vmin;
-  transform: rotate(-10deg);
-  -webkit-animation: growing-grass-ans--7 2s 1.4s linear backwards;
-          animation: growing-grass-ans--7 2s 1.4s linear backwards;
-}
-@-webkit-keyframes growing-grass-ans--7 {
-  0% {
-    transform-origin: bottom left;
-    transform: rotate(-10deg) scale(0);
-  }
-}
-@keyframes growing-grass-ans--7 {
-  0% {
-    transform-origin: bottom left;
-    transform: rotate(-10deg) scale(0);
-  }
-}
-.flower__grass__leaf--8 {
-  top: 40%;
-  left: -215%;
-  --size: 11vmin;
-  transform: rotate(10deg);
-  -webkit-animation: growing-grass-ans--8 2s 1.2s linear backwards;
-          animation: growing-grass-ans--8 2s 1.2s linear backwards;
-}
-@-webkit-keyframes growing-grass-ans--8 {
-  0% {
-    transform-origin: bottom right;
-    transform: rotate(10deg) scale(0);
-  }
-}
-@keyframes growing-grass-ans--8 {
-  0% {
-    transform-origin: bottom right;
-    transform: rotate(10deg) scale(0);
-  }
-}
-.flower__grass__overlay {
-  position: absolute;
-  top: -10%;
-  right: 0%;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.6);
-  filter: blur(1.5vmin);
-  z-index: 100;
-}
-.flower__g-long {
-  --w: 2vmin;
-  --h: 6vmin;
-  --c: #0e5b3c;
-  position: absolute;
-  bottom: 10vmin;
-  left: -3vmin;
-  transform-origin: bottom center;
-  transform: rotate(-30deg) rotateY(-20deg);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  -webkit-animation: flower-g-long-ans 3s linear infinite;
-          animation: flower-g-long-ans 3s linear infinite;
-}
-@-webkit-keyframes flower-g-long-ans {
-  0%, 100% {
-    transform: rotate(-30deg) rotateY(-20deg);
-  }
-  50% {
-    transform: rotate(-32deg) rotateY(-20deg);
-  }
-}
-@keyframes flower-g-long-ans {
-  0%, 100% {
-    transform: rotate(-30deg) rotateY(-20deg);
-  }
-  50% {
-    transform: rotate(-32deg) rotateY(-20deg);
-  }
-}
-.flower__g-long__top {
-  top: calc(var(--h) * -1);
-  width: calc(var(--w) + 1vmin);
-  height: var(--h);
-  border-top-right-radius: 100%;
-  border-right: 0.7vmin solid var(--c);
-  transform: translate(-0.7vmin, 1vmin);
-}
-.flower__g-long__bottom {
-  width: var(--w);
-  height: 50vmin;
-  transform-origin: bottom center;
-  background-image: linear-gradient(to top, transparent 30%, var(--c));
-  box-shadow: inset 0 0 2px rgba(0, 0, 0, 0.5);
-  -webkit-clip-path: polygon(35% 0, 65% 1%, 100% 100%, 0% 100%);
-          clip-path: polygon(35% 0, 65% 1%, 100% 100%, 0% 100%);
-}
-.flower__g-right {
-  position: absolute;
-  bottom: 6vmin;
-  left: -2vmin;
-  transform-origin: bottom left;
-  transform: rotate(20deg);
-}
-.flower__g-right .leaf {
-  width: 30vmin;
-  height: 50vmin;
-  border-top-left-radius: 100%;
-  border-left: 2vmin solid #217005;
-  background-image: linear-gradient(to bottom, transparent, var(--dark-color) 60%);
-  -webkit-mask-image: linear-gradient(to top, transparent 30%, #24803e 60%);
-}
-.flower__g-right--1 {
-  -webkit-animation: flower-g-right-ans 2.5s linear infinite;
-          animation: flower-g-right-ans 2.5s linear infinite;
-}
-.flower__g-right--2 {
-  left: 5vmin;
-  transform: rotateY(-180deg);
-  -webkit-animation: flower-g-right-ans--2 3s linear infinite;
-          animation: flower-g-right-ans--2 3s linear infinite;
-}
-.flower__g-right--2 .leaf {
-  height: 75vmin;
-  filter: blur(0.3vmin);
-  opacity: 0.8;
-}
-@-webkit-keyframes flower-g-right-ans {
-  0%, 100% {
-    transform: rotate(20deg);
-  }
-  50% {
-    transform: rotate(24deg) rotateX(-20deg);
-  }
-}
-@keyframes flower-g-right-ans {
-  0%, 100% {
-    transform: rotate(20deg);
-  }
-  50% {
-    transform: rotate(24deg) rotateX(-20deg);
-  }
-}
-@-webkit-keyframes flower-g-right-ans--2 {
-  0%, 100% {
-    transform: rotateY(-180deg) rotate(0deg) rotateX(-20deg);
-  }
-  50% {
-    transform: rotateY(-180deg) rotate(6deg) rotateX(-20deg);
-  }
-}
-@keyframes flower-g-right-ans--2 {
-  0%, 100% {
-    transform: rotateY(-180deg) rotate(0deg) rotateX(-20deg);
-  }
-  50% {
-    transform: rotateY(-180deg) rotate(6deg) rotateX(-20deg);
-  }
-}
-.flower__g-front {
-  position: absolute;
-  bottom: 6vmin;
-  left: 2.5vmin;
-  z-index: 100;
-  transform-origin: bottom center;
-  transform: rotate(-28deg) rotateY(30deg) scale(1.04);
-  -webkit-animation: flower__g-front-ans 2s linear infinite;
-          animation: flower__g-front-ans 2s linear infinite;
-}
-@-webkit-keyframes flower__g-front-ans {
-  0%, 100% {
-    transform: rotate(-28deg) rotateY(30deg) scale(1.04);
-  }
-  50% {
-    transform: rotate(-35deg) rotateY(40deg) scale(1.04);
-  }
-}
-@keyframes flower__g-front-ans {
-  0%, 100% {
-    transform: rotate(-28deg) rotateY(30deg) scale(1.04);
-  }
-  50% {
-    transform: rotate(-35deg) rotateY(40deg) scale(1.04);
-  }
-}
-.flower__g-front__line {
-  width: 0.3vmin;
-  height: 20vmin;
-  background-image: linear-gradient(to top, transparent, #042e0b, transparent 100%);
-  position: relative;
-}
-.flower__g-front__leaf-wrapper {
-  position: absolute;
-  top: 0;
-  left: 0;
-  transform-origin: bottom left;
-  transform: rotate(10deg);
-}
-.flower__g-front__leaf-wrapper:nth-child(even) {
-  left: 0vmin;
-  transform: rotateY(-180deg) rotate(5deg);
-  -webkit-animation: flower__g-front__leaf-left-ans 1s ease-in backwards;
-          animation: flower__g-front__leaf-left-ans 1s ease-in backwards;
-}
-.flower__g-front__leaf-wrapper:nth-child(odd) {
-  -webkit-animation: flower__g-front__leaf-ans 1s ease-in backwards;
-          animation: flower__g-front__leaf-ans 1s ease-in backwards;
-}
-.flower__g-front__leaf-wrapper--1 {
-  top: -8vmin;
-  transform: scale(0.7);
-  -webkit-animation: flower__g-front__leaf-ans 1s 5.5s ease-in backwards !important;
-          animation: flower__g-front__leaf-ans 1s 5.5s ease-in backwards !important;
-}
-.flower__g-front__leaf-wrapper--2 {
-  top: -8vmin;
-  transform: rotateY(-180deg) scale(0.7) !important;
-  -webkit-animation: flower__g-front__leaf-left-ans-2 1s 4.6s ease-in backwards !important;
-          animation: flower__g-front__leaf-left-ans-2 1s 4.6s ease-in backwards !important;
-}
-.flower__g-front__leaf-wrapper--3 {
-  top: -3vmin;
-  -webkit-animation: flower__g-front__leaf-ans 1s 4.6s ease-in backwards;
-          animation: flower__g-front__leaf-ans 1s 4.6s ease-in backwards;
-}
-.flower__g-front__leaf-wrapper--4 {
-  top: -3vmin;
-  transform: rotateY(-180deg) scale(0.9) !important;
-  -webkit-animation: flower__g-front__leaf-left-ans-2 1s 4.6s ease-in backwards !important;
-          animation: flower__g-front__leaf-left-ans-2 1s 4.6s ease-in backwards !important;
-}
-@-webkit-keyframes flower__g-front__leaf-left-ans-2 {
-  0% {
-    transform: rotateY(-180deg) scale(0);
-  }
-}
-@keyframes flower__g-front__leaf-left-ans-2 {
-  0% {
-    transform: rotateY(-180deg) scale(0);
-  }
-}
-.flower__g-front__leaf-wrapper--5, .flower__g-front__leaf-wrapper--6 {
-  top: 2vmin;
-}
-.flower__g-front__leaf-wrapper--7, .flower__g-front__leaf-wrapper--8 {
-  top: 6.5vmin;
-}
-.flower__g-front__leaf-wrapper--2 {
-  -webkit-animation-delay: 5.2s !important;
-          animation-delay: 5.2s !important;
-}
-.flower__g-front__leaf-wrapper--3 {
-  -webkit-animation-delay: 4.9s !important;
-          animation-delay: 4.9s !important;
-}
-.flower__g-front__leaf-wrapper--5 {
-  -webkit-animation-delay: 4.3s !important;
-          animation-delay: 4.3s !important;
-}
-.flower__g-front__leaf-wrapper--6 {
-  -webkit-animation-delay: 4.1s !important;
-          animation-delay: 4.1s !important;
-}
-.flower__g-front__leaf-wrapper--7 {
-  -webkit-animation-delay: 3.8s !important;
-          animation-delay: 3.8s !important;
-}
-.flower__g-front__leaf-wrapper--8 {
-  -webkit-animation-delay: 3.5s !important;
-          animation-delay: 3.5s !important;
-}
-@-webkit-keyframes flower__g-front__leaf-ans {
-  0% {
-    transform: rotate(10deg) scale(0);
-  }
-}
-@keyframes flower__g-front__leaf-ans {
-  0% {
-    transform: rotate(10deg) scale(0);
-  }
-}
-@-webkit-keyframes flower__g-front__leaf-left-ans {
-  0% {
-    transform: rotateY(-180deg) rotate(5deg) scale(0);
-  }
-}
-@keyframes flower__g-front__leaf-left-ans {
-  0% {
-    transform: rotateY(-180deg) rotate(5deg) scale(0);
-  }
-}
-.flower__g-front__leaf {
-  width: 10vmin;
-  height: 10vmin;
-  border-radius: 100% 0% 0% 100%/100% 100% 0% 0%;
-  box-shadow: inset 0 2px 1vmin hsla(184deg, 97%, 58%, 0.2);
-  background-image: linear-gradient(to bottom left, transparent, var(--dark-color)), linear-gradient(to bottom right, #064f0a 50%, transparent 50%, transparent);
-  -webkit-mask-image: linear-gradient(to bottom right, #097149 50%, transparent 50%, transparent);
-  mask-image: linear-gradient(to bottom right, #0e8723 50%, transparent 50%, transparent);
-}
-.flower__g-fr {
-  position: absolute;
-  bottom: -4vmin;
-  left: vmin;
-  transform-origin: bottom left;
-  z-index: 10;
-  -webkit-animation: flower__g-fr-ans 2s linear infinite;
-          animation: flower__g-fr-ans 2s linear infinite;
-}
-@-webkit-keyframes flower__g-fr-ans {
-  0%, 100% {
-    transform: rotate(2deg);
-  }
-  50% {
-    transform: rotate(4deg);
-  }
-}
-@keyframes flower__g-fr-ans {
-  0%, 100% {
-    transform: rotate(2deg);
-  }
-  50% {
-    transform: rotate(4deg);
-  }
-}
-.flower__g-fr .leaf {
-  width: 30vmin;
-  height: 50vmin;
-  border-top-left-radius: 100%;
-  border-left: 2vmin solid #147b47;
-  -webkit-mask-image: linear-gradient(to top, transparent 25%, #0e4e2a 50%);
-  position: relative;
-  z-index: 1;
-}
-.flower__g-fr__leaf {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 10vmin;
-  height: 10vmin;
-  border-radius: 100% 0% 0% 100%/100% 100% 0% 0%;
-  box-shadow: inset 0 2px 1vmin hsla(184deg, 97%, 58%, 0.2);
-  background-image: linear-gradient(to bottom left, transparent, var(--dark-color) 98%), linear-gradient(to bottom right, #106e18 45%, transparent 50%, transparent);
-  -webkit-mask-image: linear-gradient(135deg, #175f22 40%, transparent 50%, transparent);
-}
-.flower__g-fr__leaf--1 {
-  left: 20vmin;
-  transform: rotate(45deg);
-  -webkit-animation: flower__g-fr-leaft-ans-1 0.5s 5.2s linear backwards;
-          animation: flower__g-fr-leaft-ans-1 0.5s 5.2s linear backwards;
-}
-@-webkit-keyframes flower__g-fr-leaft-ans-1 {
-  0% {
-    transform-origin: left;
-    transform: rotate(45deg) scale(0);
-  }
-}
-@keyframes flower__g-fr-leaft-ans-1 {
-  0% {
-    transform-origin: left;
-    transform: rotate(45deg) scale(0);
-  }
-}
-.flower__g-fr__leaf--2 {
-  left: 12vmin;
-  top: -7vmin;
-  transform: rotate(25deg) rotateY(-180deg);
-  -webkit-animation: flower__g-fr-leaft-ans-6 0.5s 5s linear backwards;
-          animation: flower__g-fr-leaft-ans-6 0.5s 5s linear backwards;
-}
-.flower__g-fr__leaf--3 {
-  left: 15vmin;
-  top: 6vmin;
-  transform: rotate(55deg);
-  -webkit-animation: flower__g-fr-leaft-ans-5 0.5s 4.8s linear backwards;
-          animation: flower__g-fr-leaft-ans-5 0.5s 4.8s linear backwards;
-}
-.flower__g-fr__leaf--4 {
-  left: 6vmin;
-  top: -2vmin;
-  transform: rotate(25deg) rotateY(-180deg);
-  -webkit-animation: flower__g-fr-leaft-ans-6 0.5s 4.6s linear backwards;
-          animation: flower__g-fr-leaft-ans-6 0.5s 4.6s linear backwards;
-}
-.flower__g-fr__leaf--5 {
-  left: 10vmin;
-  top: 14vmin;
-  transform: rotate(55deg);
-  -webkit-animation: flower__g-fr-leaft-ans-5 0.5s 4.4s linear backwards;
-          animation: flower__g-fr-leaft-ans-5 0.5s 4.4s linear backwards;
-}
-@-webkit-keyframes flower__g-fr-leaft-ans-5 {
-  0% {
-    transform-origin: left;
-    transform: rotate(55deg) scale(0);
-  }
-}
-@keyframes flower__g-fr-leaft-ans-5 {
-  0% {
-    transform-origin: left;
-    transform: rotate(55deg) scale(0);
-  }
-}
-.flower__g-fr__leaf--6 {
-  left: 0vmin;
-  top: 6vmin;
-  transform: rotate(25deg) rotateY(-180deg);
-  -webkit-animation: flower__g-fr-leaft-ans-6 0.5s 4.2s linear backwards;
-          animation: flower__g-fr-leaft-ans-6 0.5s 4.2s linear backwards;
-}
-@-webkit-keyframes flower__g-fr-leaft-ans-6 {
-  0% {
-    transform-origin: right;
-    transform: rotate(25deg) rotateY(-180deg) scale(0);
-  }
-}
-@keyframes flower__g-fr-leaft-ans-6 {
-  0% {
-    transform-origin: right;
-    transform: rotate(25deg) rotateY(-180deg) scale(0);
-  }
-}
-.flower__g-fr__leaf--7 {
-  left: 5vmin;
-  top: 22vmin;
-  transform: rotate(45deg);
-  -webkit-animation: flower__g-fr-leaft-ans-7 0.5s 4s linear backwards;
-          animation: flower__g-fr-leaft-ans-7 0.5s 4s linear backwards;
-}
-@-webkit-keyframes flower__g-fr-leaft-ans-7 {
-  0% {
-    transform-origin: left;
-    transform: rotate(45deg) scale(0);
-  }
-}
-@keyframes flower__g-fr-leaft-ans-7 {
-  0% {
-    transform-origin: left;
-    transform: rotate(45deg) scale(0);
-  }
-}
-.flower__g-fr__leaf--8 {
-  left: -4vmin;
-  top: 15vmin;
-  transform: rotate(15deg) rotateY(-180deg);
-  -webkit-animation: flower__g-fr-leaft-ans-8 0.5s 3.8s linear backwards;
-          animation: flower__g-fr-leaft-ans-8 0.5s 3.8s linear backwards;
-}
-@-webkit-keyframes flower__g-fr-leaft-ans-8 {
-  0% {
-    transform-origin: right;
-    transform: rotate(15deg) rotateY(-180deg) scale(0);
-  }
-}
-@keyframes flower__g-fr-leaft-ans-8 {
-  0% {
-    transform-origin: right;
-    transform: rotate(15deg) rotateY(-180deg) scale(0);
-  }
-}
-
-.long-g {
-  position: absolute;
-  bottom: 25vmin;
-  left: -42vmin;
-  transform-origin: bottom left;
-}
-.long-g--1 {
-  bottom: 0vmin;
-  transform: scale(0.8) rotate(-5deg);
-}
-.long-g--1 .leaf {
-  -webkit-mask-image: linear-gradient(to top, transparent 40%, #196d2a 80%) !important;
-}
-.long-g--1 .leaf--1 {
-  --w: 5vmin;
-  --h: 60vmin;
-  left: -2vmin;
-  transform: rotate(3deg) rotateY(-180deg);
-}
-.long-g--2, .long-g--3 {
-  bottom: -3vmin;
-  left: -35vmin;
-  transform-origin: center;
-  transform: scale(0.6) rotateX(60deg);
-}
-.long-g--2 .leaf, .long-g--3 .leaf {
-  -webkit-mask-image: linear-gradient(to top, transparent 50%, #176220 80%) !important;
-}
-.long-g--2 .leaf--1, .long-g--3 .leaf--1 {
-  left: -1vmin;
-  transform: rotateY(-180deg);
-}
-.long-g--3 {
-  left: -17vmin;
-  bottom: 0vmin;
-}
-.long-g--3 .leaf {
-  -webkit-mask-image: linear-gradient(to top, transparent 40%, #176220 80%) !important;
-}
-.long-g--4 {
-  left: 25vmin;
-  bottom: -3vmin;
-  transform-origin: center;
-  transform: scale(0.6) rotateX(60deg);
-}
-.long-g--4 .leaf {
-  -webkit-mask-image: linear-gradient(to top, transparent 50%, #176220 80%) !important;
-}
-.long-g--5 {
-  left: 42vmin;
-  bottom: 0vmin;
-  transform: scale(0.8) rotate(2deg);
-}
-.long-g--6 {
-  left: 0vmin;
-  bottom: -20vmin;
-  z-index: 100;
-  filter: blur(0.3vmin);
-  transform: scale(0.8) rotate(2deg);
-}
-.long-g--7 {
-  left: 35vmin;
-  bottom: 20vmin;
-  z-index: -1;
-  filter: blur(0.3vmin);
-  transform: scale(0.6) rotate(2deg);
-  opacity: 0.7;
-}
-.long-g .leaf {
-  --w: 15vmin;
-  --h: 40vmin;
-  --c: #1aaa15;
-  position: absolute;
-  bottom: 0;
-  width: var(--w);
-  height: var(--h);
-  border-top-left-radius: 100%;
-  border-left: 2vmin solid var(--c);
-  -webkit-mask-image: linear-gradient(to top, transparent 20%, var(--dark-color));
-  transform-origin: bottom center;
-}
-.long-g .leaf--0 {
-  left: 2vmin;
-  -webkit-animation: leaf-ans-1 4s linear infinite;
-          animation: leaf-ans-1 4s linear infinite;
-}
-.long-g .leaf--1 {
-  --w: 5vmin;
-  --h: 60vmin;
-  -webkit-animation: leaf-ans-1 4s linear infinite;
-          animation: leaf-ans-1 4s linear infinite;
-}
-.long-g .leaf--2 {
-  --w: 10vmin;
-  --h: 40vmin;
-  left: -0.5vmin;
-  bottom: 5vmin;
-  transform-origin: bottom left;
-  transform: rotateY(-180deg);
-  -webkit-animation: leaf-ans-2 3s linear infinite;
-          animation: leaf-ans-2 3s linear infinite;
-}
-.long-g .leaf--3 {
-  --w: 5vmin;
-  --h: 30vmin;
-  left: -1vmin;
-  bottom: 3.2vmin;
-  transform-origin: bottom left;
-  transform: rotate(-10deg) rotateY(-180deg);
-  -webkit-animation: leaf-ans-3 3s linear infinite;
-          animation: leaf-ans-3 3s linear infinite;
-}
-
-@-webkit-keyframes leaf-ans-1 {
-  0%, 100% {
-    transform: rotate(-5deg) scale(1);
-  }
-  50% {
-    transform: rotate(5deg) scale(1.1);
-  }
-}
-
-@keyframes leaf-ans-1 {
-  0%, 100% {
-    transform: rotate(-5deg) scale(1);
-  }
-  50% {
-    transform: rotate(5deg) scale(1.1);
-  }
-}
-@-webkit-keyframes leaf-ans-2 {
-  0%, 100% {
-    transform: rotateY(-180deg) rotate(5deg);
-  }
-  50% {
-    transform: rotateY(-180deg) rotate(0deg) scale(1.1);
-  }
-}
-@keyframes leaf-ans-2 {
-  0%, 100% {
-    transform: rotateY(-180deg) rotate(5deg);
-  }
-  50% {
-    transform: rotateY(-180deg) rotate(0deg) scale(1.1);
-  }
-}
-@-webkit-keyframes leaf-ans-3 {
-  0%, 100% {
-    transform: rotate(-10deg) rotateY(-180deg);
-  }
-  50% {
-    transform: rotate(-20deg) rotateY(-180deg);
-  }
-}
-@keyframes leaf-ans-3 {
-  0%, 100% {
-    transform: rotate(-10deg) rotateY(-180deg);
-  }
-  50% {
-    transform: rotate(-20deg) rotateY(-180deg);
-  }
-}
-.grow-ans {
-  -webkit-animation: grow-ans 2s var(--d) backwards;
-          animation: grow-ans 2s var(--d) backwards;
-}
-
-@-webkit-keyframes grow-ans {
-  0% {
-    transform: scale(0);
-    opacity: 0;
-  }
-}
-
-@keyframes grow-ans {
-  0% {
-    transform: scale(0);
-    opacity: 0;
-  }
-}
-@-webkit-keyframes light-ans {
-  0% {
-    opacity: 0;
-    transform: translateY(0vmin);
-  }
-  25% {
-    opacity: 1;
-    transform: translateY(-5vmin) translateX(-2vmin);
-  }
-  50% {
-    opacity: 1;
-    transform: translateY(-15vmin) translateX(2vmin);
-    filter: blur(0.2vmin);
-  }
-  75% {
-    transform: translateY(-20vmin) translateX(-2vmin);
-    filter: blur(0.2vmin);
-  }
-  100% {
-    transform: translateY(-30vmin);
-    opacity: 0;
-    filter: blur(1vmin);
-  }
-}
-@keyframes light-ans {
-  0% {
-    opacity: 0;
-    transform: translateY(0vmin);
-  }
-  25% {
-    opacity: 1;
-    transform: translateY(-5vmin) translateX(-2vmin);
-  }
-  50% {
-    opacity: 1;
-    transform: translateY(-15vmin) translateX(2vmin);
-    filter: blur(0.2vmin);
-  }
-  75% {
-    transform: translateY(-20vmin) translateX(-2vmin);
-    filter: blur(0.2vmin);
-  }
-  100% {
-    transform: translateY(-30vmin);
-    opacity: 0;
-    filter: blur(1vmin);
-  }
-}
-@-webkit-keyframes moving-flower-1 {
-  0%, 100% {
-    transform: rotate(2deg);
-  }
-  50% {
-    transform: rotate(-2deg);
-  }
-}
-@keyframes moving-flower-1 {
-  0%, 100% {
-    transform: rotate(2deg);
-  }
-  50% {
-    transform: rotate(-2deg);
-  }
-}
-@-webkit-keyframes moving-flower-2 {
-  0%, 100% {
-    transform: rotate(18deg);
-  }
-  50% {
-    transform: rotate(14deg);
-  }
-}
-@keyframes moving-flower-2 {
-  0%, 100% {
-    transform: rotate(18deg);
-  }
-  50% {
-    transform: rotate(14deg);
-  }
-}
-@-webkit-keyframes moving-flower-3 {
-  0%, 100% {
-    transform: rotate(-18deg);
-  }
-  50% {
-    transform: rotate(-20deg) rotateY(-10deg);
-  }
-}
-@keyframes moving-flower-3 {
-  0%, 100% {
-    transform: rotate(-18deg);
-  }
-  50% {
-    transform: rotate(-20deg) rotateY(-10deg);
-  }
-}
-@-webkit-keyframes blooming-leaf-right {
-  0% {
-    transform-origin: left;
-    transform: rotate(70deg) rotateY(30deg) scale(0);
-  }
-}
-@keyframes blooming-leaf-right {
-  0% {
-    transform-origin: left;
-    transform: rotate(70deg) rotateY(30deg) scale(0);
-  }
-}
-@-webkit-keyframes blooming-leaf-left {
-  0% {
-    transform-origin: right;
-    transform: rotate(-70deg) rotateY(30deg) scale(0);
-  }
-}
-@keyframes blooming-leaf-left {
-  0% {
-    transform-origin: right;
-    transform: rotate(-70deg) rotateY(30deg) scale(0);
-  }
-}
-@-webkit-keyframes grow-flower-tree {
-  0% {
-    height: 0;
-    border-radius: 1vmin;
-  }
-}
-@keyframes grow-flower-tree {
-  0% {
-    height: 0;
-    border-radius: 1vmin;
-  }
-}
-@-webkit-keyframes blooming-flower {
-  0% {
-    transform: scale(0);
-  }
-}
-@keyframes blooming-flower {
-  0% {
-    transform: scale(0);
-  }
-}
-@-webkit-keyframes moving-grass {
-  0%, 100% {
-    transform: rotate(-48deg) rotateY(40deg);
-  }
-  50% {
-    transform: rotate(-50deg) rotateY(40deg);
-  }
-}
-@keyframes moving-grass {
-  0%, 100% {
-    transform: rotate(-48deg) rotateY(40deg);
-  }
-  50% {
-    transform: rotate(-50deg) rotateY(40deg);
-  }
-}
-@-webkit-keyframes moving-grass--2 {
-  0%, 100% {
-    transform: scale(0.5) rotate(75deg) rotateX(10deg) rotateY(-200deg);
-  }
-  50% {
-    transform: scale(0.5) rotate(79deg) rotateX(10deg) rotateY(-200deg);
-  }
-}
-@keyframes moving-grass--2 {
-  0%, 100% {
-    transform: scale(0.5) rotate(75deg) rotateX(10deg) rotateY(-200deg);
-  }
-  50% {
-    transform: scale(0.5) rotate(79deg) rotateX(10deg) rotateY(-200deg);
-  }
-}
-.growing-grass {
-  -webkit-animation: growing-grass-ans 1s 2s backwards;
-          animation: growing-grass-ans 1s 2s backwards;
-}
-
-@-webkit-keyframes growing-grass-ans {
-  0% {
-    transform: scale(0);
-  }
-}
-
-@keyframes growing-grass-ans {
-  0% {
-    transform: scale(0);
-  }
-}
-.container * {
-  -webkit-animation-play-state: paused !important;
-          animation-play-state: paused !important;
-}
-
-    </style>
-    <title>flowers</title>
-</head>
-<body class="container">
-    <div class="night"></div>
-    <div class="flowers">
-      <div class="flower flower--1">
-        <div class="flower__leafs flower__leafs--1">
-          <div class="flower__leaf flower__leaf--1"></div>
-          <div class="flower__leaf flower__leaf--2"></div>
-          <div class="flower__leaf flower__leaf--3"></div>
-          <div class="flower__leaf flower__leaf--4"></div>
-          <div class="flower__white-circle"></div>
-  
-          <div class="flower__light flower__light--1"></div>
-          <div class="flower__light flower__light--2"></div>
-          <div class="flower__light flower__light--3"></div>
-          <div class="flower__light flower__light--4"></div>
-          <div class="flower__light flower__light--5"></div>
-          <div class="flower__light flower__light--6"></div>
-          <div class="flower__light flower__light--7"></div>
-          <div class="flower__light flower__light--8"></div>
-  
-        </div>
-        <div class="flower__line">
-          <div class="flower__line__leaf flower__line__leaf--1"></div>
-          <div class="flower__line__leaf flower__line__leaf--2"></div>
-          <div class="flower__line__leaf flower__line__leaf--3"></div>
-          <div class="flower__line__leaf flower__line__leaf--4"></div>
-          <div class="flower__line__leaf flower__line__leaf--5"></div>
-          <div class="flower__line__leaf flower__line__leaf--6"></div>
-        </div>
-      </div>
-  
-      <div class="flower flower--2">
-        <div class="flower__leafs flower__leafs--2">
-          <div class="flower__leaf flower__leaf--1"></div>
-          <div class="flower__leaf flower__leaf--2"></div>
-          <div class="flower__leaf flower__leaf--3"></div>
-          <div class="flower__leaf flower__leaf--4"></div>
-          <div class="flower__white-circle"></div>
-  
-          <div class="flower__light flower__light--1"></div>
-          <div class="flower__light flower__light--2"></div>
-          <div class="flower__light flower__light--3"></div>
-          <div class="flower__light flower__light--4"></div>
-          <div class="flower__light flower__light--5"></div>
-          <div class="flower__light flower__light--6"></div>
-          <div class="flower__light flower__light--7"></div>
-          <div class="flower__light flower__light--8"></div>
-  
-        </div>
-        <div class="flower__line">
-          <div class="flower__line__leaf flower__line__leaf--1"></div>
-          <div class="flower__line__leaf flower__line__leaf--2"></div>
-          <div class="flower__line__leaf flower__line__leaf--3"></div>
-          <div class="flower__line__leaf flower__line__leaf--4"></div>
-        </div>
-      </div>
-  
-      <div class="flower flower--3">
-        <div class="flower__leafs flower__leafs--3">
-          <div class="flower__leaf flower__leaf--1"></div>
-          <div class="flower__leaf flower__leaf--2"></div>
-          <div class="flower__leaf flower__leaf--3"></div>
-          <div class="flower__leaf flower__leaf--4"></div>
-          <div class="flower__white-circle"></div>
-  
-          <div class="flower__light flower__light--1"></div>
-          <div class="flower__light flower__light--2"></div>
-          <div class="flower__light flower__light--3"></div>
-          <div class="flower__light flower__light--4"></div>
-          <div class="flower__light flower__light--5"></div>
-          <div class="flower__light flower__light--6"></div>
-          <div class="flower__light flower__light--7"></div>
-          <div class="flower__light flower__light--8"></div>
-  
-        </div>
-        <div class="flower__line">
-          <div class="flower__line__leaf flower__line__leaf--1"></div>
-          <div class="flower__line__leaf flower__line__leaf--2"></div>
-          <div class="flower__line__leaf flower__line__leaf--3"></div>
-          <div class="flower__line__leaf flower__line__leaf--4"></div>
-        </div>
-      </div>
-  
-      <div class="grow-ans" style="--d:1.2s">
-        <div class="flower__g-long">
-          <div class="flower__g-long__top"></div>
-          <div class="flower__g-long__bottom"></div>
-        </div>
-      </div>
-  
-      <div class="growing-grass">
-        <div class="flower__grass flower__grass--1">
-          <div class="flower__grass--top"></div>
-          <div class="flower__grass--bottom"></div>
-          <div class="flower__grass__leaf flower__grass__leaf--1"></div>
-          <div class="flower__grass__leaf flower__grass__leaf--2"></div>
-          <div class="flower__grass__leaf flower__grass__leaf--3"></div>
-          <div class="flower__grass__leaf flower__grass__leaf--4"></div>
-          <div class="flower__grass__leaf flower__grass__leaf--5"></div>
-          <div class="flower__grass__leaf flower__grass__leaf--6"></div>
-          <div class="flower__grass__leaf flower__grass__leaf--7"></div>
-          <div class="flower__grass__leaf flower__grass__leaf--8"></div>
-          <div class="flower__grass__overlay"></div>
-        </div>
-      </div>
-  
-      <div class="growing-grass">
-        <div class="flower__grass flower__grass--2">
-          <div class="flower__grass--top"></div>
-          <div class="flower__grass--bottom"></div>
-          <div class="flower__grass__leaf flower__grass__leaf--1"></div>
-          <div class="flower__grass__leaf flower__grass__leaf--2"></div>
-          <div class="flower__grass__leaf flower__grass__leaf--3"></div>
-          <div class="flower__grass__leaf flower__grass__leaf--4"></div>
-          <div class="flower__grass__leaf flower__grass__leaf--5"></div>
-          <div class="flower__grass__leaf flower__grass__leaf--6"></div>
-          <div class="flower__grass__leaf flower__grass__leaf--7"></div>
-          <div class="flower__grass__leaf flower__grass__leaf--8"></div>
-          <div class="flower__grass__overlay"></div>
-        </div>
-      </div>
-  
-      <div class="grow-ans" style="--d:2.4s">
-        <div class="flower__g-right flower__g-right--1">
-          <div class="leaf"></div>
-        </div>
-      </div>
-  
-      <div class="grow-ans" style="--d:2.8s">
-        <div class="flower__g-right flower__g-right--2">
-          <div class="leaf"></div>
-        </div>
-      </div>
-  
-      <div class="grow-ans" style="--d:2.8s">
-        <div class="flower__g-front">
-          <div class="flower__g-front__leaf-wrapper flower__g-front__leaf-wrapper--1">
-            <div class="flower__g-front__leaf"></div>
-          </div>
-          <div class="flower__g-front__leaf-wrapper flower__g-front__leaf-wrapper--2">
-            <div class="flower__g-front__leaf"></div>
-          </div>
-          <div class="flower__g-front__leaf-wrapper flower__g-front__leaf-wrapper--3">
-            <div class="flower__g-front__leaf"></div>
-          </div>
-          <div class="flower__g-front__leaf-wrapper flower__g-front__leaf-wrapper--4">
-            <div class="flower__g-front__leaf"></div>
-          </div>
-          <div class="flower__g-front__leaf-wrapper flower__g-front__leaf-wrapper--5">
-            <div class="flower__g-front__leaf"></div>
-          </div>
-          <div class="flower__g-front__leaf-wrapper flower__g-front__leaf-wrapper--6">
-            <div class="flower__g-front__leaf"></div>
-          </div>
-          <div class="flower__g-front__leaf-wrapper flower__g-front__leaf-wrapper--7">
-            <div class="flower__g-front__leaf"></div>
-          </div>
-          <div class="flower__g-front__leaf-wrapper flower__g-front__leaf-wrapper--8">
-            <div class="flower__g-front__leaf"></div>
-          </div>
-          <div class="flower__g-front__line"></div>
-        </div>
-      </div>
-  
-      <div class="grow-ans" style="--d:3.2s">
-        <div class="flower__g-fr">
-          <div class="leaf"></div>
-          <div class="flower__g-fr__leaf flower__g-fr__leaf--1"></div>
-          <div class="flower__g-fr__leaf flower__g-fr__leaf--2"></div>
-          <div class="flower__g-fr__leaf flower__g-fr__leaf--3"></div>
-          <div class="flower__g-fr__leaf flower__g-fr__leaf--4"></div>
-          <div class="flower__g-fr__leaf flower__g-fr__leaf--5"></div>
-          <div class="flower__g-fr__leaf flower__g-fr__leaf--6"></div>
-          <div class="flower__g-fr__leaf flower__g-fr__leaf--7"></div>
-          <div class="flower__g-fr__leaf flower__g-fr__leaf--8"></div>
-        </div>
-      </div>
-  
-      <div class="long-g long-g--0">
-        <div class="grow-ans" style="--d:3s">
-          <div class="leaf leaf--0"></div>
-        </div>
-        <div class="grow-ans" style="--d:2.2s">
-          <div class="leaf leaf--1"></div>
-        </div>
-        <div class="grow-ans" style="--d:3.4s">
-          <div class="leaf leaf--2"></div>
-        </div>
-        <div class="grow-ans" style="--d:3.6s">
-          <div class="leaf leaf--3"></div>
-        </div>
-      </div>
-  
-      <div class="long-g long-g--1">
-        <div class="grow-ans" style="--d:3.6s">
-          <div class="leaf leaf--0"></div>
-        </div>
-        <div class="grow-ans" style="--d:3.8s">
-          <div class="leaf leaf--1"></div>
-        </div>
-        <div class="grow-ans" style="--d:4s">
-          <div class="leaf leaf--2"></div>
-        </div>
-        <div class="grow-ans" style="--d:4.2s">
-          <div class="leaf leaf--3"></div>
-        </div>
-      </div>
-  
-      <div class="long-g long-g--2">
-        <div class="grow-ans" style="--d:4s">
-          <div class="leaf leaf--0"></div>
-        </div>
-        <div class="grow-ans" style="--d:4.2s">
-          <div class="leaf leaf--1"></div>
-        </div>
-        <div class="grow-ans" style="--d:4.4s">
-          <div class="leaf leaf--2"></div>
-        </div>
-        <div class="grow-ans" style="--d:4.6s">
-          <div class="leaf leaf--3"></div>
-        </div>
-      </div>
-  
-      <div class="long-g long-g--3">
-        <div class="grow-ans" style="--d:4s">
-          <div class="leaf leaf--0"></div>
-        </div>
-        <div class="grow-ans" style="--d:4.2s">
-          <div class="leaf leaf--1"></div>
-        </div>
-        <div class="grow-ans" style="--d:3s">
-          <div class="leaf leaf--2"></div>
-        </div>
-        <div class="grow-ans" style="--d:3.6s">
-          <div class="leaf leaf--3"></div>
-        </div>
-      </div>
-  
-      <div class="long-g long-g--4">
-        <div class="grow-ans" style="--d:4s">
-          <div class="leaf leaf--0"></div>
-        </div>
-        <div class="grow-ans" style="--d:4.2s">
-          <div class="leaf leaf--1"></div>
-        </div>
-        <div class="grow-ans" style="--d:3s">
-          <div class="leaf leaf--2"></div>
-        </div>
-        <div class="grow-ans" style="--d:3.6s">
-          <div class="leaf leaf--3"></div>
-        </div>
-      </div>
-  
-      <div class="long-g long-g--5">
-        <div class="grow-ans" style="--d:4s">
-          <div class="leaf leaf--0"></div>
-        </div>
-        <div class="grow-ans" style="--d:4.2s">
-          <div class="leaf leaf--1"></div>
-        </div>
-        <div class="grow-ans" style="--d:3s">
-          <div class="leaf leaf--2"></div>
-        </div>
-        <div class="grow-ans" style="--d:3.6s">
-          <div class="leaf leaf--3"></div>
-        </div>
-      </div>
-  
-      <div class="long-g long-g--6">
-        <div class="grow-ans" style="--d:4.2s">
-          <div class="leaf leaf--0"></div>
-        </div>
-        <div class="grow-ans" style="--d:4.4s">
-          <div class="leaf leaf--1"></div>
-        </div>
-        <div class="grow-ans" style="--d:4.6s">
-          <div class="leaf leaf--2"></div>
-        </div>
-        <div class="grow-ans" style="--d:4.8s">
-          <div class="leaf leaf--3"></div>
-        </div>
-      </div>
-  
-      <div class="long-g long-g--7">
-        <div class="grow-ans" style="--d:3s">
-          <div class="leaf leaf--0"></div>
-        </div>
-        <div class="grow-ans" style="--d:3.2s">
-          <div class="leaf leaf--1"></div>
-        </div>
-        <div class="grow-ans" style="--d:3.5s">
-          <div class="leaf leaf--2"></div>
-        </div>
-        <div class="grow-ans" style="--d:3.6s">
-          <div class="leaf leaf--3"></div>
-        </div>
-      </div>
-    </div>
-    
-    <script>
-onload = () =>{
-        document.body.classList.remove("container");
-};
-    <\/script>
-  </body>
-</html>
-`;
-        const flowerOverlay = document.getElementById('flower-overlay');
-        let flowerShown = false;
-        function showFlowerOverlay() {
-            if (!flowerShown) {
-                flowerOverlay.srcdoc = FLOWER_HTML;
-                flowerOverlay.style.display = 'block';
-                flowerShown = true;
-            }
-        }
-        function hideFlowerOverlay() {
-            if (flowerShown) {
-                flowerOverlay.style.display = 'none';
-                flowerOverlay.srcdoc = '';
-                flowerShown = false;
-            }
-        }
-
         const videoElement = document.getElementById('camera-feed');
         const captionEl = document.getElementById('love-caption');
         const loveCaptions = {
             4: "Untuk kamu, dengan sepenuh hati 💖",
             5: "Kamu spesial banget buat aku 🫰",
-            8: "Sebuket mawar untuk cewek terbaik 🌹",
             9: "aku mau kamu jadi milik ku selamanya 🤟"
         };
         function updateCaption(mode) {
@@ -2190,11 +640,6 @@ onload = () =>{
                 currentMode = calculateGestureMode(landmarks);
                 document.getElementById('mode-text').innerText = "MODE: " + modeLabels[currentMode];
                 updateCaption(currentMode);
-                if (currentMode === 8) {
-                    showFlowerOverlay();
-                } else {
-                    hideFlowerOverlay();
-                }
 
                 const wrist = landmarks[0];
                 handTarget.x = -((wrist.x - 0.5) * 15.0); 
@@ -2210,7 +655,6 @@ onload = () =>{
                 document.getElementById('mode-text').innerText = "MODE: ROTASI KOSMOS (Tidak ada tangan)";
                 handTarget = { x: 0, y: 0, z: -12 };
                 updateCaption(1);
-                hideFlowerOverlay();
             }
         });
 
@@ -2257,7 +701,6 @@ onload = () =>{
             else if (currentMode === 4) { targetPosArray = posHeart; rotationAngle += 0.015; }
             else if (currentMode === 5) { targetPosArray = posSely; rotationAngle = 0; }
             else if (currentMode === 7) { targetPosArray = posDNA; rotationAngle += 0.02; }
-            else if (currentMode === 8) { targetPosArray = posRose; rotationAngle += 0.008; }
             else if (currentMode === 9) { targetPosArray = posPray; rotationAngle = 0; }
 
             const posAttr = geometry.attributes.position.array;
@@ -2282,15 +725,6 @@ onload = () =>{
                     if (i % 10 === 0) { colAttr[i*3] = 1.0; colAttr[i*3+1] = 1.0; colAttr[i*3+2] = 1.0; }
                     else if (i % 2 === 0) { colAttr[i*3] = 0.0; colAttr[i*3+1] = 1.0; colAttr[i*3+2] = 0.9; }
                     else { colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.0; colAttr[i*3+2] = 0.6; }
-                } else if (currentMode === 8) { // Buket Mawar - batang hijau, kelopak merah muda ke merah tua
-                    if (i < ROSE_STEM_COUNT) {
-                        colAttr[i*3] = 0.1; colAttr[i*3+1] = 0.55; colAttr[i*3+2] = 0.2;
-                    } else {
-                        let shade = (i % 5) / 5;
-                        colAttr[i*3] = 0.9 + shade * 0.1;
-                        colAttr[i*3+1] = 0.08 + shade * 0.18;
-                        colAttr[i*3+2] = 0.3 + shade * 0.3;
-                    }
                 } else if (currentMode === 9) { // ZEN (emas lembut) + HATI (pink) + SELY (putih keunguan)
                     if (i < PRAY_ZEN_COUNT) {
                         colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.85; colAttr[i*3+2] = 0.55;
@@ -2312,7 +746,7 @@ onload = () =>{
             geometry.attributes.position.needsUpdate = true;
             geometry.attributes.color.needsUpdate = true;
 
-            if ([2, 3, 4, 5, 7, 8, 9].includes(currentMode)) {
+            if ([2, 3, 4, 5, 7, 9].includes(currentMode)) {
                 particleSystem.position.set(handCurrent.x, handCurrent.y, handCurrent.z);
                 if (currentMode === 2) {
                     particleSystem.rotation.set(0.3, rotationAngle, 0); // sedikit miring seperti galaksi asli
@@ -2340,6 +774,336 @@ onload = () =>{
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
+    </script>
+
+    <!-- ============================================================
+         GALAKSI CINTA - overlay yang dibuka/ditutup dengan gestur 👌
+         Dibungkus IIFE supaya variabel (scene, camera, dll) tidak
+         bentrok dengan script NebulaHeart 3D di atas.
+    ============================================================ -->
+    <script>
+    (function() {
+        let initialized = false;
+        let active = false;
+        let animationId = null;
+
+        let glScene, glCamera, glRenderer, glControls, glClock;
+        let galaxy, heart, heartModel;
+        let textoSprites = [], fotoSprites = [];
+        let raycaster, mouse;
+
+        const overlay = document.getElementById('galaxilove-overlay');
+        const canvasEl = document.getElementById('gl-canvas');
+        const modalCarta = document.getElementById('gl-modal-carta');
+        const mensajeRomantico = document.getElementById('gl-mensaje-romantico');
+        const cerrarCarta = document.getElementById('gl-cerrar-carta');
+        const closeBtn = document.getElementById('gl-close-btn');
+        const inicio = document.getElementById('gl-inicio');
+        const musica = document.getElementById('gl-musica-fondo');
+
+        const ORBIT_SYNC_SPEED = 0.003;
+
+        function crearEstrellasFondo() {
+            const starGeometry = new THREE.BufferGeometry();
+            const starCount = 5000;
+            const positions = new Float32Array(starCount * 3);
+            for (let i = 0; i < starCount * 3; i++) {
+                positions[i] = (Math.random() - 0.5) * 500;
+            }
+            starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.7, transparent: true });
+            const stars = new THREE.Points(starGeometry, starMaterial);
+            glScene.add(stars);
+        }
+
+        function generateGalaxy() {
+            const parameters = {
+                count: 80000, size: 0.01, radius: 6, branches: 4, spin: 1,
+                randomness: 0.2, randomnessPower: 3,
+                insideColor: "#ff1b6b", outsideColor: "#3000ff"
+            };
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(parameters.count * 3);
+            const colors = new Float32Array(parameters.count * 3);
+            const colorInside = new THREE.Color(parameters.insideColor);
+            const colorOutside = new THREE.Color(parameters.outsideColor);
+
+            for (let i = 0; i < parameters.count; i++) {
+                const i3 = i * 3;
+                const radius = Math.random() * parameters.radius;
+                const spinAngle = radius * parameters.spin;
+                const branchAngle = ((i % parameters.branches) / parameters.branches) * Math.PI * 2;
+                const randomX = (Math.random() - 0.5) * parameters.randomness * radius;
+                const randomY = (Math.random() - 0.5) * parameters.randomness * radius;
+                const randomZ = (Math.random() - 0.5) * parameters.randomness * radius;
+
+                positions[i3]     = Math.cos(branchAngle + spinAngle) * radius + randomX;
+                positions[i3 + 1] = randomY;
+                positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ;
+
+                const mixed = colorInside.clone().lerp(colorOutside, radius / parameters.radius);
+                colors[i3] = mixed.r; colors[i3 + 1] = mixed.g; colors[i3 + 2] = mixed.b;
+            }
+
+            geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+
+            const material = new THREE.PointsMaterial({
+                size: parameters.size, vertexColors: true, blending: THREE.AdditiveBlending, depthWrite: false
+            });
+
+            galaxy = new THREE.Points(geometry, material);
+            glScene.add(galaxy);
+        }
+
+        function generateHeart() {
+            const heartGeometry = new THREE.BufferGeometry();
+            const hPos = [], hCol = [];
+            for (let i = 0; i < 3500; i++) {
+                const t = Math.random() * Math.PI * 2;
+                const s = Math.random() * 0.6 + 0.4;
+                let x = 17 * Math.pow(Math.sin(t), 3);
+                let y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
+                let z = (Math.random() - 0.5) * 1;
+                x *= s * 0.15; y *= s * 0.15; z *= s * 0.15;
+                hPos.push(x, y + 2.2, z);
+                let c = new THREE.Color();
+                c.setHSL(0.95 + Math.random() * 0.05, 1, 0.65);
+                hCol.push(c.r, c.g, c.b);
+            }
+            heartGeometry.setAttribute("position", new THREE.Float32BufferAttribute(hPos, 3));
+            heartGeometry.setAttribute("color", new THREE.Float32BufferAttribute(hCol, 3));
+            const heartMaterial = new THREE.PointsMaterial({ size: 0.12, vertexColors: true });
+            heart = new THREE.Points(heartGeometry, heartMaterial);
+            glScene.add(heart);
+        }
+
+        function loadHeartModel() {
+            const gltfLoader = new THREE.GLTFLoader();
+            const matcapLoader = new THREE.TextureLoader();
+            gltfLoader.load(
+                'https://assets.codepen.io/74321/heart.glb',
+                (gltf) => {
+                    heartModel = gltf.scene;
+                    heartModel.position.set(0, 3.2, 0);
+                    heartModel.scale.set(1.2, 1.2, 1.2);
+                    const matcap = matcapLoader.load('https://assets.codepen.io/74321/3.png');
+                    heartModel.traverse((child) => {
+                        if (child.isMesh) {
+                            child.material = new THREE.MeshMatcapMaterial({ matcap, color: new THREE.Color('#ff3366') });
+                        }
+                    });
+                    glScene.add(heartModel);
+                },
+                undefined,
+                () => { /* Jika model gagal dimuat, scene tetap berjalan */ }
+            );
+        }
+
+        const frases = [
+            "Aku cinta kamu 💖", "Aku sayang kamu 💘", "Kamu segalanya bagiku ", "Sayangku ", "Cintaku 💞",
+            "Aku memujamu ", "Aku rindu kamu ", "Segalanya bagiku 💫", "Ratuku 👑", "Semestaku ",
+            "Cantik 😍", "Jelita ", "Manis 💕", "Tuan Putri "
+        ];
+
+        function crearTexto(msg, size = 1.8) {
+            const canvas = document.createElement("canvas");
+            canvas.width = 512; canvas.height = 128;
+            const ctx = canvas.getContext("2d");
+            ctx.font = "bold 50px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = "#ff1493";
+            ctx.fillText(msg, canvas.width / 2, canvas.height / 2);
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+            const sprite = new THREE.Sprite(material);
+            sprite.scale.set(size * 4, size, 1);
+            return sprite;
+        }
+
+        function generateTexts() {
+            for (let i = 0; i < 90; i++) {
+                let t = crearTexto(frases[Math.floor(Math.random() * frases.length)], 1 + Math.random());
+                let x = (Math.random() - 0.5) * 40;
+                let y = (Math.random() - 0.5) * 25;
+                let z = (Math.random() - 0.5) * 40;
+                if (Math.abs(x) < 5 && Math.abs(y) < 5) y += 7;
+                t.position.set(x, y, z);
+                t.userData = {
+                    baseY: y,
+                    orbitRadius: Math.sqrt(x * x + z * z),
+                    orbitAngle: Math.atan2(z, x),
+                    orbitSpeed: ORBIT_SYNC_SPEED,
+                    floatAmp: Math.random() * 0.6 + 0.2,
+                    floatSpeed: Math.random() * 0.8 + 0.6,
+                    phase: Math.random() * Math.PI * 2,
+                    baseSize: 1 + Math.random()
+                };
+                t.scale.set(t.userData.baseSize * 4, t.userData.baseSize, 1);
+                glScene.add(t);
+                textoSprites.push(t);
+            }
+        }
+
+        function generatePhotos() {
+            const photoTextureLoader = new THREE.TextureLoader();
+            const urls = [
+                "https://i.postimg.cc/N01gCC2B/pin-1.jpg",
+                "https://i.postimg.cc/5twxKKQf/pin-2.jpg",
+                "https://i.postimg.cc/g0vYttL9/pin-3.jpg"
+            ];
+            for (let i = 0; i < 30; i++) {
+                const texture = photoTextureLoader.load(urls[i % urls.length]);
+                const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+                const sprite = new THREE.Sprite(material);
+                const scale = 1 + Math.random();
+                sprite.scale.set(scale, scale, 1);
+                let x = (Math.random() - 0.5) * 40;
+                let y = (Math.random() - 0.5) * 25;
+                let z = (Math.random() - 0.5) * 40;
+                if (Math.abs(x) < 5 && Math.abs(y) < 5) y += 7;
+                sprite.position.set(x, y, z);
+                sprite.userData = {
+                    baseY: y,
+                    orbitRadius: Math.sqrt(x * x + z * z),
+                    orbitAngle: Math.atan2(z, x),
+                    orbitSpeed: ORBIT_SYNC_SPEED,
+                    floatAmp: Math.random() * 0.5 + 0.15,
+                    floatSpeed: Math.random() * 0.9 + 0.5,
+                    phase: Math.random() * Math.PI * 2,
+                    baseScale: scale
+                };
+                glScene.add(sprite);
+                fotoSprites.push(sprite);
+            }
+        }
+
+        const frasesRomanticas = [
+            'Sejak kamu hadir dalam hidupku, aku merasa alam semesta telah menemukan cara sempurna untuk menata dirinya di dalam hatiku. Kamu seperti seluruh galaksi, penuh dengan misteri indah yang ingin aku temukan perlahan-lahan, seperti bintang-bintang yang bersinar bahkan di malam-malamku yang paling gelap. Terkadang aku berpikir, di antara jutaan dunia, aku sangat beruntung menemukanmu, seolah takdir telah merancang kisah kita sejak awal waktu. Dan mencintaimu terasa seperti ini; tak terbatas, dalam, dan cemerlang, seperti langit saat aku menatapnya dan memikirkan segala arti dirimu bagiku. ✨'
+        ];
+
+        function mostrarMensajeRomantico() {
+            const mensaje = frasesRomanticas[Math.floor(Math.random() * frasesRomanticas.length)];
+            mensajeRomantico.textContent = mensaje;
+            modalCarta.classList.add('visible');
+        }
+
+        function init() {
+            glScene = new THREE.Scene();
+            crearEstrellasFondo();
+            generateGalaxy();
+            generateHeart();
+            loadHeartModel();
+            generateTexts();
+            generatePhotos();
+
+            const sizes = { width: window.innerWidth, height: window.innerHeight };
+            glCamera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 600);
+            glCamera.position.set(10, 12, 20);
+            glScene.add(glCamera);
+
+            glRenderer = new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true });
+            glRenderer.setSize(sizes.width, sizes.height);
+            glRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            glControls = new THREE.OrbitControls(glCamera, glRenderer.domElement);
+            glControls.enableDamping = true;
+            glClock = new THREE.Clock();
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            cerrarCarta.addEventListener('click', () => modalCarta.classList.remove('visible'));
+            modalCarta.addEventListener('click', (event) => {
+                if (event.target === modalCarta) modalCarta.classList.remove('visible');
+            });
+
+            canvasEl.addEventListener('pointerdown', (event) => {
+                if (!heartModel) return;
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, glCamera);
+                const impactos = raycaster.intersectObject(heartModel, true);
+                if (impactos.length > 0) mostrarMensajeRomantico();
+            });
+
+            inicio.addEventListener('click', () => {
+                inicio.style.display = 'none';
+                musica.play().catch(() => {});
+            });
+
+            closeBtn.addEventListener('click', () => {
+                if (active) toggleGalaxiloveOverlay();
+            });
+
+            window.addEventListener('resize', () => {
+                if (!glRenderer) return;
+                sizes.width = window.innerWidth;
+                sizes.height = window.innerHeight;
+                glCamera.aspect = sizes.width / sizes.height;
+                glCamera.updateProjectionMatrix();
+                glRenderer.setSize(sizes.width, sizes.height);
+            });
+
+            initialized = true;
+        }
+
+        function tick() {
+            if (!active) { animationId = null; return; }
+            const elapsed = glClock.getElapsedTime();
+
+            galaxy.rotation.y += 0.001;
+            heart.rotation.y += ORBIT_SYNC_SPEED;
+            heart.rotation.z = Math.sin(elapsed * 1.7) * 0.08;
+
+            if (heartModel) {
+                heartModel.rotation.y += 0.01;
+                heartModel.rotation.x = Math.sin(elapsed * 1.8) * 0.1;
+                heartModel.position.y = 3.2 + Math.sin(elapsed * 2.2) * 0.25;
+            }
+
+            textoSprites.forEach(t => {
+                const d = t.userData;
+                d.orbitAngle += d.orbitSpeed;
+                t.position.x = Math.cos(d.orbitAngle) * d.orbitRadius;
+                t.position.z = Math.sin(d.orbitAngle) * d.orbitRadius;
+                t.position.y = d.baseY + Math.sin(elapsed * d.floatSpeed + d.phase) * d.floatAmp;
+                const pulse = 1 + Math.sin(elapsed * 2.4 + d.phase) * 0.1;
+                t.scale.set(d.baseSize * 4 * pulse, d.baseSize * pulse, 1);
+                t.material.opacity = 0.72 + Math.sin(elapsed * 1.9 + d.phase) * 0.2;
+                t.lookAt(glCamera.position);
+            });
+
+            fotoSprites.forEach(s => {
+                const d = s.userData;
+                d.orbitAngle += d.orbitSpeed;
+                s.position.x = Math.cos(d.orbitAngle) * d.orbitRadius;
+                s.position.z = Math.sin(d.orbitAngle) * d.orbitRadius;
+                s.position.y = d.baseY + Math.sin(elapsed * d.floatSpeed + d.phase) * d.floatAmp;
+                const pulse = 1 + Math.sin(elapsed * 1.7 + d.phase) * 0.08;
+                s.scale.set(d.baseScale * pulse, d.baseScale * pulse, 1);
+                s.material.rotation += 0.0015;
+                s.material.opacity = 0.7 + Math.sin(elapsed * 1.5 + d.phase) * 0.25;
+                s.lookAt(glCamera.position);
+            });
+
+            glControls.update();
+            glRenderer.render(glScene, glCamera);
+            animationId = requestAnimationFrame(tick);
+        }
+
+        // Fungsi global dipanggil oleh script NebulaHeart saat gestur 👌 terdeteksi
+        window.toggleGalaxiloveOverlay = function() {
+            if (!initialized) init();
+            active = !active;
+            if (active) {
+                overlay.style.display = 'block';
+                if (!animationId) tick();
+            } else {
+                overlay.style.display = 'none';
+            }
+        };
+    })();
     </script>
 </body>
 </html>
