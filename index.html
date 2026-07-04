@@ -248,7 +248,7 @@
             3: "TEKS I LOVE YOU (2 Jari / Peace)",
             4: "BENTUK HATI (Tangan Mengepal)",
             5: "SELY 🫰 (Finger Heart)",
-            7: "DNA HELIX 🧬 (Rock Sign)",
+            7: "KUPU-KUPU 🦋 (Rock Sign)",
             9: "ZEN & CINTA 🤟 (I Love You Sign)"
         };
 
@@ -316,7 +316,7 @@
         const posHeart = new Float32Array(NUM_PARTICLES * 3);
         const posSely = new Float32Array(NUM_PARTICLES * 3);
         const posGalaxy = new Float32Array(NUM_PARTICLES * 3);
-        const posDNA = new Float32Array(NUM_PARTICLES * 3);
+        const posButterfly = new Float32Array(NUM_PARTICLES * 3);
         const posPray = new Float32Array(NUM_PARTICLES * 3); // Mode 9: ZEN + HATI + SELY (vertikal)
         const PRAY_ZEN_COUNT = Math.floor(NUM_PARTICLES * 0.34);
         const PRAY_HEART_COUNT = Math.floor(NUM_PARTICLES * 0.33);
@@ -409,31 +409,79 @@
                 posGalaxy[i*3+2] = radius * Math.sin(angle);
             }
 
-            // DNA HELIX (Mode 7)
-            const dnaHeight = 3.6;
-            const dnaRadius = 0.9;
-            const dnaTurns = 3;
-            for (let i = 0; i < NUM_PARTICLES; i++) {
-                if (i % 10 === 0) {
-                    // Partikel "anak tangga" yang menghubungkan dua untai DNA
-                    let tt = (Math.floor(i / 10) / (NUM_PARTICLES / 10)) * dnaHeight - dnaHeight / 2;
-                    let angle = (tt / dnaHeight) * dnaTurns * Math.PI * 2;
-                    let frac = Math.random();
-                    let rx1 = dnaRadius * Math.cos(angle);
-                    let rz1 = dnaRadius * Math.sin(angle);
-                    let rx2 = dnaRadius * Math.cos(angle + Math.PI);
-                    let rz2 = dnaRadius * Math.sin(angle + Math.PI);
-                    posDNA[i*3]   = rx1 + (rx2 - rx1) * frac;
-                    posDNA[i*3+1] = tt;
-                    posDNA[i*3+2] = rz1 + (rz2 - rz1) * frac;
-                } else {
-                    let strand = i % 2;
-                    let tt = (i / NUM_PARTICLES) * dnaHeight - dnaHeight / 2;
-                    let angle = (tt / dnaHeight) * dnaTurns * Math.PI * 2 + (strand === 1 ? Math.PI : 0);
-                    posDNA[i*3]   = dnaRadius * Math.cos(angle) + (Math.random() - 0.5) * 0.05;
-                    posDNA[i*3+1] = tt;
-                    posDNA[i*3+2] = dnaRadius * Math.sin(angle) + (Math.random() - 0.5) * 0.05;
+            // KUPU-KUPU / BUTTERFLY (Mode 7) - digambar di canvas lalu di-raster jadi titik partikel
+            const butterflyPoints = [];
+            {
+                const bCanvas = document.createElement('canvas');
+                bCanvas.width = 800; bCanvas.height = 500;
+                const bctx = bCanvas.getContext('2d');
+                bctx.fillStyle = "black"; bctx.fillRect(0, 0, 800, 500);
+                bctx.fillStyle = "white";
+
+                function drawWing(mirror) {
+                    bctx.save();
+                    bctx.translate(400, 250);
+                    if (mirror) bctx.scale(-1, 1);
+                    // Sayap atas (besar)
+                    bctx.save();
+                    bctx.rotate(-0.35);
+                    bctx.beginPath();
+                    bctx.ellipse(150, -75, 150, 95, 0, 0, Math.PI * 2);
+                    bctx.fill();
+                    bctx.restore();
+                    // Sayap bawah (lebih kecil)
+                    bctx.save();
+                    bctx.rotate(0.3);
+                    bctx.beginPath();
+                    bctx.ellipse(105, 90, 90, 65, 0, 0, Math.PI * 2);
+                    bctx.fill();
+                    bctx.restore();
+                    bctx.restore();
                 }
+                drawWing(false); // sayap kanan
+                drawWing(true);  // sayap kiri (cermin)
+
+                // Badan kupu-kupu
+                bctx.beginPath();
+                bctx.ellipse(400, 250, 12, 130, 0, 0, Math.PI * 2);
+                bctx.fill();
+
+                // Kepala
+                bctx.beginPath();
+                bctx.arc(400, 115, 14, 0, Math.PI * 2);
+                bctx.fill();
+
+                // Antena
+                bctx.strokeStyle = "white";
+                bctx.lineWidth = 4;
+                bctx.beginPath();
+                bctx.moveTo(400, 110);
+                bctx.quadraticCurveTo(370, 70, 355, 50);
+                bctx.stroke();
+                bctx.beginPath();
+                bctx.moveTo(400, 110);
+                bctx.quadraticCurveTo(430, 70, 445, 50);
+                bctx.stroke();
+
+                const bImgData = bctx.getImageData(0, 0, 800, 500).data;
+                for (let y = 0; y < 500; y += 2) {
+                    for (let x = 0; x < 800; x += 2) {
+                        let alpha = bImgData[((y * 800) + x) * 4 + 0];
+                        if (alpha > 128) {
+                            butterflyPoints.push({
+                                x: (x - 400) / 130.0,
+                                y: -(y - 250) / 130.0,
+                                z: (Math.random() * 0.3) - 0.15
+                            });
+                        }
+                    }
+                }
+            }
+            for (let i = 0; i < NUM_PARTICLES; i++) {
+                let p = butterflyPoints[Math.floor(Math.random() * butterflyPoints.length)];
+                posButterfly[i*3]   = p.x;
+                posButterfly[i*3+1] = p.y;
+                posButterfly[i*3+2] = p.z;
             }
 
             // ZEN + HATI + SELY (Mode 9) - disusun VERTIKAL: teks "ZEN" (atas),
@@ -562,7 +610,7 @@
                 }
             }
 
-            // 4. Cek Mode DNA HELIX 🧬 (Rock Sign: Telunjuk + Kelingking berdiri, jempol terlipat)
+            // 4. Cek Mode KUPU-KUPU 🦋 (Rock Sign: Telunjuk + Kelingking berdiri, jempol terlipat)
             if (fingersUp[0] && !fingersUp[1] && !fingersUp[2] && fingersUp[3]) {
                 return 7;
             }
@@ -680,7 +728,7 @@
             else if (currentMode === 3) { targetPosArray = posText; rotationAngle = 0; }
             else if (currentMode === 4) { targetPosArray = posHeart; rotationAngle += 0.015; }
             else if (currentMode === 5) { targetPosArray = posSely; rotationAngle = 0; }
-            else if (currentMode === 7) { targetPosArray = posDNA; rotationAngle += 0.02; }
+            else if (currentMode === 7) { targetPosArray = posButterfly; rotationAngle += 0.02; }
             else if (currentMode === 9) { targetPosArray = posPray; rotationAngle = 0; }
 
             const posAttr = geometry.attributes.position.array;
@@ -701,10 +749,12 @@
                     colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.1; colAttr[i*3+2] = 0.4;
                 } else if (currentMode === 5) { // Ungu Sely
                     colAttr[i*3] = 0.8; colAttr[i*3+1] = 0.2; colAttr[i*3+2] = 1.0;
-                } else if (currentMode === 7) { // DNA - untai cyan & magenta, anak tangga putih
-                    if (i % 10 === 0) { colAttr[i*3] = 1.0; colAttr[i*3+1] = 1.0; colAttr[i*3+2] = 1.0; }
-                    else if (i % 2 === 0) { colAttr[i*3] = 0.0; colAttr[i*3+1] = 1.0; colAttr[i*3+2] = 0.9; }
-                    else { colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.0; colAttr[i*3+2] = 0.6; }
+                } else if (currentMode === 7) { // Kupu-kupu - sayap atas oranye, sayap bawah pink, badan putih keunguan
+                    let bx = posButterfly[i*3];
+                    let by = posButterfly[i*3+1];
+                    if (Math.abs(bx) < 0.25) { colAttr[i*3] = 0.85; colAttr[i*3+1] = 0.75; colAttr[i*3+2] = 1.0; }
+                    else if (by > 0) { colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.55; colAttr[i*3+2] = 0.1; }
+                    else { colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.15; colAttr[i*3+2] = 0.6; }
                 } else if (currentMode === 9) { // ZEN (emas lembut) + HATI (pink) + SELY (putih keunguan)
                     if (i < PRAY_ZEN_COUNT) {
                         colAttr[i*3] = 1.0; colAttr[i*3+1] = 0.85; colAttr[i*3+2] = 0.55;
