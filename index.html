@@ -195,6 +195,60 @@
             from { opacity: 0; transform: scale(0.9) translateY(12px); }
             to { opacity: 1; transform: scale(1) translateY(0); }
         }
+        #gl-modal-wishlist {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(3px);
+            z-index: 30;
+        }
+        #gl-modal-wishlist.visible { display: flex; }
+        #gl-wishlist-list {
+            list-style: none;
+            padding: 0;
+            margin: 12px 0;
+            max-height: 220px;
+            overflow-y: auto;
+            text-align: left;
+        }
+        #gl-wishlist-list li {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 4px;
+            border-bottom: 1px dashed #ffc7e4;
+            font-size: 0.95rem;
+        }
+        #gl-wishlist-list li.done span { text-decoration: line-through; opacity: 0.55; }
+        #gl-wishlist-list li input[type="checkbox"] {
+            width: 18px; height: 18px; accent-color: #ff4da6; cursor: pointer; flex-shrink: 0;
+        }
+        #gl-wishlist-list li span { flex: 1; word-break: break-word; }
+        #gl-wishlist-list li .gl-wishlist-remove {
+            background: none; border: none; color: #c2447e; font-size: 1rem; cursor: pointer; padding: 0 4px;
+        }
+        .gl-wishlist-add-row { display: flex; gap: 6px; margin-top: 4px; }
+        #gl-wishlist-input {
+            flex: 1;
+            padding: 9px 10px;
+            border-radius: 10px;
+            border: 1px solid #ffc7e4;
+            font-size: 0.9rem;
+            font-family: inherit;
+        }
+        #gl-wishlist-add-btn {
+            border: none;
+            border-radius: 10px;
+            background: #ff4da6;
+            color: #fff;
+            font-weight: bold;
+            padding: 0 16px;
+            cursor: pointer;
+            font-size: 1.15rem;
+        }
     </style>
 </head>
 <body>
@@ -223,6 +277,17 @@
                 <h3>Untukmu</h3>
                 <p id="gl-mensaje-romantico"></p>
                 <button id="gl-cerrar-carta">Tutup</button>
+            </div>
+        </div>
+        <div id="gl-modal-wishlist">
+            <div class="carta">
+                <h3>Wishlist Kita 📝</h3>
+                <ul id="gl-wishlist-list"></ul>
+                <div class="gl-wishlist-add-row">
+                    <input type="text" id="gl-wishlist-input" placeholder="Tambah wishlist..." maxlength="70">
+                    <button id="gl-wishlist-add-btn" title="Tambah">+</button>
+                </div>
+                <button id="gl-cerrar-wishlist">Tutup</button>
             </div>
         </div>
         <audio id="gl-musica-fondo" loop>
@@ -780,6 +845,80 @@
         const closeBtn = document.getElementById('gl-close-btn');
         const musica = document.getElementById('gl-musica-fondo');
 
+        const modalWishlist = document.getElementById('gl-modal-wishlist');
+        const wishlistList = document.getElementById('gl-wishlist-list');
+        const wishlistInput = document.getElementById('gl-wishlist-input');
+        const wishlistAddBtn = document.getElementById('gl-wishlist-add-btn');
+        const cerrarWishlist = document.getElementById('gl-cerrar-wishlist');
+
+        const WISHLIST_KEY = 'galaxilove_wishlist_v1';
+        const defaultWishlist = [
+            { text: 'Nonton film romantis bareng 🎬', done: false },
+            { text: 'Liburan ke pantai berdua 🏖️', done: false },
+            { text: 'Masak makan malam bareng 🍳', done: false },
+            { text: 'Piknik di bawah bintang ✨', done: false },
+            { text: 'Foto couple bareng 📸', done: false }
+        ];
+        let wishlistItems = [];
+
+        function loadWishlist() {
+            try {
+                const saved = localStorage.getItem(WISHLIST_KEY);
+                wishlistItems = saved ? JSON.parse(saved) : defaultWishlist.slice();
+            } catch (e) {
+                wishlistItems = defaultWishlist.slice();
+            }
+        }
+
+        function saveWishlist() {
+            try { localStorage.setItem(WISHLIST_KEY, JSON.stringify(wishlistItems)); } catch (e) { /* abaikan jika penyimpanan tidak tersedia */ }
+        }
+
+        function renderWishlist() {
+            wishlistList.innerHTML = '';
+            wishlistItems.forEach((item, idx) => {
+                const li = document.createElement('li');
+                if (item.done) li.classList.add('done');
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = item.done;
+                checkbox.addEventListener('change', () => {
+                    wishlistItems[idx].done = checkbox.checked;
+                    li.classList.toggle('done', checkbox.checked);
+                    saveWishlist();
+                });
+
+                const span = document.createElement('span');
+                span.textContent = item.text;
+
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'gl-wishlist-remove';
+                removeBtn.textContent = '✕';
+                removeBtn.title = 'Hapus';
+                removeBtn.addEventListener('click', () => {
+                    wishlistItems.splice(idx, 1);
+                    saveWishlist();
+                    renderWishlist();
+                });
+
+                li.appendChild(checkbox);
+                li.appendChild(span);
+                li.appendChild(removeBtn);
+                wishlistList.appendChild(li);
+            });
+        }
+
+        function addWishlistItem() {
+            const text = wishlistInput.value.trim();
+            if (!text) return;
+            wishlistItems.push({ text, done: false });
+            saveWishlist();
+            renderWishlist();
+            wishlistInput.value = '';
+            wishlistInput.focus();
+        }
+
         const ORBIT_SYNC_SPEED = 0.003;
 
         function crearEstrellasFondo() {
@@ -928,9 +1067,9 @@
         function generatePhotos() {
             const photoTextureLoader = new THREE.TextureLoader();
             const urls = [
-                "https://i.postimg.cc/N01gCC2B/pin-1.jpg",
-                "https://i.postimg.cc/5twxKKQf/pin-2.jpg",
-                "https://i.postimg.cc/g0vYttL9/pin-3.jpg"
+                "foto1.jpg",
+                "foto2.jpg",
+                "foto3.jpg"
             ];
             for (let i = 0; i < 30; i++) {
                 const texture = photoTextureLoader.load(urls[i % urls.length]);
@@ -992,10 +1131,24 @@
             raycaster = new THREE.Raycaster();
             mouse = new THREE.Vector2();
 
-            cerrarCarta.addEventListener('click', () => modalCarta.classList.remove('visible'));
+            cerrarCarta.addEventListener('click', () => {
+                modalCarta.classList.remove('visible');
+                modalWishlist.classList.add('visible');
+            });
             modalCarta.addEventListener('click', (event) => {
                 if (event.target === modalCarta) modalCarta.classList.remove('visible');
             });
+
+            cerrarWishlist.addEventListener('click', () => modalWishlist.classList.remove('visible'));
+            modalWishlist.addEventListener('click', (event) => {
+                if (event.target === modalWishlist) modalWishlist.classList.remove('visible');
+            });
+            wishlistAddBtn.addEventListener('click', addWishlistItem);
+            wishlistInput.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') addWishlistItem();
+            });
+            loadWishlist();
+            renderWishlist();
 
             canvasEl.addEventListener('pointerdown', (event) => {
                 if (!heartModel) return;
