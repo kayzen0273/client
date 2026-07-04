@@ -98,7 +98,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         /* ===== Overlay Galaksi Cinta (dibuka/ditutup dengan gestur 👌) ===== */
         #galaxilove-overlay {
@@ -196,66 +195,6 @@
             from { opacity: 0; transform: scale(0.9) translateY(12px); }
             to { opacity: 1; transform: scale(1) translateY(0); }
         }
-        #gl-modal-wishlist {
-            position: fixed;
-            inset: 0;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(3px);
-            z-index: 30;
-        }
-        #gl-modal-wishlist.visible { display: flex; }
-        #gl-wishlist-list {
-            list-style: none;
-            padding: 0;
-            margin: 12px 0;
-            max-height: 220px;
-            overflow-y: auto;
-            text-align: left;
-        }
-        #gl-wishlist-list li {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 7px 4px;
-            border-bottom: 1px dashed #ffc7e4;
-            font-size: 0.95rem;
-        }
-        #gl-wishlist-list li.done span { text-decoration: line-through; opacity: 0.55; }
-        #gl-wishlist-list li input[type="checkbox"] {
-            width: 18px; height: 18px; accent-color: #ff4da6; cursor: pointer; flex-shrink: 0;
-        }
-        #gl-wishlist-list li span { flex: 1; word-break: break-word; }
-        #gl-wishlist-list li .gl-wishlist-remove {
-            background: none; border: none; color: #c2447e; font-size: 1rem; cursor: pointer; padding: 0 4px;
-        }
-        #gl-wishlist-list li .gl-wishlist-send {
-            background: none; border: none; font-size: 1rem; cursor: pointer; padding: 0 4px;
-            opacity: 0.85; transition: transform 0.15s ease;
-        }
-        #gl-wishlist-list li .gl-wishlist-send:hover { transform: scale(1.15); }
-        #gl-wishlist-list li .gl-wishlist-send:disabled { opacity: 0.5; cursor: default; transform: none; }
-        .gl-wishlist-add-row { display: flex; gap: 6px; margin-top: 4px; }
-        #gl-wishlist-input {
-            flex: 1;
-            padding: 9px 10px;
-            border-radius: 10px;
-            border: 1px solid #ffc7e4;
-            font-size: 0.9rem;
-            font-family: inherit;
-        }
-        #gl-wishlist-add-btn {
-            border: none;
-            border-radius: 10px;
-            background: #ff4da6;
-            color: #fff;
-            font-weight: bold;
-            padding: 0 16px;
-            cursor: pointer;
-            font-size: 1.15rem;
-        }
     </style>
 </head>
 <body>
@@ -286,19 +225,8 @@
                 <button id="gl-cerrar-carta">Tutup</button>
             </div>
         </div>
-        <div id="gl-modal-wishlist">
-            <div class="carta">
-                <h3>Wishlist Kita 📝</h3>
-                <ul id="gl-wishlist-list"></ul>
-                <div class="gl-wishlist-add-row">
-                    <input type="text" id="gl-wishlist-input" placeholder="Tambah wishlist..." maxlength="70">
-                    <button id="gl-wishlist-add-btn" title="Tambah">+</button>
-                </div>
-                <button id="gl-cerrar-wishlist">Tutup</button>
-            </div>
-        </div>
         <audio id="gl-musica-fondo" loop>
-            <source src="musik.mp3" type="audio/mpeg">
+            <source src="cintanya akuu.mp3" type="audio/mpeg">
         </audio>
     </div>
 
@@ -852,152 +780,7 @@
         const closeBtn = document.getElementById('gl-close-btn');
         const musica = document.getElementById('gl-musica-fondo');
 
-        const modalWishlist = document.getElementById('gl-modal-wishlist');
-        const wishlistList = document.getElementById('gl-wishlist-list');
-        const wishlistInput = document.getElementById('gl-wishlist-input');
-        const wishlistAddBtn = document.getElementById('gl-wishlist-add-btn');
-        const cerrarWishlist = document.getElementById('gl-cerrar-wishlist');
-
-        // ===== Supabase (database wishlist, tersimpan online & sinkron di semua device) =====
-        const SUPABASE_URL = 'https://cadtlaamaarorzrjnddl.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhZHRsYWFtYWFyb3J6cmpuZGRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxMTU1MTIsImV4cCI6MjA5ODY5MTUxMn0.O7HU78QkBdy8jh7HlIedeqfzHzb084PCjLeKmstR1uw';
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        const WISHLIST_TABLE = 'wishlist';
-        const WISHLIST_MESSAGES_TABLE = 'wishlist_messages';
-
-        let wishlistItems = [];
-        let wishlistLoading = false;
-
-        async function loadWishlist() {
-            wishlistLoading = true;
-            renderWishlist();
-            const { data, error } = await supabaseClient
-                .from(WISHLIST_TABLE)
-                .select('*')
-                .order('created_at', { ascending: true });
-            wishlistLoading = false;
-            if (error) {
-                console.error('Gagal memuat wishlist:', error);
-                wishlistItems = [];
-                renderWishlist(error.message || 'Error tidak diketahui');
-                return;
-            }
-            wishlistItems = data || [];
-            renderWishlist();
-        }
-
-        function renderWishlist(loadErrorMsg) {
-            wishlistList.innerHTML = '';
-
-            if (wishlistLoading) {
-                const li = document.createElement('li');
-                li.textContent = 'Memuat wishlist...';
-                li.style.opacity = '0.6';
-                wishlistList.appendChild(li);
-                return;
-            }
-            if (loadErrorMsg) {
-                const li = document.createElement('li');
-                li.textContent = 'Gagal memuat: ' + loadErrorMsg;
-                li.style.color = '#c2447e';
-                li.style.whiteSpace = 'normal';
-                wishlistList.appendChild(li);
-                return;
-            }
-
-            wishlistItems.forEach((item, idx) => {
-                const li = document.createElement('li');
-                if (item.done) li.classList.add('done');
-
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.checked = item.done;
-                checkbox.addEventListener('change', async () => {
-                    const newDone = checkbox.checked;
-                    li.classList.toggle('done', newDone);
-                    const { error } = await supabaseClient
-                        .from(WISHLIST_TABLE)
-                        .update({ done: newDone })
-                        .eq('id', item.id);
-                    if (error) {
-                        console.error('Gagal update wishlist:', error.message);
-                        checkbox.checked = !newDone;
-                        li.classList.toggle('done', !newDone);
-                    } else {
-                        item.done = newDone;
-                    }
-                });
-
-                const span = document.createElement('span');
-                span.textContent = item.text;
-
-                const sendBtn = document.createElement('button');
-                sendBtn.className = 'gl-wishlist-send';
-                sendBtn.textContent = '📨';
-                sendBtn.title = 'Kirim ke Admin';
-                sendBtn.addEventListener('click', async () => {
-                    sendBtn.disabled = true;
-                    const { error } = await supabaseClient
-                        .from(WISHLIST_MESSAGES_TABLE)
-                        .insert({ text: item.text, status: 'baru' });
-                    if (error) {
-                        console.error('Gagal mengirim wishlist:', error.message);
-                        sendBtn.disabled = false;
-                        return;
-                    }
-                    sendBtn.textContent = '✅';
-                    setTimeout(() => {
-                        sendBtn.textContent = '📨';
-                        sendBtn.disabled = false;
-                    }, 1500);
-                });
-
-                const removeBtn = document.createElement('button');
-                removeBtn.className = 'gl-wishlist-remove';
-                removeBtn.textContent = '✕';
-                removeBtn.title = 'Hapus';
-                removeBtn.addEventListener('click', async () => {
-                    const { error } = await supabaseClient
-                        .from(WISHLIST_TABLE)
-                        .delete()
-                        .eq('id', item.id);
-                    if (!error) {
-                        wishlistItems.splice(idx, 1);
-                        renderWishlist();
-                    } else {
-                        console.error('Gagal hapus wishlist:', error.message);
-                    }
-                });
-
-                li.appendChild(checkbox);
-                li.appendChild(span);
-                li.appendChild(sendBtn);
-                li.appendChild(removeBtn);
-                wishlistList.appendChild(li);
-            });
-        }
-
-        async function addWishlistItem() {
-            const text = wishlistInput.value.trim();
-            if (!text) return;
-            wishlistInput.disabled = true;
-            const { data, error } = await supabaseClient
-                .from(WISHLIST_TABLE)
-                .insert({ text, done: false })
-                .select();
-            wishlistInput.disabled = false;
-            if (error) {
-                console.error('Gagal menambah wishlist:', error.message);
-                return;
-            }
-            if (data && data[0]) wishlistItems.push(data[0]);
-            renderWishlist();
-            wishlistInput.value = '';
-            wishlistInput.focus();
-        }
-
         const ORBIT_SYNC_SPEED = 0.003;
-
 
         function crearEstrellasFondo() {
             const starGeometry = new THREE.BufferGeometry();
@@ -1209,23 +992,10 @@
             raycaster = new THREE.Raycaster();
             mouse = new THREE.Vector2();
 
-            cerrarCarta.addEventListener('click', () => {
-                modalCarta.classList.remove('visible');
-                modalWishlist.classList.add('visible');
-            });
+            cerrarCarta.addEventListener('click', () => modalCarta.classList.remove('visible'));
             modalCarta.addEventListener('click', (event) => {
                 if (event.target === modalCarta) modalCarta.classList.remove('visible');
             });
-
-            cerrarWishlist.addEventListener('click', () => modalWishlist.classList.remove('visible'));
-            modalWishlist.addEventListener('click', (event) => {
-                if (event.target === modalWishlist) modalWishlist.classList.remove('visible');
-            });
-            wishlistAddBtn.addEventListener('click', addWishlistItem);
-            wishlistInput.addEventListener('keydown', (event) => {
-                if (event.key === 'Enter') addWishlistItem();
-            });
-            loadWishlist();
 
             canvasEl.addEventListener('pointerdown', (event) => {
                 if (!heartModel) return;
