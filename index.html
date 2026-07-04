@@ -298,7 +298,7 @@
             </div>
         </div>
         <audio id="gl-musica-fondo" loop>
-            <source src="cintanya akuu.mp3" type="audio/mpeg">
+            <source src="musik.mp3" type="audio/mpeg">
         </audio>
     </div>
 
@@ -877,16 +877,16 @@
                 .order('created_at', { ascending: true });
             wishlistLoading = false;
             if (error) {
-                console.error('Gagal memuat wishlist:', error.message);
+                console.error('Gagal memuat wishlist:', error);
                 wishlistItems = [];
-                renderWishlist(true);
+                renderWishlist(error.message || 'Error tidak diketahui');
                 return;
             }
             wishlistItems = data || [];
             renderWishlist();
         }
 
-        function renderWishlist(loadError) {
+        function renderWishlist(loadErrorMsg) {
             wishlistList.innerHTML = '';
 
             if (wishlistLoading) {
@@ -896,10 +896,11 @@
                 wishlistList.appendChild(li);
                 return;
             }
-            if (loadError) {
+            if (loadErrorMsg) {
                 const li = document.createElement('li');
-                li.textContent = 'Gagal memuat wishlist. Cek koneksi / setup Supabase.';
+                li.textContent = 'Gagal memuat: ' + loadErrorMsg;
                 li.style.color = '#c2447e';
+                li.style.whiteSpace = 'normal';
                 wishlistList.appendChild(li);
                 return;
             }
