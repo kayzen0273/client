@@ -98,6 +98,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         /* ===== Overlay Galaksi Cinta (dibuka/ditutup dengan gestur 👌) ===== */
         #galaxilove-overlay {
@@ -230,6 +231,12 @@
         #gl-wishlist-list li .gl-wishlist-remove {
             background: none; border: none; color: #c2447e; font-size: 1rem; cursor: pointer; padding: 0 4px;
         }
+        #gl-wishlist-list li .gl-wishlist-send {
+            background: none; border: none; font-size: 1rem; cursor: pointer; padding: 0 4px;
+            opacity: 0.85; transition: transform 0.15s ease;
+        }
+        #gl-wishlist-list li .gl-wishlist-send:hover { transform: scale(1.15); }
+        #gl-wishlist-list li .gl-wishlist-send:disabled { opacity: 0.5; cursor: default; transform: none; }
         .gl-wishlist-add-row { display: flex; gap: 6px; margin-top: 4px; }
         #gl-wishlist-input {
             flex: 1;
@@ -851,31 +858,52 @@
         const wishlistAddBtn = document.getElementById('gl-wishlist-add-btn');
         const cerrarWishlist = document.getElementById('gl-cerrar-wishlist');
 
-        const WISHLIST_KEY = 'galaxilove_wishlist_v1';
-        const defaultWishlist = [
-            { text: 'Nonton film romantis bareng 🎬', done: false },
-            { text: 'Liburan ke pantai berdua 🏖️', done: false },
-            { text: 'Masak makan malam bareng 🍳', done: false },
-            { text: 'Piknik di bawah bintang ✨', done: false },
-            { text: 'Foto couple bareng 📸', done: false }
-        ];
+        // ===== Supabase (database wishlist, tersimpan online & sinkron di semua device) =====
+        const SUPABASE_URL = 'https://cadtlaamaarorzrjnddl.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhZHRsYWFtYWFyb3J6cmpuZGRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxMTU1MTIsImV4cCI6MjA5ODY5MTUxMn0.O7HU78QkBdy8jh7HlIedeqfzHzb084PCjLeKmstR1uw';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const WISHLIST_TABLE = 'wishlist';
+        const WISHLIST_MESSAGES_TABLE = 'wishlist_messages';
+
         let wishlistItems = [];
+        let wishlistLoading = false;
 
-        function loadWishlist() {
-            try {
-                const saved = localStorage.getItem(WISHLIST_KEY);
-                wishlistItems = saved ? JSON.parse(saved) : defaultWishlist.slice();
-            } catch (e) {
-                wishlistItems = defaultWishlist.slice();
+        async function loadWishlist() {
+            wishlistLoading = true;
+            renderWishlist();
+            const { data, error } = await supabaseClient
+                .from(WISHLIST_TABLE)
+                .select('*')
+                .order('created_at', { ascending: true });
+            wishlistLoading = false;
+            if (error) {
+                console.error('Gagal memuat wishlist:', error.message);
+                wishlistItems = [];
+                renderWishlist(true);
+                return;
             }
+            wishlistItems = data || [];
+            renderWishlist();
         }
 
-        function saveWishlist() {
-            try { localStorage.setItem(WISHLIST_KEY, JSON.stringify(wishlistItems)); } catch (e) { /* abaikan jika penyimpanan tidak tersedia */ }
-        }
-
-        function renderWishlist() {
+        function renderWishlist(loadError) {
             wishlistList.innerHTML = '';
+
+            if (wishlistLoading) {
+                const li = document.createElement('li');
+                li.textContent = 'Memuat wishlist...';
+                li.style.opacity = '0.6';
+                wishlistList.appendChild(li);
+                return;
+            }
+            if (loadError) {
+                const li = document.createElement('li');
+                li.textContent = 'Gagal memuat wishlist. Cek koneksi / setup Supabase.';
+                li.style.color = '#c2447e';
+                wishlistList.appendChild(li);
+                return;
+            }
+
             wishlistItems.forEach((item, idx) => {
                 const li = document.createElement('li');
                 if (item.done) li.classList.add('done');
@@ -883,43 +911,92 @@
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.checked = item.done;
-                checkbox.addEventListener('change', () => {
-                    wishlistItems[idx].done = checkbox.checked;
-                    li.classList.toggle('done', checkbox.checked);
-                    saveWishlist();
+                checkbox.addEventListener('change', async () => {
+                    const newDone = checkbox.checked;
+                    li.classList.toggle('done', newDone);
+                    const { error } = await supabaseClient
+                        .from(WISHLIST_TABLE)
+                        .update({ done: newDone })
+                        .eq('id', item.id);
+                    if (error) {
+                        console.error('Gagal update wishlist:', error.message);
+                        checkbox.checked = !newDone;
+                        li.classList.toggle('done', !newDone);
+                    } else {
+                        item.done = newDone;
+                    }
                 });
 
                 const span = document.createElement('span');
                 span.textContent = item.text;
 
+                const sendBtn = document.createElement('button');
+                sendBtn.className = 'gl-wishlist-send';
+                sendBtn.textContent = '📨';
+                sendBtn.title = 'Kirim ke Admin';
+                sendBtn.addEventListener('click', async () => {
+                    sendBtn.disabled = true;
+                    const { error } = await supabaseClient
+                        .from(WISHLIST_MESSAGES_TABLE)
+                        .insert({ text: item.text, status: 'baru' });
+                    if (error) {
+                        console.error('Gagal mengirim wishlist:', error.message);
+                        sendBtn.disabled = false;
+                        return;
+                    }
+                    sendBtn.textContent = '✅';
+                    setTimeout(() => {
+                        sendBtn.textContent = '📨';
+                        sendBtn.disabled = false;
+                    }, 1500);
+                });
+
                 const removeBtn = document.createElement('button');
                 removeBtn.className = 'gl-wishlist-remove';
                 removeBtn.textContent = '✕';
                 removeBtn.title = 'Hapus';
-                removeBtn.addEventListener('click', () => {
-                    wishlistItems.splice(idx, 1);
-                    saveWishlist();
-                    renderWishlist();
+                removeBtn.addEventListener('click', async () => {
+                    const { error } = await supabaseClient
+                        .from(WISHLIST_TABLE)
+                        .delete()
+                        .eq('id', item.id);
+                    if (!error) {
+                        wishlistItems.splice(idx, 1);
+                        renderWishlist();
+                    } else {
+                        console.error('Gagal hapus wishlist:', error.message);
+                    }
                 });
 
                 li.appendChild(checkbox);
                 li.appendChild(span);
+                li.appendChild(sendBtn);
                 li.appendChild(removeBtn);
                 wishlistList.appendChild(li);
             });
         }
 
-        function addWishlistItem() {
+        async function addWishlistItem() {
             const text = wishlistInput.value.trim();
             if (!text) return;
-            wishlistItems.push({ text, done: false });
-            saveWishlist();
+            wishlistInput.disabled = true;
+            const { data, error } = await supabaseClient
+                .from(WISHLIST_TABLE)
+                .insert({ text, done: false })
+                .select();
+            wishlistInput.disabled = false;
+            if (error) {
+                console.error('Gagal menambah wishlist:', error.message);
+                return;
+            }
+            if (data && data[0]) wishlistItems.push(data[0]);
             renderWishlist();
             wishlistInput.value = '';
             wishlistInput.focus();
         }
 
         const ORBIT_SYNC_SPEED = 0.003;
+
 
         function crearEstrellasFondo() {
             const starGeometry = new THREE.BufferGeometry();
@@ -1148,7 +1225,6 @@
                 if (event.key === 'Enter') addWishlistItem();
             });
             loadWishlist();
-            renderWishlist();
 
             canvasEl.addEventListener('pointerdown', (event) => {
                 if (!heartModel) return;
