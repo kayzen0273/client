@@ -123,6 +123,32 @@
     background:#000;
   }
   #aiCanvas.mirror-off{ transform:none; }
+  #arCanvas{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    object-fit:cover;
+    pointer-events:none;
+    transform: scaleX(-1);
+  }
+  #arCanvas.mirror-off{ transform:none; }
+  .ar-badge{
+    position:absolute; bottom:10px; left:10px;
+    display:none;
+    align-items:center; gap:6px;
+    background:rgba(0,0,0,.6);
+    padding:5px 10px;
+    border-radius:20px;
+    font-size:10px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:#ff9ecb;
+    z-index:4;
+  }
+  .ar-badge .dot{
+    width:6px; height:6px; border-radius:50%;
+    background:#ff9ecb;
+    animation: aiPulse 1s ease-in-out infinite;
+  }
   .ai-badge{
     position:absolute; top:10px; right:10px;
     display:none;
@@ -315,8 +341,17 @@
     display:flex; align-items:center; justify-content:center;
     transition:.15s;
   }
-  .ai-preset-btn.active{ border-color:var(--bulb-amber); }
-  .ai-preset-btn:disabled{ opacity:.4; cursor:not-allowed; }
+  .ar-preset-btn{
+    width:44px; height:44px;
+    border-radius:10px;
+    border:2px solid transparent;
+    cursor:pointer;
+    font-size:19px;
+    display:flex; align-items:center; justify-content:center;
+    transition:.15s;
+  }
+  .ai-preset-btn.active, .ar-preset-btn.active{ border-color:var(--bulb-amber); }
+  .ai-preset-btn:disabled, .ar-preset-btn:disabled{ opacity:.4; cursor:not-allowed; }
 
   .ai-status-text{
     font-size:9.5px;
@@ -603,6 +638,7 @@
       <div class="viewfinder normal" id="viewfinder">
         <video id="video" autoplay playsinline muted></video>
         <canvas id="aiCanvas"></canvas>
+        <canvas id="arCanvas"></canvas>
         <div class="tint" id="tint"></div>
         <div class="idle-msg" id="idleMsg"><div class="spinner"></div>Menyalakan kamera…<br>Izinkan akses kamera di browser kamu.</div>
         <div class="error-msg" id="errorMsg" style="display:none;"></div>
@@ -610,6 +646,7 @@
         <div class="flash" id="flash"></div>
         <div class="shot-counter" id="shotCounter" style="display:none;">POSE 0/4</div>
         <div class="ai-badge" id="aiBadge"><span class="dot"></span>AI Aktif</div>
+        <div class="ar-badge" id="arBadge"><span class="dot"></span>AR Aktif</div>
       </div>
 
       <div class="controls">
@@ -644,6 +681,20 @@
         </div>
         <input type="file" id="aiCustomFile" accept="image/*" style="display:none;">
         <div class="ai-status-text" id="aiStatusText"></div>
+      </div>
+
+      <div class="ai-panel">
+        <div class="ai-panel-head">
+          <span class="ai-panel-title">🎭 Filter Wajah AR</span>
+          <button class="ai-switch" id="arSwitch" type="button" aria-label="Aktifkan filter wajah AR"></button>
+        </div>
+        <div class="ai-presets" id="arPresets">
+          <button class="ar-preset-btn active" data-preset="cat" style="background:linear-gradient(135deg,#e8a3b8,#2b2622);" title="Kucing">🐱</button>
+          <button class="ar-preset-btn" data-preset="glasses" style="background:linear-gradient(135deg,#a0dcff,#2b2622);" title="Kacamata">🕶️</button>
+          <button class="ar-preset-btn" data-preset="crown" style="background:linear-gradient(135deg,#ff9ecb,#8fd6a0);" title="Mahkota Bunga">💐</button>
+          <button class="ar-preset-btn" data-preset="mustache" style="background:linear-gradient(135deg,#c8443a,#1a1816);" title="Gentleman">🎩</button>
+        </div>
+        <div class="ai-status-text" id="arStatusText"></div>
       </div>
     </div>
 
@@ -738,6 +789,12 @@
   const aiCustomBtn = document.getElementById('aiCustomBtn');
   const aiCustomFile = document.getElementById('aiCustomFile');
   const aiStatusText = document.getElementById('aiStatusText');
+  const arCanvas = document.getElementById('arCanvas');
+  const arBadge = document.getElementById('arBadge');
+  const arSwitch = document.getElementById('arSwitch');
+  const arPresets = document.getElementById('arPresets');
+  const arPresetBtns = document.querySelectorAll('.ar-preset-btn');
+  const arStatusText = document.getElementById('arStatusText');
 
   const TOTAL_SHOTS = 4;
   let currentFilter = 'normal';
@@ -758,6 +815,13 @@
   let maskBusy = false;
   let customBgImage = null;
   const personCanvas = document.createElement('canvas');
+  let arEnabled = false;
+  let arPreset = 'cat';
+  let faceApiLoadPromise = null;
+  let faceApiReady = false;
+  let arRafId = null;
+  let arBusy = false;
+  let smoothFace = null;
   const frameBtns = document.querySelectorAll('.frame-btn');
 
   const PAPERS = {
@@ -846,6 +910,7 @@
       video.muted = true;
       video.classList.toggle('mirror-off', currentFacing === 'environment');
       aiCanvas.classList.toggle('mirror-off', currentFacing === 'environment');
+      arCanvas.classList.toggle('mirror-off', currentFacing === 'environment');
 
       const reveal = () => {
         idleMsg.style.display = 'none';
@@ -1226,6 +1291,288 @@
     img.src = URL.createObjectURL(file);
   });
 
+  // ---------- AR Face Filter (face-api.js landmark tracking, runs fully on-device) ----------
+  function ensureFaceApi(){
+    if(faceApiReady) return Promise.resolve();
+    if(faceApiLoadPromise) return faceApiLoadPromise;
+    arStatusText.textContent = 'Mengunduh model deteksi wajah…';
+    faceApiLoadPromise = (async ()=>{
+      try{
+        if(!window.faceapi){
+          await loadScriptOnce('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js');
+        }
+        const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL);
+        faceApiReady = true;
+        arStatusText.textContent = '';
+      }catch(err){
+        arStatusText.textContent = 'Filter wajah gagal dimuat. Cek koneksi internet.';
+        faceApiLoadPromise = null;
+        throw err;
+      }
+    })();
+    return faceApiLoadPromise;
+  }
+
+  function avgPoint(pts){
+    let x=0, y=0;
+    pts.forEach(p=>{ x+=p.x; y+=p.y; });
+    return { x:x/pts.length, y:y/pts.length };
+  }
+
+  function updateSmoothFace(result){
+    const lm = result.landmarks;
+    const box = result.detection.box;
+    const leftEye = avgPoint(lm.getLeftEye());
+    const rightEye = avgPoint(lm.getRightEye());
+    const nose = lm.getNose();
+    const noseTip = nose[nose.length-1];
+    const jaw = lm.getJawOutline();
+    const chin = jaw[8];
+    const angle = Math.atan2(rightEye.y-leftEye.y, rightEye.x-leftEye.x);
+    const target = { leftEye, rightEye, noseTip, chin, boxTop:box.y, boxLeft:box.x, boxWidth:box.width, boxHeight:box.height, angle };
+    if(!smoothFace){ smoothFace = target; return; }
+    const k = 0.4;
+    const lerp = (a,b)=> a+(b-a)*k;
+    const lerpPt = (a,b)=> ({ x:lerp(a.x,b.x), y:lerp(a.y,b.y) });
+    smoothFace = {
+      leftEye: lerpPt(smoothFace.leftEye, target.leftEye),
+      rightEye: lerpPt(smoothFace.rightEye, target.rightEye),
+      noseTip: lerpPt(smoothFace.noseTip, target.noseTip),
+      chin: lerpPt(smoothFace.chin, target.chin),
+      boxTop: lerp(smoothFace.boxTop, target.boxTop),
+      boxLeft: lerp(smoothFace.boxLeft, target.boxLeft),
+      boxWidth: lerp(smoothFace.boxWidth, target.boxWidth),
+      boxHeight: lerp(smoothFace.boxHeight, target.boxHeight),
+      angle: lerp(smoothFace.angle, target.angle)
+    };
+  }
+
+  function drawFlower(c, x, y, r, color){
+    c.save();
+    c.translate(x, y);
+    c.fillStyle = color;
+    for(let i=0; i<5; i++){
+      c.save();
+      c.rotate((Math.PI*2/5)*i);
+      c.beginPath();
+      c.ellipse(0, -r*0.62, r*0.42, r*0.62, 0, 0, Math.PI*2);
+      c.fill();
+      c.restore();
+    }
+    c.fillStyle = '#ffd166';
+    c.beginPath();
+    c.arc(0, 0, r*0.32, 0, Math.PI*2);
+    c.fill();
+    c.restore();
+  }
+
+  function drawCatFilter(c, face, eyeDist, midEye){
+    const foreheadY = face.boxTop - eyeDist*0.15;
+    c.save();
+    c.translate(midEye.x, foreheadY);
+    c.rotate(face.angle);
+    const earW = eyeDist*0.62, earH = eyeDist*0.85, spread = eyeDist*0.95;
+    [-1,1].forEach(side=>{
+      c.save();
+      c.translate(side*spread, -earH*0.35);
+      c.rotate(side*0.12);
+      c.fillStyle = '#2b2622';
+      c.beginPath();
+      c.moveTo(0, earH*0.35);
+      c.lineTo(-earW/2, -earH*0.65);
+      c.lineTo(earW/2, -earH*0.65);
+      c.closePath();
+      c.fill();
+      c.fillStyle = '#e8a3b8';
+      c.beginPath();
+      c.moveTo(0, earH*0.15);
+      c.lineTo(-earW*0.27, -earH*0.42);
+      c.lineTo(earW*0.27, -earH*0.42);
+      c.closePath();
+      c.fill();
+      c.restore();
+    });
+    c.restore();
+
+    c.save();
+    c.translate(face.noseTip.x, face.noseTip.y);
+    c.rotate(face.angle);
+    c.fillStyle = '#e0708c';
+    c.beginPath();
+    c.moveTo(0, -eyeDist*0.05);
+    c.lineTo(-eyeDist*0.06, eyeDist*0.04);
+    c.lineTo(eyeDist*0.06, eyeDist*0.04);
+    c.closePath();
+    c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.85)';
+    c.lineWidth = Math.max(1.4, eyeDist*0.02);
+    [-1,1].forEach(side=>{
+      for(let i=0; i<3; i++){
+        const yOff = (i-1)*eyeDist*0.09;
+        c.beginPath();
+        c.moveTo(side*eyeDist*0.08, yOff*0.4);
+        c.quadraticCurveTo(side*eyeDist*0.5, yOff, side*eyeDist*0.85, yOff*1.4);
+        c.stroke();
+      }
+    });
+    c.restore();
+  }
+
+  function drawGlassesFilter(c, face, eyeDist, midEye){
+    c.save();
+    c.translate(midEye.x, midEye.y);
+    c.rotate(face.angle);
+    const r = eyeDist*0.38;
+    const offset = eyeDist*0.52;
+    c.strokeStyle = '#2b2622';
+    c.lineWidth = Math.max(2, eyeDist*0.05);
+    c.fillStyle = 'rgba(160,220,255,.18)';
+    [-1,1].forEach(side=>{
+      c.beginPath();
+      c.ellipse(side*offset, 0, r, r*0.86, 0, 0, Math.PI*2);
+      c.fill();
+      c.stroke();
+    });
+    c.beginPath();
+    c.moveTo(-offset+r*0.7, 0);
+    c.lineTo(offset-r*0.7, 0);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(-offset-r, 0);
+    c.lineTo(-offset-r-eyeDist*0.28, -eyeDist*0.06);
+    c.moveTo(offset+r, 0);
+    c.lineTo(offset+r+eyeDist*0.28, -eyeDist*0.06);
+    c.stroke();
+    c.restore();
+  }
+
+  function drawCrownFilter(c, face, eyeDist, midEye){
+    const foreheadY = face.boxTop - eyeDist*0.05;
+    const colors = ['#ff9ecb','#ffd166','#c9a7ff','#8fd6a0','#ff9ecb'];
+    c.save();
+    c.translate(midEye.x, foreheadY);
+    c.rotate(face.angle);
+    const spread = eyeDist*1.15;
+    for(let i=0; i<5; i++){
+      const t = (i/4)*2-1;
+      const x = t*spread;
+      const y = -Math.pow(t,2)*eyeDist*0.25 - eyeDist*0.05;
+      drawFlower(c, x, y, eyeDist*0.14, colors[i]);
+    }
+    c.restore();
+  }
+
+  function drawMustacheFilter(c, face, eyeDist, midEye){
+    c.save();
+    c.translate(face.noseTip.x, face.noseTip.y + eyeDist*0.16);
+    c.rotate(face.angle);
+    c.fillStyle = '#2b2622';
+    const w = eyeDist*0.55;
+    [-1,1].forEach(side=>{
+      c.save();
+      c.scale(side,1);
+      c.beginPath();
+      c.moveTo(0,0);
+      c.bezierCurveTo(w*0.25, -eyeDist*0.05, w*0.55, eyeDist*0.02, w*0.75, -eyeDist*0.02);
+      c.bezierCurveTo(w*0.55, eyeDist*0.08, w*0.25, eyeDist*0.1, 0, eyeDist*0.04);
+      c.closePath();
+      c.fill();
+      c.restore();
+    });
+    c.restore();
+
+    const hatY = face.boxTop - eyeDist*0.15;
+    c.save();
+    c.translate(midEye.x, hatY);
+    c.rotate(face.angle);
+    c.fillStyle = '#1a1816';
+    const hatW = eyeDist*1.5;
+    roundRect(c, -hatW/2, -eyeDist*0.1, hatW, eyeDist*0.16, 6);
+    c.fill();
+    c.fillRect(-hatW*0.32, -eyeDist*0.75, hatW*0.64, eyeDist*0.68);
+    c.fillStyle = '#c8443a';
+    c.fillRect(-hatW*0.32, -eyeDist*0.25, hatW*0.64, eyeDist*0.12);
+    c.restore();
+  }
+
+  function drawArCanvas(){
+    const w = video.videoWidth || 0, h = video.videoHeight || 0;
+    if(!w || !h) return;
+    if(arCanvas.width !== w) arCanvas.width = w;
+    if(arCanvas.height !== h) arCanvas.height = h;
+    const actx = arCanvas.getContext('2d');
+    actx.clearRect(0,0,w,h);
+    if(!smoothFace) return;
+    const eyeDist = Math.hypot(smoothFace.rightEye.x-smoothFace.leftEye.x, smoothFace.rightEye.y-smoothFace.leftEye.y);
+    const midEye = { x:(smoothFace.leftEye.x+smoothFace.rightEye.x)/2, y:(smoothFace.leftEye.y+smoothFace.rightEye.y)/2 };
+    if(arPreset === 'cat') drawCatFilter(actx, smoothFace, eyeDist, midEye);
+    else if(arPreset === 'glasses') drawGlassesFilter(actx, smoothFace, eyeDist, midEye);
+    else if(arPreset === 'crown') drawCrownFilter(actx, smoothFace, eyeDist, midEye);
+    else if(arPreset === 'mustache') drawMustacheFilter(actx, smoothFace, eyeDist, midEye);
+  }
+
+  async function arLoop(){
+    if(!arEnabled) return;
+    if(!arBusy && faceApiReady && video.readyState >= 2 && video.videoWidth){
+      arBusy = true;
+      try{
+        const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
+        const result = await faceapi.detectSingleFace(video, opts).withFaceLandmarks(true);
+        if(result){ updateSmoothFace(result); } else { smoothFace = null; }
+      }catch(e){}
+      arBusy = false;
+    }
+    drawArCanvas();
+    arRafId = requestAnimationFrame(arLoop);
+  }
+
+  function startArLoop(){
+    if(arRafId) cancelAnimationFrame(arRafId);
+    arLoop();
+  }
+
+  function stopArLoop(){
+    if(arRafId) cancelAnimationFrame(arRafId);
+    arRafId = null;
+    smoothFace = null;
+    const actx = arCanvas.getContext('2d');
+    actx.clearRect(0,0,arCanvas.width,arCanvas.height);
+  }
+
+  arSwitch.addEventListener('click', async ()=>{
+    if(busy) return;
+    if(!arEnabled){
+      arEnabled = true;
+      arSwitch.classList.add('on');
+      arPresets.style.display = 'flex';
+      arBadge.style.display = 'flex';
+      try{
+        await ensureFaceApi();
+        if(arEnabled) startArLoop();
+      }catch(err){
+        arEnabled = false;
+        arSwitch.classList.remove('on');
+        arBadge.style.display = 'none';
+      }
+    } else {
+      arEnabled = false;
+      arSwitch.classList.remove('on');
+      arBadge.style.display = 'none';
+      stopArLoop();
+    }
+  });
+
+  arPresetBtns.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(busy) return;
+      arPresetBtns.forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      arPreset = btn.dataset.preset;
+    });
+  });
+
   function wait(ms){ return new Promise(r=>setTimeout(r, ms)); }
 
   async function runCountdown(){
@@ -1266,6 +1613,9 @@
       cctx.scale(-1,1);
     }
     cctx.drawImage(source, sx, sy, sw, sh, 0, 0, c.width, c.height);
+    if(arEnabled && arCanvas.width > 0){
+      cctx.drawImage(arCanvas, sx, sy, sw, sh, 0, 0, c.width, c.height);
+    }
     cctx.restore();
     cctx.filter = 'none';
     if(!useAi && f.tint){
@@ -1820,6 +2170,8 @@
     shotCounter.style.display = 'block';
     aiSwitch.disabled = true;
     aiPresetBtns.forEach(b=>b.disabled = true);
+    arSwitch.disabled = true;
+    arPresetBtns.forEach(b=>b.disabled = true);
 
     for(let i=1; i<=TOTAL_SHOTS; i++){
       shotCounter.textContent = `POSE ${i}/${TOTAL_SHOTS}`;
@@ -1850,6 +2202,8 @@
     downloadBtn.disabled = false;
     aiSwitch.disabled = false;
     aiPresetBtns.forEach(b=>b.disabled = false);
+    arSwitch.disabled = false;
+    arPresetBtns.forEach(b=>b.disabled = false);
   }
 
   shutterBtn.addEventListener('click', startSession);
