@@ -114,6 +114,34 @@
     background:#000;
   }
   #video.mirror-off{ transform:none; }
+  #aiCanvas{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    object-fit:cover;
+    display:none;
+    transform: scaleX(-1);
+    background:#000;
+  }
+  #aiCanvas.mirror-off{ transform:none; }
+  .ai-badge{
+    position:absolute; top:10px; right:10px;
+    display:none;
+    align-items:center; gap:6px;
+    background:rgba(0,0,0,.6);
+    padding:5px 10px;
+    border-radius:20px;
+    font-size:10px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--bulb-amber);
+    z-index:4;
+  }
+  .ai-badge .dot{
+    width:6px; height:6px; border-radius:50%;
+    background:var(--bulb-amber);
+    animation: aiPulse 1s ease-in-out infinite;
+  }
+  @keyframes aiPulse{ 0%,100%{opacity:.3;} 50%{opacity:1;} }
   .tint{
     position:absolute; inset:0;
     pointer-events:none;
@@ -227,6 +255,77 @@
   }
   .flip-btn:hover{ border-color:var(--bulb-amber); color:var(--bulb-amber); }
   .flip-btn:disabled{ opacity:.35; cursor:not-allowed; }
+
+  .ai-panel{
+    margin-top:14px;
+    padding:12px 14px;
+    border-radius:12px;
+    background:rgba(244,232,213,.05);
+    border:1px solid rgba(244,232,213,.18);
+  }
+  .ai-panel-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .ai-panel-title{
+    font-size:10px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    opacity:.8;
+  }
+  .ai-switch{
+    width:38px; height:22px;
+    border-radius:20px;
+    background:rgba(244,232,213,.18);
+    border:1px solid rgba(244,232,213,.32);
+    position:relative;
+    cursor:pointer;
+    flex-shrink:0;
+    transition:.2s;
+    padding:0;
+  }
+  .ai-switch::after{
+    content:"";
+    position:absolute; top:2px; left:2px;
+    width:16px; height:16px;
+    border-radius:50%;
+    background:var(--paper-cream);
+    transition:.2s;
+  }
+  .ai-switch.on{ background:var(--teal); border-color:var(--teal); }
+  .ai-switch.on::after{ transform:translateX(16px); background:#fff; }
+  .ai-switch:disabled{ opacity:.4; cursor:not-allowed; }
+
+  .ai-presets{
+    display:none;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:12px;
+  }
+  .ai-preset-btn{
+    width:44px; height:44px;
+    border-radius:10px;
+    border:2px solid transparent;
+    cursor:pointer;
+    font-size:16px;
+    color:#fff;
+    text-shadow:0 1px 3px rgba(0,0,0,.6);
+    display:flex; align-items:center; justify-content:center;
+    transition:.15s;
+  }
+  .ai-preset-btn.active{ border-color:var(--bulb-amber); }
+  .ai-preset-btn:disabled{ opacity:.4; cursor:not-allowed; }
+
+  .ai-status-text{
+    font-size:9.5px;
+    letter-spacing:.5px;
+    opacity:.65;
+    margin-top:8px;
+    text-align:center;
+    min-height:12px;
+  }
 
   .shutter-wrap{ display:flex; flex-direction:column; align-items:center; gap:6px; }
   .shutter{
@@ -503,12 +602,14 @@
     <div class="camera-unit">
       <div class="viewfinder normal" id="viewfinder">
         <video id="video" autoplay playsinline muted></video>
+        <canvas id="aiCanvas"></canvas>
         <div class="tint" id="tint"></div>
         <div class="idle-msg" id="idleMsg"><div class="spinner"></div>Menyalakan kamera…<br>Izinkan akses kamera di browser kamu.</div>
         <div class="error-msg" id="errorMsg" style="display:none;"></div>
         <div class="countdown" id="countdown">3</div>
         <div class="flash" id="flash"></div>
         <div class="shot-counter" id="shotCounter" style="display:none;">POSE 0/4</div>
+        <div class="ai-badge" id="aiBadge"><span class="dot"></span>AI Aktif</div>
       </div>
 
       <div class="controls">
@@ -526,6 +627,23 @@
           <span class="shutter-label">Jepret</span>
         </div>
         <button class="flip-btn" id="flipBtn" title="Ganti kamera depan/belakang">⟲</button>
+      </div>
+
+      <div class="ai-panel">
+        <div class="ai-panel-head">
+          <span class="ai-panel-title">✨ Latar Belakang AI</span>
+          <button class="ai-switch" id="aiSwitch" type="button" aria-label="Aktifkan latar belakang AI"></button>
+        </div>
+        <div class="ai-presets" id="aiPresets">
+          <button class="ai-preset-btn active" data-preset="blur" style="background:linear-gradient(135deg,#555,#1a1a1a);" title="Blur">◐</button>
+          <button class="ai-preset-btn" data-preset="studio-abu" style="background:linear-gradient(180deg,#6b6b6b,#242424);" title="Studio Abu"></button>
+          <button class="ai-preset-btn" data-preset="studio-pink" style="background:linear-gradient(135deg,#ffd6ec,#c9a7ff);" title="Studio Pink"></button>
+          <button class="ai-preset-btn" data-preset="studio-hijau" style="background:linear-gradient(180deg,#3ad19f,#0c6b50);" title="Studio Hijau"></button>
+          <button class="ai-preset-btn" data-preset="galaxy" style="background:radial-gradient(circle,#6a2c91,#0a0316);" title="Galaxy">✦</button>
+          <button class="ai-preset-btn" data-preset="custom" id="aiCustomBtn" style="background:rgba(244,232,213,.12);" title="Unggah gambar sendiri">＋</button>
+        </div>
+        <input type="file" id="aiCustomFile" accept="image/*" style="display:none;">
+        <div class="ai-status-text" id="aiStatusText"></div>
       </div>
     </div>
 
@@ -612,6 +730,14 @@
   const stickerOverlay = document.getElementById('stickerOverlay');
   const stickerPalette = document.getElementById('stickerPalette');
   const clearStickersBtn = document.getElementById('clearStickersBtn');
+  const aiCanvas = document.getElementById('aiCanvas');
+  const aiBadge = document.getElementById('aiBadge');
+  const aiSwitch = document.getElementById('aiSwitch');
+  const aiPresets = document.getElementById('aiPresets');
+  const aiPresetBtns = document.querySelectorAll('.ai-preset-btn');
+  const aiCustomBtn = document.getElementById('aiCustomBtn');
+  const aiCustomFile = document.getElementById('aiCustomFile');
+  const aiStatusText = document.getElementById('aiStatusText');
 
   const TOTAL_SHOTS = 4;
   let currentFilter = 'normal';
@@ -623,6 +749,15 @@
   let currentStream = null;
   let stickers = [];
   let stickerIdSeq = 1;
+  let aiBgEnabled = false;
+  let aiBgPreset = 'blur';
+  let bodyPixModel = null;
+  let bodyPixLoadPromise = null;
+  let aiRafId = null;
+  let lastMask = null;
+  let maskBusy = false;
+  let customBgImage = null;
+  const personCanvas = document.createElement('canvas');
   const frameBtns = document.querySelectorAll('.frame-btn');
 
   const PAPERS = {
@@ -710,6 +845,7 @@
       video.srcObject = stream;
       video.muted = true;
       video.classList.toggle('mirror-off', currentFacing === 'environment');
+      aiCanvas.classList.toggle('mirror-off', currentFacing === 'environment');
 
       const reveal = () => {
         idleMsg.style.display = 'none';
@@ -893,6 +1029,203 @@
 
   window.addEventListener('resize', ()=>{ syncStickerOverlay(); });
 
+  // ---------- AI Background Replacement (TensorFlow.js + BodyPix, runs fully on-device) ----------
+  function loadScriptOnce(src){
+    return new Promise((resolve, reject)=>{
+      const existing = document.querySelector('script[src="'+src+'"]');
+      if(existing){
+        if(existing.dataset.loaded === '1'){ resolve(); return; }
+        existing.addEventListener('load', ()=>resolve());
+        existing.addEventListener('error', ()=>reject(new Error('Gagal memuat skrip AI')));
+        return;
+      }
+      const s = document.createElement('script');
+      s.src = src;
+      s.async = true;
+      s.onload = ()=>{ s.dataset.loaded = '1'; resolve(); };
+      s.onerror = ()=>reject(new Error('Gagal memuat skrip AI'));
+      document.head.appendChild(s);
+    });
+  }
+
+  function ensureBodyPix(){
+    if(bodyPixModel) return Promise.resolve(bodyPixModel);
+    if(bodyPixLoadPromise) return bodyPixLoadPromise;
+    aiStatusText.textContent = 'Mengunduh model AI (±5 MB, sekali saja)…';
+    bodyPixLoadPromise = (async ()=>{
+      try{
+        if(!window.tf){
+          await loadScriptOnce('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js');
+        }
+        if(!window.bodyPix){
+          await loadScriptOnce('https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@2.2.0/dist/body-pix.min.js');
+        }
+        aiStatusText.textContent = 'Menyiapkan model…';
+        bodyPixModel = await bodyPix.load({ architecture:'MobileNetV1', outputStride:16, multiplier:0.5, quantBytes:2 });
+        aiStatusText.textContent = '';
+        return bodyPixModel;
+      }catch(err){
+        aiStatusText.textContent = 'AI gagal dimuat. Cek koneksi internet lalu coba lagi.';
+        bodyPixLoadPromise = null;
+        throw err;
+      }
+    })();
+    return bodyPixLoadPromise;
+  }
+
+  function drawAiBackground(actx, w, h, filterCss){
+    if(aiBgPreset === 'blur'){
+      actx.save();
+      actx.filter = (filterCss && filterCss !== 'none' ? filterCss + ' ' : '') + 'blur(22px) brightness(.94)';
+      actx.drawImage(video, 0, 0, w, h);
+      actx.restore();
+    } else if(aiBgPreset === 'studio-abu'){
+      const g = actx.createLinearGradient(0,0,0,h);
+      g.addColorStop(0,'#6b6b6b'); g.addColorStop(1,'#242424');
+      actx.fillStyle = g; actx.fillRect(0,0,w,h);
+    } else if(aiBgPreset === 'studio-pink'){
+      const g = actx.createLinearGradient(0,0,w,h);
+      g.addColorStop(0,'#ffd6ec'); g.addColorStop(1,'#c9a7ff');
+      actx.fillStyle = g; actx.fillRect(0,0,w,h);
+    } else if(aiBgPreset === 'studio-hijau'){
+      const g = actx.createLinearGradient(0,0,0,h);
+      g.addColorStop(0,'#3ad19f'); g.addColorStop(1,'#0c6b50');
+      actx.fillStyle = g; actx.fillRect(0,0,w,h);
+    } else if(aiBgPreset === 'galaxy'){
+      const g = actx.createRadialGradient(w/2,h*0.4,10,w/2,h*0.4,Math.max(w,h)*0.9);
+      g.addColorStop(0,'#4a2586'); g.addColorStop(.55,'#33146b'); g.addColorStop(1,'#0a0316');
+      actx.fillStyle = g; actx.fillRect(0,0,w,h);
+      const rand = seededRand(88);
+      actx.save();
+      for(let i=0; i<70; i++){
+        const x = rand()*w, y = rand()*h, r = rand()*1.5;
+        actx.globalAlpha = 0.3 + rand()*0.6;
+        actx.fillStyle = '#ffffff';
+        actx.beginPath(); actx.arc(x,y,r,0,Math.PI*2); actx.fill();
+      }
+      actx.restore();
+    } else if(aiBgPreset === 'custom' && customBgImage){
+      actx.drawImage(customBgImage, 0, 0, w, h);
+    } else {
+      actx.fillStyle = '#1a1816'; actx.fillRect(0,0,w,h);
+    }
+  }
+
+  function drawAiCanvas(){
+    const w = video.videoWidth || 0, h = video.videoHeight || 0;
+    if(!w || !h) return;
+    if(aiCanvas.width !== w) aiCanvas.width = w;
+    if(aiCanvas.height !== h) aiCanvas.height = h;
+    const actx = aiCanvas.getContext('2d');
+    const filterCss = (FILTERS[currentFilter] || FILTERS.normal).css;
+    actx.clearRect(0,0,w,h);
+    drawAiBackground(actx, w, h, filterCss);
+
+    if(lastMask && lastMask.data && lastMask.width === w && lastMask.height === h){
+      if(personCanvas.width !== w) personCanvas.width = w;
+      if(personCanvas.height !== h) personCanvas.height = h;
+      const pctx = personCanvas.getContext('2d');
+      pctx.clearRect(0,0,w,h);
+      pctx.filter = filterCss;
+      pctx.drawImage(video, 0, 0, w, h);
+      pctx.filter = 'none';
+      const imgData = pctx.getImageData(0,0,w,h);
+      const data = imgData.data;
+      const maskData = lastMask.data;
+      for(let i=0; i<maskData.length; i++){
+        if(maskData[i] === 0){ data[i*4+3] = 0; }
+      }
+      pctx.putImageData(imgData, 0, 0);
+      actx.drawImage(personCanvas, 0, 0, w, h);
+    } else {
+      actx.save();
+      actx.filter = filterCss;
+      actx.drawImage(video, 0, 0, w, h);
+      actx.restore();
+    }
+  }
+
+  function aiLoop(){
+    if(!aiBgEnabled) return;
+    if(!maskBusy && bodyPixModel && video.readyState >= 2 && video.videoWidth){
+      maskBusy = true;
+      bodyPixModel.segmentPerson(video, {
+        internalResolution: 'low',
+        segmentationThreshold: 0.65,
+        maxDetections: 1
+      }).then(mask=>{
+        lastMask = mask;
+        maskBusy = false;
+      }).catch(()=>{ maskBusy = false; });
+    }
+    drawAiCanvas();
+    aiRafId = requestAnimationFrame(aiLoop);
+  }
+
+  function startAiLoop(){
+    aiCanvas.style.display = 'block';
+    video.style.visibility = 'hidden';
+    if(aiRafId) cancelAnimationFrame(aiRafId);
+    aiLoop();
+  }
+
+  function stopAiLoop(){
+    if(aiRafId) cancelAnimationFrame(aiRafId);
+    aiRafId = null;
+    lastMask = null;
+    aiCanvas.style.display = 'none';
+    video.style.visibility = 'visible';
+  }
+
+  aiSwitch.addEventListener('click', async ()=>{
+    if(busy) return;
+    if(!aiBgEnabled){
+      aiBgEnabled = true;
+      aiSwitch.classList.add('on');
+      aiPresets.style.display = 'flex';
+      aiBadge.style.display = 'flex';
+      try{
+        await ensureBodyPix();
+        if(aiBgEnabled) startAiLoop();
+      }catch(err){
+        aiBgEnabled = false;
+        aiSwitch.classList.remove('on');
+        aiBadge.style.display = 'none';
+      }
+    } else {
+      aiBgEnabled = false;
+      aiSwitch.classList.remove('on');
+      aiBadge.style.display = 'none';
+      stopAiLoop();
+    }
+  });
+
+  aiPresetBtns.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(busy) return;
+      if(btn.dataset.preset === 'custom'){
+        aiCustomFile.click();
+        return;
+      }
+      aiPresetBtns.forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      aiBgPreset = btn.dataset.preset;
+    });
+  });
+
+  aiCustomFile.addEventListener('change', (e)=>{
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    const img = new Image();
+    img.onload = ()=>{
+      customBgImage = img;
+      aiBgPreset = 'custom';
+      aiPresetBtns.forEach(b=>b.classList.remove('active'));
+      aiCustomBtn.classList.add('active');
+    };
+    img.src = URL.createObjectURL(file);
+  });
+
   function wait(ms){ return new Promise(r=>setTimeout(r, ms)); }
 
   async function runCountdown(){
@@ -912,8 +1245,10 @@
 
   function captureFrame(){
     const c = document.createElement('canvas');
-    const vw = video.videoWidth || 640;
-    const vh = video.videoHeight || 480;
+    const useAi = aiBgEnabled && aiCanvas.style.display !== 'none' && aiCanvas.width > 0 && aiCanvas.height > 0;
+    const source = useAi ? aiCanvas : video;
+    const vw = useAi ? aiCanvas.width : (video.videoWidth || 640);
+    const vh = useAi ? aiCanvas.height : (video.videoHeight || 480);
     const targetRatio = 4/3;
     let sw = vw, sh = vh, sx = 0, sy = 0;
     if (vw/vh > targetRatio){
@@ -924,16 +1259,16 @@
     c.width = 380; c.height = 285;
     const cctx = c.getContext('2d');
     const f = FILTERS[currentFilter] || FILTERS.normal;
-    cctx.filter = f.css;
+    cctx.filter = useAi ? 'none' : f.css;
     cctx.save();
     if(currentFacing !== 'environment'){
       cctx.translate(c.width, 0);
       cctx.scale(-1,1);
     }
-    cctx.drawImage(video, sx, sy, sw, sh, 0, 0, c.width, c.height);
+    cctx.drawImage(source, sx, sy, sw, sh, 0, 0, c.width, c.height);
     cctx.restore();
     cctx.filter = 'none';
-    if(f.tint){
+    if(!useAi && f.tint){
       cctx.save();
       cctx.globalCompositeOperation = f.blend || 'soft-light';
       cctx.globalAlpha = f.tintAlpha;
@@ -1483,6 +1818,8 @@
     retakeBtn.disabled = true;
     downloadBtn.disabled = true;
     shotCounter.style.display = 'block';
+    aiSwitch.disabled = true;
+    aiPresetBtns.forEach(b=>b.disabled = true);
 
     for(let i=1; i<=TOTAL_SHOTS; i++){
       shotCounter.textContent = `POSE ${i}/${TOTAL_SHOTS}`;
@@ -1511,6 +1848,8 @@
     stickerOverlay.style.pointerEvents = 'auto';
     retakeBtn.disabled = false;
     downloadBtn.disabled = false;
+    aiSwitch.disabled = false;
+    aiPresetBtns.forEach(b=>b.disabled = false);
   }
 
   shutterBtn.addEventListener('click', startSession);
