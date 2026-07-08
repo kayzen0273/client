@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Live Puzzle — Hand Tracking</title>
+<title>Live Puzzle Sederhana — Hand Tracking</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -29,50 +29,44 @@
   }
 
   #app{
-    max-width: 1080px;
+    max-width: 900px;
     margin: 0 auto;
     padding: 32px 20px 56px;
   }
 
-  header{
-    margin-bottom: 20px;
-  }
+  header{ margin-bottom: 20px; }
   header h1{
     font-family: var(--font-head);
     font-weight: 700;
-    font-size: 24px;
+    font-size: 22px;
     margin: 0 0 4px;
   }
-  header p{
-    margin: 0;
-    font-size: 13px;
-    color: var(--dim);
-  }
+  header p{ margin: 0; font-size: 13px; color: var(--dim); }
 
   #statusLine{
-    display:inline-flex;
-    align-items:center;
-    gap:7px;
-    font-size: 12px;
-    color: var(--dim);
-    margin-top: 10px;
+    display:inline-flex; align-items:center; gap:7px;
+    font-size: 12px; color: var(--dim); margin-top: 10px;
   }
-  #statusLine .dot{
-    width:6px; height:6px; border-radius:50%;
-    background: var(--dim);
-  }
+  #statusLine .dot{ width:6px; height:6px; border-radius:50%; background: var(--dim); }
   #statusLine.active .dot{ background: var(--accent); }
 
-  .layout{
-    display:grid;
-    grid-template-columns: 1fr 250px;
-    gap: 20px;
-    align-items:start;
-    margin-top: 18px;
+  /* ---------- SIZE PICKER ---------- */
+  #sizePicker{
+    display:flex; gap:8px; align-items:center; margin: 14px 0 4px;
   }
-  @media (max-width: 820px){
-    .layout{ grid-template-columns: 1fr; }
+  #sizePicker span{ font-size:12px; color:var(--dim); margin-right:4px; }
+  .sizeBtn{
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: var(--text);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor:pointer;
   }
+  .sizeBtn.active{ border-color: var(--accent); color: var(--accent); }
+  .sizeBtn:hover{ border-color: var(--accent); }
 
   /* ---------- VIDEO PANEL ---------- */
   #viewportWrap{
@@ -81,35 +75,44 @@
     overflow:hidden;
     background: #000;
     border: 1px solid var(--border);
+    margin-top: 14px;
   }
   #viewport{
-    position:relative;
-    width:100%;
-    aspect-ratio: 4 / 3; /* overridden by JS once real camera size is known */
+    position:relative; width:100%;
+    aspect-ratio: 4 / 3;
     background: #000;
   }
-  #outputCanvas{
-    position:absolute; inset:0;
-    width:100%; height:100%;
-    display:block;
-  }
+  #outputCanvas{ position:absolute; inset:0; width:100%; height:100%; display:block; }
   #sourceVideo{ display:none; }
 
   .readout{
-    position:absolute;
-    font-size: 12px;
-    color: var(--text);
+    position:absolute; font-size: 12px; color: var(--text);
     text-shadow: 0 1px 3px rgba(0,0,0,0.8);
-    z-index: 5;
-    pointer-events:none;
+    z-index: 5; pointer-events:none;
   }
   #readoutTop{ top: 12px; left: 14px; }
   #readoutBottom{
-    bottom: 12px; left: 14px; right: 14px;
-    text-align:center;
-    color: rgba(255,255,255,0.75);
-    font-size: 11.5px;
+    bottom: 12px; left: 14px; right: 14px; text-align:center;
+    color: rgba(255,255,255,0.75); font-size: 11.5px;
   }
+
+  #captureBtnWrap{
+    position:absolute; bottom: 14px; left:50%; transform: translateX(-50%);
+    z-index: 6;
+  }
+  #captureBtn{
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: #0b0e12;
+    background: var(--accent);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 20px;
+    cursor:pointer;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+  }
+  #captureBtn:hover{ opacity:0.9; }
+  #captureBtn.hidden{ display:none; }
 
   #solvedBanner{
     position:absolute; inset:0;
@@ -117,17 +120,10 @@
     background: rgba(10,12,15,0.7);
     opacity:0; pointer-events:none;
     transition: opacity .35s ease;
-    z-index: 10;
-    text-align:center;
-    padding: 20px;
+    z-index: 10; text-align:center; padding: 20px;
   }
   #solvedBanner.show{ opacity:1; }
-  #solvedBanner h2{
-    font-family: var(--font-head);
-    font-weight: 700;
-    font-size: 22px;
-    margin: 0 0 8px;
-  }
+  #solvedBanner h2{ font-family: var(--font-head); font-weight: 700; font-size: 22px; margin: 0 0 8px; }
   #solvedBanner p{ margin:0; color: var(--dim); font-size:13px; }
   #solvedBanner .time{ margin-top:10px; color: var(--accent); font-size:12px; }
 
@@ -135,148 +131,120 @@
   #gate{
     position:absolute; inset:0;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:14px;
-    background: var(--bg);
-    z-index: 20;
-    text-align:center;
-    padding: 30px;
+    gap:14px; background: var(--bg); z-index: 20; text-align:center; padding: 30px;
   }
-  #gate h2{
-    font-family: var(--font-head);
-    font-size: 17px;
-    margin: 0;
-  }
-  #gate p{ max-width: 400px; color: var(--dim); font-size: 13px; line-height:1.6; margin:0; }
+  #gate h2{ font-family: var(--font-head); font-size: 17px; margin: 0; }
+  #gate p{ max-width: 380px; color: var(--dim); font-size: 13px; line-height:1.6; margin:0; }
   #gate button{
-    font-family: var(--font-body);
-    font-size: 13px;
-    color: #0b0e12;
-    background: var(--accent);
-    border: none;
-    padding: 11px 22px;
-    border-radius: 6px;
-    cursor:pointer;
+    font-family: var(--font-body); font-size: 13px; color: #0b0e12;
+    background: var(--accent); border: none; padding: 11px 22px;
+    border-radius: 6px; cursor:pointer;
   }
   #gate button:hover{ opacity:0.9; }
   #gate.hidden{ display:none; }
-  #gate .err{ color: #ff8080; font-size:12px; display:none; max-width:400px; }
+  #gate .err{ color: #ff8080; font-size:12px; display:none; max-width:380px; }
   #gate .err.show{ display:block; }
   #gate .spinner{
     width:18px; height:18px; border-radius:50%;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
-    animation: spin 0.8s linear infinite;
-    display:none;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    animation: spin 0.8s linear infinite; display:none;
   }
   #gate.loading .spinner{ display:block; }
   #gate.loading button{ display:none; }
   @keyframes spin{ to{ transform: rotate(360deg); } }
 
-  /* ---------- SIDE PANEL ---------- */
+  /* ---------- PANEL ---------- */
   #panel{
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 10px;
-    padding: 18px;
+    padding: 16px 18px;
+    margin-top: 16px;
   }
-  #panel h3{
-    font-family: var(--font-head);
-    font-size: 13px;
-    margin: 0 0 12px;
-    color: var(--text);
-  }
-  #panel ol{
-    margin: 0 0 16px;
-    padding-left: 18px;
-    font-size: 12.5px;
-    line-height: 1.7;
-    color: var(--dim);
-  }
+  #panel h3{ font-family: var(--font-head); font-size: 13px; margin: 0 0 10px; color: var(--text); }
+  #panel ol{ margin: 0; padding-left: 18px; font-size: 12.5px; line-height: 1.7; color: var(--dim); }
   #panel ol li b{ color: var(--text); font-weight:500; }
-  #panel ol li{ margin-bottom: 6px; }
+  #panel ol li{ margin-bottom: 4px; }
 
-  .kv{ display:flex; justify-content:space-between; font-size:11.5px; color:var(--dim); margin-bottom:6px; }
+  #controlsRow{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-top: 14px; gap: 10px; flex-wrap: wrap;
+  }
+  .kv{ font-size:11.5px; color:var(--dim); }
   .kv b{ color:var(--text); font-weight:500; }
 
   #rebootBtn{
-    width:100%;
-    font-family: var(--font-body);
-    font-size: 12px;
-    color: var(--text);
-    background: transparent;
-    border: 1px solid var(--border);
-    padding: 9px 10px;
-    border-radius: 6px;
-    cursor:pointer;
-    margin-top: 8px;
+    font-family: var(--font-body); font-size: 12px; color: var(--text);
+    background: transparent; border: 1px solid var(--border);
+    padding: 8px 14px; border-radius: 6px; cursor:pointer;
   }
   #rebootBtn:hover:not(:disabled){ border-color: var(--accent); color: var(--accent); }
   #rebootBtn:disabled{ opacity:0.35; cursor:not-allowed; }
 
   .key{
-    font-family: var(--font-body);
-    background: rgba(255,255,255,0.08);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 1px 6px;
-    font-size: 11px;
+    font-family: var(--font-body); background: rgba(255,255,255,0.08);
+    border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-size: 11px;
   }
 
-  footer{
-    margin-top: 22px;
-    font-size: 11px;
-    color: var(--dim);
-  }
+  footer{ margin-top: 22px; font-size: 11px; color: var(--dim); }
 </style>
 </head>
 <body>
 <div id="app">
 
   <header>
-    <h1>Live Puzzle — Hand Tracking</h1>
-    <p>Susun ulang puzzle dari gambar kameramu sendiri, dikendalikan lewat gestur tangan.</p>
+    <h1>Live Puzzle Sederhana</h1>
+    <p>Ambil foto dari kamera, susun ulang jadi utuh lagi — cukup pakai gerakan tangan (cubit &amp; geser).</p>
     <div id="statusLine"><span class="dot"></span><span id="statusText">Kamera belum aktif</span></div>
   </header>
 
-  <div class="layout">
-    <div id="viewportWrap">
-      <div id="viewport">
-        <video id="sourceVideo" playsinline autoplay muted></video>
-        <canvas id="outputCanvas"></canvas>
+  <div id="sizePicker">
+    <span>Jumlah potongan:</span>
+    <button class="sizeBtn" data-size="2">2×2 (4)</button>
+    <button class="sizeBtn active" data-size="3">3×3 (9)</button>
+  </div>
 
-        <div class="readout" id="readoutTop">
-          <div id="readTime">0s</div>
-          <div id="readGrid">—</div>
-        </div>
-        <div class="readout" id="readoutBottom">Tunjukkan dua tangan untuk mengatur ukuran grid</div>
+  <div id="viewportWrap">
+    <div id="viewport">
+      <video id="sourceVideo" playsinline autoplay muted></video>
+      <canvas id="outputCanvas"></canvas>
 
-        <div id="solvedBanner">
-          <h2>Puzzle selesai</h2>
-          <p>Tunjukkan gestur 🤟 (metal) atau tekan Reset untuk main lagi</p>
-          <div class="time" id="solvedTime"></div>
-        </div>
+      <div class="readout" id="readoutTop">
+        <div id="readTime">0s</div>
+        <div id="readGrid">—</div>
+      </div>
+      <div class="readout" id="readoutBottom">Tekan "Ambil &amp; Mulai" untuk membuat puzzle</div>
 
-        <div id="gate">
-          <h2>Aktifkan kamera</h2>
-          <p>Aplikasi ini melacak tanganmu langsung di browser (tidak ada video yang dikirim ke server). Pastikan pencahayaan cukup dan tanganmu terlihat jelas.</p>
-          <button id="startBtn">Aktifkan Kamera</button>
-          <div class="spinner"></div>
-          <div class="err" id="gateErr"></div>
-        </div>
+      <div id="captureBtnWrap">
+        <button id="captureBtn" class="hidden">📸 Ambil &amp; Mulai</button>
+      </div>
+
+      <div id="solvedBanner">
+        <h2>Puzzle selesai 🎉</h2>
+        <p>Tekan Reset untuk main lagi</p>
+        <div class="time" id="solvedTime"></div>
+      </div>
+
+      <div id="gate">
+        <h2>Aktifkan kamera</h2>
+        <p>Aplikasi ini melacak tanganmu langsung di browser (tidak ada video yang dikirim ke server). Pastikan pencahayaan cukup.</p>
+        <button id="startBtn">Aktifkan Kamera</button>
+        <div class="spinner"></div>
+        <div class="err" id="gateErr"></div>
       </div>
     </div>
+  </div>
 
-    <div id="panel">
-      <h3>Cara main</h3>
-      <ol>
-        <li><b>Setup:</b> tunjukkan 2 tangan, atur jarak jari telunjuk untuk ukuran grid (2×2–5×5).</li>
-        <li><b>Cubit</b> (telunjuk + ibu jari) untuk mengambil gambar &amp; memulai puzzle.</li>
-        <li><b>Cubit &amp; geser</b> sebuah kotak ke kotak lain untuk menukar posisi.</li>
-        <li>Susun ulang sampai kembali ke posisi asal.</li>
-      </ol>
-
-      <div class="kv"><span>Reset gesture</span><b>🤟</b></div>
-      <div class="kv"><span>Reset key</span><b class="key">R</b></div>
+  <div id="panel">
+    <h3>Cara main</h3>
+    <ol>
+      <li><b>Pilih</b> jumlah potongan (2×2 atau 3×3) di atas.</li>
+      <li>Tekan tombol <b>Ambil &amp; Mulai</b> untuk memotret dan mengacak gambar.</li>
+      <li><b>Cubit</b> (telunjuk + ibu jari) sebuah kotak, geser, lalu lepas di kotak lain untuk menukar posisi.</li>
+      <li>Susun sampai gambar kembali utuh.</li>
+    </ol>
+    <div id="controlsRow">
+      <span class="kv">Reset key <b class="key">R</b></span>
       <button id="rebootBtn" disabled>Reset</button>
     </div>
   </div>
@@ -310,12 +278,14 @@
   const solvedBanner = document.getElementById('solvedBanner');
   const solvedTime = document.getElementById('solvedTime');
   const rebootBtn = document.getElementById('rebootBtn');
+  const captureBtn = document.getElementById('captureBtn');
+  const sizeBtns = Array.from(document.querySelectorAll('.sizeBtn'));
 
   /* ============ Offscreen clean video layer (for tile cropping) ============ */
   const videoLayer = document.createElement('canvas');
   const vctx = videoLayer.getContext('2d');
 
-  /* ============ Hand connections (MediaPipe standard 21-point topology) ============ */
+  /* ============ Hand connections ============ */
   const HAND_CONNECTIONS = [
     [0,1],[1,2],[2,3],[3,4],
     [0,5],[5,6],[6,7],[7,8],
@@ -327,17 +297,16 @@
 
   /* ============ Game state ============ */
   let mode = 'setup';          // 'setup' | 'puzzle'
-  let gridSize = 3;
-  let tiles = [];               // array of offscreen canvases
-  let tileRects = [];           // [x,y,w,h] per slot
-  let tileOrder = [];           // shuffled indices
+  let gridSize = 3;             // fixed choice: 2 or 3
+  let tiles = [];
+  let tileRects = [];
+  let tileOrder = [];
   let selectedTileIdx = null;
   let lastCursorPos = {x:0, y:0};
-  let resetCooldownUntil = 0;
   let startTime = 0;
   let elapsedTime = 0;
   let isSolved = false;
-  let previewGridSize = 3;
+  let wantCapture = false;      // set true when capture button pressed
 
   /* ============ Utility ============ */
   function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
@@ -385,21 +354,6 @@
     ctx.restore();
   }
 
-  function isMetalGesture(lms){
-    const indexOpen = lms[8].y < lms[6].y;
-    const middleClosed = lms[12].y > lms[10].y;
-    const ringClosed = lms[16].y > lms[14].y;
-    const pinkyOpen = lms[20].y < lms[18].y;
-    return indexOpen && pinkyOpen && middleClosed && ringClosed;
-  }
-
-  function mapSideToGrid(side, w){
-    const minSide = w * 0.20;
-    const maxSide = w * 0.55;
-    const t = clamp((side - minSide) / (maxSide - minSide), 0, 1);
-    return Math.round(2 + t * 3); // 2..5
-  }
-
   function shuffleArray(arr){
     const a = arr.slice();
     for (let i=a.length-1; i>0; i--){
@@ -410,9 +364,13 @@
   }
 
   /* ============ Puzzle creation ============ */
-  function createPuzzleSnapshot(x1,y1,x2,y2, gSize){
-    x1 = Math.round(x1); y1 = Math.round(y1); x2 = Math.round(x2); y2 = Math.round(y2);
-    const cropW = x2 - x1, cropH = y2 - y1;
+  function createPuzzleSnapshot(gSize){
+    const w = canvas.width, h = canvas.height;
+    // fixed centered square crop, sized to fit the frame comfortably
+    const side = Math.min(w, h) * 0.85;
+    const x1 = Math.round((w - side) / 2);
+    const y1 = Math.round((h - side) / 2);
+    const cropW = Math.round(side), cropH = Math.round(side);
     const th = Math.floor(cropH / gSize), tw = Math.floor(cropW / gSize);
     if (th < 4 || tw < 4) return false;
 
@@ -446,9 +404,26 @@
     selectedTileIdx = null;
     tiles = []; tileRects = []; tileOrder = [];
     solvedBanner.classList.remove('show');
-    readoutBottom.textContent = 'Tunjukkan dua tangan untuk mengatur ukuran grid';
+    readoutBottom.textContent = 'Tekan "Ambil & Mulai" untuk membuat puzzle';
     rebootBtn.disabled = true;
+    captureBtn.classList.remove('hidden');
   }
+
+  /* ============ Size picker ============ */
+  sizeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (mode !== 'setup') return; // lock while playing
+      sizeBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      gridSize = parseInt(btn.dataset.size, 10);
+      readGrid.textContent = `${gridSize}×${gridSize}`;
+    });
+  });
+
+  /* ============ Capture button ============ */
+  captureBtn.addEventListener('click', () => {
+    wantCapture = true;
+  });
 
   /* ============ MediaPipe setup ============ */
   const hands = new Hands({
@@ -488,11 +463,9 @@
 
     let cursor = null;
     let isPinching = false;
-    let metalDetected = false;
     const PINCH_THRESHOLD = w * 0.035;
 
     rawHands.forEach((lms, idx) => {
-      if (isMetalGesture(lms)) metalDetected = true;
       const idxTip = mirrored[idx][8];
       const thmTip = mirrored[idx][4];
       const dist = Math.hypot(idxTip.x - thmTip.x, idxTip.y - thmTip.y);
@@ -503,47 +476,25 @@
       }
     });
 
-    if (metalDetected && mode === 'puzzle' && Date.now() > resetCooldownUntil){
-      resetToSetup();
-      resetCooldownUntil = Date.now() + 900;
-    }
-
     if (mode === 'setup'){
       mirrored.forEach(pts => drawHandSkeleton(pts));
 
-      if (rawHands.length === 2){
-        const p1 = mirrored[0][8], p2 = mirrored[1][8];
-        const cx = (p1.x+p2.x)/2, cy=(p1.y+p2.y)/2;
-        const minSide = w * 0.20;
-        let side = Math.max(Math.abs(p1.x-p2.x), Math.abs(p1.y-p2.y), minSide);
-        side = Math.min(side, Math.min(w,h) - 40);
-        let x1 = clamp(cx - side/2, 0, w), y1 = clamp(cy - side/2, 0, h);
-        let x2 = Math.min(w, x1+side), y2 = Math.min(h, y1+side);
+      // draw a fixed centered square preview of where the puzzle will be cropped
+      const side = Math.min(w, h) * 0.85;
+      const x1 = (w - side) / 2, y1 = (h - side) / 2;
+      strokeRoundedRect(x1, y1, x1+side, y1+side, 18, 'rgba(238,246,251,0.7)', 1.5);
 
-        previewGridSize = mapSideToGrid(side, w);
-        strokeRoundedRect(x1,y1,x2,y2,18,'rgba(238,246,251,0.9)',1.5);
+      readGrid.textContent = `${gridSize}×${gridSize}`;
 
-        ctx.save();
-        ctx.font = '500 13px "IBM Plex Mono", monospace';
-        ctx.fillStyle = '#5ec8ff';
-        ctx.textAlign = 'center';
-        ctx.fillText(`${previewGridSize}×${previewGridSize}`, (x1+x2)/2, y1 - 10 < 14 ? y2 + 22 : y1 - 10);
-        ctx.restore();
-
-        readGrid.textContent = `${previewGridSize}×${previewGridSize}`;
-        readoutBottom.textContent = 'Cubit (jari telunjuk + ibu jari) untuk mulai';
-
-        if (isPinching){
-          const ok = createPuzzleSnapshot(x1,y1,x2,y2, previewGridSize);
-          if (ok){
-            mode = 'puzzle';
-            rebootBtn.disabled = false;
-            readoutBottom.textContent = 'Cubit & geser kotak untuk menukar posisi';
-          }
+      if (wantCapture){
+        wantCapture = false;
+        const ok = createPuzzleSnapshot(gridSize);
+        if (ok){
+          mode = 'puzzle';
+          rebootBtn.disabled = false;
+          captureBtn.classList.add('hidden');
+          readoutBottom.textContent = 'Cubit & geser kotak untuk menukar posisi';
         }
-      } else {
-        readGrid.textContent = '—';
-        readoutBottom.textContent = 'Tunjukkan dua tangan untuk mengatur ukuran grid';
       }
     } else if (mode === 'puzzle'){
 
@@ -593,7 +544,7 @@
       if (isSolved){
         solvedBanner.classList.add('show');
         solvedTime.textContent = `${Math.floor(elapsedTime)}s · ${gridSize}×${gridSize}`;
-        readoutBottom.textContent = 'Tunjukkan 🤟 atau tekan Reset untuk main lagi';
+        readoutBottom.textContent = 'Tekan Reset untuk main lagi';
       } else {
         solvedBanner.classList.remove('show');
       }
@@ -613,10 +564,8 @@
 
     const nHands = rawHands.length;
     statusLine.className = nHands > 0 ? 'active' : '';
-    if (Date.now() < resetCooldownUntil){
-      statusText.textContent = 'Reset…';
-    } else if (mode === 'setup'){
-      statusText.textContent = `Kalibrasi · tangan terdeteksi: ${nHands}/2`;
+    if (mode === 'setup'){
+      statusText.textContent = `Siap · tangan terdeteksi: ${nHands}`;
     } else {
       statusText.textContent = isSolved ? 'Selesai' : `Puzzle aktif · ${gridSize}×${gridSize}`;
     }
@@ -645,11 +594,11 @@
       const vh = video.videoHeight || 720;
       canvas.width = vw; canvas.height = vh;
       videoLayer.width = vw; videoLayer.height = vh;
-      // lock the panel's aspect ratio to the camera's real ratio so the feed is never stretched
       viewport.style.aspectRatio = vw + ' / ' + vh;
 
-      statusText.textContent = 'Kamera aktif · tunjukkan dua tangan';
+      statusText.textContent = 'Kamera aktif';
       statusLine.classList.add('active');
+      captureBtn.classList.remove('hidden');
 
       camera = new Camera(video, {
         onFrame: async () => { await hands.send({ image: video }); },
