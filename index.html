@@ -111,20 +111,48 @@
     object-fit:cover;
     transform: scaleX(-1);
     display:block;
+    background:#000;
   }
-  .viewfinder.bw #video{ filter:grayscale(1) contrast(1.15); }
-  .viewfinder.sepia #video{ filter:sepia(.75) contrast(1.05) saturate(1.2); }
-  .viewfinder.vintage #video{ filter:contrast(1.1) saturate(1.35) hue-rotate(-6deg) brightness(1.02); }
-  .viewfinder.normal #video{ filter:none; }
+  #video.mirror-off{ transform:none; }
+  .tint{
+    position:absolute; inset:0;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .15s;
+  }
 
   .idle-msg, .error-msg{
     position:absolute; inset:0;
-    display:flex; align-items:center; justify-content:center;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:12px;
     text-align:center; padding:24px;
     font-size:13px; line-height:1.6;
-    color:var(--paper-cream); background:rgba(0,0,0,.55);
+    color:var(--paper-cream); background:rgba(0,0,0,.72);
   }
+  .idle-msg{ background:rgba(20,17,14,.9); }
+  .idle-msg .spinner{
+    width:26px; height:26px;
+    border-radius:50%;
+    border:3px solid rgba(244,185,66,.25);
+    border-top-color:var(--bulb-amber);
+    animation:spin 1s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
   .error-msg{ color:#ffb4a8; }
+  .retry-btn{
+    font-family:'Space Mono', monospace;
+    font-size:11px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    background:var(--bulb-amber);
+    color:var(--ink);
+    border:none;
+    padding:8px 16px;
+    border-radius:20px;
+    cursor:pointer;
+    font-weight:700;
+  }
+  .retry-btn:hover{ filter:brightness(1.08); }
 
   .countdown{
     position:absolute; inset:0;
@@ -185,6 +213,20 @@
   }
   .filter-btn:hover{ border-color:var(--bulb-amber); color:var(--bulb-amber); }
   .filter-btn.active{ background:var(--bulb-amber); color:var(--ink); border-color:var(--bulb-amber); font-weight:700; }
+
+  .flip-btn{
+    width:40px; height:40px;
+    border-radius:50%;
+    background:rgba(244,232,213,.08);
+    border:1px solid rgba(244,232,213,.35);
+    color:var(--paper-cream);
+    font-size:16px;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    transition:.15s;
+  }
+  .flip-btn:hover{ border-color:var(--bulb-amber); color:var(--bulb-amber); }
+  .flip-btn:disabled{ opacity:.35; cursor:not-allowed; }
 
   .shutter-wrap{ display:flex; flex-direction:column; align-items:center; gap:6px; }
   .shutter{
@@ -282,6 +324,26 @@
     text-transform:uppercase;
   }
 
+  .paper-picker{
+    width:100%;
+    margin-top:12px;
+  }
+  .paper-swatches{
+    display:flex;
+    gap:8px;
+    justify-content:center;
+  }
+  .paper-swatch{
+    width:22px; height:22px;
+    border-radius:50%;
+    cursor:pointer;
+    border:2px solid transparent;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.2);
+    transition:.15s;
+  }
+  .paper-swatch.active{ border-color:var(--bulb-amber); transform:scale(1.12); }
+  .paper-swatch:disabled{ opacity:.4; cursor:not-allowed; }
+
   .strip-actions{
     display:flex;
     gap:10px;
@@ -343,8 +405,9 @@
     <div class="camera-unit">
       <div class="viewfinder normal" id="viewfinder">
         <video id="video" autoplay playsinline muted></video>
-        <div class="idle-msg" id="idleMsg">Menyalakan kamera…<br>Izinkan akses kamera di browser kamu.</div>
-        <div class="error-msg" id="errorMsg" style="display:none;">Kamera tidak bisa diakses.<br>Cek izin kamera lalu muat ulang halaman.</div>
+        <div class="tint" id="tint"></div>
+        <div class="idle-msg" id="idleMsg"><div class="spinner"></div>Menyalakan kamera…<br>Izinkan akses kamera di browser kamu.</div>
+        <div class="error-msg" id="errorMsg" style="display:none;"></div>
         <div class="countdown" id="countdown">3</div>
         <div class="flash" id="flash"></div>
         <div class="shot-counter" id="shotCounter" style="display:none;">POSE 0/4</div>
@@ -356,11 +419,15 @@
           <button class="filter-btn" data-filter="bw">B&amp;W</button>
           <button class="filter-btn" data-filter="sepia">Sephia</button>
           <button class="filter-btn" data-filter="vintage">Vintage</button>
+          <button class="filter-btn" data-filter="cool">Cool</button>
+          <button class="filter-btn" data-filter="warm">Warm</button>
+          <button class="filter-btn" data-filter="noir">Noir</button>
         </div>
         <div class="shutter-wrap">
           <button class="shutter" id="shutterBtn" title="Mulai sesi foto"></button>
           <span class="shutter-label">Jepret</span>
         </div>
+        <button class="flip-btn" id="flipBtn" title="Ganti kamera depan/belakang">⟲</button>
       </div>
     </div>
 
@@ -373,12 +440,23 @@
           <button class="frame-btn" data-frame="polaroid"><span class="swatch" style="background:#ffffff;"></span>Polaroid</button>
           <button class="frame-btn" data-frame="pesta"><span class="swatch" style="background:#e8bb3c;"></span>Pesta</button>
           <button class="frame-btn" data-frame="love"><span class="swatch" style="background:#c8546b;"></span>Love</button>
+          <button class="frame-btn" data-frame="neon"><span class="swatch" style="background:#00eaff;"></span>Neon</button>
+          <button class="frame-btn" data-frame="birthday"><span class="swatch" style="background:#e8443a;"></span>Ultah</button>
         </div>
       </div>
       <div class="strip-slot">
         <canvas id="stripCanvas" width="380" height="1160"></canvas>
       </div>
       <div class="strip-caption">Strip kamu akan tercetak di sini</div>
+      <div class="paper-picker">
+        <div class="frame-picker-label">Warna Kertas</div>
+        <div class="paper-swatches" id="paperSwatches">
+          <button class="paper-swatch active" data-paper="cream" style="background:#f2e8d5;" title="Krem"></button>
+          <button class="paper-swatch" data-paper="pink" style="background:#f7dbe4;" title="Pink"></button>
+          <button class="paper-swatch" data-paper="mint" style="background:#dff2e7;" title="Mint"></button>
+          <button class="paper-swatch" data-paper="black" style="background:#141212;" title="Hitam"></button>
+        </div>
+      </div>
       <div class="strip-actions">
         <button class="action-btn" id="retakeBtn" disabled>Ulangi</button>
         <button class="action-btn primary" id="downloadBtn" disabled>Unduh</button>
@@ -393,47 +471,141 @@
 (function(){
   const video = document.getElementById('video');
   const viewfinder = document.getElementById('viewfinder');
+  const tintEl = document.getElementById('tint');
   const idleMsg = document.getElementById('idleMsg');
   const errorMsg = document.getElementById('errorMsg');
   const countdownEl = document.getElementById('countdown');
   const flashEl = document.getElementById('flash');
   const shotCounter = document.getElementById('shotCounter');
   const shutterBtn = document.getElementById('shutterBtn');
+  const flipBtn = document.getElementById('flipBtn');
   const filterBtns = document.querySelectorAll('.filter-btn');
   const stripCanvas = document.getElementById('stripCanvas');
   const ctx = stripCanvas.getContext('2d');
   const retakeBtn = document.getElementById('retakeBtn');
   const downloadBtn = document.getElementById('downloadBtn');
+  const paperBtns = document.querySelectorAll('.paper-swatch');
 
   const TOTAL_SHOTS = 4;
   let currentFilter = 'normal';
   let currentFrame = 'plain';
+  let currentPaper = 'cream';
   let capturedFrames = [];
   let busy = false;
+  let currentFacing = 'user';
+  let currentStream = null;
   const frameBtns = document.querySelectorAll('.frame-btn');
 
-  const filterCSS = {
-    normal: 'none',
-    bw: 'grayscale(1) contrast(1.15)',
-    sepia: 'sepia(.75) contrast(1.05) saturate(1.2)',
-    vintage: 'contrast(1.1) saturate(1.35) hue-rotate(-6deg) brightness(1.02)'
+  const PAPERS = {
+    cream: { bg:'#f2e8d5', text:'#2b2622', sub:'#6b5f4f' },
+    pink:  { bg:'#f7dbe4', text:'#5a2233', sub:'#8a4d5f' },
+    mint:  { bg:'#dff2e7', text:'#1f4636', sub:'#3f6b54' },
+    black: { bg:'#141212', text:'#f2e8d5', sub:'#a89f8f' }
   };
 
+  const FILTERS = {
+    normal:  { css:'none' },
+    bw:      { css:'grayscale(1) contrast(1.15)' },
+    sepia:   { css:'sepia(.75) contrast(1.05) saturate(1.2)' },
+    vintage: { css:'contrast(1.1) saturate(1.35) hue-rotate(-6deg) brightness(1.02)' },
+    cool:    { css:'contrast(1.08) saturate(1.1) brightness(1.03)', tint:'#3f7fd1', tintAlpha:.18, blend:'soft-light' },
+    warm:    { css:'contrast(1.05) saturate(1.2) brightness(1.05)', tint:'#e8a34e', tintAlpha:.18, blend:'soft-light' },
+    noir:    { css:'grayscale(1) contrast(1.55) brightness(.92)' }
+  };
+
+  function applyFilter(name){
+    const f = FILTERS[name] || FILTERS.normal;
+    video.style.filter = f.css;
+    if(f.tint){
+      tintEl.style.background = f.tint;
+      tintEl.style.mixBlendMode = f.blend || 'soft-light';
+      tintEl.style.opacity = f.tintAlpha;
+    } else {
+      tintEl.style.opacity = 0;
+    }
+  }
+
+  function cameraErrorText(err){
+    if(location.protocol !== 'https:' && location.hostname !== 'localhost' && location.protocol !== 'file:'){
+      return 'Kamera butuh koneksi HTTPS. Buka halaman ini lewat https:// atau localhost.';
+    }
+    if(err && err.name === 'NotAllowedError'){
+      return 'Izin kamera ditolak. Klik ikon kamera di address bar browser lalu izinkan akses, atau cek pengaturan privasi perangkat.';
+    }
+    if(err && err.name === 'NotFoundError'){
+      return 'Kamera tidak ditemukan di perangkat ini.';
+    }
+    if(err && err.name === 'NotReadableError'){
+      return 'Kamera sedang dipakai aplikasi lain. Tutup aplikasi tersebut lalu coba lagi.';
+    }
+    if(err && err.name === 'OverconstrainedError'){
+      return 'Kamera yang diminta tidak tersedia di perangkat ini.';
+    }
+    return 'Kamera tidak bisa diakses. Cek izin kamera lalu coba lagi.';
+  }
+
+  function showCameraError(msg){
+    idleMsg.style.display = 'none';
+    errorMsg.style.display = 'flex';
+    errorMsg.innerHTML = msg + '<br><button class="retry-btn" id="retryCamBtn">Coba Lagi</button>';
+    shutterBtn.disabled = true;
+    const retryBtn = document.getElementById('retryCamBtn');
+    if(retryBtn) retryBtn.addEventListener('click', initCamera);
+  }
+
+  function stopCurrentStream(){
+    if(currentStream){
+      currentStream.getTracks().forEach(t => t.stop());
+      currentStream = null;
+    }
+  }
+
   async function initCamera(){
+    idleMsg.style.display = 'flex';
+    errorMsg.style.display = 'none';
+    shutterBtn.disabled = true;
+
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      showCameraError('Browser ini tidak mendukung akses kamera, atau halaman tidak dibuka lewat HTTPS/localhost.');
+      return;
+    }
+
+    stopCurrentStream();
+
     try{
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode:'user', width:{ideal:1280}, height:{ideal:960} },
+        video: { facingMode: currentFacing, width:{ideal:1280}, height:{ideal:960} },
         audio:false
       });
+      currentStream = stream;
       video.srcObject = stream;
-      idleMsg.style.display = 'none';
+      video.muted = true;
+      video.classList.toggle('mirror-off', currentFacing === 'environment');
+
+      const reveal = () => {
+        idleMsg.style.display = 'none';
+        errorMsg.style.display = 'none';
+        shutterBtn.disabled = false;
+      };
+
+      video.onloadedmetadata = () => {
+        const playPromise = video.play();
+        if(playPromise && playPromise.catch){ playPromise.catch(()=>{}); }
+      };
+      video.onplaying = reveal;
+      // fallback in case 'playing' never fires on some browsers
+      setTimeout(()=>{ if(video.readyState >= 2) reveal(); }, 800);
     }catch(err){
-      idleMsg.style.display = 'none';
-      errorMsg.style.display = 'flex';
-      shutterBtn.disabled = true;
+      showCameraError(cameraErrorText(err));
     }
   }
   initCamera();
+
+  flipBtn.addEventListener('click', ()=>{
+    if(busy) return;
+    currentFacing = currentFacing === 'user' ? 'environment' : 'user';
+    initCamera();
+  });
 
   filterBtns.forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -441,7 +613,18 @@
       filterBtns.forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
       currentFilter = btn.dataset.filter;
-      viewfinder.className = 'viewfinder ' + currentFilter;
+      applyFilter(currentFilter);
+    });
+  });
+
+  paperBtns.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(busy) return;
+      paperBtns.forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      currentPaper = btn.dataset.paper;
+      if(capturedFrames.length > 0){ renderStrip(); }
+      else { drawStripPlaceholder(); }
     });
   });
 
@@ -485,12 +668,24 @@
     }
     c.width = 380; c.height = 285;
     const cctx = c.getContext('2d');
-    cctx.filter = filterCSS[currentFilter];
+    const f = FILTERS[currentFilter] || FILTERS.normal;
+    cctx.filter = f.css;
     cctx.save();
-    cctx.translate(c.width, 0);
-    cctx.scale(-1,1);
+    if(currentFacing !== 'environment'){
+      cctx.translate(c.width, 0);
+      cctx.scale(-1,1);
+    }
     cctx.drawImage(video, sx, sy, sw, sh, 0, 0, c.width, c.height);
     cctx.restore();
+    cctx.filter = 'none';
+    if(f.tint){
+      cctx.save();
+      cctx.globalCompositeOperation = f.blend || 'soft-light';
+      cctx.globalAlpha = f.tintAlpha;
+      cctx.fillStyle = f.tint;
+      cctx.fillRect(0, 0, c.width, c.height);
+      cctx.restore();
+    }
     return c;
   }
 
@@ -605,26 +800,86 @@
     drawHeart(c, W/2 + 30, topPad/2 - 4, 10, rose);
   }
 
+  function decorateNeon(c, W, H, positions, regionTop, regionBottom){
+    c.fillStyle = '#0d0221';
+    c.fillRect(0, regionTop-16, W, (regionBottom-regionTop)+32);
+    positions.forEach(p=>{
+      c.save();
+      c.shadowColor = '#00eaff';
+      c.shadowBlur = 16;
+      c.strokeStyle = '#00eaff';
+      c.lineWidth = 3;
+      roundRect(c, p.x-7, p.y-7, p.w+14, p.h+14, 9);
+      c.stroke();
+      c.restore();
+      c.save();
+      c.shadowColor = '#ff3fd8';
+      c.shadowBlur = 10;
+      c.strokeStyle = '#ff3fd8';
+      c.lineWidth = 1.5;
+      roundRect(c, p.x-3, p.y-3, p.w+6, p.h+6, 6);
+      c.stroke();
+      c.restore();
+    });
+  }
+
+  function drawBalloon(c, x, y, size, color){
+    c.save();
+    c.fillStyle = color;
+    c.beginPath();
+    c.ellipse(x, y, size*0.62, size*0.78, 0, 0, Math.PI*2);
+    c.fill();
+    c.strokeStyle = 'rgba(0,0,0,.2)';
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(x, y+size*0.78);
+    c.quadraticCurveTo(x+5, y+size*0.78+18, x, y+size*0.78+30);
+    c.stroke();
+    c.restore();
+  }
+
+  function decorateBirthday(c, W, topPad, positions, regionBottom){
+    const colors = ['#e8443a','#3f9dd1','#e8bb3c','#5fbf6a','#c8546b'];
+    const flagY = topPad*0.42;
+    const n = 9;
+    for(let i=0; i<n; i++){
+      const x = (W/(n-1))*i;
+      c.save();
+      c.fillStyle = colors[i % colors.length];
+      c.beginPath();
+      c.moveTo(x-9, 6);
+      c.lineTo(x+9, 6);
+      c.lineTo(x, flagY);
+      c.closePath();
+      c.fill();
+      c.restore();
+    }
+    drawBalloon(c, 26, regionBottom+16, 20, colors[1]);
+    drawBalloon(c, W-26, regionBottom+16, 18, colors[3]);
+  }
+
   function drawStripPlaceholder(){
+    const paper = PAPERS[currentPaper] || PAPERS.cream;
     ctx.clearRect(0,0,stripCanvas.width, stripCanvas.height);
-    ctx.fillStyle = '#f2e8d5';
+    ctx.fillStyle = paper.bg;
     ctx.fillRect(0,0,stripCanvas.width, stripCanvas.height);
   }
   drawStripPlaceholder();
 
   function renderStrip(){
+    const paper = PAPERS[currentPaper] || PAPERS.cream;
     const W = stripCanvas.width;
-    const pad = currentFrame === 'film' ? 36 : 22;
+    const pad = currentFrame === 'film' ? 36 : (currentFrame === 'neon' ? 30 : 22);
     const photoW = W - pad*2;
     const photoH = photoW * 0.75;
     const gap = currentFrame === 'polaroid' ? 30 : 16;
-    const topPad = currentFrame === 'love' ? 40 : 26;
+    const topPad = (currentFrame === 'love' || currentFrame === 'birthday') ? 42 : 26;
     const bottomCaption = 92;
     const n = capturedFrames.length;
     const H = topPad + n*photoH + (n-1)*gap + bottomCaption;
     stripCanvas.height = H;
 
-    ctx.fillStyle = '#f2e8d5';
+    ctx.fillStyle = paper.bg;
     ctx.fillRect(0,0,W,H);
 
     const positions = capturedFrames.map((_, i)=>({
@@ -635,6 +890,10 @@
 
     if(currentFrame === 'film'){
       decorateFilm(ctx, W, H, pad, regionTop, regionBottom);
+    }
+    if(currentFrame === 'neon'){
+      ctx.fillStyle = '#0d0221';
+      ctx.fillRect(0, regionTop-16, W, (regionBottom-regionTop)+32);
     }
 
     positions.forEach((p, i)=>{
@@ -656,15 +915,24 @@
     if(currentFrame === 'love'){
       decorateHearts(ctx, positions, W, topPad);
     }
+    if(currentFrame === 'neon'){
+      decorateNeon(ctx, W, H, positions, regionTop, regionBottom);
+    }
+    if(currentFrame === 'birthday'){
+      decorateBirthday(ctx, W, topPad, positions, regionBottom);
+    }
 
     const capY = H - bottomCaption + 34;
-    const captionColors = { plain:'#2b2622', film:'#2b2622', polaroid:'#2b2622', pesta:'#3f6b64', love:'#c8546b' };
-    ctx.fillStyle = captionColors[currentFrame] || '#2b2622';
+    const captionColors = {
+      plain: paper.text, film: paper.text, polaroid: paper.text,
+      pesta: '#3f6b64', love: '#c8546b', neon: '#00eaff', birthday: '#e8443a'
+    };
+    ctx.fillStyle = captionColors[currentFrame] || paper.text;
     ctx.textAlign = 'center';
     ctx.font = "22px 'Anton', sans-serif";
     ctx.fillText('PHOTO BOX', W/2, capY);
     ctx.font = "12px 'Space Mono', monospace";
-    ctx.fillStyle = '#6b5f4f';
+    ctx.fillStyle = paper.sub;
     const dateStr = new Date().toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'});
     ctx.fillText(dateStr, W/2, capY + 22);
   }
@@ -674,8 +942,10 @@
     busy = true;
     capturedFrames = [];
     shutterBtn.disabled = true;
+    flipBtn.disabled = true;
     filterBtns.forEach(b=>b.disabled = true);
     frameBtns.forEach(b=>b.disabled = true);
+    paperBtns.forEach(b=>b.disabled = true);
     retakeBtn.disabled = true;
     downloadBtn.disabled = true;
     shotCounter.style.display = 'block';
@@ -698,8 +968,10 @@
 
     busy = false;
     shutterBtn.disabled = false;
+    flipBtn.disabled = false;
     filterBtns.forEach(b=>b.disabled = false);
     frameBtns.forEach(b=>b.disabled = false);
+    paperBtns.forEach(b=>b.disabled = false);
     retakeBtn.disabled = false;
     downloadBtn.disabled = false;
   }
