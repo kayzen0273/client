@@ -442,6 +442,8 @@
           <button class="frame-btn" data-frame="love"><span class="swatch" style="background:#c8546b;"></span>Love</button>
           <button class="frame-btn" data-frame="neon"><span class="swatch" style="background:#00eaff;"></span>Neon</button>
           <button class="frame-btn" data-frame="birthday"><span class="swatch" style="background:#e8443a;"></span>Ultah</button>
+          <button class="frame-btn" data-frame="pastel"><span class="swatch" style="background:linear-gradient(135deg,#ffd6ec,#d6e8ff);"></span>Pastel</button>
+          <button class="frame-btn" data-frame="sunset"><span class="swatch" style="background:linear-gradient(135deg,#ffb347,#ff6f9d,#7b2d6b);"></span>Sunset</button>
         </div>
       </div>
       <div class="strip-slot">
@@ -858,6 +860,92 @@
     drawBalloon(c, W-26, regionBottom+16, 18, colors[3]);
   }
 
+  function decoratePastelBg(c, W, top, bottom){
+    const grad = c.createLinearGradient(0, top, W, bottom);
+    grad.addColorStop(0, '#ffe3f1');
+    grad.addColorStop(0.5, '#eaf0ff');
+    grad.addColorStop(1, '#eaffe6');
+    c.fillStyle = grad;
+    c.fillRect(0, top, W, bottom-top);
+  }
+
+  function decoratePastelBlobs(c, W, top, bottom, rand){
+    const colors = ['#ffd6ec','#d6e8ff','#d6ffe4','#fff3c4','#e6d6ff'];
+    for(let i=0; i<14; i++){
+      const x = rand()*W;
+      const y = top + rand()*(bottom-top);
+      const r = 10 + rand()*22;
+      c.save();
+      c.globalAlpha = 0.32;
+      c.fillStyle = colors[Math.floor(rand()*colors.length)];
+      c.beginPath();
+      c.arc(x, y, r, 0, Math.PI*2);
+      c.fill();
+      c.restore();
+    }
+  }
+
+  function decoratePastelSticker(c, p){
+    c.save();
+    c.shadowColor = 'rgba(120,120,170,.28)';
+    c.shadowBlur = 12;
+    c.shadowOffsetY = 5;
+    c.fillStyle = '#ffffff';
+    roundRect(c, p.x-7, p.y-7, p.w+14, p.h+14, 14);
+    c.fill();
+    c.restore();
+  }
+
+  function decorateSunsetBg(c, W, top, bottom){
+    const grad = c.createLinearGradient(0, top, 0, bottom);
+    grad.addColorStop(0, '#2b1055');
+    grad.addColorStop(0.35, '#7b2d6b');
+    grad.addColorStop(0.7, '#ff6f61');
+    grad.addColorStop(1, '#ffb347');
+    c.fillStyle = grad;
+    c.fillRect(0, top, W, bottom-top);
+  }
+
+  function decorateSunsetSun(c, W, topPad){
+    const cx = W/2, cy = topPad*0.42, r = 30;
+    c.save();
+    const grad = c.createRadialGradient(cx, cy, 2, cx, cy, r);
+    grad.addColorStop(0, '#fff6c8');
+    grad.addColorStop(0.5, '#ffb347');
+    grad.addColorStop(1, '#ff6f61');
+    c.fillStyle = grad;
+    c.beginPath();
+    c.arc(cx, cy, r, 0, Math.PI*2);
+    c.fill();
+    c.restore();
+    c.save();
+    c.strokeStyle = 'rgba(255,255,255,.55)';
+    c.lineWidth = 2;
+    for(let i=0; i<4; i++){
+      const ly = cy + r*0.55 + i*7;
+      c.globalAlpha = 0.5 - i*0.1;
+      c.beginPath();
+      c.moveTo(cx - r*1.6 + i*3, ly);
+      c.lineTo(cx + r*1.6 - i*3, ly);
+      c.stroke();
+    }
+    c.restore();
+  }
+
+  function decorateSunsetBorder(c, p, i){
+    const pairs = [['#ffd56b','#ff6f9d'], ['#ff9a56','#c9599c']];
+    const cols = pairs[i % pairs.length];
+    c.save();
+    const g = c.createLinearGradient(p.x, p.y, p.x+p.w, p.y+p.h);
+    g.addColorStop(0, cols[0]);
+    g.addColorStop(1, cols[1]);
+    c.strokeStyle = g;
+    c.lineWidth = 4;
+    roundRect(c, p.x-4, p.y-4, p.w+8, p.h+8, 8);
+    c.stroke();
+    c.restore();
+  }
+
   function drawStripPlaceholder(){
     const paper = PAPERS[currentPaper] || PAPERS.cream;
     ctx.clearRect(0,0,stripCanvas.width, stripCanvas.height);
@@ -869,11 +957,11 @@
   function renderStrip(){
     const paper = PAPERS[currentPaper] || PAPERS.cream;
     const W = stripCanvas.width;
-    const pad = currentFrame === 'film' ? 36 : (currentFrame === 'neon' ? 30 : 22);
+    const pad = currentFrame === 'film' ? 36 : (currentFrame === 'neon' ? 30 : ((currentFrame === 'pastel' || currentFrame === 'sunset') ? 26 : 22));
     const photoW = W - pad*2;
     const photoH = photoW * 0.75;
-    const gap = currentFrame === 'polaroid' ? 30 : 16;
-    const topPad = (currentFrame === 'love' || currentFrame === 'birthday') ? 42 : 26;
+    const gap = currentFrame === 'polaroid' ? 30 : (currentFrame === 'pastel' ? 24 : 16);
+    const topPad = (currentFrame === 'love' || currentFrame === 'birthday') ? 42 : (currentFrame === 'sunset' ? 46 : (currentFrame === 'pastel' ? 30 : 26));
     const bottomCaption = 92;
     const n = capturedFrames.length;
     const H = topPad + n*photoH + (n-1)*gap + bottomCaption;
@@ -895,17 +983,30 @@
       ctx.fillStyle = '#0d0221';
       ctx.fillRect(0, regionTop-16, W, (regionBottom-regionTop)+32);
     }
+    if(currentFrame === 'pastel'){
+      decoratePastelBg(ctx, W, regionTop-14, regionBottom+14);
+      decoratePastelBlobs(ctx, W, regionTop-14, regionBottom+14, seededRand(7));
+    }
+    if(currentFrame === 'sunset'){
+      decorateSunsetBg(ctx, W, regionTop-20, regionBottom+20);
+      decorateSunsetSun(ctx, W, topPad);
+    }
 
     positions.forEach((p, i)=>{
       if(currentFrame === 'polaroid'){
         decoratePolaroid(ctx, p);
         const tapeColors = ['#e8bb3c','#c8443a','#3f6b64','#e58a5f'];
         decorateWashiTape(ctx, p, tapeColors[i % tapeColors.length]);
-      } else {
+      } else if(currentFrame === 'pastel'){
+        decoratePastelSticker(ctx, p);
+      } else if(currentFrame !== 'sunset'){
         ctx.fillStyle = '#1a1816';
         ctx.fillRect(p.x-4, p.y-4, p.w+8, p.h+8);
       }
       ctx.drawImage(capturedFrames[i], p.x, p.y, p.w, p.h);
+      if(currentFrame === 'sunset'){
+        decorateSunsetBorder(ctx, p, i);
+      }
     });
 
     if(currentFrame === 'pesta'){
@@ -925,7 +1026,8 @@
     const capY = H - bottomCaption + 34;
     const captionColors = {
       plain: paper.text, film: paper.text, polaroid: paper.text,
-      pesta: '#3f6b64', love: '#c8546b', neon: '#00eaff', birthday: '#e8443a'
+      pesta: '#3f6b64', love: '#c8546b', neon: '#00eaff', birthday: '#e8443a',
+      pastel: '#9b7bc4', sunset: '#e8574a'
     };
     ctx.fillStyle = captionColors[currentFrame] || paper.text;
     ctx.textAlign = 'center';
