@@ -301,14 +301,112 @@
     display:flex;
     justify-content:center;
   }
-  #stripCanvas{
+  .strip-canvas-wrap{
+    position:relative;
     width:100%;
     max-width:190px;
+    margin:0 auto;
+  }
+  #stripCanvas{
+    width:100%;
     display:block;
     border-radius:2px;
     box-shadow: 0 10px 24px rgba(0,0,0,.5);
     background:var(--paper-cream);
   }
+  .sticker-overlay{
+    position:absolute;
+    inset:0;
+    pointer-events:auto;
+  }
+  .sticker-item{
+    position:absolute;
+    transform:translate(-50%,-50%);
+    cursor:grab;
+    user-select:none;
+    -webkit-user-select:none;
+    touch-action:none;
+    line-height:1;
+    filter:drop-shadow(0 2px 3px rgba(0,0,0,.4));
+  }
+  .sticker-item.dragging{ cursor:grabbing; z-index:20; filter:drop-shadow(0 4px 8px rgba(0,0,0,.5)); }
+  .sticker-remove{
+    position:absolute;
+    top:-9px; right:-9px;
+    width:16px; height:16px;
+    border-radius:50%;
+    background:var(--curtain-red);
+    color:#fff;
+    font-size:10px;
+    line-height:16px;
+    text-align:center;
+    cursor:pointer;
+    font-family:'Space Mono', monospace;
+    box-shadow:0 1px 3px rgba(0,0,0,.4);
+  }
+  .sticker-ghost{
+    position:fixed;
+    font-size:28px;
+    transform:translate(-50%,-50%);
+    pointer-events:none;
+    z-index:9999;
+    filter:drop-shadow(0 3px 6px rgba(0,0,0,.45));
+  }
+
+  .sticker-picker{
+    width:100%;
+    margin-top:14px;
+  }
+  .sticker-picker-hint{
+    font-size:9px;
+    letter-spacing:1px;
+    text-transform:none;
+    opacity:.5;
+    text-align:center;
+    margin-top:-4px;
+    margin-bottom:8px;
+  }
+  .sticker-palette{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    justify-content:center;
+  }
+  .sticker-chip{
+    width:32px; height:32px;
+    border-radius:9px;
+    background:rgba(244,232,213,.07);
+    border:1px solid rgba(244,232,213,.28);
+    font-size:17px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:grab;
+    touch-action:none;
+    user-select:none;
+    -webkit-user-select:none;
+    transition:.15s;
+  }
+  .sticker-chip:hover{ border-color:var(--bulb-amber); background:rgba(244,185,66,.12); }
+  .sticker-chip:active{ cursor:grabbing; }
+  .sticker-chip:disabled{ opacity:.35; cursor:not-allowed; }
+  .sticker-clear-btn{
+    display:block;
+    margin:10px auto 0;
+    font-family:'Space Mono', monospace;
+    font-size:9px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    background:transparent;
+    border:1px solid rgba(244,232,213,.3);
+    color:var(--paper-cream);
+    padding:6px 12px;
+    border-radius:16px;
+    cursor:pointer;
+    opacity:.75;
+  }
+  .sticker-clear-btn:hover{ border-color:var(--curtain-red); color:#ffb4a8; opacity:1; }
+
   @keyframes printOut{
     from{ clip-path: inset(0 0 100% 0); }
     to{ clip-path: inset(0 0 0 0); }
@@ -444,10 +542,14 @@
           <button class="frame-btn" data-frame="birthday"><span class="swatch" style="background:#e8443a;"></span>Ultah</button>
           <button class="frame-btn" data-frame="pastel"><span class="swatch" style="background:linear-gradient(135deg,#ffd6ec,#d6e8ff);"></span>Pastel</button>
           <button class="frame-btn" data-frame="sunset"><span class="swatch" style="background:linear-gradient(135deg,#ffb347,#ff6f9d,#7b2d6b);"></span>Sunset</button>
+          <button class="frame-btn" data-frame="kawaii"><span class="swatch" style="background:linear-gradient(135deg,#ffc2e2,#d9c2ff);"></span>Kawaii</button>
         </div>
       </div>
       <div class="strip-slot">
-        <canvas id="stripCanvas" width="380" height="1160"></canvas>
+        <div class="strip-canvas-wrap" id="stripWrap">
+          <canvas id="stripCanvas" width="380" height="1160"></canvas>
+          <div class="sticker-overlay" id="stickerOverlay"></div>
+        </div>
       </div>
       <div class="strip-caption">Strip kamu akan tercetak di sini</div>
       <div class="paper-picker">
@@ -458,6 +560,25 @@
           <button class="paper-swatch" data-paper="mint" style="background:#dff2e7;" title="Mint"></button>
           <button class="paper-swatch" data-paper="black" style="background:#141212;" title="Hitam"></button>
         </div>
+      </div>
+      <div class="sticker-picker">
+        <div class="frame-picker-label">Stiker Lucu</div>
+        <div class="sticker-picker-hint">Seret ke atas strip foto</div>
+        <div class="sticker-palette" id="stickerPalette">
+          <button class="sticker-chip" data-emoji="🌸">🌸</button>
+          <button class="sticker-chip" data-emoji="✨">✨</button>
+          <button class="sticker-chip" data-emoji="💖">💖</button>
+          <button class="sticker-chip" data-emoji="⭐">⭐</button>
+          <button class="sticker-chip" data-emoji="🎀">🎀</button>
+          <button class="sticker-chip" data-emoji="🦋">🦋</button>
+          <button class="sticker-chip" data-emoji="☁️">☁️</button>
+          <button class="sticker-chip" data-emoji="🍓">🍓</button>
+          <button class="sticker-chip" data-emoji="🌈">🌈</button>
+          <button class="sticker-chip" data-emoji="😎">😎</button>
+          <button class="sticker-chip" data-emoji="🔥">🔥</button>
+          <button class="sticker-chip" data-emoji="🎈">🎈</button>
+        </div>
+        <button class="sticker-clear-btn" id="clearStickersBtn">Bersihkan Stiker</button>
       </div>
       <div class="strip-actions">
         <button class="action-btn" id="retakeBtn" disabled>Ulangi</button>
@@ -487,6 +608,10 @@
   const retakeBtn = document.getElementById('retakeBtn');
   const downloadBtn = document.getElementById('downloadBtn');
   const paperBtns = document.querySelectorAll('.paper-swatch');
+  const stripWrap = document.getElementById('stripWrap');
+  const stickerOverlay = document.getElementById('stickerOverlay');
+  const stickerPalette = document.getElementById('stickerPalette');
+  const clearStickersBtn = document.getElementById('clearStickersBtn');
 
   const TOTAL_SHOTS = 4;
   let currentFilter = 'normal';
@@ -496,6 +621,8 @@
   let busy = false;
   let currentFacing = 'user';
   let currentStream = null;
+  let stickers = [];
+  let stickerIdSeq = 1;
   const frameBtns = document.querySelectorAll('.frame-btn');
 
   const PAPERS = {
@@ -640,6 +767,132 @@
     });
   });
 
+  // ---------- sticker drag & drop ----------
+  function syncStickerOverlay(){
+    stickerOverlay.innerHTML = '';
+    const rect = stripCanvas.getBoundingClientRect();
+    if(rect.width === 0 || rect.height === 0) return;
+    const scaleX = rect.width / stripCanvas.width;
+    const scaleY = rect.height / stripCanvas.height;
+    stickers.forEach(s=>{
+      const el = document.createElement('div');
+      el.className = 'sticker-item';
+      el.style.left = (s.x*scaleX) + 'px';
+      el.style.top = (s.y*scaleY) + 'px';
+      el.style.fontSize = (s.size*scaleX) + 'px';
+      el.textContent = s.emoji;
+
+      const rm = document.createElement('span');
+      rm.className = 'sticker-remove';
+      rm.textContent = '×';
+      rm.addEventListener('pointerdown', ev=>ev.stopPropagation());
+      rm.addEventListener('click', ev=>{
+        ev.stopPropagation();
+        stickers = stickers.filter(st=>st.id !== s.id);
+        redrawCanvas();
+      });
+      el.appendChild(rm);
+
+      el.addEventListener('pointerdown', ev=>startStickerDrag(ev, s.id, el));
+      stickerOverlay.appendChild(el);
+    });
+  }
+
+  function redrawCanvas(){
+    if(capturedFrames.length > 0){ renderStrip(); }
+    else { drawStripPlaceholder(); }
+  }
+
+  function startStickerDrag(ev, id, el){
+    if(busy) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    el.classList.add('dragging');
+
+    function onMove(ev2){
+      const rect = stripCanvas.getBoundingClientRect();
+      let nx = ev2.clientX - rect.left;
+      let ny = ev2.clientY - rect.top;
+      nx = Math.max(0, Math.min(rect.width, nx));
+      ny = Math.max(0, Math.min(rect.height, ny));
+      el.style.left = nx + 'px';
+      el.style.top = ny + 'px';
+    }
+    function onUp(ev2){
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      el.classList.remove('dragging');
+      const rect = stripCanvas.getBoundingClientRect();
+      const scaleX = stripCanvas.width / rect.width;
+      const scaleY = stripCanvas.height / rect.height;
+      let nx = ev2.clientX - rect.left;
+      let ny = ev2.clientY - rect.top;
+      nx = Math.max(0, Math.min(rect.width, nx));
+      ny = Math.max(0, Math.min(rect.height, ny));
+      const sticker = stickers.find(st=>st.id === id);
+      if(sticker){
+        sticker.x = nx*scaleX;
+        sticker.y = ny*scaleY;
+      }
+      redrawCanvas();
+    }
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+  }
+
+  function addSticker(emoji, x, y){
+    stickers.push({ id: stickerIdSeq++, emoji, x, y, size: 34 });
+    redrawCanvas();
+  }
+
+  function moveGhost(ghost, clientX, clientY){
+    ghost.style.left = clientX + 'px';
+    ghost.style.top = clientY + 'px';
+  }
+
+  function startPaletteDrag(emoji, startX, startY){
+    if(busy) return;
+    const ghost = document.createElement('div');
+    ghost.className = 'sticker-ghost';
+    ghost.textContent = emoji;
+    document.body.appendChild(ghost);
+    moveGhost(ghost, startX, startY);
+
+    function onMove(ev){
+      moveGhost(ghost, ev.clientX, ev.clientY);
+    }
+    function onUp(ev){
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      ghost.remove();
+      const rect = stripCanvas.getBoundingClientRect();
+      if(ev.clientX >= rect.left && ev.clientX <= rect.right && ev.clientY >= rect.top && ev.clientY <= rect.bottom){
+        const scaleX = stripCanvas.width / rect.width;
+        const scaleY = stripCanvas.height / rect.height;
+        const x = (ev.clientX - rect.left) * scaleX;
+        const y = (ev.clientY - rect.top) * scaleY;
+        addSticker(emoji, x, y);
+      }
+    }
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+  }
+
+  stickerPalette.querySelectorAll('.sticker-chip').forEach(chip=>{
+    chip.addEventListener('pointerdown', ev=>{
+      ev.preventDefault();
+      startPaletteDrag(chip.dataset.emoji, ev.clientX, ev.clientY);
+    });
+  });
+
+  clearStickersBtn.addEventListener('click', ()=>{
+    if(busy || stickers.length === 0) return;
+    stickers = [];
+    redrawCanvas();
+  });
+
+  window.addEventListener('resize', ()=>{ syncStickerOverlay(); });
+
   function wait(ms){ return new Promise(r=>setTimeout(r, ms)); }
 
   async function runCountdown(){
@@ -733,6 +986,60 @@
     c.restore();
   }
 
+  function drawBow(c, x, y, size, color, knotColor){
+    c.save();
+    c.translate(x, y);
+    c.fillStyle = color;
+    c.beginPath();
+    c.moveTo(0,0);
+    c.quadraticCurveTo(-size*0.15, -size*0.75, -size*1.05, -size*0.55);
+    c.quadraticCurveTo(-size*1.35, 0, -size*1.05, size*0.55);
+    c.quadraticCurveTo(-size*0.15, size*0.75, 0,0);
+    c.fill();
+    c.beginPath();
+    c.moveTo(0,0);
+    c.quadraticCurveTo(size*0.15, -size*0.75, size*1.05, -size*0.55);
+    c.quadraticCurveTo(size*1.35, 0, size*1.05, size*0.55);
+    c.quadraticCurveTo(size*0.15, size*0.75, 0,0);
+    c.fill();
+    c.fillStyle = knotColor || 'rgba(255,255,255,.55)';
+    c.beginPath();
+    c.arc(0, 0, size*0.32, 0, Math.PI*2);
+    c.fill();
+    c.restore();
+  }
+
+  function drawSparkle(c, x, y, size, color){
+    c.save();
+    c.translate(x, y);
+    c.fillStyle = color;
+    c.beginPath();
+    c.moveTo(0,-size);
+    c.quadraticCurveTo(size*0.18, -size*0.18, size, 0);
+    c.quadraticCurveTo(size*0.18, size*0.18, 0, size);
+    c.quadraticCurveTo(-size*0.18, size*0.18, -size, 0);
+    c.quadraticCurveTo(-size*0.18, -size*0.18, 0, -size);
+    c.closePath();
+    c.fill();
+    c.restore();
+  }
+
+  function decorateDottedBorder(c, p, color, pad, dotR, gap){
+    pad = pad || 8; dotR = dotR || 2.6; gap = gap || 11;
+    c.save();
+    c.fillStyle = color;
+    const x0 = p.x - pad, y0 = p.y - pad, x1 = p.x + p.w + pad, y1 = p.y + p.h + pad;
+    for(let x = x0 + dotR; x <= x1 - dotR; x += gap){
+      c.beginPath(); c.arc(x, y0, dotR, 0, Math.PI*2); c.fill();
+      c.beginPath(); c.arc(x, y1, dotR, 0, Math.PI*2); c.fill();
+    }
+    for(let y = y0 + dotR; y <= y1 - dotR; y += gap){
+      c.beginPath(); c.arc(x0, y, dotR, 0, Math.PI*2); c.fill();
+      c.beginPath(); c.arc(x1, y, dotR, 0, Math.PI*2); c.fill();
+    }
+    c.restore();
+  }
+
   // seeded pseudo-random so confetti layout stays stable across re-renders
   function seededRand(seed){
     let s = seed;
@@ -791,15 +1098,29 @@
     }
   }
 
-  function decorateHearts(c, positions, W, topPad){
+  function decorateHearts(c, positions, W, topPad, rand){
     const pink = '#c8546b';
     const rose = '#e58a9a';
-    positions.forEach((p)=>{
-      drawHeart(c, p.x+6, p.y+6, 12, pink);
-      drawHeart(c, p.x+p.w-6, p.y+6, 10, rose);
+    const lilac = '#c98bd9';
+    const gold = '#e8bb3c';
+    rand = rand || seededRand(21);
+    positions.forEach((p, i)=>{
+      decorateDottedBorder(c, p, i % 2 === 0 ? pink : lilac, 7, 2.2, 9);
+      drawHeart(c, p.x+8, p.y+8, 11, pink);
+      drawHeart(c, p.x+p.w-8, p.y+8, 9, rose);
+      drawSparkle(c, p.x+p.w-10, p.y+p.h-10, 6, gold);
     });
-    drawHeart(c, W/2 - 30, topPad/2 - 4, 14, pink);
-    drawHeart(c, W/2 + 30, topPad/2 - 4, 10, rose);
+    drawBow(c, W/2, topPad*0.42, 15, pink, '#fff0f3');
+    drawHeart(c, W/2 - 34, topPad*0.62, 11, rose);
+    drawHeart(c, W/2 + 34, topPad*0.62, 11, lilac);
+    for(let i=0; i<10; i++){
+      const x = rand()*W;
+      const y = 14 + rand()*(topPad-24);
+      const size = 3 + rand()*3;
+      const col = [pink, rose, lilac, gold][Math.floor(rand()*4)];
+      if(rand() > .5) drawSparkle(c, x, y, size, col);
+      else drawHeart(c, x, y, size, col);
+    }
   }
 
   function decorateNeon(c, W, H, positions, regionTop, regionBottom){
@@ -883,9 +1204,14 @@
       c.fill();
       c.restore();
     }
+    for(let i=0; i<7; i++){
+      const x = rand()*W;
+      const y = top + rand()*(bottom-top);
+      drawSparkle(c, x, y, 4 + rand()*4, colors[Math.floor(rand()*colors.length)]);
+    }
   }
 
-  function decoratePastelSticker(c, p){
+  function decoratePastelSticker(c, p, i){
     c.save();
     c.shadowColor = 'rgba(120,120,170,.28)';
     c.shadowBlur = 12;
@@ -894,6 +1220,8 @@
     roundRect(c, p.x-7, p.y-7, p.w+14, p.h+14, 14);
     c.fill();
     c.restore();
+    const bowColors = ['#ffb0da','#b6a4ff','#a6d8ff','#ffd28a'];
+    drawBow(c, p.x+p.w-14, p.y-7, 9, bowColors[i % bowColors.length], '#ffffff');
   }
 
   function decorateSunsetBg(c, W, top, bottom){
@@ -946,22 +1274,113 @@
     c.restore();
   }
 
+  function decorateKawaiiBg(c, W, top, bottom){
+    const grad = c.createLinearGradient(0, top, W, bottom);
+    grad.addColorStop(0, '#ffd7ef');
+    grad.addColorStop(0.5, '#f1e2ff');
+    grad.addColorStop(1, '#d7ecff');
+    c.fillStyle = grad;
+    c.fillRect(0, top, W, bottom-top);
+  }
+
+  function decorateKawaiiSprinkles(c, W, top, bottom, rand){
+    const colors = ['#ffffff', '#ffe1f3', '#e8d9ff', '#fff3c9'];
+    for(let i=0; i<26; i++){
+      const x = rand()*W;
+      const y = top + rand()*(bottom-top);
+      const r = 1.5 + rand()*2.5;
+      c.save();
+      c.globalAlpha = 0.55;
+      c.fillStyle = colors[Math.floor(rand()*colors.length)];
+      c.beginPath();
+      c.arc(x, y, r, 0, Math.PI*2);
+      c.fill();
+      c.restore();
+    }
+    for(let i=0; i<8; i++){
+      const x = rand()*W;
+      const y = top + rand()*(bottom-top);
+      drawSparkle(c, x, y, 4 + rand()*4, colors[Math.floor(rand()*2)+1]);
+    }
+  }
+
+  function decorateKawaiiPhoto(c, p, i){
+    const palette = [
+      ['#ff9ecb','#ffe3f1'],
+      ['#b79bff','#ece3ff'],
+      ['#7fc8ff','#e3f3ff'],
+      ['#ffc36b','#fff2df']
+    ];
+    const [accent, soft] = palette[i % palette.length];
+    c.save();
+    c.shadowColor = 'rgba(160,120,180,.35)';
+    c.shadowBlur = 10;
+    c.shadowOffsetY = 4;
+    c.fillStyle = '#ffffff';
+    roundRect(c, p.x-9, p.y-9, p.w+18, p.h+18, 16);
+    c.fill();
+    c.restore();
+
+    c.save();
+    c.strokeStyle = soft;
+    c.lineWidth = 3;
+    roundRect(c, p.x-9, p.y-9, p.w+18, p.h+18, 16);
+    c.stroke();
+    c.restore();
+
+    decorateDottedBorder(c, p, accent, 13, 2.2, 10);
+
+    // blush cheeks at bottom corners
+    c.save();
+    c.globalAlpha = 0.5;
+    c.fillStyle = '#ff9ecb';
+    c.beginPath(); c.ellipse(p.x+14, p.y+p.h+2, 7, 4.5, 0, 0, Math.PI*2); c.fill();
+    c.beginPath(); c.ellipse(p.x+p.w-14, p.y+p.h+2, 7, 4.5, 0, 0, Math.PI*2); c.fill();
+    c.restore();
+
+    drawBow(c, p.x+p.w/2, p.y-9, 12, accent, '#ffffff');
+    drawSparkle(c, p.x+p.w-4, p.y+4, 6, accent);
+    drawSparkle(c, p.x+4, p.y+p.h-4, 5, soft === '#fff2df' ? '#ffc36b' : accent);
+  }
+
+  function clampStickers(){
+    const W = stripCanvas.width, H = stripCanvas.height;
+    stickers.forEach(s=>{
+      s.x = Math.min(Math.max(s.x, 12), W-12);
+      s.y = Math.min(Math.max(s.y, 12), H-12);
+    });
+  }
+
+  function drawStickers(){
+    stickers.forEach(s=>{
+      ctx.save();
+      ctx.font = `${s.size}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(s.emoji, s.x, s.y);
+      ctx.restore();
+    });
+  }
+
   function drawStripPlaceholder(){
     const paper = PAPERS[currentPaper] || PAPERS.cream;
     ctx.clearRect(0,0,stripCanvas.width, stripCanvas.height);
     ctx.fillStyle = paper.bg;
     ctx.fillRect(0,0,stripCanvas.width, stripCanvas.height);
+    clampStickers();
+    drawStickers();
+    syncStickerOverlay();
   }
   drawStripPlaceholder();
 
   function renderStrip(){
     const paper = PAPERS[currentPaper] || PAPERS.cream;
     const W = stripCanvas.width;
-    const pad = currentFrame === 'film' ? 36 : (currentFrame === 'neon' ? 30 : ((currentFrame === 'pastel' || currentFrame === 'sunset') ? 26 : 22));
+    const pad = currentFrame === 'film' ? 36 : (currentFrame === 'neon' ? 30 : ((currentFrame === 'pastel' || currentFrame === 'sunset' || currentFrame === 'kawaii') ? 26 : 22));
     const photoW = W - pad*2;
     const photoH = photoW * 0.75;
-    const gap = currentFrame === 'polaroid' ? 30 : (currentFrame === 'pastel' ? 24 : 16);
-    const topPad = (currentFrame === 'love' || currentFrame === 'birthday') ? 42 : (currentFrame === 'sunset' ? 46 : (currentFrame === 'pastel' ? 30 : 26));
+    const gap = currentFrame === 'polaroid' ? 30 : ((currentFrame === 'pastel' || currentFrame === 'kawaii') ? 24 : 16);
+    const topPad = (currentFrame === 'love' || currentFrame === 'birthday' || currentFrame === 'kawaii') ? 42 : (currentFrame === 'sunset' ? 46 : (currentFrame === 'pastel' ? 30 : 26));
     const bottomCaption = 92;
     const n = capturedFrames.length;
     const H = topPad + n*photoH + (n-1)*gap + bottomCaption;
@@ -991,6 +1410,10 @@
       decorateSunsetBg(ctx, W, regionTop-20, regionBottom+20);
       decorateSunsetSun(ctx, W, topPad);
     }
+    if(currentFrame === 'kawaii'){
+      decorateKawaiiBg(ctx, W, regionTop-18, regionBottom+18);
+      decorateKawaiiSprinkles(ctx, W, regionTop-18, regionBottom+18, seededRand(13));
+    }
 
     positions.forEach((p, i)=>{
       if(currentFrame === 'polaroid'){
@@ -998,7 +1421,9 @@
         const tapeColors = ['#e8bb3c','#c8443a','#3f6b64','#e58a5f'];
         decorateWashiTape(ctx, p, tapeColors[i % tapeColors.length]);
       } else if(currentFrame === 'pastel'){
-        decoratePastelSticker(ctx, p);
+        decoratePastelSticker(ctx, p, i);
+      } else if(currentFrame === 'kawaii'){
+        decorateKawaiiPhoto(ctx, p, i);
       } else if(currentFrame !== 'sunset'){
         ctx.fillStyle = '#1a1816';
         ctx.fillRect(p.x-4, p.y-4, p.w+8, p.h+8);
@@ -1014,7 +1439,7 @@
       decorateConfetti(ctx, W, H, regionTop, regionBottom, rand);
     }
     if(currentFrame === 'love'){
-      decorateHearts(ctx, positions, W, topPad);
+      decorateHearts(ctx, positions, W, topPad, seededRand(21));
     }
     if(currentFrame === 'neon'){
       decorateNeon(ctx, W, H, positions, regionTop, regionBottom);
@@ -1027,7 +1452,7 @@
     const captionColors = {
       plain: paper.text, film: paper.text, polaroid: paper.text,
       pesta: '#3f6b64', love: '#c8546b', neon: '#00eaff', birthday: '#e8443a',
-      pastel: '#9b7bc4', sunset: '#e8574a'
+      pastel: '#9b7bc4', sunset: '#e8574a', kawaii: '#c1529c'
     };
     ctx.fillStyle = captionColors[currentFrame] || paper.text;
     ctx.textAlign = 'center';
@@ -1037,6 +1462,10 @@
     ctx.fillStyle = paper.sub;
     const dateStr = new Date().toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'});
     ctx.fillText(dateStr, W/2, capY + 22);
+
+    clampStickers();
+    drawStickers();
+    syncStickerOverlay();
   }
 
   async function startSession(){
@@ -1048,6 +1477,9 @@
     filterBtns.forEach(b=>b.disabled = true);
     frameBtns.forEach(b=>b.disabled = true);
     paperBtns.forEach(b=>b.disabled = true);
+    stickerPalette.querySelectorAll('.sticker-chip').forEach(b=>b.disabled = true);
+    clearStickersBtn.disabled = true;
+    stickerOverlay.style.pointerEvents = 'none';
     retakeBtn.disabled = true;
     downloadBtn.disabled = true;
     shotCounter.style.display = 'block';
@@ -1074,6 +1506,9 @@
     filterBtns.forEach(b=>b.disabled = false);
     frameBtns.forEach(b=>b.disabled = false);
     paperBtns.forEach(b=>b.disabled = false);
+    stickerPalette.querySelectorAll('.sticker-chip').forEach(b=>b.disabled = false);
+    clearStickersBtn.disabled = false;
+    stickerOverlay.style.pointerEvents = 'auto';
     retakeBtn.disabled = false;
     downloadBtn.disabled = false;
   }
