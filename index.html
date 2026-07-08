@@ -374,24 +374,6 @@ const PALM_IDS = [0, 5, 9, 13, 17];
 const HAND_MODEL_URL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
 const FACE_MODEL_URL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
 const WASM_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
-const REFERENCE_WIDTH = 640; // resolusi acuan tempat CONFIG (jarak/kecepatan dalam px) dikalibrasi
-
-let activeDelegate = "GPU";
-async function createLandmarkerWithFallback(LandmarkerClass, vision, options) {
-  try {
-    return await LandmarkerClass.createFromOptions(vision, {
-      ...options,
-      baseOptions: { ...options.baseOptions, delegate: "GPU" },
-    });
-  } catch (err) {
-    console.warn(`${LandmarkerClass.name}: GPU delegate gagal, pakai CPU.`, err);
-    activeDelegate = "CPU";
-    return await LandmarkerClass.createFromOptions(vision, {
-      ...options,
-      baseOptions: { ...options.baseOptions, delegate: "CPU" },
-    });
-  }
-}
 
 /* ---------- wave motion tracker (mirrors motion.py) ---------- */
 class WaveMotionTracker {
@@ -552,8 +534,6 @@ let danceLive = false;
 let lastDanceActive = 0;
 let lastVideoTime = -1;
 let gifShowing = false;
-let faceFrameCounter = 0;
-let lastMouthCenter = null;
 
 function setStatus(text, kind) {
   statusText.textContent = text;
@@ -692,24 +672,15 @@ function loop() {
   const width = canvas.width, height = canvas.height;
 
   const handResult = handLandmarker.detectForVideo(video, tsMs);
+  const faceResult = faceLandmarker.detectForVideo(video, tsMs);
 
-  // FaceLandmarker (478 titik) jauh lebih berat dari HandLandmarker dan sering jadi
-  // penyebab utama frame rate anjlok di HP. Posisi mulut tidak butuh update tiap
-  // frame, jadi cukup dijalankan tiap 2 frame dan hasil sebelumnya dipakai ulang —
-  // ini menyisakan lebih banyak waktu untuk pelacakan tangan yang butuh timing rapat.
-  faceFrameCounter++;
-  if (faceFrameCounter % 2 === 0) {
-    const faceResult = faceLandmarker.detectForVideo(video, tsMs);
-    if (faceResult.faceLandmarks && faceResult.faceLandmarks.length) {
-      const lm = faceResult.faceLandmarks[0];
-      let sx = 0, sy = 0;
-      for (const i of MOUTH_LANDMARKS) { sx += lm[i].x * width; sy += lm[i].y * height; }
-      lastMouthCenter = [sx / MOUTH_LANDMARKS.length, sy / MOUTH_LANDMARKS.length];
-    } else {
-      lastMouthCenter = null;
-    }
+  let mouthCenter = null;
+  if (faceResult.faceLandmarks && faceResult.faceLandmarks.length) {
+    const lm = faceResult.faceLandmarks[0];
+    let sx = 0, sy = 0;
+    for (const i of MOUTH_LANDMARKS) { sx += lm[i].x * width; sy += lm[i].y * height; }
+    mouthCenter = [sx / MOUTH_LANDMARKS.length, sy / MOUTH_LANDMARKS.length];
   }
-  const mouthCenter = lastMouthCenter;
 
   let leftHand = null, rightHand = null;
   if (handResult.landmarks && handResult.handedness) {
@@ -753,44 +724,29 @@ async function startCamera() {
     setStatus("Memuat model MediaPipe…", "");
     if (!handLandmarker || !faceLandmarker) {
       const vision = await FilesetResolver.forVisionTasks(WASM_URL);
-      // Coba GPU delegate dulu (lebih cepat di HP), fallback ke CPU kalau device/browser tidak mendukung.
-      handLandmarker = await createLandmarkerWithFallback(HandLandmarker, vision, {
+      handLandmarker = await HandLandmarker.createFromOptions(vision, {
         baseOptions: { modelAssetPath: HAND_MODEL_URL },
         runningMode: "VIDEO",
         numHands: 2,
-        minHandDetectionConfidence: 0.5,
-        minHandPresenceConfidence: 0.5,
-        minTrackingConfidence: 0.5,
+        minHandDetectionConfidence: 0.6,
+        minHandPresenceConfidence: 0.6,
+        minTrackingConfidence: 0.6,
       });
-      faceLandmarker = await createLandmarkerWithFallback(FaceLandmarker, vision, {
+      faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
         baseOptions: { modelAssetPath: FACE_MODEL_URL },
         runningMode: "VIDEO",
         numFaces: 1,
-        minFaceDetectionConfidence: 0.5,
-        minFacePresenceConfidence: 0.5,
-        minTrackingConfidence: 0.5,
+        minFaceDetectionConfidence: 0.6,
+        minFacePresenceConfidence: 0.6,
+        minTrackingConfidence: 0.6,
       });
     }
 
     setStatus("Meminta akses kamera…", "");
-    // facingMode "user" memastikan kamera depan yang dipakai di HP (tanpa ini beberapa
-    // browser mobile bisa salah pilih kamera). max width/height mencegah HP memberi
-    // resolusi sangat tinggi yang bikin model MediaPipe berat & lag di HP.
-    const videoConstraints = {
-      facingMode: "user",
-      width: { ideal: 640, max: 960 },
-      height: { ideal: 480, max: 720 },
-      frameRate: { ideal: 30, min: 15 },
-    };
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
-    } catch (err) {
-      console.warn("Gagal dengan constraint lengkap, coba fallback sederhana:", err);
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 640 }, height: { ideal: 480 } },
-        audio: false,
-      });
-    }
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 640 }, height: { ideal: 480 } },
+      audio: false,
+    });
     video.srcObject = stream;
     await new Promise(res => { video.onloadedmetadata = res; });
     await video.play();
@@ -801,26 +757,14 @@ async function startCamera() {
     stageEmpty.style.display = "none";
     stopBtn.disabled = false;
 
-    // Threshold di CONFIG dikalibrasi untuk resolusi ~640px lebar. Banyak HP memberi
-    // resolusi kamera lebih besar/lebih kecil dari itu, jadi jarak & kecepatan dalam
-    // piksel perlu diskalakan ulang, kalau tidak gerakan yang sama bisa gagal terdeteksi.
-    const scale = video.videoWidth / REFERENCE_WIDTH;
-    const scaledConfig = {
-      ...CONFIG,
-      mouthDistancePx: CONFIG.mouthDistancePx * scale,
-      waveSpeedPxS: CONFIG.waveSpeedPxS * scale,
-      waveMinMovePx: CONFIG.waveMinMovePx * scale,
-    };
-    detector = new KicauDetector(scaledConfig);
+    detector = new KicauDetector(CONFIG);
     danceLive = false;
     lastDanceActive = 0;
     lastVideoTime = -1;
-    faceFrameCounter = 0;
-    lastMouthCenter = null;
     hideGif();
     stopMusic();
 
-    setStatus(`Siaga (${video.videoWidth}×${video.videoHeight}px, delegate:${activeDelegate}) — tutup mulut dengan tangan kiri untuk mulai.`, "live");
+    setStatus("Siaga — tutup mulut dengan tangan kiri untuk mulai.", "live");
     loop();
   } catch (err) {
     console.error(err);
