@@ -206,6 +206,49 @@
     flex-direction:column;
     align-items:center;
   }
+
+  .frame-picker{
+    width:100%;
+    margin-bottom:14px;
+  }
+  .frame-picker-label{
+    font-size:9px;
+    letter-spacing:2.5px;
+    text-transform:uppercase;
+    opacity:.6;
+    margin-bottom:8px;
+    text-align:center;
+  }
+  .frames{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    justify-content:center;
+  }
+  .frame-btn{
+    font-family:'Space Mono', monospace;
+    font-size:9px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    background:rgba(244,232,213,.06);
+    border:1px solid rgba(244,232,213,.3);
+    color:var(--paper-cream);
+    padding:7px 9px;
+    border-radius:8px;
+    cursor:pointer;
+    transition:.15s;
+    display:flex;
+    align-items:center;
+    gap:5px;
+  }
+  .frame-btn .swatch{
+    width:10px; height:10px;
+    border-radius:3px;
+    flex-shrink:0;
+  }
+  .frame-btn:hover{ border-color:var(--bulb-amber); }
+  .frame-btn.active{ background:var(--bulb-amber); color:var(--ink); border-color:var(--bulb-amber); font-weight:700; }
+  .frame-btn:disabled{ opacity:.4; cursor:not-allowed; }
   .strip-slot{
     background: repeating-linear-gradient(180deg, #100e0c, #100e0c 6px, #17140f 6px, #17140f 12px);
     border-radius: 4px 4px 14px 14px;
@@ -322,6 +365,16 @@
     </div>
 
     <div class="strip-area">
+      <div class="frame-picker">
+        <div class="frame-picker-label">Pilih Bingkai</div>
+        <div class="frames" id="frames">
+          <button class="frame-btn active" data-frame="plain"><span class="swatch" style="background:#1a1816;"></span>Klasik</button>
+          <button class="frame-btn" data-frame="film"><span class="swatch" style="background:#100e0c;"></span>Film</button>
+          <button class="frame-btn" data-frame="polaroid"><span class="swatch" style="background:#ffffff;"></span>Polaroid</button>
+          <button class="frame-btn" data-frame="pesta"><span class="swatch" style="background:#e8bb3c;"></span>Pesta</button>
+          <button class="frame-btn" data-frame="love"><span class="swatch" style="background:#c8546b;"></span>Love</button>
+        </div>
+      </div>
       <div class="strip-slot">
         <canvas id="stripCanvas" width="380" height="1160"></canvas>
       </div>
@@ -354,8 +407,10 @@
 
   const TOTAL_SHOTS = 4;
   let currentFilter = 'normal';
+  let currentFrame = 'plain';
   let capturedFrames = [];
   let busy = false;
+  const frameBtns = document.querySelectorAll('.frame-btn');
 
   const filterCSS = {
     normal: 'none',
@@ -387,6 +442,16 @@
       btn.classList.add('active');
       currentFilter = btn.dataset.filter;
       viewfinder.className = 'viewfinder ' + currentFilter;
+    });
+  });
+
+  frameBtns.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(busy) return;
+      frameBtns.forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFrame = btn.dataset.frame;
+      if(capturedFrames.length > 0){ renderStrip(); }
     });
   });
 
@@ -429,6 +494,117 @@
     return c;
   }
 
+  // ---------- small shape helpers ----------
+  function roundRect(c, x, y, w, h, r){
+    c.beginPath();
+    c.moveTo(x+r, y);
+    c.arcTo(x+w, y, x+w, y+h, r);
+    c.arcTo(x+w, y+h, x, y+h, r);
+    c.arcTo(x, y+h, x, y, r);
+    c.arcTo(x, y, x+w, y, r);
+    c.closePath();
+  }
+
+  function drawHeart(c, x, y, size, color){
+    c.save();
+    c.fillStyle = color;
+    c.beginPath();
+    const top = size*0.3;
+    c.moveTo(x, y+top);
+    c.bezierCurveTo(x, y, x-size/2, y, x-size/2, y+top);
+    c.bezierCurveTo(x-size/2, y+(size+top)/2, x, y+(size+top)/2, x, y+size);
+    c.bezierCurveTo(x, y+(size+top)/2, x+size/2, y+(size+top)/2, x+size/2, y+top);
+    c.bezierCurveTo(x+size/2, y, x, y, x, y+top);
+    c.closePath();
+    c.fill();
+    c.restore();
+  }
+
+  function drawStar(c, x, y, r, color){
+    c.save();
+    c.fillStyle = color;
+    c.beginPath();
+    for(let i=0; i<10; i++){
+      const ang = (Math.PI/5)*i - Math.PI/2;
+      const rad = i%2===0 ? r : r*0.42;
+      const px = x + Math.cos(ang)*rad;
+      const py = y + Math.sin(ang)*rad;
+      i===0 ? c.moveTo(px,py) : c.lineTo(px,py);
+    }
+    c.closePath();
+    c.fill();
+    c.restore();
+  }
+
+  // seeded pseudo-random so confetti layout stays stable across re-renders
+  function seededRand(seed){
+    let s = seed;
+    return function(){
+      s = (s*9301+49297) % 233280;
+      return s/233280;
+    };
+  }
+
+  // ---------- frame decorations ----------
+  function decorateFilm(c, W, H, pad, regionTop, regionBottom){
+    c.fillStyle = '#100e0c';
+    c.fillRect(0, regionTop-10, W, (regionBottom-regionTop)+20);
+    const holeW = 10, holeH = 14, spacing = 22;
+    c.fillStyle = '#f2e8d5';
+    for(let y = regionTop; y <= regionBottom; y += spacing){
+      roundRect(c, pad/2 - holeW/2, y, holeW, holeH, 3); c.fill();
+      roundRect(c, W - pad/2 - holeW/2, y, holeW, holeH, 3); c.fill();
+    }
+  }
+
+  function decoratePolaroid(c, p){
+    c.save();
+    c.shadowColor = 'rgba(0,0,0,.35)';
+    c.shadowBlur = 10;
+    c.shadowOffsetY = 4;
+    c.fillStyle = '#ffffff';
+    c.fillRect(p.x-12, p.y-12, p.w+24, p.h+34);
+    c.restore();
+  }
+
+  function decorateWashiTape(c, p, color){
+    c.save();
+    c.translate(p.x + p.w/2, p.y-10);
+    c.rotate(-0.06);
+    c.fillStyle = color;
+    c.globalAlpha = .8;
+    c.fillRect(-34, -9, 68, 18);
+    c.restore();
+  }
+
+  function decorateConfetti(c, W, H, topPad, bottomLimit, rand){
+    const colors = ['#e8bb3c','#c8443a','#3f6b64','#e58a5f','#f2e8d5'];
+    for(let i=0; i<46; i++){
+      const x = rand()*W;
+      const y = topPad - 18 + rand()*(bottomLimit - topPad + 30);
+      const s = 3 + rand()*5;
+      const col = colors[Math.floor(rand()*colors.length)];
+      c.save();
+      c.translate(x, y);
+      c.rotate(rand()*Math.PI);
+      c.fillStyle = col;
+      if(rand() > .5){ c.fillRect(-s/2, -s/2, s, s*1.6); }
+      else { c.beginPath(); c.arc(0,0,s*0.6,0,Math.PI*2); c.fill(); }
+      c.restore();
+    }
+  }
+
+  function decorateHearts(c, positions, W, topPad){
+    const pink = '#c8546b';
+    const rose = '#e58a9a';
+    positions.forEach((p)=>{
+      drawHeart(c, p.x+6, p.y+6, 12, pink);
+      drawHeart(c, p.x+p.w-6, p.y+6, 10, rose);
+    });
+    drawHeart(c, W/2 - 30, topPad/2 - 4, 14, pink);
+    drawHeart(c, W/2 + 30, topPad/2 - 4, 10, rose);
+  }
+
   function drawStripPlaceholder(){
     ctx.clearRect(0,0,stripCanvas.width, stripCanvas.height);
     ctx.fillStyle = '#f2e8d5';
@@ -438,27 +614,52 @@
 
   function renderStrip(){
     const W = stripCanvas.width;
-    const pad = 20;
+    const pad = currentFrame === 'film' ? 36 : 22;
     const photoW = W - pad*2;
     const photoH = photoW * 0.75;
-    const gap = 16;
-    const topPad = 24;
-    const bottomCaption = 90;
-    const H = topPad + capturedFrames.length*photoH + (capturedFrames.length-1)*gap + bottomCaption;
+    const gap = currentFrame === 'polaroid' ? 30 : 16;
+    const topPad = currentFrame === 'love' ? 40 : 26;
+    const bottomCaption = 92;
+    const n = capturedFrames.length;
+    const H = topPad + n*photoH + (n-1)*gap + bottomCaption;
     stripCanvas.height = H;
 
     ctx.fillStyle = '#f2e8d5';
     ctx.fillRect(0,0,W,H);
 
-    capturedFrames.forEach((frameCanvas, i)=>{
-      const y = topPad + i*(photoH+gap);
-      ctx.fillStyle = '#1a1816';
-      ctx.fillRect(pad-4, y-4, photoW+8, photoH+8);
-      ctx.drawImage(frameCanvas, pad, y, photoW, photoH);
+    const positions = capturedFrames.map((_, i)=>({
+      x: pad, y: topPad + i*(photoH+gap), w: photoW, h: photoH
+    }));
+    const regionTop = topPad;
+    const regionBottom = topPad + n*photoH + (n-1)*gap;
+
+    if(currentFrame === 'film'){
+      decorateFilm(ctx, W, H, pad, regionTop, regionBottom);
+    }
+
+    positions.forEach((p, i)=>{
+      if(currentFrame === 'polaroid'){
+        decoratePolaroid(ctx, p);
+        const tapeColors = ['#e8bb3c','#c8443a','#3f6b64','#e58a5f'];
+        decorateWashiTape(ctx, p, tapeColors[i % tapeColors.length]);
+      } else {
+        ctx.fillStyle = '#1a1816';
+        ctx.fillRect(p.x-4, p.y-4, p.w+8, p.h+8);
+      }
+      ctx.drawImage(capturedFrames[i], p.x, p.y, p.w, p.h);
     });
 
-    const capY = H - bottomCaption + 32;
-    ctx.fillStyle = '#2b2622';
+    if(currentFrame === 'pesta'){
+      const rand = seededRand(42);
+      decorateConfetti(ctx, W, H, regionTop, regionBottom, rand);
+    }
+    if(currentFrame === 'love'){
+      decorateHearts(ctx, positions, W, topPad);
+    }
+
+    const capY = H - bottomCaption + 34;
+    const captionColors = { plain:'#2b2622', film:'#2b2622', polaroid:'#2b2622', pesta:'#3f6b64', love:'#c8546b' };
+    ctx.fillStyle = captionColors[currentFrame] || '#2b2622';
     ctx.textAlign = 'center';
     ctx.font = "22px 'Anton', sans-serif";
     ctx.fillText('PHOTO BOX', W/2, capY);
@@ -474,6 +675,7 @@
     capturedFrames = [];
     shutterBtn.disabled = true;
     filterBtns.forEach(b=>b.disabled = true);
+    frameBtns.forEach(b=>b.disabled = true);
     retakeBtn.disabled = true;
     downloadBtn.disabled = true;
     shotCounter.style.display = 'block';
@@ -497,6 +699,7 @@
     busy = false;
     shutterBtn.disabled = false;
     filterBtns.forEach(b=>b.disabled = false);
+    frameBtns.forEach(b=>b.disabled = false);
     retakeBtn.disabled = false;
     downloadBtn.disabled = false;
   }
