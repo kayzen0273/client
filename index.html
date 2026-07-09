@@ -999,8 +999,7 @@
       paperBtns.forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
       currentPaper = btn.dataset.paper;
-      if(capturedFrames.length > 0){ renderStrip(); }
-      else { drawStripPlaceholder(); }
+      renderStrip();
     });
   });
 
@@ -1010,8 +1009,7 @@
       frameBtns.forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
       currentFrame = btn.dataset.frame;
-      if(capturedFrames.length > 0){ renderStrip(); }
-      else { drawStripPlaceholder(); }
+      renderStrip();
     });
   });
 
@@ -1032,7 +1030,7 @@
     retakeBtn.disabled = true;
     downloadBtn.disabled = true;
     updateHeroSubtitle();
-    drawStripPlaceholder();
+    renderStrip();
   }
 
   layoutBtns.forEach(btn=>{
@@ -1076,8 +1074,7 @@
   }
 
   function redrawCanvas(){
-    if(capturedFrames.length > 0){ renderStrip(); }
-    else { drawStripPlaceholder(); }
+    renderStrip();
   }
 
   function startStickerDrag(ev, id, el){
@@ -2147,23 +2144,45 @@
     return { cols, rows, W, pad, gap, photoW, photoH, topPad, bottomCaption, H, positions, regionTop, regionBottom };
   }
 
-  function drawStripPlaceholder(){
-    const paper = PAPERS[currentPaper] || PAPERS.cream;
-    const L = computeGridLayout(TOTAL_SHOTS);
-    stripCanvas.height = L.H;
-    ctx.clearRect(0,0,stripCanvas.width, stripCanvas.height);
-    ctx.fillStyle = paper.bg;
-    ctx.fillRect(0,0,stripCanvas.width, stripCanvas.height);
-    clampStickers();
-    drawStickers();
-    syncStickerOverlay();
+  renderStrip();
+
+  // Draws a dashed placeholder box for a pose slot that hasn't been captured yet,
+  // so the user can see exactly where each photo will land before shooting.
+  function drawEmptySlot(c, p, index, accentColor){
+    c.save();
+    c.beginPath();
+    roundRect(c, p.x, p.y, p.w, p.h, 8);
+    c.clip();
+    c.fillStyle = 'rgba(0,0,0,.16)';
+    c.fillRect(p.x, p.y, p.w, p.h);
+    c.restore();
+
+    c.save();
+    c.setLineDash([7,6]);
+    c.lineWidth = 2;
+    c.strokeStyle = accentColor || 'rgba(255,255,255,.5)';
+    c.globalAlpha = .85;
+    roundRect(c, p.x+1.5, p.y+1.5, p.w-3, p.h-3, 7);
+    c.stroke();
+    c.setLineDash([]);
+    c.restore();
+
+    c.save();
+    c.globalAlpha = .8;
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    const iconSize = Math.max(14, Math.min(p.w, p.h) * 0.3);
+    c.font = `${iconSize}px sans-serif`;
+    c.fillText('📷', p.x + p.w/2, p.y + p.h/2 - iconSize*0.22);
+    c.font = `700 ${Math.max(9, iconSize*0.34)}px 'Space Mono', monospace`;
+    c.fillStyle = accentColor || 'rgba(255,255,255,.75)';
+    c.fillText(`POSE ${index+1}`, p.x + p.w/2, p.y + p.h/2 + iconSize*0.62);
+    c.restore();
   }
-  drawStripPlaceholder();
 
   function renderStrip(){
     const paper = PAPERS[currentPaper] || PAPERS.cream;
-    const n = capturedFrames.length;
-    const L = computeGridLayout(n || TOTAL_SHOTS);
+    const L = computeGridLayout(TOTAL_SHOTS);
     const W = L.W, pad = L.pad, photoW = L.photoW, photoH = L.photoH, gap = L.gap, topPad = L.topPad, bottomCaption = L.bottomCaption, H = L.H;
     stripCanvas.height = H;
 
@@ -2173,6 +2192,11 @@
     const positions = L.positions;
     const regionTop = L.regionTop;
     const regionBottom = L.regionBottom;
+    const captionColors = {
+      plain: paper.text, film: paper.text, polaroid: paper.text,
+      pesta: '#3f6b64', love: '#c8546b', neon: '#00eaff', birthday: '#e8443a',
+      pastel: '#9b7bc4', sunset: '#e8574a', kawaii: '#c1529c'
+    };
 
     if(currentFrame === 'film'){
       decorateFilm(ctx, W, H, pad, regionTop, regionBottom);
@@ -2207,7 +2231,11 @@
         ctx.fillStyle = '#1a1816';
         ctx.fillRect(p.x-4, p.y-4, p.w+8, p.h+8);
       }
-      ctx.drawImage(capturedFrames[i], p.x, p.y, p.w, p.h);
+      if(capturedFrames[i]){
+        ctx.drawImage(capturedFrames[i], p.x, p.y, p.w, p.h);
+      } else {
+        drawEmptySlot(ctx, p, i, '#f4b942');
+      }
       if(currentFrame === 'sunset'){
         decorateSunsetBorder(ctx, p, i);
       }
@@ -2228,11 +2256,6 @@
     }
 
     const capY = H - bottomCaption + 34;
-    const captionColors = {
-      plain: paper.text, film: paper.text, polaroid: paper.text,
-      pesta: '#3f6b64', love: '#c8546b', neon: '#00eaff', birthday: '#e8443a',
-      pastel: '#9b7bc4', sunset: '#e8574a', kawaii: '#c1529c'
-    };
     ctx.fillStyle = captionColors[currentFrame] || paper.text;
     ctx.textAlign = 'center';
     ctx.font = "22px 'Anton', sans-serif";
@@ -2251,6 +2274,7 @@
     if(busy || errorMsg.style.display === 'flex') return;
     busy = true;
     capturedFrames = [];
+    renderStrip();
     shutterBtn.disabled = true;
     flipBtn.disabled = true;
     filterBtns.forEach(b=>b.disabled = true);
@@ -2307,7 +2331,7 @@
   retakeBtn.addEventListener('click', ()=>{
     if(busy) return;
     capturedFrames = [];
-    drawStripPlaceholder();
+    renderStrip();
     shotCounter.style.display = 'none';
     retakeBtn.disabled = true;
     downloadBtn.disabled = true;
