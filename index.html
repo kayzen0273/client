@@ -614,6 +614,7 @@
     touch-action:none;
     line-height:1;
     filter:drop-shadow(0 2px 3px rgba(0,0,0,.4));
+    z-index:4;
   }
   .sticker-item.dragging{ cursor:grabbing; z-index:20; filter:drop-shadow(0 4px 8px rgba(0,0,0,.5)); }
   .sticker-remove{
@@ -629,6 +630,38 @@
     cursor:pointer;
     font-family:'Space Mono', monospace;
     box-shadow:0 1px 3px rgba(0,0,0,.4);
+  }
+  .sticker-resize-handle{
+    position:absolute;
+    right:-11px; bottom:-11px;
+    width:18px; height:18px;
+    border-radius:50%;
+    background:var(--teal);
+    border:2px solid #fff;
+    box-shadow:0 1px 3px rgba(0,0,0,.45);
+    cursor:nwse-resize;
+    touch-action:none;
+  }
+  .sticker-rotate-handle{
+    position:absolute;
+    top:-28px; left:50%;
+    width:16px; height:16px;
+    border-radius:50%;
+    background:var(--bulb-amber);
+    border:2px solid #fff;
+    box-shadow:0 1px 3px rgba(0,0,0,.45);
+    cursor:grab;
+    touch-action:none;
+    transform:translateX(-50%);
+  }
+  .sticker-rotate-handle:active{ cursor:grabbing; }
+  .sticker-rotate-handle::after{
+    content:"";
+    position:absolute;
+    top:14px; left:50%;
+    width:2px; height:10px;
+    background:rgba(255,255,255,.55);
+    transform:translateX(-50%);
   }
   .sticker-ghost{
     position:fixed;
@@ -653,8 +686,26 @@
     box-shadow:0 2px 6px rgba(0,0,0,.5);
     transform:translate(-50%,-50%);
     touch-action:none;
+    z-index:6;
+    animation: popIn .15s ease-out;
   }
   .photo-delete-btn:hover{ filter:brightness(1.1); transform:translate(-50%,-50%) scale(1.08); }
+  @keyframes popIn{ from{ transform:translate(-50%,-50%) scale(.5); opacity:0; } to{ transform:translate(-50%,-50%) scale(1); opacity:1; } }
+
+  .photo-hit-area{
+    position:absolute;
+    border-radius:6px;
+    cursor:pointer;
+    touch-action:manipulation;
+    z-index:1;
+    background:rgba(0,0,0,0);
+    transition: background .15s ease, box-shadow .15s ease;
+  }
+  .photo-hit-area:hover{ background:rgba(0,0,0,.08); }
+  .photo-hit-area.selected{
+    background:rgba(10,8,6,.28);
+    box-shadow: 0 0 0 3px var(--curtain-red) inset;
+  }
 
   .sticker-picker{
     width:100%;
@@ -985,6 +1036,7 @@
         <button class="sticker-clear-btn" id="clearStickersBtn">Bersihkan Stiker</button>
       </div>
       <div class="strip-actions">
+        <button class="action-btn" id="undoDeleteBtn" disabled title="Kembalikan foto yang dihapus">Undo</button>
         <button class="action-btn" id="retakeBtn" disabled>Ulangi</button>
         <button class="action-btn primary" id="downloadBtn" disabled>Unduh</button>
       </div>
@@ -1056,12 +1108,23 @@
   const SCRAPBOOK_DEFAULT_CALIB = { cx:0.535, cy:0.545, w:0.20, h:0.635, angle:-8, margin:0.06 };
   let scrapbookCalib = { ...SCRAPBOOK_DEFAULT_CALIB };
   const retakeBtn = document.getElementById('retakeBtn');
+  const undoDeleteBtn = document.getElementById('undoDeleteBtn');
+  let deleteHistory = []; // stack of {type:'single', index, frame} | {type:'clearAll', frames}
   const downloadBtn = document.getElementById('downloadBtn');
   const shutterLabel = document.querySelector('.shutter-label');
   const stripCaption = document.getElementById('stripCaption');
   const paperBtns = document.querySelectorAll('.paper-swatch');
   const stripWrap = document.getElementById('stripWrap');
   const stickerOverlay = document.getElementById('stickerOverlay');
+  let selectedDeleteSlot = null; // index of the photo currently tapped to reveal its delete button
+  stickerOverlay.addEventListener('click', ()=>{
+    // Any click on the overlay that isn't caught (stopped) by a photo tap-area
+    // or the delete button itself means the user tapped elsewhere — hide the option.
+    if(selectedDeleteSlot !== null){
+      selectedDeleteSlot = null;
+      syncStickerOverlay();
+    }
+  });
   const stickerPalette = document.getElementById('stickerPalette');
   const clearStickersBtn = document.getElementById('clearStickersBtn');
   const aiCanvas = document.getElementById('aiCanvas');
@@ -1103,6 +1166,7 @@
   let currentStream = null;
   let stickers = [];
   let stickerIdSeq = 1;
+  let restoringSession = true; // true until a saved session (if any) finishes loading on startup
   let aiBgEnabled = false;
   let aiBgPreset = 'blur';
   let bodyPixModel = null;
@@ -1373,6 +1437,7 @@
     GRID_COLS = LAYOUTS[key].cols;
     // Photos beyond the current grid's slot count are kept (not deleted) so
     // switching back to a bigger layout brings them back instead of losing them.
+    selectedDeleteSlot = null;
     updateHeroSubtitle();
     renderStrip();
     updateCaptureUI();
@@ -1400,11 +1465,13 @@
       el.style.left = (s.x*scaleX) + 'px';
       el.style.top = (s.y*scaleY) + 'px';
       el.style.fontSize = (s.size*scaleX) + 'px';
+      el.style.transform = `translate(-50%,-50%) rotate(${s.rotation||0}deg)`;
       el.textContent = s.emoji;
 
       const rm = document.createElement('span');
       rm.className = 'sticker-remove';
       rm.textContent = '×';
+      rm.title = 'Hapus stiker';
       rm.addEventListener('pointerdown', ev=>ev.stopPropagation());
       rm.addEventListener('click', ev=>{
         ev.stopPropagation();
@@ -1413,30 +1480,64 @@
       });
       el.appendChild(rm);
 
+      const resizeHandle = document.createElement('span');
+      resizeHandle.className = 'sticker-resize-handle';
+      resizeHandle.title = 'Seret untuk ubah ukuran';
+      resizeHandle.addEventListener('pointerdown', ev=>startStickerResize(ev, s.id, el));
+      el.appendChild(resizeHandle);
+
+      const rotateHandle = document.createElement('span');
+      rotateHandle.className = 'sticker-rotate-handle';
+      rotateHandle.title = 'Seret untuk memutar';
+      rotateHandle.addEventListener('pointerdown', ev=>startStickerRotate(ev, s.id, el));
+      el.appendChild(rotateHandle);
+
       el.addEventListener('pointerdown', ev=>startStickerDrag(ev, s.id, el));
       stickerOverlay.appendChild(el);
     });
 
-    // Per-photo delete buttons, one per filled slot, so a single photo can be
-    // removed and retaken without resetting the whole strip.
+    // Per-photo tap-to-delete: tapping a filled photo reveals that slot's
+    // delete button (with a highlight), instead of always showing an ×.
+    // Tapping the photo again, or anywhere else, hides it.
     if(!busy){
       const layout = computeGridLayout(TOTAL_SHOTS);
       layout.positions.forEach((p, i)=>{
         if(!capturedFrames[i]) return;
-        const btn = document.createElement('div');
-        btn.className = 'photo-delete-btn';
-        btn.textContent = '×';
-        btn.title = `Hapus foto ${i+1}`;
-        btn.style.left = ((p.x + p.w) * scaleX) + 'px';
-        btn.style.top = (p.y * scaleY) + 'px';
-        btn.addEventListener('pointerdown', ev=>ev.stopPropagation());
-        btn.addEventListener('click', ev=>{
+
+        const hit = document.createElement('div');
+        hit.className = 'photo-hit-area' + (selectedDeleteSlot === i ? ' selected' : '');
+        hit.title = `Foto ${i+1}`;
+        hit.style.left = (p.x * scaleX) + 'px';
+        hit.style.top = (p.y * scaleY) + 'px';
+        hit.style.width = (p.w * scaleX) + 'px';
+        hit.style.height = (p.h * scaleY) + 'px';
+        hit.addEventListener('pointerdown', ev=>ev.stopPropagation());
+        hit.addEventListener('click', ev=>{
           ev.stopPropagation();
-          capturedFrames[i] = null;
-          renderStrip();
-          updateCaptureUI();
+          selectedDeleteSlot = (selectedDeleteSlot === i) ? null : i;
+          syncStickerOverlay();
         });
-        stickerOverlay.appendChild(btn);
+        stickerOverlay.appendChild(hit);
+
+        if(selectedDeleteSlot === i){
+          const btn = document.createElement('div');
+          btn.className = 'photo-delete-btn';
+          btn.textContent = '×';
+          btn.title = `Hapus foto ${i+1}`;
+          btn.style.left = ((p.x + p.w) * scaleX) + 'px';
+          btn.style.top = (p.y * scaleY) + 'px';
+          btn.addEventListener('pointerdown', ev=>ev.stopPropagation());
+          btn.addEventListener('click', ev=>{
+            ev.stopPropagation();
+            deleteHistory.push({ type:'single', index: i, frame: capturedFrames[i] });
+            capturedFrames[i] = null;
+            selectedDeleteSlot = null;
+            updateUndoBtn();
+            renderStrip();
+            updateCaptureUI();
+          });
+          stickerOverlay.appendChild(btn);
+        }
       });
     }
   }
@@ -1482,8 +1583,78 @@
     document.addEventListener('pointerup', onUp);
   }
 
+  // Drag the teal handle at the bottom-right corner to scale a sticker up/down,
+  // based on distance from the sticker's center to the pointer.
+  function startStickerResize(ev, id, el){
+    if(busy) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    const sticker = stickers.find(st=>st.id === id);
+    if(!sticker) return;
+    el.classList.add('dragging');
+
+    const rect = stripCanvas.getBoundingClientRect();
+    const scaleX = rect.width / stripCanvas.width;
+    const scaleY = rect.height / stripCanvas.height;
+    const centerX = rect.left + sticker.x*scaleX;
+    const centerY = rect.top + sticker.y*scaleY;
+    const startDist = Math.hypot(ev.clientX-centerX, ev.clientY-centerY) || 1;
+    const startSize = sticker.size;
+    let pendingSize = startSize;
+
+    function onMove(ev2){
+      const dist = Math.hypot(ev2.clientX-centerX, ev2.clientY-centerY);
+      pendingSize = Math.max(16, Math.min(140, startSize * (dist/startDist)));
+      el.style.fontSize = (pendingSize*scaleX) + 'px';
+    }
+    function onUp(){
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      el.classList.remove('dragging');
+      sticker.size = pendingSize;
+      redrawCanvas();
+    }
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+  }
+
+  // Drag the amber handle above the sticker to spin it around its own center,
+  // tracking the angle from the sticker's center to the pointer.
+  function startStickerRotate(ev, id, el){
+    if(busy) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    const sticker = stickers.find(st=>st.id === id);
+    if(!sticker) return;
+    el.classList.add('dragging');
+
+    const rect = stripCanvas.getBoundingClientRect();
+    const scaleX = rect.width / stripCanvas.width;
+    const scaleY = rect.height / stripCanvas.height;
+    const centerX = rect.left + sticker.x*scaleX;
+    const centerY = rect.top + sticker.y*scaleY;
+    const startAngle = Math.atan2(ev.clientY-centerY, ev.clientX-centerX) * 180/Math.PI;
+    const startRotation = sticker.rotation || 0;
+    let pendingRotation = startRotation;
+
+    function onMove(ev2){
+      const angle = Math.atan2(ev2.clientY-centerY, ev2.clientX-centerX) * 180/Math.PI;
+      pendingRotation = startRotation + (angle - startAngle);
+      el.style.transform = `translate(-50%,-50%) rotate(${pendingRotation}deg)`;
+    }
+    function onUp(){
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      el.classList.remove('dragging');
+      sticker.rotation = pendingRotation;
+      redrawCanvas();
+    }
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+  }
+
   function addSticker(emoji, x, y){
-    stickers.push({ id: stickerIdSeq++, emoji, x, y, size: 34 });
+    stickers.push({ id: stickerIdSeq++, emoji, x, y, size: 34, rotation: 0 });
     redrawCanvas();
   }
 
@@ -2651,18 +2822,21 @@
   function clampStickers(){
     const W = stripCanvas.width, H = stripCanvas.height;
     stickers.forEach(s=>{
-      s.x = Math.min(Math.max(s.x, 12), W-12);
-      s.y = Math.min(Math.max(s.y, 12), H-12);
+      const margin = Math.max(12, (s.size||34)/2);
+      s.x = Math.min(Math.max(s.x, margin), W-margin);
+      s.y = Math.min(Math.max(s.y, margin), H-margin);
     });
   }
 
   function drawStickers(){
     stickers.forEach(s=>{
       ctx.save();
+      ctx.translate(s.x, s.y);
+      if(s.rotation) ctx.rotate(s.rotation * Math.PI/180);
       ctx.font = `${s.size}px sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(s.emoji, s.x, s.y);
+      ctx.fillText(s.emoji, 0, 0);
       ctx.restore();
     });
   }
@@ -2900,6 +3074,9 @@
     clampStickers();
     drawStickers();
     syncStickerOverlay();
+    if(!restoringSession){
+      saveSessionToStorage();
+    }
   }
 
   async function startSession(){
@@ -2909,6 +3086,7 @@
     if(emptySlots.length === 0) return; // grid already full — use Ulangi to retake
 
     busy = true;
+    selectedDeleteSlot = null;
     shutterBtn.disabled = true;
     flipBtn.disabled = true;
     filterBtns.forEach(b=>b.disabled = true);
@@ -2919,6 +3097,7 @@
     clearStickersBtn.disabled = true;
     stickerOverlay.style.pointerEvents = 'none';
     retakeBtn.disabled = true;
+    if(undoDeleteBtn) undoDeleteBtn.disabled = true;
     downloadBtn.disabled = true;
     shotCounter.style.display = 'block';
     aiSwitch.disabled = true;
@@ -2957,16 +3136,45 @@
     arSwitch.disabled = false;
     arPresetBtns.forEach(b=>b.disabled = false);
     updateCaptureUI();
+    updateUndoBtn();
   }
 
   shutterBtn.addEventListener('click', startSession);
 
   retakeBtn.addEventListener('click', ()=>{
     if(busy) return;
+    if(capturedFrames.some(Boolean)){
+      deleteHistory.push({ type:'clearAll', frames: capturedFrames.slice() });
+      updateUndoBtn();
+    }
     capturedFrames = [];
+    selectedDeleteSlot = null;
     renderStrip();
     updateCaptureUI();
   });
+
+  function updateUndoBtn(){
+    if(undoDeleteBtn) undoDeleteBtn.disabled = busy || deleteHistory.length === 0;
+  }
+
+  function undoLastDelete(){
+    if(busy || deleteHistory.length === 0) return;
+    const last = deleteHistory.pop();
+    if(last.type === 'single'){
+      capturedFrames[last.index] = last.frame;
+    } else if(last.type === 'clearAll'){
+      capturedFrames = last.frames.slice();
+    }
+    selectedDeleteSlot = null;
+    updateUndoBtn();
+    renderStrip();
+    updateCaptureUI();
+  }
+
+  if(undoDeleteBtn){
+    undoDeleteBtn.addEventListener('click', undoLastDelete);
+  }
+  updateUndoBtn();
 
   downloadBtn.addEventListener('click', ()=>{
     if(capturedFrames.slice(0, TOTAL_SHOTS).filter(Boolean).length < TOTAL_SHOTS) return;
@@ -2975,6 +3183,95 @@
     link.href = stripCanvas.toDataURL('image/png');
     link.click();
   });
+
+  // ---------- session persistence (localStorage) ----------
+  // Keeps the current photos, stickers, and style choices in localStorage so
+  // refreshing or reopening the page doesn't wipe out an in-progress strip.
+  const SESSION_KEY = 'photoboxSession';
+
+  function saveSessionToStorage(){
+    try{
+      const session = {
+        v: 1,
+        layout: currentLayout,
+        frame: currentFrame,
+        paper: currentPaper,
+        filter: currentFilter,
+        photos: capturedFrames.map(f => f ? f.toDataURL('image/png') : null),
+        stickers: stickers.map(s => ({ id:s.id, emoji:s.emoji, x:s.x, y:s.y, size:s.size, rotation:s.rotation||0 })),
+        stickerIdSeq
+      };
+      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    }catch(e){
+      // Storage full, private-browsing mode, etc. — the session just won't persist.
+    }
+  }
+
+  function loadImageAsCanvas(dataUrl){
+    return new Promise(resolve=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const c = document.createElement('canvas');
+        c.width = 380; c.height = 285;
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        resolve(c);
+      };
+      img.onerror = ()=> resolve(null);
+      img.src = dataUrl;
+    });
+  }
+
+  async function restoreSessionFromStorage(){
+    let session = null;
+    try{
+      const raw = localStorage.getItem(SESSION_KEY);
+      if(raw) session = JSON.parse(raw);
+    }catch(e){ session = null; }
+
+    if(session && typeof session === 'object'){
+      if(session.layout && LAYOUTS[session.layout]){
+        currentLayout = session.layout;
+        TOTAL_SHOTS = LAYOUTS[currentLayout].shots;
+        GRID_COLS = LAYOUTS[currentLayout].cols;
+        layoutBtns.forEach(b=>b.classList.toggle('active', b.dataset.layout === currentLayout));
+      }
+      if(session.frame){
+        currentFrame = session.frame;
+        frameBtns.forEach(b=>b.classList.toggle('active', b.dataset.frame === currentFrame));
+        if(scrapbookCalibPanel){
+          scrapbookCalibPanel.style.display = (currentFrame === 'scrapbook') ? 'block' : 'none';
+        }
+      }
+      if(session.paper && PAPERS[session.paper]){
+        currentPaper = session.paper;
+        paperBtns.forEach(b=>b.classList.toggle('active', b.dataset.paper === currentPaper));
+      }
+      if(session.filter && FILTERS[session.filter]){
+        currentFilter = session.filter;
+        filterBtns.forEach(b=>b.classList.toggle('active', b.dataset.filter === currentFilter));
+        applyFilter(currentFilter);
+      }
+      if(Array.isArray(session.stickers)){
+        stickers = session.stickers.map(s=>({
+          id: s.id, emoji: s.emoji, x: s.x, y: s.y, size: s.size || 34, rotation: s.rotation || 0
+        }));
+      }
+      if(typeof session.stickerIdSeq === 'number'){
+        stickerIdSeq = Math.max(stickerIdSeq, session.stickerIdSeq);
+      }
+      if(Array.isArray(session.photos) && session.photos.some(Boolean)){
+        capturedFrames = await Promise.all(session.photos.map(p => p ? loadImageAsCanvas(p) : Promise.resolve(null)));
+      }
+    }
+
+    restoringSession = false;
+    updateHeroSubtitle();
+    renderStrip();
+    updateCaptureUI();
+    updateUndoBtn();
+  }
+
+  restoreSessionFromStorage();
 
 })();
 </script>
