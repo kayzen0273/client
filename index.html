@@ -62,6 +62,95 @@
   .marquee::before{ left:6px; }
   .marquee::after{ right:6px; }
 
+  .settings-btn{
+    position:absolute;
+    top:10px; right:26px;
+    width:32px; height:32px;
+    border-radius:50%;
+    border:1px solid rgba(244,185,66,.5);
+    background:rgba(0,0,0,.35);
+    color:var(--bulb-amber);
+    font-size:16px;
+    cursor:pointer;
+    z-index:2;
+    display:flex; align-items:center; justify-content:center;
+    transition:transform .2s ease, background .2s ease;
+  }
+  .settings-btn:hover{ background:rgba(0,0,0,.55); transform:rotate(35deg); }
+
+  .settings-overlay{
+    position:fixed; inset:0;
+    background:rgba(10,8,6,.72);
+    display:none;
+    align-items:center; justify-content:center;
+    z-index:50;
+    padding:16px;
+  }
+  .settings-overlay.open{ display:flex; }
+  .settings-modal{
+    background:var(--paper-cream);
+    color:var(--ink);
+    border-radius:14px;
+    padding:24px;
+    width:min(360px, 100%);
+    box-shadow:0 20px 50px rgba(0,0,0,.5);
+    font-family:'Space Mono', monospace;
+  }
+  .settings-modal h2{
+    font-family:'Anton', sans-serif;
+    letter-spacing:2px;
+    margin:0 0 16px;
+    font-size:20px;
+    color:var(--ink);
+  }
+  .settings-modal label{
+    display:block;
+    font-size:11px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    margin-bottom:6px;
+    opacity:.75;
+  }
+  .settings-modal input{
+    width:100%;
+    font-family:'Space Mono', monospace;
+    font-size:14px;
+    padding:10px 12px;
+    border-radius:8px;
+    border:2px solid rgba(43,38,34,.2);
+    background:#fff;
+    color:var(--ink);
+    box-sizing:border-box;
+  }
+  .settings-modal input:focus{ outline:none; border-color:var(--bulb-amber); }
+  .settings-hint{
+    font-size:11px;
+    line-height:1.5;
+    opacity:.65;
+    margin:10px 0 0;
+  }
+  .settings-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    margin-top:20px;
+  }
+  .settings-cancel, .settings-save{
+    font-family:'Space Mono', monospace;
+    font-size:11px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    border:none;
+    padding:9px 16px;
+    border-radius:20px;
+    cursor:pointer;
+    font-weight:700;
+  }
+  .settings-cancel{ background:transparent; color:var(--ink); box-shadow:inset 0 0 0 2px rgba(43,38,34,.25); }
+  .settings-cancel:hover{ background:rgba(43,38,34,.08); }
+  .settings-save{ background:var(--bulb-amber); color:var(--ink); }
+  .settings-save:hover{ filter:brightness(1.08); }
+
   .marquee h1{
     font-family:'Anton', sans-serif;
     font-size:clamp(38px, 7vw, 64px);
@@ -466,6 +555,20 @@
     position:absolute;
     inset:0;
     pointer-events:auto;
+    touch-action:none;
+  }
+  .photo-ghost{
+    position:fixed;
+    width:74px;
+    aspect-ratio:4/3;
+    object-fit:cover;
+    border-radius:6px;
+    border:2px solid var(--bulb-amber);
+    box-shadow:0 6px 16px rgba(0,0,0,.5);
+    transform:translate(-50%,-50%);
+    pointer-events:none;
+    opacity:.92;
+    z-index:9999;
   }
   .sticker-item{
     position:absolute;
@@ -642,8 +745,22 @@
 <body>
 
   <div class="marquee">
-    <h1>PHOTO BOX</h1>
+    <button class="settings-btn" id="settingsBtn" title="Pengaturan nama photobox" aria-label="Pengaturan nama photobox">⚙</button>
+    <h1 id="photoboxTitle">PHOTO BOX</h1>
     <p id="heroSubtitle">4 Pose · 1 Strip · Kenangan Instan</p>
+  </div>
+
+  <div class="settings-overlay" id="settingsOverlay">
+    <div class="settings-modal">
+      <h2>Pengaturan</h2>
+      <label for="photoboxNameInput">Nama Photobox</label>
+      <input type="text" id="photoboxNameInput" maxlength="28" placeholder="cth. PHOTO BOX">
+      <p class="settings-hint">Nama ini akan tampil di judul halaman dan di atas tanggal pada hasil strip foto.</p>
+      <div class="settings-actions">
+        <button class="settings-cancel" id="settingsCancel" type="button">Batal</button>
+        <button class="settings-save" id="settingsSave" type="button">Simpan</button>
+      </div>
+    </div>
   </div>
 
   <div class="studio">
@@ -754,7 +871,7 @@
           <div class="sticker-overlay" id="stickerOverlay"></div>
         </div>
       </div>
-      <div class="strip-caption">Strip kamu akan tercetak di sini</div>
+      <div class="strip-caption" id="stripCaption">Strip kamu akan tercetak di sini</div>
       <div class="paper-picker">
         <div class="frame-picker-label">Warna Kertas</div>
         <div class="paper-swatches" id="paperSwatches">
@@ -795,6 +912,43 @@
 
 <script>
 (function(){
+  const settingsBtn = document.getElementById('settingsBtn');
+  const settingsOverlay = document.getElementById('settingsOverlay');
+  const settingsCancel = document.getElementById('settingsCancel');
+  const settingsSave = document.getElementById('settingsSave');
+  const photoboxNameInput = document.getElementById('photoboxNameInput');
+  const photoboxTitleEl = document.getElementById('photoboxTitle');
+  const DEFAULT_PHOTOBOX_NAME = 'PHOTO BOX';
+  let photoboxName = localStorage.getItem('photoboxName') || DEFAULT_PHOTOBOX_NAME;
+
+  function applyPhoteboxName(){
+    photoboxTitleEl.textContent = photoboxName;
+    document.title = `${photoboxName} — Studio Foto Instan`;
+    renderStrip();
+  }
+
+  settingsBtn.addEventListener('click', ()=>{
+    photoboxNameInput.value = photoboxName;
+    settingsOverlay.classList.add('open');
+    setTimeout(()=>photoboxNameInput.focus(), 50);
+  });
+  function closeSettings(){ settingsOverlay.classList.remove('open'); }
+  settingsCancel.addEventListener('click', closeSettings);
+  settingsOverlay.addEventListener('click', (e)=>{ if(e.target === settingsOverlay) closeSettings(); });
+  settingsSave.addEventListener('click', ()=>{
+    const val = photoboxNameInput.value.trim();
+    photoboxName = val || DEFAULT_PHOTOBOX_NAME;
+    localStorage.setItem('photoboxName', photoboxName);
+    applyPhoteboxName();
+    closeSettings();
+  });
+  photoboxNameInput.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter') settingsSave.click();
+    if(e.key === 'Escape') closeSettings();
+  });
+  photoboxTitleEl.textContent = photoboxName;
+  document.title = `${photoboxName} — Studio Foto Instan`;
+
   const video = document.getElementById('video');
   const viewfinder = document.getElementById('viewfinder');
   const tintEl = document.getElementById('tint');
@@ -810,6 +964,8 @@
   const ctx = stripCanvas.getContext('2d');
   const retakeBtn = document.getElementById('retakeBtn');
   const downloadBtn = document.getElementById('downloadBtn');
+  const shutterLabel = document.querySelector('.shutter-label');
+  const stripCaption = document.getElementById('stripCaption');
   const paperBtns = document.querySelectorAll('.paper-swatch');
   const stripWrap = document.getElementById('stripWrap');
   const stickerOverlay = document.getElementById('stickerOverlay');
@@ -1020,18 +1176,49 @@
     heroSubtitle.textContent = `${TOTAL_SHOTS} Pose \u00b7 1 ${kind} \u00b7 Kenangan Instan`;
   }
 
+  // Keeps shot counter, shutter/retake/download buttons, and the hint text in sync
+  // with how many of the current grid's slots are actually filled with photos.
+  function updateCaptureUI(){
+    if(busy) return;
+    const filled = capturedFrames.filter(Boolean).length;
+
+    if(filled > 0){
+      shotCounter.style.display = 'block';
+      shotCounter.textContent = `${filled}/${TOTAL_SHOTS} TERISI`;
+    } else {
+      shotCounter.style.display = 'none';
+    }
+
+    shutterBtn.disabled = filled >= TOTAL_SHOTS;
+    retakeBtn.disabled = filled === 0;
+    downloadBtn.disabled = filled < TOTAL_SHOTS;
+
+    if(shutterLabel){
+      shutterLabel.textContent = filled === 0 ? 'Jepret' : (filled < TOTAL_SHOTS ? 'Lanjut' : 'Penuh');
+    }
+    if(stripCaption){
+      if(filled === 0){
+        stripCaption.textContent = 'Strip kamu akan tercetak di sini';
+      } else if(filled < TOTAL_SHOTS){
+        stripCaption.textContent = `Lanjutkan jepret untuk isi ${TOTAL_SHOTS - filled} slot lagi \u00b7 seret foto untuk ubah posisi`;
+      } else {
+        stripCaption.textContent = 'Seret foto di atas untuk ubah posisi/urutan';
+      }
+    }
+  }
+
   function applyLayout(key){
     if(!LAYOUTS[key] || key === currentLayout) return;
     currentLayout = key;
     TOTAL_SHOTS = LAYOUTS[key].shots;
     GRID_COLS = LAYOUTS[key].cols;
-    capturedFrames = [];
-    shotCounter.textContent = `POSE 0/${TOTAL_SHOTS}`;
-    shotCounter.style.display = 'none';
-    retakeBtn.disabled = true;
-    downloadBtn.disabled = true;
+    // Keep photos already taken. If the new grid has fewer slots, trim the extras.
+    if(capturedFrames.length > TOTAL_SHOTS){
+      capturedFrames = capturedFrames.slice(0, TOTAL_SHOTS);
+    }
     updateHeroSubtitle();
     renderStrip();
+    updateCaptureUI();
   }
 
   layoutBtns.forEach(btn=>{
@@ -1119,6 +1306,64 @@
     stickers.push({ id: stickerIdSeq++, emoji, x, y, size: 34 });
     redrawCanvas();
   }
+
+  // ---------- photo reordering (drag a filled slot onto another slot) ----------
+  function slotIndexAtClientPoint(clientX, clientY, layout){
+    const rect = stripCanvas.getBoundingClientRect();
+    if(rect.width === 0 || rect.height === 0) return -1;
+    if(clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) return -1;
+    const scaleX = stripCanvas.width / rect.width;
+    const scaleY = stripCanvas.height / rect.height;
+    const cx = (clientX - rect.left) * scaleX;
+    const cy = (clientY - rect.top) * scaleY;
+    return layout.positions.findIndex(p => cx >= p.x && cx <= p.x + p.w && cy >= p.y && cy <= p.y + p.h);
+  }
+
+  function startPhotoDrag(ev, srcIndex){
+    ev.preventDefault();
+    const frameCanvas = capturedFrames[srcIndex];
+    if(!frameCanvas) return;
+
+    const ghost = document.createElement('img');
+    ghost.className = 'photo-ghost';
+    ghost.src = frameCanvas.toDataURL('image/png');
+    document.body.appendChild(ghost);
+    const placeGhost = (clientX, clientY) => {
+      ghost.style.left = clientX + 'px';
+      ghost.style.top = clientY + 'px';
+    };
+    placeGhost(ev.clientX, ev.clientY);
+
+    function onMove(ev2){
+      placeGhost(ev2.clientX, ev2.clientY);
+    }
+    function onUp(ev2){
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      ghost.remove();
+      const layout = computeGridLayout(TOTAL_SHOTS);
+      const targetIndex = slotIndexAtClientPoint(ev2.clientX, ev2.clientY, layout);
+      if(targetIndex !== -1 && targetIndex !== srcIndex){
+        const tmp = capturedFrames[targetIndex];
+        capturedFrames[targetIndex] = capturedFrames[srcIndex];
+        capturedFrames[srcIndex] = tmp;
+        renderStrip();
+        updateCaptureUI();
+      }
+    }
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+  }
+
+  // Pointerdown on the overlay background (i.e. not on a sticker, which stops
+  // propagation) means the user grabbed a photo slot to reorder it.
+  stickerOverlay.addEventListener('pointerdown', ev=>{
+    if(busy) return;
+    const layout = computeGridLayout(TOTAL_SHOTS);
+    const srcIndex = slotIndexAtClientPoint(ev.clientX, ev.clientY, layout);
+    if(srcIndex === -1 || !capturedFrames[srcIndex]) return;
+    startPhotoDrag(ev, srcIndex);
+  });
 
   function moveGhost(ghost, clientX, clientY){
     ghost.style.left = clientX + 'px';
@@ -2146,6 +2391,7 @@
   }
 
   renderStrip();
+  updateCaptureUI();
 
   // Draws a dashed placeholder box for a pose slot that hasn't been captured yet,
   // so the user can see exactly where each photo will land before shooting.
@@ -2260,7 +2506,7 @@
     ctx.fillStyle = captionColors[currentFrame] || paper.text;
     ctx.textAlign = 'center';
     ctx.font = "22px 'Anton', sans-serif";
-    ctx.fillText('PHOTO BOX', W/2, capY);
+    ctx.fillText(photoboxName, W/2, capY);
     ctx.font = "12px 'Space Mono', monospace";
     ctx.fillStyle = paper.sub;
     const dateStr = new Date().toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'});
@@ -2273,9 +2519,11 @@
 
   async function startSession(){
     if(busy || errorMsg.style.display === 'flex') return;
+    const emptySlots = [];
+    for(let i=0; i<TOTAL_SHOTS; i++){ if(!capturedFrames[i]) emptySlots.push(i); }
+    if(emptySlots.length === 0) return; // grid already full — use Ulangi to retake
+
     busy = true;
-    capturedFrames = [];
-    renderStrip();
     shutterBtn.disabled = true;
     flipBtn.disabled = true;
     filterBtns.forEach(b=>b.disabled = true);
@@ -2293,13 +2541,14 @@
     arSwitch.disabled = true;
     arPresetBtns.forEach(b=>b.disabled = true);
 
-    for(let i=1; i<=TOTAL_SHOTS; i++){
-      shotCounter.textContent = `POSE ${i}/${TOTAL_SHOTS}`;
+    for(let k=0; k<emptySlots.length; k++){
+      const slot = emptySlots[k];
+      shotCounter.textContent = `POSE ${k+1}/${emptySlots.length}`;
       await runCountdown();
       doFlash();
       await wait(120);
       const frame = captureFrame();
-      capturedFrames.push(frame);
+      capturedFrames[slot] = frame;
       renderStrip();
       await wait(400);
     }
@@ -2310,7 +2559,6 @@
     stripCanvas.classList.add('printing');
 
     busy = false;
-    shutterBtn.disabled = false;
     flipBtn.disabled = false;
     filterBtns.forEach(b=>b.disabled = false);
     frameBtns.forEach(b=>b.disabled = false);
@@ -2319,12 +2567,11 @@
     stickerPalette.querySelectorAll('.sticker-chip').forEach(b=>b.disabled = false);
     clearStickersBtn.disabled = false;
     stickerOverlay.style.pointerEvents = 'auto';
-    retakeBtn.disabled = false;
-    downloadBtn.disabled = false;
     aiSwitch.disabled = false;
     aiPresetBtns.forEach(b=>b.disabled = false);
     arSwitch.disabled = false;
     arPresetBtns.forEach(b=>b.disabled = false);
+    updateCaptureUI();
   }
 
   shutterBtn.addEventListener('click', startSession);
@@ -2333,13 +2580,11 @@
     if(busy) return;
     capturedFrames = [];
     renderStrip();
-    shotCounter.style.display = 'none';
-    retakeBtn.disabled = true;
-    downloadBtn.disabled = true;
+    updateCaptureUI();
   });
 
   downloadBtn.addEventListener('click', ()=>{
-    if(capturedFrames.length === 0) return;
+    if(capturedFrames.filter(Boolean).length < TOTAL_SHOTS) return;
     const link = document.createElement('a');
     link.download = 'photo-box-strip.png';
     link.href = stripCanvas.toDataURL('image/png');
