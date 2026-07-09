@@ -603,6 +603,23 @@
     z-index:9999;
     filter:drop-shadow(0 3px 6px rgba(0,0,0,.45));
   }
+  .photo-delete-btn{
+    position:absolute;
+    width:24px; height:24px;
+    border-radius:50%;
+    background:var(--curtain-red);
+    color:#fff;
+    font-size:14px;
+    line-height:24px;
+    text-align:center;
+    cursor:pointer;
+    font-family:'Space Mono', monospace;
+    font-weight:700;
+    box-shadow:0 2px 6px rgba(0,0,0,.5);
+    transform:translate(-50%,-50%);
+    touch-action:none;
+  }
+  .photo-delete-btn:hover{ filter:brightness(1.1); transform:translate(-50%,-50%) scale(1.08); }
 
   .sticker-picker{
     width:100%;
@@ -1180,7 +1197,7 @@
   // with how many of the current grid's slots are actually filled with photos.
   function updateCaptureUI(){
     if(busy) return;
-    const filled = capturedFrames.filter(Boolean).length;
+    const filled = capturedFrames.slice(0, TOTAL_SHOTS).filter(Boolean).length;
 
     if(filled > 0){
       shotCounter.style.display = 'block';
@@ -1212,10 +1229,8 @@
     currentLayout = key;
     TOTAL_SHOTS = LAYOUTS[key].shots;
     GRID_COLS = LAYOUTS[key].cols;
-    // Keep photos already taken. If the new grid has fewer slots, trim the extras.
-    if(capturedFrames.length > TOTAL_SHOTS){
-      capturedFrames = capturedFrames.slice(0, TOTAL_SHOTS);
-    }
+    // Photos beyond the current grid's slot count are kept (not deleted) so
+    // switching back to a bigger layout brings them back instead of losing them.
     updateHeroSubtitle();
     renderStrip();
     updateCaptureUI();
@@ -1259,6 +1274,29 @@
       el.addEventListener('pointerdown', ev=>startStickerDrag(ev, s.id, el));
       stickerOverlay.appendChild(el);
     });
+
+    // Per-photo delete buttons, one per filled slot, so a single photo can be
+    // removed and retaken without resetting the whole strip.
+    if(!busy){
+      const layout = computeGridLayout(TOTAL_SHOTS);
+      layout.positions.forEach((p, i)=>{
+        if(!capturedFrames[i]) return;
+        const btn = document.createElement('div');
+        btn.className = 'photo-delete-btn';
+        btn.textContent = '×';
+        btn.title = `Hapus foto ${i+1}`;
+        btn.style.left = ((p.x + p.w) * scaleX) + 'px';
+        btn.style.top = (p.y * scaleY) + 'px';
+        btn.addEventListener('pointerdown', ev=>ev.stopPropagation());
+        btn.addEventListener('click', ev=>{
+          ev.stopPropagation();
+          capturedFrames[i] = null;
+          renderStrip();
+          updateCaptureUI();
+        });
+        stickerOverlay.appendChild(btn);
+      });
+    }
   }
 
   function redrawCanvas(){
@@ -2584,7 +2622,7 @@
   });
 
   downloadBtn.addEventListener('click', ()=>{
-    if(capturedFrames.filter(Boolean).length < TOTAL_SHOTS) return;
+    if(capturedFrames.slice(0, TOTAL_SHOTS).filter(Boolean).length < TOTAL_SHOTS) return;
     const link = document.createElement('a');
     link.download = 'photo-box-strip.png';
     link.href = stripCanvas.toDataURL('image/png');
