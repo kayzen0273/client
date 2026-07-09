@@ -744,6 +744,18 @@
   .sticker-chip:hover{ border-color:var(--bulb-amber); background:rgba(244,185,66,.12); }
   .sticker-chip:active{ cursor:grabbing; }
   .sticker-chip:disabled{ opacity:.35; cursor:not-allowed; }
+  .sticker-chip-custom{ padding:5px; }
+  .sticker-chip-custom svg{ width:100%; height:100%; display:block; }
+  .sticker-divider{
+    flex-basis:100%;
+    text-align:center;
+    font-size:9px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    opacity:.5;
+    margin:6px 0 0;
+  }
+  .sticker-item svg{ display:block; }
   .sticker-clear-btn{
     display:block;
     margin:10px auto 0;
@@ -798,17 +810,19 @@
 
   .strip-actions{
     display:flex;
-    gap:10px;
+    flex-wrap:wrap;
+    gap:8px;
     margin-top:16px;
     width:100%;
   }
   .action-btn{
-    flex:1;
+    flex:1 1 28%;
+    min-width:64px;
     font-family:'Space Mono', monospace;
     font-size:11px;
     letter-spacing:1.5px;
     text-transform:uppercase;
-    padding:10px 8px;
+    padding:10px 6px;
     border-radius:8px;
     border:1px solid rgba(244,232,213,.3);
     background:transparent;
@@ -824,6 +838,29 @@
   }
   .action-btn:hover{ filter:brightness(1.15); }
   .action-btn:disabled{ opacity:.35; cursor:not-allowed; }
+
+  .qr-wrap{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:#fff;
+    padding:12px;
+    border-radius:12px;
+    min-height:170px;
+  }
+  .share-hint{
+    font-size:11px;
+    line-height:1.5;
+    opacity:.7;
+    text-align:center;
+    margin:12px 0 0;
+  }
+  .share-actions{ flex-direction:column; }
+  .share-actions .settings-save,
+  .share-actions .settings-cancel{
+    width:100%;
+    box-sizing:border-box;
+  }
 
   .footer-note{
     margin-top:36px;
@@ -862,6 +899,20 @@
       <div class="settings-actions">
         <button class="settings-cancel" id="settingsCancel" type="button">Batal</button>
         <button class="settings-save" id="settingsSave" type="button">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-overlay" id="shareOverlay">
+    <div class="settings-modal share-modal">
+      <h2>Bagikan Photo Box</h2>
+      <div class="qr-wrap" id="qrWrap">
+        <canvas id="qrCanvas" width="170" height="170"></canvas>
+      </div>
+      <p class="share-hint" id="shareHint">Scan pakai kamera HP buat lihat preview kecilnya. Kualitas penuh tetap lewat tombol Unduh.</p>
+      <div class="settings-actions share-actions">
+        <button class="settings-save" id="shareNativeBtn" type="button" style="display:none;">Bagikan via Aplikasi</button>
+        <button class="settings-cancel" id="shareCloseBtn" type="button">Tutup</button>
       </div>
     </div>
   </div>
@@ -1032,12 +1083,21 @@
           <button class="sticker-chip" data-emoji="😎">😎</button>
           <button class="sticker-chip" data-emoji="🔥">🔥</button>
           <button class="sticker-chip" data-emoji="🎈">🎈</button>
+          <div class="sticker-divider">✨ So Sweet ✨</div>
+          <button class="sticker-chip sticker-chip-custom" data-custom="bow" title="Pita"></button>
+          <button class="sticker-chip sticker-chip-custom" data-custom="teddy" title="Beruang"></button>
+          <button class="sticker-chip sticker-chip-custom" data-custom="bunny" title="Kelinci"></button>
+          <button class="sticker-chip sticker-chip-custom" data-custom="loveletter" title="Surat Cinta"></button>
+          <button class="sticker-chip sticker-chip-custom" data-custom="kiss" title="Kiss Mark"></button>
+          <button class="sticker-chip sticker-chip-custom" data-custom="heartsparkle" title="Hati Kilau"></button>
         </div>
         <button class="sticker-clear-btn" id="clearStickersBtn">Bersihkan Stiker</button>
       </div>
       <div class="strip-actions">
         <button class="action-btn" id="undoDeleteBtn" disabled title="Kembalikan foto yang dihapus">Undo</button>
         <button class="action-btn" id="retakeBtn" disabled>Ulangi</button>
+        <button class="action-btn" id="gifBtn" disabled title="Unduh sebagai GIF bergerak">GIF</button>
+        <button class="action-btn" id="shareBtn" disabled title="Bagikan lewat QR / aplikasi">Bagikan</button>
         <button class="action-btn primary" id="downloadBtn" disabled>Unduh</button>
       </div>
     </div>
@@ -1111,6 +1171,14 @@
   const undoDeleteBtn = document.getElementById('undoDeleteBtn');
   let deleteHistory = []; // stack of {type:'single', index, frame} | {type:'clearAll', frames}
   const downloadBtn = document.getElementById('downloadBtn');
+  const gifBtn = document.getElementById('gifBtn');
+  const shareBtn = document.getElementById('shareBtn');
+  const shareOverlay = document.getElementById('shareOverlay');
+  const shareCloseBtn = document.getElementById('shareCloseBtn');
+  const shareNativeBtn = document.getElementById('shareNativeBtn');
+  const shareHint = document.getElementById('shareHint');
+  const qrWrap = document.getElementById('qrWrap');
+  const qrCanvas = document.getElementById('qrCanvas');
   const shutterLabel = document.querySelector('.shutter-label');
   const stripCaption = document.getElementById('stripCaption');
   const paperBtns = document.querySelectorAll('.paper-swatch');
@@ -1166,6 +1234,128 @@
   let currentStream = null;
   let stickers = [];
   let stickerIdSeq = 1;
+
+  // ---------- custom "so sweet" stickers (hand-drawn shapes, not keyboard emoji) ----------
+  // Each entry is a small set of vector shapes on a 0-100 box. The same shape
+  // data feeds both the canvas render (drawCustomSticker) and the SVG markup
+  // used for the palette chip icon + the draggable overlay preview, so there
+  // is a single source of truth for what each sticker looks like.
+  const CUSTOM_STICKERS = {
+    bow: { label:'Pita', shapes:[
+      {type:'path', d:'M50 50 C 32 28, 10 28, 8 46 C 6 60, 26 66, 50 50 Z', fill:'#f6a8c6', stroke:'#c96e93', lw:2.5},
+      {type:'path', d:'M50 50 C 68 28, 90 28, 92 46 C 94 60, 74 66, 50 50 Z', fill:'#f6a8c6', stroke:'#c96e93', lw:2.5},
+      {type:'path', d:'M46 55 L38 70 L48 65 Z', fill:'#e2769e'},
+      {type:'path', d:'M54 55 L62 70 L52 65 Z', fill:'#e2769e'},
+      {type:'circle', cx:50, cy:50, r:9, fill:'#e2769e', stroke:'#c96e93', lw:2}
+    ]},
+    teddy: { label:'Beruang', shapes:[
+      {type:'circle', cx:26, cy:24, r:13, fill:'#c98a53', stroke:'#a8703f', lw:2},
+      {type:'circle', cx:74, cy:24, r:13, fill:'#c98a53', stroke:'#a8703f', lw:2},
+      {type:'circle', cx:26, cy:24, r:6, fill:'#e8c9a0'},
+      {type:'circle', cx:74, cy:24, r:6, fill:'#e8c9a0'},
+      {type:'circle', cx:50, cy:56, r:32, fill:'#c98a53', stroke:'#a8703f', lw:2},
+      {type:'ellipse', cx:50, cy:64, rx:15, ry:11, fill:'#e8c9a0'},
+      {type:'circle', cx:50, cy:58, r:4, fill:'#5a3c22'},
+      {type:'circle', cx:39, cy:50, r:3.2, fill:'#3a2818'},
+      {type:'circle', cx:61, cy:50, r:3.2, fill:'#3a2818'}
+    ]},
+    bunny: { label:'Kelinci', shapes:[
+      {type:'ellipse', cx:36, cy:18, rx:9, ry:22, rotate:-18, fill:'#fdf1f5', stroke:'#e7b9cd', lw:2},
+      {type:'ellipse', cx:36, cy:20, rx:4.5, ry:15, rotate:-18, fill:'#f3b8cf'},
+      {type:'ellipse', cx:64, cy:18, rx:9, ry:22, rotate:18, fill:'#fdf1f5', stroke:'#e7b9cd', lw:2},
+      {type:'ellipse', cx:64, cy:20, rx:4.5, ry:15, rotate:18, fill:'#f3b8cf'},
+      {type:'circle', cx:50, cy:58, r:30, fill:'#fdf1f5', stroke:'#e7b9cd', lw:2},
+      {type:'circle', cx:38, cy:64, r:5, fill:'#f6b9cf', opacity:.8},
+      {type:'circle', cx:62, cy:64, r:5, fill:'#f6b9cf', opacity:.8},
+      {type:'circle', cx:41, cy:52, r:3, fill:'#3a2818'},
+      {type:'circle', cx:59, cy:52, r:3, fill:'#3a2818'},
+      {type:'path', d:'M50 58 L46 62 L54 62 Z', fill:'#e2769e'}
+    ]},
+    loveletter: { label:'Surat Cinta', shapes:[
+      {type:'rect', x:15, y:32, w:70, h:48, rx:4, fill:'#fdf6ec', stroke:'#d8c7a6', lw:2},
+      {type:'path', d:'M15 34 L50 62 L85 34', fill:'none', stroke:'#d8c7a6', lw:2},
+      {type:'path', d:'M42 74 C42 66 46 62 50 62 C54 62 58 66 58 74 C58 80 50 86 50 86 C50 86 42 80 42 74 Z', fill:'#e2607e'}
+    ]},
+    kiss: { label:'Kiss Mark', shapes:[
+      {type:'path', d:'M30 40 C24 32 12 34 12 44 C12 52 22 56 30 50 C34 58 30 66 22 68 C34 72 46 66 46 54 C46 46 40 40 30 40 Z', fill:'#e2607e'},
+      {type:'path', d:'M70 40 C76 32 88 34 88 44 C88 52 78 56 70 50 C66 58 70 66 78 68 C66 72 54 66 54 54 C54 46 60 40 70 40 Z', fill:'#e2607e'}
+    ]},
+    heartsparkle: { label:'Hati Kilau', shapes:[
+      {type:'path', d:'M50 34 C42 20 20 24 20 42 C20 58 50 78 50 78 C50 78 80 58 80 42 C80 24 58 20 50 34 Z', fill:'#f28fab', stroke:'#d9668c', lw:2},
+      {type:'path', d:'M78 18 L81 25 L88 27 L81 29 L78 36 L75 29 L68 27 L75 25 Z', fill:'#f4c95d'},
+      {type:'path', d:'M18 60 L20 65 L25 67 L20 69 L18 74 L16 69 L11 67 L16 65 Z', fill:'#f4c95d'}
+    ]}
+  };
+
+  function shapesToSvgMarkup(shapes){
+    return shapes.map(sh=>{
+      const op = sh.opacity!=null ? ` opacity="${sh.opacity}"` : '';
+      const strokeAttr = sh.stroke ? ` stroke="${sh.stroke}" stroke-width="${sh.lw||2}"` : '';
+      if(sh.type === 'path'){
+        return `<path d="${sh.d}" fill="${sh.fill||'none'}"${strokeAttr}${op}/>`;
+      }
+      if(sh.type === 'circle'){
+        return `<circle cx="${sh.cx}" cy="${sh.cy}" r="${sh.r}" fill="${sh.fill||'none'}"${strokeAttr}${op}/>`;
+      }
+      if(sh.type === 'ellipse'){
+        const t = sh.rotate ? ` transform="rotate(${sh.rotate} ${sh.cx} ${sh.cy})"` : '';
+        return `<ellipse cx="${sh.cx}" cy="${sh.cy}" rx="${sh.rx}" ry="${sh.ry}" fill="${sh.fill||'none'}"${strokeAttr}${op}${t}/>`;
+      }
+      if(sh.type === 'rect'){
+        return `<rect x="${sh.x}" y="${sh.y}" width="${sh.w}" height="${sh.h}" rx="${sh.rx||0}" fill="${sh.fill||'none'}"${strokeAttr}${op}/>`;
+      }
+      return '';
+    }).join('');
+  }
+
+  function customStickerSVG(id, sizePx){
+    const def = CUSTOM_STICKERS[id];
+    if(!def) return '';
+    return `<svg viewBox="0 0 100 100" width="${sizePx}" height="${sizePx}">${shapesToSvgMarkup(def.shapes)}</svg>`;
+  }
+
+  // Draws a custom sticker into `ctx`, assuming ctx is already translated to
+  // the sticker's center and rotated. Scales the 0-100 shape box to `size`.
+  function drawCustomSticker(ctx, id, size){
+    const def = CUSTOM_STICKERS[id];
+    if(!def) return;
+    ctx.save();
+    const scale = size/100;
+    ctx.scale(scale, scale);
+    ctx.translate(-50, -50);
+    def.shapes.forEach(sh=>{
+      ctx.save();
+      if(sh.opacity != null) ctx.globalAlpha = sh.opacity;
+      if(sh.type === 'path'){
+        const p = new Path2D(sh.d);
+        if(sh.fill && sh.fill !== 'none'){ ctx.fillStyle = sh.fill; ctx.fill(p); }
+        if(sh.stroke){ ctx.strokeStyle = sh.stroke; ctx.lineWidth = sh.lw||2; ctx.stroke(p); }
+      } else if(sh.type === 'circle'){
+        ctx.beginPath();
+        ctx.arc(sh.cx, sh.cy, sh.r, 0, Math.PI*2);
+        if(sh.fill && sh.fill !== 'none'){ ctx.fillStyle = sh.fill; ctx.fill(); }
+        if(sh.stroke){ ctx.strokeStyle = sh.stroke; ctx.lineWidth = sh.lw||2; ctx.stroke(); }
+      } else if(sh.type === 'ellipse'){
+        ctx.beginPath();
+        ctx.ellipse(sh.cx, sh.cy, sh.rx, sh.ry, (sh.rotate||0)*Math.PI/180, 0, Math.PI*2);
+        if(sh.fill && sh.fill !== 'none'){ ctx.fillStyle = sh.fill; ctx.fill(); }
+        if(sh.stroke){ ctx.strokeStyle = sh.stroke; ctx.lineWidth = sh.lw||2; ctx.stroke(); }
+      } else if(sh.type === 'rect'){
+        const r = sh.rx||0;
+        ctx.beginPath();
+        ctx.roundRect ? ctx.roundRect(sh.x, sh.y, sh.w, sh.h, r) : ctx.rect(sh.x, sh.y, sh.w, sh.h);
+        if(sh.fill && sh.fill !== 'none'){ ctx.fillStyle = sh.fill; ctx.fill(); }
+        if(sh.stroke){ ctx.strokeStyle = sh.stroke; ctx.lineWidth = sh.lw||2; ctx.stroke(); }
+      }
+      ctx.restore();
+    });
+    ctx.restore();
+  }
+
+  // Populate the "So Sweet" custom sticker chip icons from the shared shape data.
+  document.querySelectorAll('.sticker-chip-custom[data-custom]').forEach(chip=>{
+    chip.innerHTML = customStickerSVG(chip.dataset.custom, 22);
+  });
   let restoringSession = true; // true until a saved session (if any) finishes loading on startup
   let aiBgEnabled = false;
   let aiBgPreset = 'blur';
@@ -1415,6 +1605,8 @@
     shutterBtn.disabled = filled >= TOTAL_SHOTS;
     retakeBtn.disabled = filled === 0;
     downloadBtn.disabled = filled < TOTAL_SHOTS;
+    gifBtn.disabled = filled < TOTAL_SHOTS;
+    shareBtn.disabled = filled < TOTAL_SHOTS;
 
     if(shutterLabel){
       shutterLabel.textContent = filled === 0 ? 'Jepret' : (filled < TOTAL_SHOTS ? 'Lanjut' : 'Penuh');
@@ -1464,9 +1656,13 @@
       el.className = 'sticker-item';
       el.style.left = (s.x*scaleX) + 'px';
       el.style.top = (s.y*scaleY) + 'px';
-      el.style.fontSize = (s.size*scaleX) + 'px';
       el.style.transform = `translate(-50%,-50%) rotate(${s.rotation||0}deg)`;
-      el.textContent = s.emoji;
+      if(s.kind === 'custom'){
+        el.innerHTML = customStickerSVG(s.custom, s.size*scaleX);
+      } else {
+        el.style.fontSize = (s.size*scaleX) + 'px';
+        el.textContent = s.emoji;
+      }
 
       const rm = document.createElement('span');
       rm.className = 'sticker-remove';
@@ -1605,7 +1801,15 @@
     function onMove(ev2){
       const dist = Math.hypot(ev2.clientX-centerX, ev2.clientY-centerY);
       pendingSize = Math.max(16, Math.min(140, startSize * (dist/startDist)));
-      el.style.fontSize = (pendingSize*scaleX) + 'px';
+      if(sticker.kind === 'custom'){
+        const svg = el.querySelector('svg');
+        if(svg){
+          svg.setAttribute('width', pendingSize*scaleX);
+          svg.setAttribute('height', pendingSize*scaleX);
+        }
+      } else {
+        el.style.fontSize = (pendingSize*scaleX) + 'px';
+      }
     }
     function onUp(){
       document.removeEventListener('pointermove', onMove);
@@ -1653,8 +1857,12 @@
     document.addEventListener('pointerup', onUp);
   }
 
-  function addSticker(emoji, x, y){
-    stickers.push({ id: stickerIdSeq++, emoji, x, y, size: 34, rotation: 0 });
+  function addSticker(spec, x, y){
+    if(typeof spec === 'string'){
+      stickers.push({ id: stickerIdSeq++, kind:'emoji', emoji: spec, x, y, size: 34, rotation: 0 });
+    } else {
+      stickers.push({ id: stickerIdSeq++, kind:'custom', custom: spec.custom, x, y, size: 34, rotation: 0 });
+    }
     redrawCanvas();
   }
 
@@ -1721,11 +1929,15 @@
     ghost.style.top = clientY + 'px';
   }
 
-  function startPaletteDrag(emoji, startX, startY){
+  function startPaletteDrag(spec, startX, startY){
     if(busy) return;
     const ghost = document.createElement('div');
     ghost.className = 'sticker-ghost';
-    ghost.textContent = emoji;
+    if(typeof spec === 'string'){
+      ghost.textContent = spec;
+    } else {
+      ghost.innerHTML = customStickerSVG(spec.custom, 28);
+    }
     document.body.appendChild(ghost);
     moveGhost(ghost, startX, startY);
 
@@ -1742,7 +1954,7 @@
         const scaleY = stripCanvas.height / rect.height;
         const x = (ev.clientX - rect.left) * scaleX;
         const y = (ev.clientY - rect.top) * scaleY;
-        addSticker(emoji, x, y);
+        addSticker(spec, x, y);
       }
     }
     document.addEventListener('pointermove', onMove);
@@ -1752,7 +1964,11 @@
   stickerPalette.querySelectorAll('.sticker-chip').forEach(chip=>{
     chip.addEventListener('pointerdown', ev=>{
       ev.preventDefault();
-      startPaletteDrag(chip.dataset.emoji, ev.clientX, ev.clientY);
+      if(chip.dataset.custom){
+        startPaletteDrag({ custom: chip.dataset.custom }, ev.clientX, ev.clientY);
+      } else {
+        startPaletteDrag(chip.dataset.emoji, ev.clientX, ev.clientY);
+      }
     });
   });
 
@@ -2833,10 +3049,14 @@
       ctx.save();
       ctx.translate(s.x, s.y);
       if(s.rotation) ctx.rotate(s.rotation * Math.PI/180);
-      ctx.font = `${s.size}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(s.emoji, 0, 0);
+      if(s.kind === 'custom'){
+        drawCustomSticker(ctx, s.custom, s.size);
+      } else {
+        ctx.font = `${s.size}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(s.emoji, 0, 0);
+      }
       ctx.restore();
     });
   }
@@ -3099,6 +3319,8 @@
     retakeBtn.disabled = true;
     if(undoDeleteBtn) undoDeleteBtn.disabled = true;
     downloadBtn.disabled = true;
+    gifBtn.disabled = true;
+    shareBtn.disabled = true;
     shotCounter.style.display = 'block';
     aiSwitch.disabled = true;
     aiPresetBtns.forEach(b=>b.disabled = true);
@@ -3184,6 +3406,216 @@
     link.click();
   });
 
+  // ---------- GIF export (boomerang flipbook of each pose) ----------
+  // Builds a looping "forward then backward" GIF from the individual pose
+  // photos (not the whole grid strip), styled with the current paper color
+  // so it still feels on-brand. Uses a small median-cut quantizer plus the
+  // omggif encoder (loaded on demand) — no server, everything runs locally.
+  function medianCutPalette(samples, targetColors){
+    let buckets = [samples];
+    function rangeInfo(bucket){
+      let rMin=255,rMax=0,gMin=255,gMax=0,bMin=255,bMax=0;
+      for(const p of bucket){
+        if(p[0]<rMin)rMin=p[0]; if(p[0]>rMax)rMax=p[0];
+        if(p[1]<gMin)gMin=p[1]; if(p[1]>gMax)gMax=p[1];
+        if(p[2]<bMin)bMin=p[2]; if(p[2]>bMax)bMax=p[2];
+      }
+      const rr=rMax-rMin, gr=gMax-gMin, br=bMax-bMin;
+      let dim=0, max=rr;
+      if(gr>max){ max=gr; dim=1; }
+      if(br>max){ max=br; dim=2; }
+      return { max, dim };
+    }
+    while(buckets.length < targetColors){
+      let idx=-1, maxRange=-1, dim=0;
+      buckets.forEach((b,i)=>{
+        if(b.length < 2) return;
+        const info = rangeInfo(b);
+        if(info.max > maxRange){ maxRange = info.max; idx = i; dim = info.dim; }
+      });
+      if(idx === -1) break;
+      const bucket = buckets[idx];
+      bucket.sort((a,b)=>a[dim]-b[dim]);
+      const mid = bucket.length >> 1;
+      buckets.splice(idx, 1, bucket.slice(0, mid), bucket.slice(mid));
+    }
+    const palette = buckets.map(b=>{
+      let r=0,g=0,bl=0;
+      for(const p of b){ r+=p[0]; g+=p[1]; bl+=p[2]; }
+      const n = b.length || 1;
+      return [Math.round(r/n), Math.round(g/n), Math.round(bl/n)];
+    });
+    while(palette.length < targetColors) palette.push([0,0,0]);
+    return palette.map(c => (c[0]<<16)|(c[1]<<8)|c[2]);
+  }
+
+  function nearestIndex(r, g, b, palette, cache){
+    const key = (r<<16)|(g<<8)|b;
+    const hit = cache.get(key);
+    if(hit !== undefined) return hit;
+    let best = 0, bestDist = Infinity;
+    for(let i=0; i<palette.length; i++){
+      const pr=(palette[i]>>16)&255, pg=(palette[i]>>8)&255, pb=palette[i]&255;
+      const dr=r-pr, dg=g-pg, db=b-pb;
+      const dist = dr*dr+dg*dg+db*db;
+      if(dist < bestDist){ bestDist = dist; best = i; }
+    }
+    cache.set(key, best);
+    return best;
+  }
+
+  function renderGifPoseCanvas(photoCanvas){
+    const W = 300, H = 250;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const gctx = c.getContext('2d');
+    const paper = PAPERS[currentPaper] || PAPERS.cream;
+    gctx.fillStyle = paper.bg;
+    gctx.fillRect(0, 0, W, H);
+    const pad = 12, photoH = H - 46;
+    gctx.drawImage(photoCanvas, pad, pad, W - pad*2, photoH - pad);
+    gctx.fillStyle = paper.text;
+    gctx.textAlign = 'center';
+    gctx.font = "16px 'Anton', sans-serif";
+    gctx.fillText(photoboxName, W/2, H - 18);
+    return c;
+  }
+
+  async function buildBoomerangGif(){
+    const poses = capturedFrames.slice(0, TOTAL_SHOTS).filter(Boolean);
+    if(poses.length === 0) return null;
+    if(!window.GifWriter){
+      await loadScriptOnce('https://cdn.jsdelivr.net/npm/omggif@1.0.10/omggif.js');
+    }
+    const W = 300, H = 250;
+    const poseCanvases = poses.map(renderGifPoseCanvas);
+
+    // Sample pixels across all poses to build one shared palette.
+    const samples = [];
+    poseCanvases.forEach(pc=>{
+      const d = pc.getContext('2d').getImageData(0, 0, W, H).data;
+      for(let i=0; i<d.length; i += 4*7){
+        samples.push([d[i], d[i+1], d[i+2]]);
+      }
+    });
+    const palette = medianCutPalette(samples, 128);
+    const cache = new Map();
+
+    const indexedFrames = poseCanvases.map(pc=>{
+      const d = pc.getContext('2d').getImageData(0, 0, W, H).data;
+      const idx = new Uint8Array(W*H);
+      for(let i=0, p=0; i<d.length; i+=4, p++){
+        idx[p] = nearestIndex(d[i], d[i+1], d[i+2], palette, cache);
+      }
+      return idx;
+    });
+
+    // Boomerang sequence: forward through every pose, then back again.
+    const seq = indexedFrames.length > 1
+      ? indexedFrames.concat(indexedFrames.slice(1, -1).reverse())
+      : indexedFrames;
+
+    const buf = new Uint8Array(W*H*seq.length + seq.length*256 + 2048);
+    const writer = new GifWriter(buf, W, H, { loop: 0, palette });
+    seq.forEach(idx=>{
+      writer.addFrame(0, 0, W, H, idx, { delay: 55 });
+    });
+    const end = writer.end();
+    return new Blob([buf.slice(0, end)], { type: 'image/gif' });
+  }
+
+  gifBtn.addEventListener('click', async ()=>{
+    if(gifBtn.disabled || busy) return;
+    const originalLabel = gifBtn.textContent;
+    gifBtn.disabled = true;
+    gifBtn.textContent = '...';
+    try{
+      const blob = await buildBoomerangGif();
+      if(blob){
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = 'photo-box-boomerang.gif';
+        link.href = url;
+        link.click();
+        setTimeout(()=>URL.revokeObjectURL(url), 4000);
+      }
+    }catch(err){
+      gifBtn.textContent = 'Gagal';
+      setTimeout(()=>{ gifBtn.textContent = originalLabel; }, 1800);
+      updateCaptureUI();
+      return;
+    }
+    gifBtn.textContent = originalLabel;
+    updateCaptureUI();
+  });
+
+  // ---------- Share modal (native share sheet + QR preview) ----------
+  // There's no server here, so the QR encodes a small, heavily-compressed
+  // thumbnail as a data URL (best-effort — some scanner apps won't open a
+  // data: URI, so the hint text is upfront about it being a quick preview,
+  // not a substitute for the real download).
+  function stripToFile(){
+    return new Promise(resolve=>{
+      stripCanvas.toBlob(blob=>{
+        resolve(new File([blob], 'photo-box-strip.png', { type: 'image/png' }));
+      }, 'image/png');
+    });
+  }
+
+  function tinyThumbnailDataUrl(maxW){
+    const ratio = stripCanvas.height / stripCanvas.width;
+    const w = maxW, h = Math.round(maxW*ratio);
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    c.getContext('2d').drawImage(stripCanvas, 0, 0, w, h);
+    return c.toDataURL('image/jpeg', 0.35);
+  }
+
+  async function renderShareQr(){
+    qrWrap.innerHTML = '';
+    qrWrap.appendChild(qrCanvas);
+    if(!window.QRCode){
+      await loadScriptOnce('https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js');
+    }
+    let dataUrl = null;
+    for(const w of [72, 56, 42]){
+      const candidate = tinyThumbnailDataUrl(w);
+      if(candidate.length <= 2200){ dataUrl = candidate; break; }
+    }
+    if(!dataUrl){
+      qrWrap.innerHTML = '<div style="color:#8a6a55; font-size:11px; text-align:center; padding:20px;">Preview kegedean buat di-QR.<br>Pakai tombol Unduh ya.</div>';
+      return;
+    }
+    await new Promise(resolve=>{
+      QRCode.toCanvas(qrCanvas, dataUrl, { width: 170, margin: 1, color:{ dark:'#2b2622', light:'#ffffff' } }, ()=>resolve());
+    });
+  }
+
+  shareBtn.addEventListener('click', async ()=>{
+    if(shareBtn.disabled || busy) return;
+    shareOverlay.classList.add('open');
+    shareHint.textContent = 'Scan pakai kamera HP buat lihat preview kecilnya. Kualitas penuh tetap lewat tombol Unduh.';
+    qrWrap.innerHTML = 'Menyiapkan QR…';
+
+    const file = await stripToFile();
+    if(navigator.canShare && navigator.canShare({ files:[file] })){
+      shareNativeBtn.style.display = 'block';
+      shareNativeBtn.onclick = async ()=>{
+        try{
+          await navigator.share({ files:[file], title: photoboxName, text: 'Hasil foto dari ' + photoboxName });
+        }catch(e){ /* user cancelled — ignore */ }
+      };
+    } else {
+      shareNativeBtn.style.display = 'none';
+    }
+
+    renderShareQr();
+  });
+
+  function closeShare(){ shareOverlay.classList.remove('open'); }
+  shareCloseBtn.addEventListener('click', closeShare);
+  shareOverlay.addEventListener('click', e=>{ if(e.target === shareOverlay) closeShare(); });
+
   // ---------- session persistence (localStorage) ----------
   // Keeps the current photos, stickers, and style choices in localStorage so
   // refreshing or reopening the page doesn't wipe out an in-progress strip.
@@ -3198,7 +3630,7 @@
         paper: currentPaper,
         filter: currentFilter,
         photos: capturedFrames.map(f => f ? f.toDataURL('image/png') : null),
-        stickers: stickers.map(s => ({ id:s.id, emoji:s.emoji, x:s.x, y:s.y, size:s.size, rotation:s.rotation||0 })),
+        stickers: stickers.map(s => ({ id:s.id, kind:s.kind||'emoji', emoji:s.emoji, custom:s.custom, x:s.x, y:s.y, size:s.size, rotation:s.rotation||0 })),
         stickerIdSeq
       };
       localStorage.setItem(SESSION_KEY, JSON.stringify(session));
@@ -3253,7 +3685,7 @@
       }
       if(Array.isArray(session.stickers)){
         stickers = session.stickers.map(s=>({
-          id: s.id, emoji: s.emoji, x: s.x, y: s.y, size: s.size || 34, rotation: s.rotation || 0
+          id: s.id, kind: s.kind || 'emoji', emoji: s.emoji, custom: s.custom, x: s.x, y: s.y, size: s.size || 34, rotation: s.rotation || 0
         }));
       }
       if(typeof session.stickerIdSeq === 'number'){
