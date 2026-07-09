@@ -371,35 +371,6 @@
   .flip-btn:hover{ border-color:var(--bulb-amber); color:var(--bulb-amber); }
   .flip-btn:disabled{ opacity:.35; cursor:not-allowed; }
 
-  .boomerang-btn{
-    display:flex;
-    align-items:center;
-    gap:6px;
-    padding:0 14px;
-    height:40px;
-    border-radius:22px;
-    background:rgba(244,232,213,.08);
-    border:1px solid rgba(244,232,213,.35);
-    color:var(--paper-cream);
-    font-family:'Space Mono', monospace;
-    font-size:10px;
-    font-weight:700;
-    letter-spacing:1.5px;
-    text-transform:uppercase;
-    cursor:pointer;
-    transition:.15s;
-    white-space:nowrap;
-  }
-  .boomerang-btn:hover{ border-color:var(--bulb-amber); color:var(--bulb-amber); }
-  .boomerang-btn:disabled{ opacity:.35; cursor:not-allowed; }
-  .boomerang-btn.recording{
-    background:var(--curtain-red);
-    border-color:var(--curtain-red);
-    color:#fff;
-    opacity:1;
-    animation: aiPulse 1s ease-in-out infinite;
-  }
-
   .ai-panel{
     margin-top:14px;
     padding:12px 14px;
@@ -978,9 +949,6 @@
           <span class="shutter-label">Jepret</span>
         </div>
         <button class="flip-btn" id="flipBtn" title="Ganti kamera depan/belakang">⟲</button>
-        <button class="boomerang-btn" id="boomerangBtn" disabled title="Rekam Boomerang bergerak kualitas HD">
-          <span class="boomerang-icon">🔁</span><span class="boomerang-text">Boomerang</span>
-        </button>
       </div>
 
       <div class="ai-panel">
@@ -1187,7 +1155,6 @@
   const shotCounter = document.getElementById('shotCounter');
   const shutterBtn = document.getElementById('shutterBtn');
   const flipBtn = document.getElementById('flipBtn');
-  const boomerangBtn = document.getElementById('boomerangBtn');
   const filterBtns = document.querySelectorAll('.filter-btn');
   const stripCanvas = document.getElementById('stripCanvas');
   const ctx = stripCanvas.getContext('2d');
@@ -1460,7 +1427,6 @@
     errorMsg.style.display = 'flex';
     errorMsg.innerHTML = msg + '<br><button class="retry-btn" id="retryCamBtn">Coba Lagi</button>';
     shutterBtn.disabled = true;
-    if(boomerangBtn) boomerangBtn.disabled = true;
     const retryBtn = document.getElementById('retryCamBtn');
     if(retryBtn) retryBtn.addEventListener('click', initCamera);
   }
@@ -1500,7 +1466,6 @@
         idleMsg.style.display = 'none';
         errorMsg.style.display = 'none';
         shutterBtn.disabled = false;
-        if(boomerangBtn) boomerangBtn.disabled = false;
       };
 
       video.onloadedmetadata = () => {
@@ -3344,7 +3309,6 @@
     selectedDeleteSlot = null;
     shutterBtn.disabled = true;
     flipBtn.disabled = true;
-    if(boomerangBtn) boomerangBtn.disabled = true;
     filterBtns.forEach(b=>b.disabled = true);
     frameBtns.forEach(b=>b.disabled = true);
     layoutBtns.forEach(b=>b.disabled = true);
@@ -3382,7 +3346,6 @@
 
     busy = false;
     flipBtn.disabled = false;
-    if(boomerangBtn) boomerangBtn.disabled = false;
     filterBtns.forEach(b=>b.disabled = false);
     frameBtns.forEach(b=>b.disabled = false);
     layoutBtns.forEach(b=>b.disabled = false);
@@ -3443,197 +3406,6 @@
     link.click();
   });
 
-  // ---------- Boomerang (live burst, moving, HD) ----------
-  // Unlike the "GIF" button above (which flips through the still poses),
-  // this records a short continuous burst straight from the camera, then
-  // plays it forward then backward — a real Boomerang, not a slideshow.
-  // Captured at a larger canvas with a full 256-color palette for a much
-  // crisper result than the pose flipbook.
-  const BOOMERANG_FRAME_W = 480;
-  const BOOMERANG_FRAME_H = 360;
-  const BOOMERANG_FRAME_COUNT = 18;
-  const BOOMERANG_FRAME_GAP_MS = 70;
-
-  function grabBoomerangFrame(w, h){
-    const c = document.createElement('canvas');
-    const useAi = aiBgEnabled && aiCanvas.style.display !== 'none' && aiCanvas.width > 0 && aiCanvas.height > 0;
-    const source = useAi ? aiCanvas : video;
-    const vw = useAi ? aiCanvas.width : (video.videoWidth || 640);
-    const vh = useAi ? aiCanvas.height : (video.videoHeight || 480);
-    const targetRatio = 4/3;
-    let sw = vw, sh = vh, sx = 0, sy = 0;
-    if (vw/vh > targetRatio){
-      sw = vh * targetRatio; sx = (vw - sw)/2;
-    } else {
-      sh = vw / targetRatio; sy = (vh - sh)/2;
-    }
-    c.width = w; c.height = h;
-    const cctx = c.getContext('2d');
-    const f = FILTERS[currentFilter] || FILTERS.normal;
-    cctx.filter = useAi ? 'none' : f.css;
-    cctx.save();
-    if(currentFacing !== 'environment'){
-      cctx.translate(c.width, 0);
-      cctx.scale(-1,1);
-    }
-    cctx.drawImage(source, sx, sy, sw, sh, 0, 0, c.width, c.height);
-    if(arEnabled && arCanvas.width > 0){
-      cctx.drawImage(arCanvas, sx, sy, sw, sh, 0, 0, c.width, c.height);
-    }
-    cctx.restore();
-    cctx.filter = 'none';
-    if(!useAi && f.tint){
-      cctx.save();
-      cctx.globalCompositeOperation = f.blend || 'soft-light';
-      cctx.globalAlpha = f.tintAlpha;
-      cctx.fillStyle = f.tint;
-      cctx.fillRect(0, 0, c.width, c.height);
-      cctx.restore();
-    }
-    return c;
-  }
-
-  function renderBoomerangFrameCanvas(frameCanvas){
-    const capH = 34;
-    const W = BOOMERANG_FRAME_W, H = BOOMERANG_FRAME_H + capH;
-    const c = document.createElement('canvas');
-    c.width = W; c.height = H;
-    const gctx = c.getContext('2d');
-    const paper = PAPERS[currentPaper] || PAPERS.cream;
-    gctx.fillStyle = paper.bg;
-    gctx.fillRect(0, 0, W, H);
-    gctx.drawImage(frameCanvas, 0, 0, W, BOOMERANG_FRAME_H);
-    gctx.fillStyle = paper.text;
-    gctx.textAlign = 'center';
-    gctx.font = "15px 'Anton', sans-serif";
-    gctx.fillText((photoboxName + ' \u00b7 BOOMERANG').toUpperCase(), W/2, H - 11);
-    return c;
-  }
-
-  async function buildBoomerangGifHD(rawFrames){
-    if(rawFrames.length === 0) return null;
-    if(!window.GifWriter){
-      await loadScriptOnce('https://cdn.jsdelivr.net/npm/omggif@1.0.10/omggif.js');
-    }
-    const framedCanvases = rawFrames.map(renderBoomerangFrameCanvas);
-    const W = framedCanvases[0].width, H = framedCanvases[0].height;
-
-    // Full 256-color palette (the max a GIF allows) sampled across every
-    // frame, so motion doesn't cause color flicker between frames.
-    const samples = [];
-    framedCanvases.forEach(pc=>{
-      const d = pc.getContext('2d').getImageData(0, 0, W, H).data;
-      for(let i=0; i<d.length; i += 4*5){
-        samples.push([d[i], d[i+1], d[i+2]]);
-      }
-    });
-    const palette = medianCutPalette(samples, 256);
-    const cache = new Map();
-
-    const indexedFrames = framedCanvases.map(pc=>{
-      const d = pc.getContext('2d').getImageData(0, 0, W, H).data;
-      const idx = new Uint8Array(W*H);
-      for(let i=0, p=0; i<d.length; i+=4, p++){
-        idx[p] = nearestIndex(d[i], d[i+1], d[i+2], palette, cache);
-      }
-      return idx;
-    });
-
-    // Boomerang sequence: forward through the whole burst, then back again,
-    // at a fast, even delay so it reads as motion, not a flipbook.
-    const seq = indexedFrames.length > 1
-      ? indexedFrames.concat(indexedFrames.slice(1, -1).reverse())
-      : indexedFrames;
-
-    const buf = new Uint8Array(W*H*seq.length + seq.length*256 + 4096);
-    const writer = new GifWriter(buf, W, H, { loop: 0, palette });
-    seq.forEach(idx=>{
-      writer.addFrame(0, 0, W, H, idx, { delay: 6 });
-    });
-    const end = writer.end();
-    return new Blob([buf.slice(0, end)], { type: 'image/gif' });
-  }
-
-  if(boomerangBtn){
-    const boomerangIdleHtml = boomerangBtn.innerHTML;
-
-    boomerangBtn.addEventListener('click', async ()=>{
-      if(busy || boomerangBtn.disabled || errorMsg.style.display === 'flex') return;
-
-      busy = true;
-      selectedDeleteSlot = null;
-      shutterBtn.disabled = true;
-      flipBtn.disabled = true;
-      filterBtns.forEach(b=>b.disabled = true);
-      frameBtns.forEach(b=>b.disabled = true);
-      layoutBtns.forEach(b=>b.disabled = true);
-      paperBtns.forEach(b=>b.disabled = true);
-      stickerPalette.querySelectorAll('.sticker-chip').forEach(b=>b.disabled = true);
-      clearStickersBtn.disabled = true;
-      stickerOverlay.style.pointerEvents = 'none';
-      retakeBtn.disabled = true;
-      if(undoDeleteBtn) undoDeleteBtn.disabled = true;
-      downloadBtn.disabled = true;
-      gifBtn.disabled = true;
-      shareBtn.disabled = true;
-      aiSwitch.disabled = true;
-      aiPresetBtns.forEach(b=>b.disabled = true);
-      arSwitch.disabled = true;
-      arPresetBtns.forEach(b=>b.disabled = true);
-      boomerangBtn.disabled = true;
-      boomerangBtn.classList.add('recording');
-      shotCounter.style.display = 'block';
-
-      try{
-        await runCountdown();
-        doFlash();
-        await wait(120);
-
-        boomerangBtn.innerHTML = '<span>\u25cf</span><span>Rekam…</span>';
-        const rawFrames = [];
-        for(let i=0; i<BOOMERANG_FRAME_COUNT; i++){
-          shotCounter.textContent = `BOOMERANG ${i+1}/${BOOMERANG_FRAME_COUNT}`;
-          rawFrames.push(grabBoomerangFrame(BOOMERANG_FRAME_W, BOOMERANG_FRAME_H));
-          await wait(BOOMERANG_FRAME_GAP_MS);
-        }
-        shotCounter.textContent = 'MEMPROSES BOOMERANG…';
-        boomerangBtn.innerHTML = '<span>\u23f3</span><span>Proses…</span>';
-
-        const blob = await buildBoomerangGifHD(rawFrames);
-        if(blob){
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.download = 'photo-box-boomerang-hd.gif';
-          link.href = url;
-          link.click();
-          setTimeout(()=>URL.revokeObjectURL(url), 4000);
-        }
-      }catch(err){
-        boomerangBtn.innerHTML = '<span>\u26a0\ufe0f</span><span>Gagal</span>';
-        await wait(1500);
-      }
-
-      boomerangBtn.innerHTML = boomerangIdleHtml;
-      boomerangBtn.classList.remove('recording');
-      busy = false;
-      flipBtn.disabled = false;
-      boomerangBtn.disabled = false;
-      filterBtns.forEach(b=>b.disabled = false);
-      frameBtns.forEach(b=>b.disabled = false);
-      layoutBtns.forEach(b=>b.disabled = false);
-      paperBtns.forEach(b=>b.disabled = false);
-      stickerPalette.querySelectorAll('.sticker-chip').forEach(b=>b.disabled = false);
-      clearStickersBtn.disabled = false;
-      stickerOverlay.style.pointerEvents = 'auto';
-      aiSwitch.disabled = false;
-      aiPresetBtns.forEach(b=>b.disabled = false);
-      arSwitch.disabled = false;
-      arPresetBtns.forEach(b=>b.disabled = false);
-      updateCaptureUI();
-      updateUndoBtn();
-    });
-  }
-
   // ---------- GIF export (boomerang flipbook of each pose) ----------
   // Builds a looping "forward then backward" GIF from the individual pose
   // photos (not the whole grid strip), styled with the current paper color
@@ -3693,19 +3465,22 @@
   }
 
   function renderGifPoseCanvas(photoCanvas){
-    const W = 300, H = 250;
+    // Draw the pose at its native captured resolution — no shrinking —
+    // so the GIF keeps as much of the original photo quality as possible.
+    const pad = 14, capH = 42;
+    const W = photoCanvas.width + pad*2;
+    const H = photoCanvas.height + pad + capH;
     const c = document.createElement('canvas');
     c.width = W; c.height = H;
     const gctx = c.getContext('2d');
     const paper = PAPERS[currentPaper] || PAPERS.cream;
     gctx.fillStyle = paper.bg;
     gctx.fillRect(0, 0, W, H);
-    const pad = 12, photoH = H - 46;
-    gctx.drawImage(photoCanvas, pad, pad, W - pad*2, photoH - pad);
+    gctx.drawImage(photoCanvas, pad, pad, photoCanvas.width, photoCanvas.height);
     gctx.fillStyle = paper.text;
     gctx.textAlign = 'center';
-    gctx.font = "16px 'Anton', sans-serif";
-    gctx.fillText(photoboxName, W/2, H - 18);
+    gctx.font = "20px 'Anton', sans-serif";
+    gctx.fillText(photoboxName, W/2, H - 16);
     return c;
   }
 
@@ -3715,18 +3490,20 @@
     if(!window.GifWriter){
       await loadScriptOnce('https://cdn.jsdelivr.net/npm/omggif@1.0.10/omggif.js');
     }
-    const W = 300, H = 250;
     const poseCanvases = poses.map(renderGifPoseCanvas);
+    const W = poseCanvases[0].width, H = poseCanvases[0].height;
 
-    // Sample pixels across all poses to build one shared palette.
+    // Sample pixels across all poses to build one shared palette, using
+    // the full 256-color budget a GIF allows (instead of a reduced
+    // palette) so colors stay as close to the original photos as possible.
     const samples = [];
     poseCanvases.forEach(pc=>{
       const d = pc.getContext('2d').getImageData(0, 0, W, H).data;
-      for(let i=0; i<d.length; i += 4*7){
+      for(let i=0; i<d.length; i += 4*5){
         samples.push([d[i], d[i+1], d[i+2]]);
       }
     });
-    const palette = medianCutPalette(samples, 128);
+    const palette = medianCutPalette(samples, 256);
     const cache = new Map();
 
     const indexedFrames = poseCanvases.map(pc=>{
@@ -3743,7 +3520,7 @@
       ? indexedFrames.concat(indexedFrames.slice(1, -1).reverse())
       : indexedFrames;
 
-    const buf = new Uint8Array(W*H*seq.length + seq.length*256 + 2048);
+    const buf = new Uint8Array(W*H*seq.length + seq.length*256 + 4096);
     const writer = new GifWriter(buf, W, H, { loop: 0, palette });
     seq.forEach(idx=>{
       writer.addFrame(0, 0, W, H, idx, { delay: 55 });
