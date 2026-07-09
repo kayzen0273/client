@@ -830,6 +830,18 @@
   const arPresetBtns = document.querySelectorAll('.ar-preset-btn');
   const arStatusText = document.getElementById('arStatusText');
 
+  const frameBtns = document.querySelectorAll('.frame-btn');
+  const layoutBtns = document.querySelectorAll('.layout-btn');
+  const heroSubtitle = document.getElementById('heroSubtitle');
+
+  const LAYOUTS = {
+    strip3:  { shots: 3, cols: 1 },
+    strip4:  { shots: 4, cols: 1 },
+    strip6:  { shots: 6, cols: 1 },
+    grid2x2: { shots: 4, cols: 2 },
+    grid2x3: { shots: 6, cols: 2 }
+  };
+
   let currentLayout = 'strip4';
   let TOTAL_SHOTS = LAYOUTS[currentLayout].shots;
   let GRID_COLS = LAYOUTS[currentLayout].cols;
@@ -858,17 +870,6 @@
   let arRafId = null;
   let arBusy = false;
   let smoothFace = null;
-  const frameBtns = document.querySelectorAll('.frame-btn');
-  const layoutBtns = document.querySelectorAll('.layout-btn');
-  const heroSubtitle = document.getElementById('heroSubtitle');
-
-  const LAYOUTS = {
-    strip3:  { shots: 3, cols: 1 },
-    strip4:  { shots: 4, cols: 1 },
-    strip6:  { shots: 6, cols: 1 },
-    grid2x2: { shots: 4, cols: 2 },
-    grid2x3: { shots: 6, cols: 2 }
-  };
 
   const PAPERS = {
     cream: { bg:'#f2e8d5', text:'#2b2622', sub:'#6b5f4f' },
