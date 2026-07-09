@@ -490,6 +490,41 @@
     gap:6px;
     justify-content:center;
   }
+  .calib-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:8px;
+  }
+  .calib-row label{
+    font-size:9px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    opacity:.75;
+    width:96px;
+    flex-shrink:0;
+    display:flex;
+    justify-content:space-between;
+  }
+  .calib-row label span{
+    opacity:.55;
+    font-variant-numeric:tabular-nums;
+  }
+  .calib-row input[type="range"]{
+    flex:1;
+    accent-color: var(--bulb-amber);
+  }
+  #scrapbookCalib .settings-cancel{
+    background:rgba(244,232,213,.06);
+    color:var(--paper-cream);
+    box-shadow:inset 0 0 0 1px rgba(244,232,213,.3);
+    font-size:9px;
+  }
+  #scrapbookCalib .settings-hint{
+    color:var(--paper-cream);
+    opacity:.55;
+    text-align:center;
+  }
   .frame-btn, .layout-btn{
     font-family:'Space Mono', monospace;
     font-size:9px;
@@ -885,6 +920,35 @@
           <button class="frame-btn" data-frame="scrapbook"><span class="swatch" style="background:linear-gradient(135deg,#1f3a63 30%,#b23a30 30%,#b23a30 45%,#f2e8d5 45%,#f2e8d5 60%,#b23a30 60%);"></span>Scrapbook</button>
         </div>
       </div>
+      <div class="frame-picker" id="scrapbookCalib" style="display:none;">
+        <div class="frame-picker-label">Atur Posisi Strip (Scrapbook)</div>
+        <div class="calib-row">
+          <label>Geser X <span id="calibXVal"></span></label>
+          <input type="range" id="calibX" min="0" max="1" step="0.005">
+        </div>
+        <div class="calib-row">
+          <label>Geser Y <span id="calibYVal"></span></label>
+          <input type="range" id="calibY" min="0" max="1" step="0.005">
+        </div>
+        <div class="calib-row">
+          <label>Lebar Strip <span id="calibWVal"></span></label>
+          <input type="range" id="calibW" min="0.08" max="0.45" step="0.005">
+        </div>
+        <div class="calib-row">
+          <label>Tinggi Strip <span id="calibHVal"></span></label>
+          <input type="range" id="calibH" min="0.3" max="0.95" step="0.005">
+        </div>
+        <div class="calib-row">
+          <label>Rotasi <span id="calibRVal"></span></label>
+          <input type="range" id="calibR" min="-30" max="30" step="0.5">
+        </div>
+        <div class="calib-row">
+          <label>Margin Antar Foto <span id="calibMVal"></span></label>
+          <input type="range" id="calibM" min="0" max="0.2" step="0.005">
+        </div>
+        <button type="button" id="calibReset" class="settings-cancel" style="margin-top:8px;">Reset ke Default</button>
+        <p class="settings-hint">Geser slider sampai kotak foto pas menutupi 3 bingkai putih di gambar. Nilai tersimpan otomatis selama sesi ini.</p>
+      </div>
       <div class="strip-slot">
         <div class="strip-canvas-wrap" id="stripWrap">
           <canvas id="stripCanvas" width="380" height="1160"></canvas>
@@ -988,6 +1052,9 @@
   let scrapbookImgReady = false;
   scrapbookImg.onload = ()=>{ scrapbookImgReady = true; renderStrip(); };
   scrapbookImg.src = 'scrapbook-bg.png';
+
+  const SCRAPBOOK_DEFAULT_CALIB = { cx:0.535, cy:0.545, w:0.20, h:0.635, angle:-8, margin:0.06 };
+  let scrapbookCalib = { ...SCRAPBOOK_DEFAULT_CALIB };
   const retakeBtn = document.getElementById('retakeBtn');
   const downloadBtn = document.getElementById('downloadBtn');
   const shutterLabel = document.querySelector('.shutter-label');
@@ -1202,9 +1269,65 @@
         updateHeroSubtitle();
         updateCaptureUI();
       }
+      if(scrapbookCalibPanel){
+        scrapbookCalibPanel.style.display = (currentFrame === 'scrapbook') ? 'block' : 'none';
+      }
       renderStrip();
     });
   });
+
+  // --- Scrapbook calibration panel: lets the person nudge the 3 photo slots
+  // (position, size, rotation) live so they line up exactly with the white
+  // photo-strip artwork in scrapbook-bg.png, since every template's artwork differs.
+  const scrapbookCalibPanel = document.getElementById('scrapbookCalib');
+  const calibInputs = {
+    cx: document.getElementById('calibX'),
+    cy: document.getElementById('calibY'),
+    w: document.getElementById('calibW'),
+    h: document.getElementById('calibH'),
+    angle: document.getElementById('calibR'),
+    margin: document.getElementById('calibM')
+  };
+  const calibLabels = {
+    cx: document.getElementById('calibXVal'),
+    cy: document.getElementById('calibYVal'),
+    w: document.getElementById('calibWVal'),
+    h: document.getElementById('calibHVal'),
+    angle: document.getElementById('calibRVal'),
+    margin: document.getElementById('calibMVal')
+  };
+  function syncCalibUI(){
+    Object.keys(calibInputs).forEach(key=>{
+      const input = calibInputs[key];
+      if(!input) return;
+      input.value = scrapbookCalib[key];
+      const label = calibLabels[key];
+      if(label){
+        label.textContent = key === 'angle' ? `${scrapbookCalib[key]}\u00b0` : scrapbookCalib[key].toFixed(3);
+      }
+    });
+  }
+  Object.keys(calibInputs).forEach(key=>{
+    const input = calibInputs[key];
+    if(!input) return;
+    input.addEventListener('input', ()=>{
+      scrapbookCalib[key] = parseFloat(input.value);
+      const label = calibLabels[key];
+      if(label){
+        label.textContent = key === 'angle' ? `${scrapbookCalib[key]}\u00b0` : scrapbookCalib[key].toFixed(3);
+      }
+      renderStrip();
+    });
+  });
+  const calibResetBtn = document.getElementById('calibReset');
+  if(calibResetBtn){
+    calibResetBtn.addEventListener('click', ()=>{
+      scrapbookCalib = { ...SCRAPBOOK_DEFAULT_CALIB };
+      syncCalibUI();
+      renderStrip();
+    });
+  }
+  syncCalibUI();
 
   function updateHeroSubtitle(){
     if(!heroSubtitle) return;
@@ -2555,14 +2678,15 @@
     const imageH = W*imgAR;
     const bottomCaption = 66;
     const H = Math.round(imageH + bottomCaption);
-    const stripCx = 0.535*W, stripCy = 0.545*imageH;
-    const stripW = 0.20*W, stripH = 0.635*imageH;
-    const angle = -8*Math.PI/180;
+    const cal = scrapbookCalib;
+    const stripCx = cal.cx*W, stripCy = cal.cy*imageH;
+    const stripW = cal.w*W, stripH = cal.h*imageH;
+    const angle = cal.angle*Math.PI/180;
     const boxFracs = [[0.03,0.265],[0.285,0.52],[0.54,0.885]];
     const positions = boxFracs.map(([fs,fe])=>{
       const localY = ((fs+fe)/2)*stripH - stripH/2;
       const height = (fe-fs)*stripH;
-      const width = 0.88*stripW;
+      const width = (1 - 2*cal.margin)*stripW;
       const dx = -localY*Math.sin(angle);
       const dy = localY*Math.cos(angle);
       const cx = stripCx+dx, cy = stripCy+dy;
