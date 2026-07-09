@@ -882,6 +882,7 @@
           <button class="frame-btn" data-frame="kawaii"><span class="swatch" style="background:linear-gradient(135deg,#ffc2e2,#d9c2ff);"></span>Kawaii</button>
           <button class="frame-btn" data-frame="airmail"><span class="swatch" style="background:linear-gradient(135deg,#b23a30 20%,#f2e8d5 20%,#f2e8d5 40%,#1f3a63 40%,#1f3a63 60%,#f2e8d5 60%);"></span>Pos Udara</button>
           <button class="frame-btn" data-frame="reels"><span class="swatch" style="background:#0c0c0c;"></span>Rol Film</button>
+          <button class="frame-btn" data-frame="scrapbook"><span class="swatch" style="background:linear-gradient(135deg,#1f3a63 30%,#b23a30 30%,#b23a30 45%,#f2e8d5 45%,#f2e8d5 60%,#b23a30 60%);"></span>Scrapbook</button>
         </div>
       </div>
       <div class="strip-slot">
@@ -981,6 +982,12 @@
   const filterBtns = document.querySelectorAll('.filter-btn');
   const stripCanvas = document.getElementById('stripCanvas');
   const ctx = stripCanvas.getContext('2d');
+
+  // "Scrapbook" frame: real background artwork loaded from the same folder as this HTML file.
+  const scrapbookImg = new Image();
+  let scrapbookImgReady = false;
+  scrapbookImg.onload = ()=>{ scrapbookImgReady = true; renderStrip(); };
+  scrapbookImg.src = 'scrapbook-bg.png';
   const retakeBtn = document.getElementById('retakeBtn');
   const downloadBtn = document.getElementById('downloadBtn');
   const shutterLabel = document.querySelector('.shutter-label');
@@ -1185,6 +1192,16 @@
       frameBtns.forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
       currentFrame = btn.dataset.frame;
+      if(currentFrame === 'scrapbook' && currentLayout !== 'strip3'){
+        currentLayout = 'strip3';
+        TOTAL_SHOTS = LAYOUTS.strip3.shots;
+        GRID_COLS = LAYOUTS.strip3.cols;
+        layoutBtns.forEach(b=>b.classList.remove('active'));
+        const strip3Btn = document.querySelector('.layout-btn[data-layout="strip3"]');
+        if(strip3Btn) strip3Btn.classList.add('active');
+        updateHeroSubtitle();
+        updateCaptureUI();
+      }
       renderStrip();
     });
   });
@@ -2529,7 +2546,40 @@
 
   // Computes photo positions/dimensions for the current grid layout (GRID_COLS)
   // given n photos, based on the active frame's padding/gap rules.
+  // Custom fixed layout for the "Scrapbook" frame: 3 tilted photo slots positioned
+  // to match the real photo-strip artwork in scrapbook-bg.png, instead of the
+  // generic evenly-spaced grid used by the other frames.
+  function computeScrapbookLayout(){
+    const W = stripCanvas.width;
+    const imgAR = 5120/2880; // scrapbook-bg.png aspect ratio (portrait)
+    const imageH = W*imgAR;
+    const bottomCaption = 66;
+    const H = Math.round(imageH + bottomCaption);
+    const stripCx = 0.535*W, stripCy = 0.545*imageH;
+    const stripW = 0.20*W, stripH = 0.635*imageH;
+    const angle = -8*Math.PI/180;
+    const boxFracs = [[0.03,0.265],[0.285,0.52],[0.54,0.885]];
+    const positions = boxFracs.map(([fs,fe])=>{
+      const localY = ((fs+fe)/2)*stripH - stripH/2;
+      const height = (fe-fs)*stripH;
+      const width = 0.88*stripW;
+      const dx = -localY*Math.sin(angle);
+      const dy = localY*Math.cos(angle);
+      const cx = stripCx+dx, cy = stripCy+dy;
+      return { x: cx-width/2, y: cy-height/2, w: width, h: height, rot: angle };
+    });
+    return {
+      cols: 1, rows: 3, W, pad: stripCx-stripW/2, gap: 0,
+      photoW: positions[0].w, photoH: positions[0].h,
+      topPad: 0, bottomCaption, H, positions,
+      regionTop: 0, regionBottom: imageH, imageH
+    };
+  }
+
   function computeGridLayout(n){
+    if(currentFrame === 'scrapbook' && n === 3){
+      return computeScrapbookLayout();
+    }
     const cols = Math.max(1, Math.min(GRID_COLS, Math.max(n, 1)));
     const rows = Math.max(1, Math.ceil(n / cols));
     const W = stripCanvas.width;
@@ -2594,8 +2644,15 @@
     const W = L.W, pad = L.pad, photoW = L.photoW, photoH = L.photoH, gap = L.gap, topPad = L.topPad, bottomCaption = L.bottomCaption, H = L.H, cols = L.cols;
     stripCanvas.height = H;
 
-    ctx.fillStyle = paper.bg;
-    ctx.fillRect(0,0,W,H);
+    const isScrapbook = (currentFrame === 'scrapbook' && TOTAL_SHOTS === 3);
+    if(isScrapbook && scrapbookImgReady){
+      ctx.drawImage(scrapbookImg, 0, 0, W, L.imageH);
+      ctx.fillStyle = '#f2e8d5';
+      ctx.fillRect(0, H - L.bottomCaption, W, L.bottomCaption);
+    } else {
+      ctx.fillStyle = paper.bg;
+      ctx.fillRect(0,0,W,H);
+    }
 
     const positions = L.positions;
     const regionTop = L.regionTop;
@@ -2604,7 +2661,7 @@
       plain: paper.text, film: paper.text, polaroid: paper.text,
       pesta: '#3f6b64', love: '#c8546b', neon: '#00eaff', birthday: '#e8443a',
       pastel: '#9b7bc4', sunset: '#e8574a', kawaii: '#c1529c',
-      airmail: '#1f3a63', reels: '#f2ede2'
+      airmail: '#1f3a63', reels: '#f2ede2', scrapbook: '#b23a30'
     };
 
     if(currentFrame === 'film'){
@@ -2634,6 +2691,31 @@
     }
 
     positions.forEach((p, i)=>{
+      if(isScrapbook){
+        ctx.save();
+        const cx = p.x + p.w/2, cy = p.y + p.h/2;
+        ctx.translate(cx, cy);
+        ctx.rotate(p.rot);
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,.35)';
+        ctx.shadowBlur = 7;
+        ctx.shadowOffsetY = 3;
+        ctx.fillStyle = '#fffdf8';
+        roundRect(ctx, -p.w/2-5, -p.h/2-5, p.w+10, p.h+10, 3);
+        ctx.fill();
+        ctx.restore();
+        if(capturedFrames[i]){
+          ctx.save();
+          roundRect(ctx, -p.w/2, -p.h/2, p.w, p.h, 2);
+          ctx.clip();
+          ctx.drawImage(capturedFrames[i], -p.w/2, -p.h/2, p.w, p.h);
+          ctx.restore();
+        } else {
+          drawEmptySlot(ctx, { x: -p.w/2, y: -p.h/2, w: p.w, h: p.h }, i, '#b23a30');
+        }
+        ctx.restore();
+        return;
+      }
       if(currentFrame === 'polaroid'){
         decoratePolaroid(ctx, p);
         const tapeColors = ['#e8bb3c','#c8443a','#3f6b64','#e58a5f'];
