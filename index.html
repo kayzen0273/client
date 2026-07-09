@@ -2489,7 +2489,11 @@
     } else {
       sh = vw / targetRatio; sy = (vh - sh)/2;
     }
-    c.width = 380; c.height = 285;
+    // Captured at a much higher native resolution than before (was
+    // 380x285, a very small source that looked grainy no matter how it
+    // was encoded afterward). 960x720 keeps the same 4:3 ratio but keeps
+    // far more real detail from the camera.
+    c.width = 960; c.height = 720;
     const cctx = c.getContext('2d');
     const f = FILTERS[currentFilter] || FILTERS.normal;
     cctx.filter = useAi ? 'none' : f.css;
@@ -3467,7 +3471,7 @@
   function renderGifPoseCanvas(photoCanvas){
     // Draw the pose at its native captured resolution — no shrinking —
     // so the GIF keeps as much of the original photo quality as possible.
-    const pad = 14, capH = 42;
+    const pad = 28, capH = 88;
     const W = photoCanvas.width + pad*2;
     const H = photoCanvas.height + pad + capH;
     const c = document.createElement('canvas');
@@ -3479,8 +3483,8 @@
     gctx.drawImage(photoCanvas, pad, pad, photoCanvas.width, photoCanvas.height);
     gctx.fillStyle = paper.text;
     gctx.textAlign = 'center';
-    gctx.font = "20px 'Anton', sans-serif";
-    gctx.fillText(photoboxName, W/2, H - 16);
+    gctx.font = "44px 'Anton', sans-serif";
+    gctx.fillText(photoboxName, W/2, H - 32);
     return c;
   }
 
@@ -3499,7 +3503,7 @@
     const samples = [];
     poseCanvases.forEach(pc=>{
       const d = pc.getContext('2d').getImageData(0, 0, W, H).data;
-      for(let i=0; i<d.length; i += 4*5){
+      for(let i=0; i<d.length; i += 4*11){
         samples.push([d[i], d[i+1], d[i+2]]);
       }
     });
@@ -3649,7 +3653,7 @@
       const img = new Image();
       img.onload = ()=>{
         const c = document.createElement('canvas');
-        c.width = 380; c.height = 285;
+        c.width = 960; c.height = 720;
         c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
         resolve(c);
       };
