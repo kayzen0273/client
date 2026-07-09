@@ -401,7 +401,7 @@
     gap:6px;
     justify-content:center;
   }
-  .frame-btn{
+  .frame-btn, .layout-btn{
     font-family:'Space Mono', monospace;
     font-size:9px;
     letter-spacing:1px;
@@ -422,9 +422,23 @@
     border-radius:3px;
     flex-shrink:0;
   }
-  .frame-btn:hover{ border-color:var(--bulb-amber); }
-  .frame-btn.active{ background:var(--bulb-amber); color:var(--ink); border-color:var(--bulb-amber); font-weight:700; }
-  .frame-btn:disabled{ opacity:.4; cursor:not-allowed; }
+  .layout-icon{
+    display:grid;
+    gap:2px;
+    width:14px; height:14px;
+    flex-shrink:0;
+  }
+  .layout-icon i{
+    display:block;
+    background:var(--paper-cream);
+    opacity:.5;
+    border-radius:1px;
+    font-style:normal;
+  }
+  .layout-btn.active .layout-icon i{ background:var(--ink); opacity:.85; }
+  .frame-btn:hover, .layout-btn:hover{ border-color:var(--bulb-amber); }
+  .frame-btn.active, .layout-btn.active{ background:var(--bulb-amber); color:var(--ink); border-color:var(--bulb-amber); font-weight:700; }
+  .frame-btn:disabled, .layout-btn:disabled{ opacity:.4; cursor:not-allowed; }
   .strip-slot{
     background: repeating-linear-gradient(180deg, #100e0c, #100e0c 6px, #17140f 6px, #17140f 12px);
     border-radius: 4px 4px 14px 14px;
@@ -629,7 +643,7 @@
 
   <div class="marquee">
     <h1>PHOTO BOX</h1>
-    <p>4 Pose · 1 Strip · Kenangan Instan</p>
+    <p id="heroSubtitle">4 Pose · 1 Strip · Kenangan Instan</p>
   </div>
 
   <div class="studio">
@@ -699,6 +713,26 @@
     </div>
 
     <div class="strip-area">
+      <div class="frame-picker">
+        <div class="frame-picker-label">Pilih Grid</div>
+        <div class="frames" id="layouts">
+          <button class="layout-btn" data-layout="strip3" title="3 pose, strip vertikal">
+            <span class="layout-icon" style="grid-template-columns:1fr;grid-template-rows:repeat(3,1fr);"><i></i><i></i><i></i></span>3 Strip
+          </button>
+          <button class="layout-btn active" data-layout="strip4" title="4 pose, strip vertikal">
+            <span class="layout-icon" style="grid-template-columns:1fr;grid-template-rows:repeat(4,1fr);"><i></i><i></i><i></i><i></i></span>4 Strip
+          </button>
+          <button class="layout-btn" data-layout="strip6" title="6 pose, strip vertikal">
+            <span class="layout-icon" style="grid-template-columns:1fr;grid-template-rows:repeat(6,1fr);"><i></i><i></i><i></i><i></i><i></i><i></i></span>6 Strip
+          </button>
+          <button class="layout-btn" data-layout="grid2x2" title="4 pose, grid 2 kolom">
+            <span class="layout-icon" style="grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,1fr);"><i></i><i></i><i></i><i></i></span>Grid 2×2
+          </button>
+          <button class="layout-btn" data-layout="grid2x3" title="6 pose, grid 2 kolom">
+            <span class="layout-icon" style="grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(3,1fr);"><i></i><i></i><i></i><i></i><i></i><i></i></span>Grid 2×3
+          </button>
+        </div>
+      </div>
       <div class="frame-picker">
         <div class="frame-picker-label">Pilih Bingkai</div>
         <div class="frames" id="frames">
@@ -796,7 +830,9 @@
   const arPresetBtns = document.querySelectorAll('.ar-preset-btn');
   const arStatusText = document.getElementById('arStatusText');
 
-  const TOTAL_SHOTS = 4;
+  let currentLayout = 'strip4';
+  let TOTAL_SHOTS = LAYOUTS[currentLayout].shots;
+  let GRID_COLS = LAYOUTS[currentLayout].cols;
   let currentFilter = 'normal';
   let currentFrame = 'plain';
   let currentPaper = 'cream';
@@ -823,6 +859,16 @@
   let arBusy = false;
   let smoothFace = null;
   const frameBtns = document.querySelectorAll('.frame-btn');
+  const layoutBtns = document.querySelectorAll('.layout-btn');
+  const heroSubtitle = document.getElementById('heroSubtitle');
+
+  const LAYOUTS = {
+    strip3:  { shots: 3, cols: 1 },
+    strip4:  { shots: 4, cols: 1 },
+    strip6:  { shots: 6, cols: 1 },
+    grid2x2: { shots: 4, cols: 2 },
+    grid2x3: { shots: 6, cols: 2 }
+  };
 
   const PAPERS = {
     cream: { bg:'#f2e8d5', text:'#2b2622', sub:'#6b5f4f' },
@@ -965,6 +1011,36 @@
       btn.classList.add('active');
       currentFrame = btn.dataset.frame;
       if(capturedFrames.length > 0){ renderStrip(); }
+      else { drawStripPlaceholder(); }
+    });
+  });
+
+  function updateHeroSubtitle(){
+    if(!heroSubtitle) return;
+    const kind = GRID_COLS > 1 ? `Grid ${GRID_COLS}\u00d7${Math.ceil(TOTAL_SHOTS/GRID_COLS)}` : 'Strip';
+    heroSubtitle.textContent = `${TOTAL_SHOTS} Pose \u00b7 1 ${kind} \u00b7 Kenangan Instan`;
+  }
+
+  function applyLayout(key){
+    if(!LAYOUTS[key] || key === currentLayout) return;
+    currentLayout = key;
+    TOTAL_SHOTS = LAYOUTS[key].shots;
+    GRID_COLS = LAYOUTS[key].cols;
+    capturedFrames = [];
+    shotCounter.textContent = `POSE 0/${TOTAL_SHOTS}`;
+    shotCounter.style.display = 'none';
+    retakeBtn.disabled = true;
+    downloadBtn.disabled = true;
+    updateHeroSubtitle();
+    drawStripPlaceholder();
+  }
+
+  layoutBtns.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(busy) return;
+      layoutBtns.forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      applyLayout(btn.dataset.layout);
     });
   });
 
@@ -2047,8 +2123,34 @@
     });
   }
 
+  // Computes photo positions/dimensions for the current grid layout (GRID_COLS)
+  // given n photos, based on the active frame's padding/gap rules.
+  function computeGridLayout(n){
+    const cols = Math.max(1, Math.min(GRID_COLS, Math.max(n, 1)));
+    const rows = Math.max(1, Math.ceil(n / cols));
+    const W = stripCanvas.width;
+    const pad = currentFrame === 'film' ? 36 : (currentFrame === 'neon' ? 30 : ((currentFrame === 'pastel' || currentFrame === 'sunset' || currentFrame === 'kawaii') ? 26 : 22));
+    const gap = currentFrame === 'polaroid' ? 30 : ((currentFrame === 'pastel' || currentFrame === 'kawaii') ? 24 : 16);
+    const photoW = (W - pad*2 - gap*(cols-1)) / cols;
+    const photoH = photoW * 0.75;
+    const topPad = (currentFrame === 'love' || currentFrame === 'birthday' || currentFrame === 'kawaii') ? 42 : (currentFrame === 'sunset' ? 46 : (currentFrame === 'pastel' ? 30 : 26));
+    const bottomCaption = 92;
+    const H = topPad + rows*photoH + (rows-1)*gap + bottomCaption;
+    const positions = [];
+    for(let i=0; i<n; i++){
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      positions.push({ x: pad + col*(photoW+gap), y: topPad + row*(photoH+gap), w: photoW, h: photoH });
+    }
+    const regionTop = topPad;
+    const regionBottom = topPad + rows*photoH + (rows-1)*gap;
+    return { cols, rows, W, pad, gap, photoW, photoH, topPad, bottomCaption, H, positions, regionTop, regionBottom };
+  }
+
   function drawStripPlaceholder(){
     const paper = PAPERS[currentPaper] || PAPERS.cream;
+    const L = computeGridLayout(TOTAL_SHOTS);
+    stripCanvas.height = L.H;
     ctx.clearRect(0,0,stripCanvas.width, stripCanvas.height);
     ctx.fillStyle = paper.bg;
     ctx.fillRect(0,0,stripCanvas.width, stripCanvas.height);
@@ -2060,25 +2162,17 @@
 
   function renderStrip(){
     const paper = PAPERS[currentPaper] || PAPERS.cream;
-    const W = stripCanvas.width;
-    const pad = currentFrame === 'film' ? 36 : (currentFrame === 'neon' ? 30 : ((currentFrame === 'pastel' || currentFrame === 'sunset' || currentFrame === 'kawaii') ? 26 : 22));
-    const photoW = W - pad*2;
-    const photoH = photoW * 0.75;
-    const gap = currentFrame === 'polaroid' ? 30 : ((currentFrame === 'pastel' || currentFrame === 'kawaii') ? 24 : 16);
-    const topPad = (currentFrame === 'love' || currentFrame === 'birthday' || currentFrame === 'kawaii') ? 42 : (currentFrame === 'sunset' ? 46 : (currentFrame === 'pastel' ? 30 : 26));
-    const bottomCaption = 92;
     const n = capturedFrames.length;
-    const H = topPad + n*photoH + (n-1)*gap + bottomCaption;
+    const L = computeGridLayout(n || TOTAL_SHOTS);
+    const W = L.W, pad = L.pad, photoW = L.photoW, photoH = L.photoH, gap = L.gap, topPad = L.topPad, bottomCaption = L.bottomCaption, H = L.H;
     stripCanvas.height = H;
 
     ctx.fillStyle = paper.bg;
     ctx.fillRect(0,0,W,H);
 
-    const positions = capturedFrames.map((_, i)=>({
-      x: pad, y: topPad + i*(photoH+gap), w: photoW, h: photoH
-    }));
-    const regionTop = topPad;
-    const regionBottom = topPad + n*photoH + (n-1)*gap;
+    const positions = L.positions;
+    const regionTop = L.regionTop;
+    const regionBottom = L.regionBottom;
 
     if(currentFrame === 'film'){
       decorateFilm(ctx, W, H, pad, regionTop, regionBottom);
@@ -2161,6 +2255,7 @@
     flipBtn.disabled = true;
     filterBtns.forEach(b=>b.disabled = true);
     frameBtns.forEach(b=>b.disabled = true);
+    layoutBtns.forEach(b=>b.disabled = true);
     paperBtns.forEach(b=>b.disabled = true);
     stickerPalette.querySelectorAll('.sticker-chip').forEach(b=>b.disabled = true);
     clearStickersBtn.disabled = true;
@@ -2194,6 +2289,7 @@
     flipBtn.disabled = false;
     filterBtns.forEach(b=>b.disabled = false);
     frameBtns.forEach(b=>b.disabled = false);
+    layoutBtns.forEach(b=>b.disabled = false);
     paperBtns.forEach(b=>b.disabled = false);
     stickerPalette.querySelectorAll('.sticker-chip').forEach(b=>b.disabled = false);
     clearStickersBtn.disabled = false;
@@ -2211,7 +2307,6 @@
   retakeBtn.addEventListener('click', ()=>{
     if(busy) return;
     capturedFrames = [];
-    stripCanvas.height = 1160;
     drawStripPlaceholder();
     shotCounter.style.display = 'none';
     retakeBtn.disabled = true;
