@@ -1680,6 +1680,27 @@
     ]
   };
 
+  // Attaching a stream via srcObject alone doesn't reliably autoplay on
+  // every mobile browser once the <video> has gone through a display:none
+  // -> display:block toggle (which is what happens when we enter split
+  // view). Mirror the same explicit-play pattern used for the local
+  // camera so the remote feed doesn't end up stuck on a black frame.
+  function ldrPlayRemoteStream(stream){
+    remoteVideoEl.srcObject = stream;
+    const tryPlay = () => {
+      const p = remoteVideoEl.play();
+      if(p && p.catch) p.catch(()=>{});
+    };
+    if(remoteVideoEl.readyState >= 1){
+      tryPlay();
+    } else {
+      remoteVideoEl.onloadedmetadata = tryPlay;
+    }
+    // Fallback in case loadedmetadata already fired before we attached
+    // the handler, or never fires on some browsers.
+    setTimeout(tryPlay, 300);
+  }
+
   function ldrRandomCode(){
     const chars = 'ABCDEFGHJKMNPQRSTUVWXY3456789'; // no 0/O/1/I/L to avoid mix-ups
     let s = '';
@@ -1877,7 +1898,7 @@
       call.on('stream', (remoteStream)=>{
         clearTimeout(waitHintTimer);
         ldrRemoteStream = remoteStream;
-        remoteVideoEl.srcObject = remoteStream;
+        ldrPlayRemoteStream(remoteStream);
         ldrActive = true;
         ldrHostStatus.textContent = '✅ Tersambung! Kamu bisa mulai jepret.';
         ldrHostStatus.className = 'ldr-status connected';
@@ -1965,7 +1986,7 @@
       ldrCall = call;
       call.on('stream', (remoteStream)=>{
         ldrRemoteStream = remoteStream;
-        remoteVideoEl.srcObject = remoteStream;
+        ldrPlayRemoteStream(remoteStream);
         viewfinder.classList.add('ldr-split', 'ldr-guest-view');
       });
       call.on('close', ()=>{ if(ldrRole === 'guest') ldrHandlePartnerLeft('Koneksi ke host terputus.'); });
