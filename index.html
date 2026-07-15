@@ -1663,6 +1663,23 @@
   let ldrRoomCode = '';
   let ldrGuestFacing = 'user';
 
+  // ICE server config: STUN alone (PeerJS default) only works when a direct
+  // P2P path can be found, which usually fails once host & guest are on
+  // different networks (different WiFi, or WiFi vs. seluler/4G — common
+  // with carrier-grade NAT). Adding public TURN relays gives a fallback
+  // path so the connection still goes through even when a direct route
+  // is blocked.
+  const LDR_ICE_CONFIG = {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:global.stun.twilio.com:3478' },
+      { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+    ]
+  };
+
   function ldrRandomCode(){
     const chars = 'ABCDEFGHJKMNPQRSTUVWXY3456789'; // no 0/O/1/I/L to avoid mix-ups
     let s = '';
@@ -1818,7 +1835,7 @@
     const peerId = 'pboothldr-' + code;
     let p;
     try{
-      p = new Peer(peerId, { debug: 0 });
+      p = new Peer(peerId, { debug: 0, config: LDR_ICE_CONFIG });
     }catch(e){
       ldrHostStatus.textContent = 'Gagal membuat koneksi. Coba lagi.';
       ldrHostStatus.className = 'ldr-status error';
@@ -1830,7 +1847,17 @@
     ldrHostStatus.textContent = 'Menunggu tamu bergabung…';
     ldrHostStatus.className = 'ldr-status';
 
+    // Kalau host & tamu beda jaringan, koneksi bisa butuh waktu lebih lama
+    // karena harus lewat server relay (TURN). Kasih tahu biar nggak dikira macet.
+    const waitHintTimer = setTimeout(()=>{
+      if(!ldrActive && ldrPeer === p){
+        ldrHostStatus.textContent = 'Masih nunggu… kalau beda jaringan (WiFi/data) prosesnya emang agak lebih lama.';
+        ldrHostStatus.className = 'ldr-status';
+      }
+    }, 12000);
+
     p.on('error', (err)=>{
+      clearTimeout(waitHintTimer);
       if(err && err.type === 'unavailable-id' && attemptsLeft > 0){
         try{ p.destroy(); }catch(e){}
         ldrAttemptHostPeer(attemptsLeft - 1);
@@ -1848,6 +1875,7 @@
       call.answer(currentStream || undefined);
       ldrCall = call;
       call.on('stream', (remoteStream)=>{
+        clearTimeout(waitHintTimer);
         ldrRemoteStream = remoteStream;
         remoteVideoEl.srcObject = remoteStream;
         ldrActive = true;
@@ -1900,7 +1928,7 @@
     const hostId = 'pboothldr-' + code;
     let p;
     try{
-      p = new Peer(undefined, { debug: 0 });
+      p = new Peer(undefined, { debug: 0, config: LDR_ICE_CONFIG });
     }catch(e){
       ldrGuestStatus.textContent = 'Gagal membuat koneksi. Coba lagi.';
       ldrGuestStatus.className = 'ldr-status error';
@@ -1908,10 +1936,21 @@
       return;
     }
     ldrPeer = p;
+
+    // Kalau host & tamu beda jaringan, koneksi bisa butuh waktu lebih lama
+    // karena harus lewat server relay (TURN). Kasih tahu biar nggak dikira macet.
+    const waitHintTimer = setTimeout(()=>{
+      if(!ldrActive && ldrPeer === p){
+        ldrGuestStatus.textContent = 'Masih nyambung… kalau beda jaringan (WiFi/data) prosesnya emang agak lebih lama.';
+        ldrGuestStatus.className = 'ldr-status';
+      }
+    }, 12000);
+
     p.on('open', ()=>{
       const conn = p.connect(hostId, { reliable:true });
       ldrConn = conn;
       conn.on('open', ()=>{
+        clearTimeout(waitHintTimer);
         ldrActive = true;
         ldrGuestStatus.textContent = '✅ Tersambung ke host! Nunggu host motret ya.';
         ldrGuestStatus.className = 'ldr-status connected';
@@ -1932,6 +1971,7 @@
       call.on('close', ()=>{ if(ldrRole === 'guest') ldrHandlePartnerLeft('Koneksi ke host terputus.'); });
     });
     p.on('error', (err)=>{
+      clearTimeout(waitHintTimer);
       if(err && err.type === 'peer-unavailable'){
         ldrGuestStatus.textContent = 'Kode tidak ditemukan. Cek lagi kodenya.';
       } else {
