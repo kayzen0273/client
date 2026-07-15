@@ -1654,6 +1654,21 @@
   const ldrBadgeEl = document.getElementById('ldrBadge');
   const ldrBadgeTextEl = document.getElementById('ldrBadgeText');
 
+  // Public STUN + free TURN relay. Without a TURN fallback, host and guest
+  // being on different networks (e.g. one on WiFi, one on mobile data) will
+  // often fail to exchange video directly — the data channel connects fine,
+  // but neither side's camera ever reaches the other. TURN relays the media
+  // through a server instead of requiring a direct P2P path.
+  const LDR_ICE_CONFIG = {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+    ]
+  };
+
   let ldrPeer = null;
   let ldrRole = null;           // 'host' | 'guest' | null
   let ldrConn = null;           // PeerJS DataConnection
@@ -1839,7 +1854,7 @@
     const peerId = 'pboothldr-' + code;
     let p;
     try{
-      p = new Peer(peerId, { debug: 0 });
+      p = new Peer(peerId, { debug: 0, config: LDR_ICE_CONFIG });
     }catch(e){
       ldrHostStatus.textContent = 'Gagal membuat koneksi. Coba lagi.';
       ldrHostStatus.className = 'ldr-status error';
@@ -1879,6 +1894,10 @@
         ldrEnterSplit();
       });
       call.on('close', ()=>{ if(ldrRole === 'host') ldrHandlePartnerLeft('Tamu terputus.'); });
+      call.on('error', ()=>{
+        ldrHostStatus.textContent = 'Gagal nyambungin video. Coba pastiin koneksi internet kalian stabil.';
+        ldrHostStatus.className = 'ldr-status error';
+      });
     });
   }
 
@@ -1921,7 +1940,7 @@
     const hostId = 'pboothldr-' + code;
     let p;
     try{
-      p = new Peer(undefined, { debug: 0 });
+      p = new Peer(undefined, { debug: 0, config: LDR_ICE_CONFIG });
     }catch(e){
       ldrGuestStatus.textContent = 'Gagal membuat koneksi. Coba lagi.';
       ldrGuestStatus.className = 'ldr-status error';
@@ -1951,6 +1970,10 @@
         viewfinder.classList.add('ldr-split', 'ldr-guest-view');
       });
       call.on('close', ()=>{ if(ldrRole === 'guest') ldrHandlePartnerLeft('Koneksi ke host terputus.'); });
+      call.on('error', ()=>{
+        ldrGuestStatus.textContent = 'Gagal nyambungin video. Coba pastiin koneksi internet kalian stabil.';
+        ldrGuestStatus.className = 'ldr-status error';
+      });
     });
     p.on('error', (err)=>{
       if(err && err.type === 'peer-unavailable'){
