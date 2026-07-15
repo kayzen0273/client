@@ -151,6 +151,50 @@
   .settings-save{ background:var(--bulb-amber); color:var(--ink); }
   .settings-save:hover{ filter:brightness(1.08); }
 
+  .ldr-btn{ left:26px; right:auto; color:#ff9ecb; border-color:rgba(255,158,203,.5); }
+  .ldr-btn:hover{ background:rgba(0,0,0,.55); transform:scale(1.08); }
+  .ldr-btn.active{ background:rgba(255,158,203,.22); border-color:#ff9ecb; }
+  .ldr-role-choice{
+    display:flex; gap:10px; margin-top:4px;
+  }
+  .ldr-role-btn{
+    flex:1;
+    font-family:'Space Mono', monospace;
+    background:#fff;
+    border:2px solid rgba(43,38,34,.15);
+    border-radius:12px;
+    padding:14px 10px;
+    text-align:center;
+    cursor:pointer;
+    color:var(--ink);
+    line-height:1.4;
+    transition:.15s;
+  }
+  .ldr-role-btn:hover{ border-color:#ff9ecb; background:rgba(255,158,203,.08); }
+  .ldr-role-icon{ font-size:22px; display:block; margin-bottom:6px; }
+  .ldr-role-btn small{ font-size:10px; opacity:.65; font-weight:400; }
+  .ldr-panel{ margin-top:16px; }
+  .ldr-code-display{
+    font-family:'Anton', sans-serif;
+    font-size:32px;
+    letter-spacing:6px;
+    text-align:center;
+    background:#fff;
+    border:2px dashed rgba(255,158,203,.6);
+    border-radius:10px;
+    padding:14px 8px;
+    color:var(--ink);
+  }
+  .ldr-status{
+    font-size:12px;
+    line-height:1.5;
+    opacity:.7;
+    margin:10px 0 0;
+    text-align:center;
+  }
+  .ldr-status.connected{ color:#1f7a4d; opacity:1; font-weight:700; }
+  .ldr-status.error{ color:#b23a3a; opacity:1; font-weight:700; }
+
   .marquee h1{
     font-family:'Anton', sans-serif;
     font-size:clamp(38px, 7vw, 64px);
@@ -257,6 +301,55 @@
     animation: aiPulse 1s ease-in-out infinite;
   }
   @keyframes aiPulse{ 0%,100%{opacity:.3;} 50%{opacity:1;} }
+  .ldr-badge{
+    position:absolute; top:10px; left:50%;
+    transform:translateX(-50%);
+    display:none;
+    align-items:center; gap:6px;
+    background:rgba(0,0,0,.6);
+    padding:5px 10px;
+    border-radius:20px;
+    font-size:10px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:#ff9ecb;
+    z-index:6;
+    white-space:nowrap;
+  }
+  .ldr-badge .dot{
+    width:6px; height:6px; border-radius:50%;
+    background:#ff9ecb;
+    animation: aiPulse 1s ease-in-out infinite;
+  }
+  #remoteVideo{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    object-fit:cover;
+    display:none;
+    transform: scaleX(-1);
+    background:#000;
+  }
+  #remoteVideo.mirror-off{ transform:none; }
+  .viewfinder.ldr-split #video{
+    position:absolute; left:0; top:0;
+    width:50%; height:100%;
+    object-fit:cover;
+  }
+  .viewfinder.ldr-split #remoteVideo{
+    display:block;
+    left:50%; width:50%;
+  }
+  .viewfinder.ldr-split #aiCanvas,
+  .viewfinder.ldr-split #arCanvas{
+    display:none !important;
+  }
+  .ldr-seam{
+    position:absolute; top:0; bottom:0; left:50%; width:0;
+    border-left:2px dashed rgba(244,232,213,.85);
+    pointer-events:none; z-index:5;
+    display:none;
+  }
+  .viewfinder.ldr-split .ldr-seam{ display:block; }
   .tint{
     position:absolute; inset:0;
     pointer-events:none;
@@ -886,6 +979,7 @@
 
   <div class="marquee">
     <button class="settings-btn" id="settingsBtn" title="Pengaturan nama photobox" aria-label="Pengaturan nama photobox">⚙</button>
+    <button class="settings-btn ldr-btn" id="ldrBtn" title="Mode LDR — gabung kamera 2 HP" aria-label="Mode LDR">💞</button>
     <h1 id="photoboxTitle">PHOTO BOX</h1>
     <p id="heroSubtitle">4 Pose · 1 Strip · Kenangan Instan</p>
   </div>
@@ -917,13 +1011,53 @@
     </div>
   </div>
 
+  <div class="settings-overlay" id="ldrOverlay">
+    <div class="settings-modal ldr-modal">
+      <h2>Mode LDR 💞</h2>
+      <p class="settings-hint" id="ldrIntro">Gabungkan kamera dari 2 HP jadi satu foto split-screen. Host yang pegang tombol jepret, tamu tinggal pasang gaya.</p>
+
+      <div class="ldr-role-choice" id="ldrRoleChoice">
+        <button class="ldr-role-btn" id="ldrHostBtn" type="button">
+          <span class="ldr-role-icon">🏠</span>
+          <span>Jadi Host<br><small>Bikin kode &amp; kontrol jepretan</small></span>
+        </button>
+        <button class="ldr-role-btn" id="ldrGuestBtn" type="button">
+          <span class="ldr-role-icon">📱</span>
+          <span>Gabung ke Host<br><small>Punya kode dari host</small></span>
+        </button>
+      </div>
+
+      <div class="ldr-panel" id="ldrHostPanel" style="display:none;">
+        <label>Kode Room — bagikan ke HP kedua</label>
+        <div class="ldr-code-display" id="ldrCodeDisplay">-----</div>
+        <button class="settings-cancel" id="ldrCopyCodeBtn" type="button" style="width:100%; margin-top:8px; box-sizing:border-box;">Salin Kode</button>
+        <p class="ldr-status" id="ldrHostStatus"></p>
+      </div>
+
+      <div class="ldr-panel" id="ldrGuestPanel" style="display:none;">
+        <label for="ldrCodeInput">Masukin kode dari host</label>
+        <input type="text" id="ldrCodeInput" maxlength="5" placeholder="cth. AB12C" style="text-transform:uppercase; letter-spacing:5px; text-align:center; font-size:18px;">
+        <button class="settings-save" id="ldrJoinBtn" type="button" style="width:100%; margin-top:10px; box-sizing:border-box;">Gabung</button>
+        <p class="ldr-status" id="ldrGuestStatus"></p>
+      </div>
+
+      <div class="settings-actions" id="ldrActions">
+        <button class="settings-cancel" id="ldrBackBtn" type="button" style="display:none;">Kembali</button>
+        <button class="settings-cancel" id="ldrDisconnectBtn" type="button" style="display:none;">Putuskan LDR</button>
+        <button class="settings-save" id="ldrCloseBtn" type="button">Tutup</button>
+      </div>
+    </div>
+  </div>
+
   <div class="studio">
 
     <div class="camera-unit">
       <div class="viewfinder normal" id="viewfinder">
         <video id="video" autoplay playsinline muted></video>
+        <video id="remoteVideo" autoplay playsinline muted></video>
         <canvas id="aiCanvas"></canvas>
         <canvas id="arCanvas"></canvas>
+        <div class="ldr-seam" id="ldrSeam"></div>
         <div class="tint" id="tint"></div>
         <div class="idle-msg" id="idleMsg"><div class="spinner"></div>Menyalakan kamera…<br>Izinkan akses kamera di browser kamu.</div>
         <div class="error-msg" id="errorMsg" style="display:none;"></div>
@@ -932,6 +1066,7 @@
         <div class="shot-counter" id="shotCounter" style="display:none;">POSE 0/4</div>
         <div class="ai-badge" id="aiBadge"><span class="dot"></span>AI Aktif</div>
         <div class="ar-badge" id="arBadge"><span class="dot"></span>AR Aktif</div>
+        <div class="ldr-badge" id="ldrBadge"><span class="dot"></span><span id="ldrBadgeText">LDR Aktif</span></div>
       </div>
 
       <div class="controls">
@@ -1394,6 +1529,7 @@
   function applyFilter(name){
     const f = FILTERS[name] || FILTERS.normal;
     video.style.filter = f.css;
+    remoteVideoEl.style.filter = f.css;
     if(f.tint){
       tintEl.style.background = f.tint;
       tintEl.style.mixBlendMode = f.blend || 'soft-light';
@@ -1482,10 +1618,390 @@
   initCamera();
 
   flipBtn.addEventListener('click', ()=>{
-    if(busy) return;
+    if(busy || ldrActive) return;
     currentFacing = currentFacing === 'user' ? 'environment' : 'user';
     initCamera();
   });
+
+  // ============================================================
+  // ---------- LDR mode: gabungkan kamera 2 HP via WebRTC ----------
+  // ============================================================
+  const ldrBtn = document.getElementById('ldrBtn');
+  const ldrOverlay = document.getElementById('ldrOverlay');
+  const ldrRoleChoice = document.getElementById('ldrRoleChoice');
+  const ldrHostBtn = document.getElementById('ldrHostBtn');
+  const ldrGuestBtn = document.getElementById('ldrGuestBtn');
+  const ldrHostPanel = document.getElementById('ldrHostPanel');
+  const ldrGuestPanel = document.getElementById('ldrGuestPanel');
+  const ldrCodeDisplay = document.getElementById('ldrCodeDisplay');
+  const ldrCopyCodeBtn = document.getElementById('ldrCopyCodeBtn');
+  const ldrHostStatus = document.getElementById('ldrHostStatus');
+  const ldrCodeInput = document.getElementById('ldrCodeInput');
+  const ldrJoinBtn = document.getElementById('ldrJoinBtn');
+  const ldrGuestStatus = document.getElementById('ldrGuestStatus');
+  const ldrBackBtn = document.getElementById('ldrBackBtn');
+  const ldrDisconnectBtn = document.getElementById('ldrDisconnectBtn');
+  const ldrCloseBtn = document.getElementById('ldrCloseBtn');
+  const remoteVideoEl = document.getElementById('remoteVideo');
+  const ldrBadgeEl = document.getElementById('ldrBadge');
+  const ldrBadgeTextEl = document.getElementById('ldrBadgeText');
+
+  let ldrPeer = null;
+  let ldrRole = null;           // 'host' | 'guest' | null
+  let ldrConn = null;           // PeerJS DataConnection
+  let ldrCall = null;           // PeerJS MediaConnection
+  let ldrRemoteStream = null;
+  let ldrActive = false;        // true once host<->guest are actually connected
+  let ldrRoomCode = '';
+  let ldrGuestFacing = 'user';
+
+  function ldrRandomCode(){
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXY3456789'; // no 0/O/1/I/L to avoid mix-ups
+    let s = '';
+    for(let i=0;i<5;i++) s += chars[Math.floor(Math.random()*chars.length)];
+    return s;
+  }
+
+  function ensurePeerJs(){
+    if(window.Peer) return Promise.resolve();
+    return loadScriptOnce('https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js');
+  }
+
+  function ldrSendToPeer(obj){
+    if(ldrConn && ldrConn.open){
+      try{ ldrConn.send(obj); }catch(e){}
+    }
+  }
+
+  function resetLdrModalToChoice(){
+    ldrRoleChoice.style.display = 'flex';
+    ldrHostPanel.style.display = 'none';
+    ldrGuestPanel.style.display = 'none';
+    ldrBackBtn.style.display = 'none';
+    ldrDisconnectBtn.style.display = 'none';
+    ldrCodeInput.value = '';
+    ldrGuestStatus.textContent = '';
+    ldrGuestStatus.className = 'ldr-status';
+    ldrHostStatus.textContent = '';
+    ldrHostStatus.className = 'ldr-status';
+    ldrCodeDisplay.textContent = '-----';
+  }
+
+  function showLdrHostPanel(){
+    ldrRoleChoice.style.display = 'none';
+    ldrGuestPanel.style.display = 'none';
+    ldrHostPanel.style.display = 'block';
+    ldrBackBtn.style.display = ldrActive ? 'none' : 'inline-block';
+    ldrDisconnectBtn.style.display = ldrActive ? 'inline-block' : 'none';
+  }
+
+  function showLdrGuestPanel(){
+    ldrRoleChoice.style.display = 'none';
+    ldrHostPanel.style.display = 'none';
+    ldrGuestPanel.style.display = 'block';
+    ldrBackBtn.style.display = ldrActive ? 'none' : 'inline-block';
+    ldrDisconnectBtn.style.display = ldrActive ? 'inline-block' : 'none';
+    setTimeout(()=>ldrCodeInput.focus(), 50);
+  }
+
+  function openLdrModal(){
+    ldrOverlay.classList.add('open');
+    if(!ldrActive){
+      resetLdrModalToChoice();
+    } else if(ldrRole === 'host'){
+      showLdrHostPanel();
+    } else if(ldrRole === 'guest'){
+      showLdrGuestPanel();
+    }
+  }
+  function closeLdrModal(){ ldrOverlay.classList.remove('open'); }
+
+  function ldrEnterSplit(){
+    viewfinder.classList.add('ldr-split');
+    ldrBadgeEl.style.display = 'flex';
+    ldrBadgeTextEl.textContent = 'LDR • Live';
+    flipBtn.disabled = true;
+    if(aiBgEnabled) aiSwitch.click();
+    if(arEnabled) arSwitch.click();
+    aiSwitch.disabled = true;
+    arSwitch.disabled = true;
+    ldrBtn.classList.add('active');
+    applyFilter(currentFilter);
+  }
+
+  function ldrExitSplit(){
+    viewfinder.classList.remove('ldr-split');
+    ldrBadgeEl.style.display = 'none';
+    remoteVideoEl.srcObject = null;
+    ldrRemoteStream = null;
+    flipBtn.disabled = false;
+    aiSwitch.disabled = false;
+    arSwitch.disabled = false;
+    ldrBtn.classList.remove('active');
+  }
+
+  function guestEnterConnectedUI(){
+    ldrBadgeEl.style.display = 'flex';
+    ldrBadgeTextEl.textContent = 'LDR • Tersambung ke Host';
+    flipBtn.disabled = true;
+    ldrBtn.classList.add('active');
+    updateCaptureUI();
+  }
+
+  function guestExitConnectedUI(){
+    ldrBadgeEl.style.display = 'none';
+    flipBtn.disabled = false;
+    ldrBtn.classList.remove('active');
+    updateCaptureUI();
+  }
+
+  function ldrHandlePartnerLeft(msg){
+    if(ldrCall){ try{ ldrCall.close(); }catch(e){} ldrCall = null; }
+    if(ldrConn){ try{ ldrConn.close(); }catch(e){} ldrConn = null; }
+    if(ldrPeer){ try{ ldrPeer.destroy(); }catch(e){} ldrPeer = null; }
+    const wasHost = ldrRole === 'host';
+    ldrActive = false;
+    ldrRole = null;
+    ldrRoomCode = '';
+    if(wasHost){
+      ldrExitSplit();
+      ldrHostStatus.textContent = msg;
+      ldrHostStatus.className = 'ldr-status';
+    } else {
+      guestExitConnectedUI();
+      ldrGuestStatus.textContent = msg;
+      ldrGuestStatus.className = 'ldr-status';
+    }
+  }
+
+  function ldrHandleData(data){
+    if(!data || typeof data !== 'object') return;
+    if(ldrRole === 'host'){
+      if(data.type === 'facing'){
+        ldrGuestFacing = data.facing === 'environment' ? 'environment' : 'user';
+        remoteVideoEl.classList.toggle('mirror-off', ldrGuestFacing === 'environment');
+      }
+      return;
+    }
+    if(ldrRole === 'guest'){
+      if(data.type === 'countdown'){
+        countdownEl.style.display = 'flex';
+        countdownEl.textContent = data.n;
+      } else if(data.type === 'countdown-hide'){
+        countdownEl.style.display = 'none';
+      } else if(data.type === 'flash'){
+        doFlash();
+      } else if(data.type === 'progress'){
+        shotCounter.style.display = 'block';
+        shotCounter.textContent = `POSE ${data.k}/${data.total}`;
+      } else if(data.type === 'session-end'){
+        shotCounter.textContent = `SELESAI · ${data.total}/${data.total}`;
+        setTimeout(()=>{ if(ldrActive) shotCounter.style.display = 'none'; }, 1500);
+      }
+    }
+  }
+
+  function ldrAttemptHostPeer(attemptsLeft){
+    if(attemptsLeft === undefined) attemptsLeft = 3;
+    const code = ldrRandomCode();
+    const peerId = 'pboothldr-' + code;
+    let p;
+    try{
+      p = new Peer(peerId, { debug: 0 });
+    }catch(e){
+      ldrHostStatus.textContent = 'Gagal membuat koneksi. Coba lagi.';
+      ldrHostStatus.className = 'ldr-status error';
+      return;
+    }
+    ldrPeer = p;
+    ldrRoomCode = code;
+    ldrCodeDisplay.textContent = code;
+    ldrHostStatus.textContent = 'Menunggu tamu bergabung…';
+    ldrHostStatus.className = 'ldr-status';
+
+    p.on('error', (err)=>{
+      if(err && err.type === 'unavailable-id' && attemptsLeft > 0){
+        try{ p.destroy(); }catch(e){}
+        ldrAttemptHostPeer(attemptsLeft - 1);
+        return;
+      }
+      ldrHostStatus.textContent = 'Gagal konek (' + (err && err.type ? err.type : 'error') + '). Coba lagi.';
+      ldrHostStatus.className = 'ldr-status error';
+    });
+    p.on('connection', (conn)=>{
+      ldrConn = conn;
+      conn.on('data', ldrHandleData);
+      conn.on('close', ()=>{ if(ldrRole === 'host') ldrHandlePartnerLeft('Tamu terputus.'); });
+    });
+    p.on('call', (call)=>{
+      call.answer();
+      ldrCall = call;
+      call.on('stream', (remoteStream)=>{
+        ldrRemoteStream = remoteStream;
+        remoteVideoEl.srcObject = remoteStream;
+        ldrActive = true;
+        ldrHostStatus.textContent = '✅ Tersambung! Kamu bisa mulai jepret.';
+        ldrHostStatus.className = 'ldr-status connected';
+        ldrBackBtn.style.display = 'none';
+        ldrDisconnectBtn.style.display = 'inline-block';
+        ldrEnterSplit();
+      });
+      call.on('close', ()=>{ if(ldrRole === 'host') ldrHandlePartnerLeft('Tamu terputus.'); });
+    });
+  }
+
+  async function ldrStartHost(){
+    ldrHostStatus.textContent = 'Menyiapkan koneksi…';
+    ldrHostStatus.className = 'ldr-status';
+    try{
+      await ensurePeerJs();
+    }catch(e){
+      ldrHostStatus.textContent = 'Gagal memuat modul LDR. Cek koneksi internet kamu.';
+      ldrHostStatus.className = 'ldr-status error';
+      return;
+    }
+    ldrRole = 'host';
+    ldrAttemptHostPeer();
+  }
+
+  async function ldrJoinGuest(rawCode){
+    const code = (rawCode || '').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+    if(code.length < 4){
+      ldrGuestStatus.textContent = 'Masukin kode yang bener dulu ya.';
+      ldrGuestStatus.className = 'ldr-status error';
+      return;
+    }
+    ldrGuestStatus.textContent = 'Menyambungkan…';
+    ldrGuestStatus.className = 'ldr-status';
+    try{
+      await ensurePeerJs();
+    }catch(e){
+      ldrGuestStatus.textContent = 'Gagal memuat modul LDR. Cek koneksi internet kamu.';
+      ldrGuestStatus.className = 'ldr-status error';
+      return;
+    }
+    if(!currentStream){
+      ldrGuestStatus.textContent = 'Kamera belum siap. Tunggu sebentar lalu coba lagi.';
+      ldrGuestStatus.className = 'ldr-status error';
+      return;
+    }
+    ldrRole = 'guest';
+    const hostId = 'pboothldr-' + code;
+    let p;
+    try{
+      p = new Peer(undefined, { debug: 0 });
+    }catch(e){
+      ldrGuestStatus.textContent = 'Gagal membuat koneksi. Coba lagi.';
+      ldrGuestStatus.className = 'ldr-status error';
+      ldrRole = null;
+      return;
+    }
+    ldrPeer = p;
+    p.on('open', ()=>{
+      const conn = p.connect(hostId, { reliable:true });
+      ldrConn = conn;
+      conn.on('open', ()=>{
+        ldrActive = true;
+        ldrGuestStatus.textContent = '✅ Tersambung ke host! Nunggu host motret ya.';
+        ldrGuestStatus.className = 'ldr-status connected';
+        ldrBackBtn.style.display = 'none';
+        ldrDisconnectBtn.style.display = 'inline-block';
+        ldrSendToPeer({ type:'facing', facing: currentFacing });
+        guestEnterConnectedUI();
+      });
+      conn.on('data', ldrHandleData);
+      conn.on('close', ()=>{ if(ldrRole === 'guest') ldrHandlePartnerLeft('Koneksi ke host terputus.'); });
+      const call = p.call(hostId, currentStream);
+      ldrCall = call;
+      call.on('close', ()=>{ if(ldrRole === 'guest') ldrHandlePartnerLeft('Koneksi ke host terputus.'); });
+    });
+    p.on('error', (err)=>{
+      if(err && err.type === 'peer-unavailable'){
+        ldrGuestStatus.textContent = 'Kode tidak ditemukan. Cek lagi kodenya.';
+      } else {
+        ldrGuestStatus.textContent = 'Gagal konek (' + (err && err.type ? err.type : 'error') + ').';
+      }
+      ldrGuestStatus.className = 'ldr-status error';
+    });
+  }
+
+  ldrBtn.addEventListener('click', openLdrModal);
+  ldrCloseBtn.addEventListener('click', closeLdrModal);
+  ldrOverlay.addEventListener('click', (e)=>{ if(e.target === ldrOverlay) closeLdrModal(); });
+  ldrHostBtn.addEventListener('click', ()=>{ showLdrHostPanel(); ldrStartHost(); });
+  ldrGuestBtn.addEventListener('click', showLdrGuestPanel);
+  ldrBackBtn.addEventListener('click', ()=>{
+    if(ldrPeer && !ldrActive){ try{ ldrPeer.destroy(); }catch(e){} ldrPeer = null; }
+    ldrRole = null;
+    resetLdrModalToChoice();
+  });
+  ldrJoinBtn.addEventListener('click', ()=> ldrJoinGuest(ldrCodeInput.value));
+  ldrCodeInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') ldrJoinBtn.click(); });
+  ldrCodeInput.addEventListener('input', ()=>{
+    ldrCodeInput.value = ldrCodeInput.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+  });
+  ldrCopyCodeBtn.addEventListener('click', async ()=>{
+    try{
+      await navigator.clipboard.writeText(ldrRoomCode);
+      ldrCopyCodeBtn.textContent = 'Tersalin!';
+      setTimeout(()=>{ ldrCopyCodeBtn.textContent = 'Salin Kode'; }, 1500);
+    }catch(e){}
+  });
+  ldrDisconnectBtn.addEventListener('click', ()=>{
+    ldrHandlePartnerLeft(ldrRole === 'host' ? 'LDR dihentikan.' : 'Kamu keluar dari LDR.');
+    resetLdrModalToChoice();
+  });
+
+  function ldrCoverDrawToCanvas(srcEl, dw, dh, mirror){
+    const vw = srcEl.videoWidth || 640, vh = srcEl.videoHeight || 480;
+    const targetRatio = dw/dh;
+    let sw = vw, sh = vh, sx = 0, sy = 0;
+    if(vw/vh > targetRatio){ sw = vh*targetRatio; sx = (vw-sw)/2; }
+    else { sh = vw/targetRatio; sy = (vh-sh)/2; }
+    const tmp = document.createElement('canvas');
+    tmp.width = dw; tmp.height = dh;
+    const tctx = tmp.getContext('2d');
+    tctx.save();
+    if(mirror){ tctx.translate(dw, 0); tctx.scale(-1,1); }
+    tctx.drawImage(srcEl, sx, sy, sw, sh, 0, 0, dw, dh);
+    tctx.restore();
+    return tmp;
+  }
+
+  function captureLdrSplitFrame(){
+    const c = document.createElement('canvas');
+    c.width = 960; c.height = 720;
+    const cctx = c.getContext('2d');
+    const f = FILTERS[currentFilter] || FILTERS.normal;
+    const halfW = c.width/2;
+    const localMirror = currentFacing !== 'environment';
+    const remoteMirror = ldrGuestFacing !== 'environment';
+    const localTile = ldrCoverDrawToCanvas(video, halfW, c.height, localMirror);
+    const remoteTile = ldrCoverDrawToCanvas(remoteVideoEl, halfW, c.height, remoteMirror);
+    cctx.filter = f.css;
+    cctx.drawImage(localTile, 0, 0);
+    cctx.drawImage(remoteTile, halfW, 0);
+    cctx.filter = 'none';
+    if(f.tint){
+      cctx.save();
+      cctx.globalCompositeOperation = f.blend || 'soft-light';
+      cctx.globalAlpha = f.tintAlpha;
+      cctx.fillStyle = f.tint;
+      cctx.fillRect(0, 0, c.width, c.height);
+      cctx.restore();
+    }
+    cctx.save();
+    cctx.strokeStyle = 'rgba(244,232,213,.85)';
+    cctx.lineWidth = 3;
+    cctx.setLineDash([10,8]);
+    cctx.beginPath();
+    cctx.moveTo(halfW, 0);
+    cctx.lineTo(halfW, c.height);
+    cctx.stroke();
+    cctx.restore();
+    drawHeart(cctx, halfW, c.height/2, 22, '#ff9ecb');
+    return c;
+  }
 
   filterBtns.forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -1610,6 +2126,10 @@
 
     if(shutterLabel){
       shutterLabel.textContent = filled === 0 ? 'Jepret' : (filled < TOTAL_SHOTS ? 'Lanjut' : 'Penuh');
+    }
+    if(ldrActive && ldrRole === 'guest'){
+      shutterBtn.disabled = true;
+      if(shutterLabel) shutterLabel.textContent = 'Nunggu Host';
     }
     if(stripCaption){
       if(filled === 0){
@@ -2465,18 +2985,24 @@
     countdownEl.style.display = 'flex';
     for(const n of [3,2,1]){
       countdownEl.textContent = n;
+      if(ldrActive && ldrRole === 'host') ldrSendToPeer({ type:'countdown', n });
       await wait(650);
     }
     countdownEl.style.display = 'none';
+    if(ldrActive && ldrRole === 'host') ldrSendToPeer({ type:'countdown-hide' });
   }
 
   function doFlash(){
     flashEl.classList.remove('pop');
     void flashEl.offsetWidth;
     flashEl.classList.add('pop');
+    if(ldrActive && ldrRole === 'host') ldrSendToPeer({ type:'flash' });
   }
 
   function captureFrame(){
+    if(ldrActive && ldrRole === 'host' && ldrRemoteStream && remoteVideoEl.readyState >= 2){
+      return captureLdrSplitFrame();
+    }
     const c = document.createElement('canvas');
     const useAi = aiBgEnabled && aiCanvas.style.display !== 'none' && aiCanvas.width > 0 && aiCanvas.height > 0;
     const source = useAi ? aiCanvas : video;
@@ -3334,6 +3860,7 @@
     for(let k=0; k<emptySlots.length; k++){
       const slot = emptySlots[k];
       shotCounter.textContent = `POSE ${k+1}/${emptySlots.length}`;
+      if(ldrActive && ldrRole === 'host') ldrSendToPeer({ type:'progress', k: k+1, total: emptySlots.length });
       await runCountdown();
       doFlash();
       await wait(120);
@@ -3344,12 +3871,13 @@
     }
 
     shotCounter.textContent = `SELESAI · ${TOTAL_SHOTS}/${TOTAL_SHOTS}`;
+    if(ldrActive && ldrRole === 'host') ldrSendToPeer({ type:'session-end', total: TOTAL_SHOTS });
     stripCanvas.classList.remove('printing');
     void stripCanvas.offsetWidth;
     stripCanvas.classList.add('printing');
 
     busy = false;
-    flipBtn.disabled = false;
+    flipBtn.disabled = ldrActive;
     filterBtns.forEach(b=>b.disabled = false);
     frameBtns.forEach(b=>b.disabled = false);
     layoutBtns.forEach(b=>b.disabled = false);
@@ -3357,9 +3885,9 @@
     stickerPalette.querySelectorAll('.sticker-chip').forEach(b=>b.disabled = false);
     clearStickersBtn.disabled = false;
     stickerOverlay.style.pointerEvents = 'auto';
-    aiSwitch.disabled = false;
+    aiSwitch.disabled = (ldrActive && ldrRole === 'host');
     aiPresetBtns.forEach(b=>b.disabled = false);
-    arSwitch.disabled = false;
+    arSwitch.disabled = (ldrActive && ldrRole === 'host');
     arPresetBtns.forEach(b=>b.disabled = false);
     updateCaptureUI();
     updateUndoBtn();
