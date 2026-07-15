@@ -2118,7 +2118,10 @@
 
   function captureLdrSplitFrame(){
     const c = document.createElement('canvas');
-    c.width = 960; c.height = 720;
+    // Matches the same HD-ish target as the regular capture — local half
+    // still uses full local camera detail; the remote half is limited by
+    // whatever video quality actually made it across the network.
+    c.width = 1600; c.height = 1200;
     const cctx = c.getContext('2d');
     const f = FILTERS[currentFilter] || FILTERS.normal;
     const halfW = c.width/2;
@@ -3163,11 +3166,14 @@
     } else {
       sh = vw / targetRatio; sy = (vh - sh)/2;
     }
-    // Captured at a much higher native resolution than before (was
-    // 380x285, a very small source that looked grainy no matter how it
-    // was encoded afterward). 960x720 keeps the same 4:3 ratio but keeps
-    // far more real detail from the camera.
-    c.width = 960; c.height = 720;
+    // Output resolution is fixed regardless of the camera's native capture
+    // size — this only controls how big/sharp the final saved photo is,
+    // not what the camera captures. If the source is smaller (e.g. a
+    // 1280x960 camera), the crop gets scaled up into this canvas; if it's
+    // bigger, it gets scaled down. Either way the result is a consistent,
+    // print-quality HD output.
+    const OUT_W = 1600, OUT_H = 1200;
+    c.width = OUT_W; c.height = OUT_H;
     const cctx = c.getContext('2d');
     const f = FILTERS[currentFilter] || FILTERS.normal;
     cctx.filter = useAi ? 'none' : f.css;
@@ -4329,7 +4335,11 @@
       const img = new Image();
       img.onload = ()=>{
         const c = document.createElement('canvas');
-        c.width = 960; c.height = 720;
+        // Use the image's own saved size instead of forcing it back down
+        // to 960x720 — otherwise a restored session (e.g. after a page
+        // refresh) would quietly throw away the HD resolution we just
+        // captured it at.
+        c.width = img.naturalWidth || 960; c.height = img.naturalHeight || 720;
         c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
         resolve(c);
       };
