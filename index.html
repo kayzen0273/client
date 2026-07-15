@@ -1701,6 +1701,51 @@
     setTimeout(tryPlay, 300);
   }
 
+  // Cap the outgoing video bitrate on the WebRTC sender. Without this, the
+  // encoder tries to push full-resolution video down whatever path it has —
+  // fine on a local network, but over a relayed (TURN) path across two
+  // different networks the available bandwidth is often much lower, so
+  // packets get dropped, a full keyframe never arrives, and the remote
+  // <video> just sits on a black frame forever. Capping the bitrate makes
+  // the encoder degrade quality/framerate instead of losing the stream.
+  function ldrCapVideoBandwidth(pc){
+    if(!pc || !pc.getSenders) return;
+    const trySet = ()=>{
+      const sender = pc.getSenders().find(s=>s.track && s.track.kind === 'video');
+      if(!sender) return false;
+      try{
+        const params = sender.getParameters();
+        if(!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+        params.encodings[0].maxBitrate = 300000; // ~300kbps — light enough to survive a relayed path
+        params.degradationPreference = 'maintain-framerate';
+        const p = sender.setParameters(params);
+        if(p && p.catch) p.catch(()=>{});
+      }catch(e){}
+      return true;
+    };
+    if(!trySet()){
+      let tries = 0;
+      const iv = setInterval(()=>{
+        tries++;
+        if(trySet() || tries > 15) clearInterval(iv);
+      }, 300);
+    }
+  }
+
+  // If we're "connected" but no actual video frames ever arrive (common
+  // symptom of a relay path that's too congested/blocked for media even
+  // though the data channel got through), tell the person instead of
+  // leaving them staring at a black square with no explanation.
+  function ldrWatchForBlackVideo(statusEl){
+    const roleAtStart = ldrRole;
+    setTimeout(()=>{
+      if(!ldrActive || ldrRole !== roleAtStart) return;
+      if(remoteVideoEl.videoWidth > 0) return;
+      statusEl.textContent = 'Tersambung, tapi video partner belum muncul. Ini biasanya karena jaringan salah satu HP kurang stabil buat kirim video (walau datanya konek). Coba pindah ke WiFi yang lebih stabil, atau putuskan & coba lagi.';
+      statusEl.className = 'ldr-status error';
+    }, 7000);
+  }
+
   function ldrRandomCode(){
     const chars = 'ABCDEFGHJKMNPQRSTUVWXY3456789'; // no 0/O/1/I/L to avoid mix-ups
     let s = '';
@@ -1893,8 +1938,31 @@
       conn.on('close', ()=>{ if(ldrRole === 'host') ldrHandlePartnerLeft('Tamu terputus.'); });
     });
     p.on('call', (call)=>{
-      call.answer(currentStream || undefined);
       ldrCall = call;
+      const doAnswer = ()=>{
+        call.answer(currentStream || undefined);
+        ldrCapVideoBandwidth(call.peerConnection);
+      };
+      if(currentStream){
+        doAnswer();
+      } else {
+        // Camera not ready yet on the host's side — wait briefly instead
+        // of answering with no video track, which would leave the guest
+        // staring at a permanently black screen with nothing to receive.
+        ldrHostStatus.textContent = 'Kamera kamu belum siap, tunggu sebentar…';
+        ldrHostStatus.className = 'ldr-status';
+        let waited = 0;
+        const camWait = setInterval(()=>{
+          waited += 200;
+          if(currentStream){
+            clearInterval(camWait);
+            doAnswer();
+          } else if(waited > 8000){
+            clearInterval(camWait);
+            doAnswer(); // give up waiting, answer anyway so the call doesn't hang
+          }
+        }, 200);
+      }
       call.on('stream', (remoteStream)=>{
         clearTimeout(waitHintTimer);
         ldrRemoteStream = remoteStream;
@@ -1905,6 +1973,7 @@
         ldrBackBtn.style.display = 'none';
         ldrDisconnectBtn.style.display = 'inline-block';
         ldrEnterSplit();
+        ldrWatchForBlackVideo(ldrHostStatus);
       });
       call.on('close', ()=>{ if(ldrRole === 'host') ldrHandlePartnerLeft('Tamu terputus.'); });
     });
@@ -1984,10 +2053,12 @@
       conn.on('close', ()=>{ if(ldrRole === 'guest') ldrHandlePartnerLeft('Koneksi ke host terputus.'); });
       const call = p.call(hostId, currentStream);
       ldrCall = call;
+      ldrCapVideoBandwidth(call.peerConnection);
       call.on('stream', (remoteStream)=>{
         ldrRemoteStream = remoteStream;
         ldrPlayRemoteStream(remoteStream);
         viewfinder.classList.add('ldr-split', 'ldr-guest-view');
+        ldrWatchForBlackVideo(ldrGuestStatus);
       });
       call.on('close', ()=>{ if(ldrRole === 'guest') ldrHandlePartnerLeft('Koneksi ke host terputus.'); });
     });
