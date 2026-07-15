@@ -1750,6 +1750,9 @@
 
   function guestExitConnectedUI(){
     ldrBadgeEl.style.display = 'none';
+    viewfinder.classList.remove('ldr-split');
+    remoteVideoEl.srcObject = null;
+    ldrRemoteStream = null;
     flipBtn.disabled = false;
     ldrBtn.classList.remove('active');
     updateCaptureUI();
@@ -1834,7 +1837,7 @@
       conn.on('close', ()=>{ if(ldrRole === 'host') ldrHandlePartnerLeft('Tamu terputus.'); });
     });
     p.on('call', (call)=>{
-      call.answer();
+      call.answer(currentStream || undefined);
       ldrCall = call;
       call.on('stream', (remoteStream)=>{
         ldrRemoteStream = remoteStream;
@@ -1913,6 +1916,11 @@
       conn.on('close', ()=>{ if(ldrRole === 'guest') ldrHandlePartnerLeft('Koneksi ke host terputus.'); });
       const call = p.call(hostId, currentStream);
       ldrCall = call;
+      call.on('stream', (remoteStream)=>{
+        ldrRemoteStream = remoteStream;
+        remoteVideoEl.srcObject = remoteStream;
+        viewfinder.classList.add('ldr-split');
+      });
       call.on('close', ()=>{ if(ldrRole === 'guest') ldrHandlePartnerLeft('Koneksi ke host terputus.'); });
     });
     p.on('error', (err)=>{
