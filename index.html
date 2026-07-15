@@ -350,6 +350,14 @@
     display:none;
   }
   .viewfinder.ldr-split .ldr-seam{ display:block; }
+  /* On the guest's own screen, keep the guest's camera on the right —
+     same side it appears on the host's screen and in the final photo. */
+  .viewfinder.ldr-split.ldr-guest-view #video{
+    left:auto; right:0;
+  }
+  .viewfinder.ldr-split.ldr-guest-view #remoteVideo{
+    left:0; right:auto;
+  }
   .tint{
     position:absolute; inset:0;
     pointer-events:none;
@@ -1750,7 +1758,7 @@
 
   function guestExitConnectedUI(){
     ldrBadgeEl.style.display = 'none';
-    viewfinder.classList.remove('ldr-split');
+    viewfinder.classList.remove('ldr-split', 'ldr-guest-view');
     remoteVideoEl.srcObject = null;
     ldrRemoteStream = null;
     flipBtn.disabled = false;
@@ -1919,7 +1927,7 @@
       call.on('stream', (remoteStream)=>{
         ldrRemoteStream = remoteStream;
         remoteVideoEl.srcObject = remoteStream;
-        viewfinder.classList.add('ldr-split');
+        viewfinder.classList.add('ldr-split', 'ldr-guest-view');
       });
       call.on('close', ()=>{ if(ldrRole === 'guest') ldrHandlePartnerLeft('Koneksi ke host terputus.'); });
     });
