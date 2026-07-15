@@ -1022,7 +1022,7 @@
   <div class="settings-overlay" id="ldrOverlay">
     <div class="settings-modal ldr-modal">
       <h2>Mode LDR 💞</h2>
-      <p class="settings-hint" id="ldrIntro">Gabungkan kamera dari 2 HP jadi satu foto split-screen. Host yang pegang tombol jepret, tamu tinggal pasang gaya.</p>
+      <p class="settings-hint" id="ldrIntro">Gabungkan kamera dari 2 HP jadi satu foto split-screen. Host yang pegang tombol jepret, tamu tinggal pasang gaya — hasil fotonya otomatis muncul di HP kalian berdua.</p>
 
       <div class="ldr-role-choice" id="ldrRoleChoice">
         <button class="ldr-role-btn" id="ldrHostBtn" type="button">
@@ -1805,25 +1805,32 @@
       } else if(data.type === 'progress'){
         shotCounter.style.display = 'block';
         shotCounter.textContent = `POSE ${data.k}/${data.total}`;
+      } else if(data.type === 'session-start'){
+        // Mirror the host's grid layout first so slot indices line up
+        // before any photo data arrives.
+        if(data.layout) applyLayout(data.layout);
       } else if(data.type === 'photo'){
-        const slot = data.slot;
-        loadImageAsCanvas(data.dataUrl).then(canvas=>{
-          if(!canvas || typeof slot !== 'number') return;
-          capturedFrames[slot] = canvas;
-          renderStrip();
-          updateCaptureUI();
-          if(!restoringSession) saveSessionToStorage();
-        });
+        // The host sends over each finished (already split-screen) shot as
+        // it's taken, so the guest ends up with the real result too —
+        // not just a live preview.
+        ldrReceivePhoto(data.slot, data.dataUrl);
       } else if(data.type === 'session-end'){
         shotCounter.textContent = `SELESAI · ${data.total}/${data.total}`;
         setTimeout(()=>{ if(ldrActive) shotCounter.style.display = 'none'; }, 1500);
-      } else if(data.type === 'clear'){
-        capturedFrames = [];
-        renderStrip();
-        updateCaptureUI();
-        if(!restoringSession) saveSessionToStorage();
       }
     }
+  }
+
+  // Decodes a photo the host just captured and drops it into the guest's
+  // own capturedFrames/strip, so downloading, GIF export, and share all
+  // work on the guest's phone exactly like they do on the host's.
+  async function ldrReceivePhoto(slot, dataUrl){
+    if(typeof slot !== 'number' || slot < 0 || !dataUrl) return;
+    const canvas = await loadImageAsCanvas(dataUrl);
+    if(!canvas || ldrRole !== 'guest') return;
+    capturedFrames[slot] = canvas;
+    renderStrip();
+    updateCaptureUI();
   }
 
   function ldrAttemptHostPeer(attemptsLeft){
@@ -1927,7 +1934,7 @@
       ldrConn = conn;
       conn.on('open', ()=>{
         ldrActive = true;
-        ldrGuestStatus.textContent = '✅ Tersambung ke host! Nunggu host motret ya.';
+        ldrGuestStatus.textContent = '✅ Tersambung ke host! Nunggu host motret ya — hasilnya nanti otomatis masuk ke HP kamu juga.';
         ldrGuestStatus.className = 'ldr-status connected';
         ldrBackBtn.style.display = 'none';
         ldrDisconnectBtn.style.display = 'inline-block';
@@ -3887,6 +3894,8 @@
     arSwitch.disabled = true;
     arPresetBtns.forEach(b=>b.disabled = true);
 
+    if(ldrActive && ldrRole === 'host') ldrSendToPeer({ type:'session-start', layout: currentLayout });
+
     for(let k=0; k<emptySlots.length; k++){
       const slot = emptySlots[k];
       shotCounter.textContent = `POSE ${k+1}/${emptySlots.length}`;
@@ -3898,6 +3907,9 @@
       capturedFrames[slot] = frame;
       renderStrip();
       if(ldrActive && ldrRole === 'host'){
+        // Send the finished shot to the guest too — the split frame already
+        // has both phones' cameras baked in, so this is the actual result,
+        // not just a preview.
         ldrSendToPeer({ type:'photo', slot, dataUrl: frame.toDataURL('image/jpeg', 0.85) });
       }
       await wait(400);
@@ -3938,7 +3950,6 @@
     selectedDeleteSlot = null;
     renderStrip();
     updateCaptureUI();
-    if(ldrActive && ldrRole === 'host') ldrSendToPeer({ type:'clear' });
   });
 
   function updateUndoBtn(){
