@@ -1681,6 +1681,39 @@
     }
   }
 
+  // Sends a just-captured pose photo (plus the current layout/frame/paper/
+  // filter choices) to the guest, so the guest's own strip preview — and
+  // their download/GIF/share buttons — mirror the host's result in real time.
+  function ldrSyncPhotoToGuest(slot, frame){
+    if(!(ldrActive && ldrRole === 'host')) return;
+    ldrSendToPeer({
+      type: 'photo',
+      slot,
+      dataUrl: frame.toDataURL('image/jpeg', 0.82),
+      layout: currentLayout,
+      frameStyle: currentFrame,
+      paper: currentPaper,
+      filter: currentFilter
+    });
+  }
+
+  async function ldrApplyIncomingPhoto(data){
+    if(data.layout && LAYOUTS[data.layout] && data.layout !== currentLayout){
+      currentLayout = data.layout;
+      TOTAL_SHOTS = LAYOUTS[currentLayout].shots;
+      GRID_COLS = LAYOUTS[currentLayout].cols;
+      capturedFrames = [];
+    }
+    if(data.frameStyle) currentFrame = data.frameStyle;
+    if(data.paper && PAPERS[data.paper]) currentPaper = data.paper;
+    if(data.filter && FILTERS[data.filter]) currentFilter = data.filter;
+    const canvas = await loadImageAsCanvas(data.dataUrl);
+    if(!canvas) return;
+    capturedFrames[data.slot] = canvas;
+    renderStrip();
+    updateCaptureUI();
+  }
+
   function resetLdrModalToChoice(){
     ldrRoleChoice.style.display = 'flex';
     ldrHostPanel.style.display = 'none';
@@ -1808,6 +1841,13 @@
       } else if(data.type === 'session-end'){
         shotCounter.textContent = `SELESAI · ${data.total}/${data.total}`;
         setTimeout(()=>{ if(ldrActive) shotCounter.style.display = 'none'; }, 1500);
+      } else if(data.type === 'photo'){
+        ldrApplyIncomingPhoto(data);
+      } else if(data.type === 'reset'){
+        capturedFrames = [];
+        selectedDeleteSlot = null;
+        renderStrip();
+        updateCaptureUI();
       }
     }
   }
@@ -2145,6 +2185,7 @@
     }
     if(ldrActive && ldrRole === 'guest'){
       shutterBtn.disabled = true;
+      retakeBtn.disabled = true;
       if(shutterLabel) shutterLabel.textContent = 'Nunggu Host';
     }
     if(stripCaption){
@@ -3883,6 +3924,7 @@
       const frame = captureFrame();
       capturedFrames[slot] = frame;
       renderStrip();
+      ldrSyncPhotoToGuest(slot, frame);
       await wait(400);
     }
 
@@ -3921,6 +3963,7 @@
     selectedDeleteSlot = null;
     renderStrip();
     updateCaptureUI();
+    if(ldrActive && ldrRole === 'host') ldrSendToPeer({ type:'reset' });
   });
 
   function updateUndoBtn(){
