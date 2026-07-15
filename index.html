@@ -1022,7 +1022,7 @@
   <div class="settings-overlay" id="ldrOverlay">
     <div class="settings-modal ldr-modal">
       <h2>Mode LDR 💞</h2>
-      <p class="settings-hint" id="ldrIntro">Gabungkan kamera dari 2 HP jadi satu foto split-screen. Host yang pegang tombol jepret, tamu tinggal pasang gaya — hasil fotonya otomatis muncul di HP kalian berdua.</p>
+      <p class="settings-hint" id="ldrIntro">Gabungkan kamera dari 2 HP jadi satu foto split-screen. Host yang pegang tombol jepret, tamu tinggal pasang gaya.</p>
 
       <div class="ldr-role-choice" id="ldrRoleChoice">
         <button class="ldr-role-btn" id="ldrHostBtn" type="button">
@@ -1654,21 +1654,6 @@
   const ldrBadgeEl = document.getElementById('ldrBadge');
   const ldrBadgeTextEl = document.getElementById('ldrBadgeText');
 
-  // Public STUN + free TURN relay. Without a TURN fallback, host and guest
-  // being on different networks (e.g. one on WiFi, one on mobile data) will
-  // often fail to exchange video directly — the data channel connects fine,
-  // but neither side's camera ever reaches the other. TURN relays the media
-  // through a server instead of requiring a direct P2P path.
-  const LDR_ICE_CONFIG = {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-      { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
-    ]
-  };
-
   let ldrPeer = null;
   let ldrRole = null;           // 'host' | 'guest' | null
   let ldrConn = null;           // PeerJS DataConnection
@@ -1820,32 +1805,11 @@
       } else if(data.type === 'progress'){
         shotCounter.style.display = 'block';
         shotCounter.textContent = `POSE ${data.k}/${data.total}`;
-      } else if(data.type === 'session-start'){
-        // Mirror the host's grid layout first so slot indices line up
-        // before any photo data arrives.
-        if(data.layout) applyLayout(data.layout);
-      } else if(data.type === 'photo'){
-        // The host sends over each finished (already split-screen) shot as
-        // it's taken, so the guest ends up with the real result too —
-        // not just a live preview.
-        ldrReceivePhoto(data.slot, data.dataUrl);
       } else if(data.type === 'session-end'){
         shotCounter.textContent = `SELESAI · ${data.total}/${data.total}`;
         setTimeout(()=>{ if(ldrActive) shotCounter.style.display = 'none'; }, 1500);
       }
     }
-  }
-
-  // Decodes a photo the host just captured and drops it into the guest's
-  // own capturedFrames/strip, so downloading, GIF export, and share all
-  // work on the guest's phone exactly like they do on the host's.
-  async function ldrReceivePhoto(slot, dataUrl){
-    if(typeof slot !== 'number' || slot < 0 || !dataUrl) return;
-    const canvas = await loadImageAsCanvas(dataUrl);
-    if(!canvas || ldrRole !== 'guest') return;
-    capturedFrames[slot] = canvas;
-    renderStrip();
-    updateCaptureUI();
   }
 
   function ldrAttemptHostPeer(attemptsLeft){
@@ -1854,7 +1818,7 @@
     const peerId = 'pboothldr-' + code;
     let p;
     try{
-      p = new Peer(peerId, { debug: 0, config: LDR_ICE_CONFIG });
+      p = new Peer(peerId, { debug: 0 });
     }catch(e){
       ldrHostStatus.textContent = 'Gagal membuat koneksi. Coba lagi.';
       ldrHostStatus.className = 'ldr-status error';
@@ -1894,10 +1858,6 @@
         ldrEnterSplit();
       });
       call.on('close', ()=>{ if(ldrRole === 'host') ldrHandlePartnerLeft('Tamu terputus.'); });
-      call.on('error', ()=>{
-        ldrHostStatus.textContent = 'Gagal nyambungin video. Coba pastiin koneksi internet kalian stabil.';
-        ldrHostStatus.className = 'ldr-status error';
-      });
     });
   }
 
@@ -1940,7 +1900,7 @@
     const hostId = 'pboothldr-' + code;
     let p;
     try{
-      p = new Peer(undefined, { debug: 0, config: LDR_ICE_CONFIG });
+      p = new Peer(undefined, { debug: 0 });
     }catch(e){
       ldrGuestStatus.textContent = 'Gagal membuat koneksi. Coba lagi.';
       ldrGuestStatus.className = 'ldr-status error';
@@ -1953,7 +1913,7 @@
       ldrConn = conn;
       conn.on('open', ()=>{
         ldrActive = true;
-        ldrGuestStatus.textContent = '✅ Tersambung ke host! Nunggu host motret ya — hasilnya nanti otomatis masuk ke HP kamu juga.';
+        ldrGuestStatus.textContent = '✅ Tersambung ke host! Nunggu host motret ya.';
         ldrGuestStatus.className = 'ldr-status connected';
         ldrBackBtn.style.display = 'none';
         ldrDisconnectBtn.style.display = 'inline-block';
@@ -1970,10 +1930,6 @@
         viewfinder.classList.add('ldr-split', 'ldr-guest-view');
       });
       call.on('close', ()=>{ if(ldrRole === 'guest') ldrHandlePartnerLeft('Koneksi ke host terputus.'); });
-      call.on('error', ()=>{
-        ldrGuestStatus.textContent = 'Gagal nyambungin video. Coba pastiin koneksi internet kalian stabil.';
-        ldrGuestStatus.className = 'ldr-status error';
-      });
     });
     p.on('error', (err)=>{
       if(err && err.type === 'peer-unavailable'){
@@ -3917,8 +3873,6 @@
     arSwitch.disabled = true;
     arPresetBtns.forEach(b=>b.disabled = true);
 
-    if(ldrActive && ldrRole === 'host') ldrSendToPeer({ type:'session-start', layout: currentLayout });
-
     for(let k=0; k<emptySlots.length; k++){
       const slot = emptySlots[k];
       shotCounter.textContent = `POSE ${k+1}/${emptySlots.length}`;
@@ -3929,12 +3883,6 @@
       const frame = captureFrame();
       capturedFrames[slot] = frame;
       renderStrip();
-      if(ldrActive && ldrRole === 'host'){
-        // Send the finished shot to the guest too — the split frame already
-        // has both phones' cameras baked in, so this is the actual result,
-        // not just a preview.
-        ldrSendToPeer({ type:'photo', slot, dataUrl: frame.toDataURL('image/jpeg', 0.85) });
-      }
       await wait(400);
     }
 
